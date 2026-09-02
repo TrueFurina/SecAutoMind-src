@@ -37,6 +37,11 @@ const (
 	chatUploadSourceWorkspace    = "workspace"
 	chatUploadSourceConversation = "conversation_artifact"
 	maxChatUploadEditBytes       = 2 * 1024 * 1024 // 文本编辑上限
+	// zip 自动解包安全上限（防 zip 炸弹 / 资源耗尽）
+	maxZipExtractEntries     = 500              // 条目数上限
+	maxZipExtractTotalBytes  = 200 << 20        // 解压总体积上限 200MB
+	maxZipExtractFileBytes   = 50 << 20         // 单文件解压体积上限 50MB
+	zipExtractedDirSuffix    = "_extracted"     // 解包目录后缀
 )
 
 // ChatUploadsHandler 对话中上传附件（chat_uploads 目录）的管理 API
@@ -1398,6 +1403,91 @@ func chatUploadShortRand(n int) string {
 	return string(b)
 }
 
+// extractZipArchive 将 zip 压缩包安全解包到 destDir，返回解出的文件相对路径列表（/ 分隔）。
+// 安全约束：
+//   - zip-slip 防护：拒绝绝对路径、盘符、反斜杠与 ".." 逃逸条目；
+//   - 条目数上限 maxZipExtractEntries、单文件与总体积上限（防 zip 炸弹）。
+func extractZipArchive(zipPath, destDir string) ([]string, error) {
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+
+	if len(zr.File) > maxZipExtractEntries {
+		return nil, fmt.Errorf("zip 条目数 %d 超过上限 %d", len(zr.File), maxZipExtractEntries)
+	}
+	destAbs, err := filepath.Abs(destDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(destAbs, 0755); err != nil {
+		return nil, err
+	}
+	destPrefix := destAbs + string(filepath.Separator)
+
+	extracted := make([]string, 0, len(zr.File))
+	var totalBytes int64
+	for _, zf := range zr.File {
+		name := zf.Name
+		if name == "" || strings.ContainsAny(name, "\\:") || filepath.IsAbs(name) {
+			continue // 非法/高风险条目名，跳过
+		}
+		cleaned := filepath.Clean(filepath.FromSlash(name))
+		if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "..") {
+			continue
+		}
+		target := filepath.Join(destAbs, cleaned)
+		if !strings.HasPrefix(target, destPrefix) {
+			continue // zip-slip 防护
+		}
+		if zf.FileInfo().IsDir() {
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return extracted, err
+			}
+			continue
+		}
+		if zf.UncompressedSize64 > uint64(maxZipExtractFileBytes) {
+			return extracted, fmt.Errorf("zip 内文件 %s 解压后体积超过单文件上限", name)
+		}
+		totalBytes += int64(zf.UncompressedSize64)
+		if totalBytes > maxZipExtractTotalBytes {
+			return extracted, fmt.Errorf("zip 解压总体积超过上限 %d MB", maxZipExtractTotalBytes>>20)
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return extracted, err
+		}
+		rc, err := zf.Open()
+		if err != nil {
+			return extracted, err
+		}
+		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			rc.Close()
+			return extracted, err
+		}
+		// io.CopyN：限额为单文件上限+1；返回 nil 表示写满限额（实际超限），io.EOF 表示源提前读完（正常）
+		_, cpErr := io.CopyN(out, rc, int64(maxZipExtractFileBytes)+1)
+		closeErr := out.Close()
+		rc.Close()
+		if cpErr == nil {
+			return extracted, fmt.Errorf("zip 内文件 %s 实际解压体积超过单文件上限", name)
+		}
+		if cpErr != io.EOF {
+			return extracted, cpErr
+		}
+		if closeErr != nil {
+			return extracted, closeErr
+		}
+		relToDest, err := filepath.Rel(destAbs, target)
+		if err != nil {
+			return extracted, err
+		}
+		extracted = append(extracted, filepath.ToSlash(relToDest))
+	}
+	return extracted, nil
+}
+
 // Upload POST /api/chat-uploads multipart: file；conversationId 可选；relativeDir 可选（chat_uploads 下目录的相对路径，将文件直接上传至该目录）
 func (h *ChatUploadsHandler) Upload(c *gin.Context) {
 	fh, err := c.FormFile("file")
@@ -1507,10 +1597,33 @@ func (h *ChatUploadsHandler) Upload(c *gin.Context) {
 			"name": unique,
 		})
 	}
+	// 赛题要求（XH-202609）：支持"压缩文件自动解析生成执行计划"。
+	// zip 附件上传后自动安全解包到同级 _extracted 目录，解出的文件随响应返回，
+	// 供 Agent 读取内容并纳入任务规划；解包失败不影响附件本身保存。
+	var extractedFiles []string
+	var extractErr string
+	var extractedDir string
+	if strings.EqualFold(ext, ".zip") {
+		extractedDir = filepath.Join(targetDir, strings.TrimSuffix(unique, ext)+zipExtractedDirSuffix)
+		if files, err := extractZipArchive(fullPath, extractedDir); err != nil {
+			extractErr = err.Error()
+			h.logger.Warn("zip 附件自动解包失败", zap.String("path", filepath.ToSlash(rel)), zap.Error(err))
+		} else {
+			extractedFiles = files
+			if h.audit != nil {
+				h.audit.RecordOK(c, "file", "extract", "zip 附件自动解包", "chat_upload", filepath.ToSlash(rel), map[string]interface{}{
+					"entries": len(files),
+				})
+			}
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"ok":           true,
-		"relativePath": filepath.ToSlash(rel),
-		"absolutePath": absSaved,
-		"name":         unique,
+		"ok":             true,
+		"relativePath":   filepath.ToSlash(rel),
+		"absolutePath":   absSaved,
+		"name":           unique,
+		"extractedFiles": extractedFiles,
+		"extractedDir":   extractedDir,
+		"extractError":   extractErr,
 	})
 }

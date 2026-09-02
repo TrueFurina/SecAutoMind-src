@@ -55,6 +55,8 @@ __pycache__/
 
 # Go
 vendor/
+!internal/app/web/static/vendor/
+!internal/app/web/static/vendor/*
 
 # Node / browser extension
 node_modules/

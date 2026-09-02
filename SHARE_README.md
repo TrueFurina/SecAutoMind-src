@@ -121,6 +121,9 @@ A: 删除整个目录即可（数据存于 `data/conversations.db`，可一并�
 ### Q: 可以部署到公网吗
 A: 可以，但务必修改 admin 密码 + 改 `server.host` 为 `0.0.0.0` + 配置 TLS。
 
+### Q: 怎么在钉钉 / 飞书 / Telegram 里和智能体对话
+A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉开放平台创建企业内部应用拿到 Client ID / Client Secret，然后二选一注入——① 填入 `config.yaml` 的 `robots.dingtalk`（该文件已被 `.gitignore` 忽略，勿提交真实密钥）；② 环境变量 `DING_APP_KEY` / `DING_APP_SECRET`（+ 可选 `DINGTALK_ENABLED=true`），优先级高于配置文件。凭证缺失时仅禁用该通道并告警，主系统全部功能不受影响。详细步骤见 `docs/zh-CN/robot.md`。
+
 ---
 
 ## 7. 验证包完整性
