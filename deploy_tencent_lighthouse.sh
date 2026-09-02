@@ -45,7 +45,7 @@ if ! command -v go >/dev/null 2>&1 || [[ $(go version | awk '{print $3}' | sed '
   info "安装 Go $GO_VERSION ..."
   cd /tmp
   rm -f "$GO_TARBALL"
-  wget -q "https://go.dev/dl/$GO_TARBALL"
+  wget -q "https://golang.google.cn/dl/$GO_TARBALL" # 国内镜像（官方中国站）；海外服务器可换回 https://go.dev/dl/
   rm -rf /usr/local/go
   tar -C /usr/local -xzf "$GO_TARBALL"
   rm -f "$GO_TARBALL"

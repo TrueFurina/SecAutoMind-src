@@ -16,7 +16,7 @@ stack (planning / execution / audit / review) so that high-fidelity offensive
 and defensive scenarios can be reproduced end-to-end with a single natural
 language intent.
 
-The system integrates a curated library of 100+ security tools, supports
+The system integrates a curated library of 90 security tool recipes, supports
 human-in-the-loop approval, and produces standardized review reports suitable
 for classroom and lab evaluation.
 
@@ -26,7 +26,7 @@ for classroom and lab evaluation.
   review agents collaborate through a shared fact blackboard.
 - **Autonomous decision making** — the orchestrator can identify the target
   environment, plan next steps, and adapt to findings on the fly.
-- **Tooling library** — 100+ YAML-defined security tools (recon, web, cloud,
+- **Tooling library** — 90 YAML-defined security tools (recon, web, cloud,
   binary analysis, forensics, post-exploitation) ready to be invoked by the
   agent layer.
 - **Human-in-the-loop safety** — sensitive operations require explicit user
