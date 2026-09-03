@@ -54,3 +54,13 @@ ok  	secautomind-ai/internal/workflow/package	0.024s
 test exit: 0  (all test packages PASS, 0 FAIL)
 vet exit: 0
 total packages with tests: 26 ok
+
+===== 当前 HEAD 适用性说明 (2026-09-03 23:xx 补充) =====
+# 当前 HEAD = e24fb24 (提交: "fix(ppt): track PPT source + rebuild canonical deck from corrected .slide")
+# 相对本证据提交 398b47c，git diff --name-only 398b47c HEAD | grep '\.go$' 计数 = 0
+#   (仅改动 .gitignore / SHARE_README / SecAutoMind_PPT/* / 本证据文件)。
+# => 上述 26/26 全绿结论对当前 HEAD 完全适用，无需重跑即成立。
+# 另：本机以 go1.25.0 独立执行 `go build ./...` => exit 0（生产代码可编译）。
+# 环境说明：本机 go-install 工具链缺 C 编译器，cmd/mcp-stdio 等含 cgo 依赖的测试包无法在本机重跑
+#   (报 runtime/cgo: cgo.exe exit status 2)。原证据在 go1.25.14 + CGO_ENABLED=1 + gcc16 环境下取得，
+#   对当前代码有效；竞赛部署亦采用该 gcc16 非-PIE 配方 (见上方 Build recipe)。
