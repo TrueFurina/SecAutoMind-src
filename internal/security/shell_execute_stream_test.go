@@ -163,3 +163,21 @@ func TestEinoStreamingShell_BackgroundJobDoesNotHoldPipe(t *testing.T) {
 		t.Fatalf("expected foreground echo, got: %q", got.String())
 	}
 }
+
+// TestResolveStreamingShell 平台中立：类 Unix 须解析到 /bin/sh；
+// Windows 无 Git Bash 时允许失败但错误须可读（含 sh 提示），有 sh 则返回路径。
+func TestResolveStreamingShell(t *testing.T) {
+	shellPath, err := resolveStreamingShell()
+	if err != nil {
+		if runtime.GOOS != "windows" {
+			t.Fatalf("resolveStreamingShell on %s: %v", runtime.GOOS, err)
+		}
+		if !strings.Contains(err.Error(), "sh") {
+			t.Fatalf("windows shell error should mention sh/install hint, got: %v", err)
+		}
+		return
+	}
+	if shellPath == "" {
+		t.Fatal("resolveStreamingShell returned empty path")
+	}
+}

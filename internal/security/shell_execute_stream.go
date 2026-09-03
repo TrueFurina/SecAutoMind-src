@@ -6,11 +6,25 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"runtime"
 	"sync"
 
 	"github.com/cloudwego/eino/adk/filesystem"
 	"github.com/cloudwego/eino/schema"
 )
+
+// resolveStreamingShell 返回流式 shell 命令的可执行路径。
+// 类 Unix 固定 /bin/sh；Windows 上尝试 PATH 中的 sh（Git Bash / MSYS 提供），
+// 找不到时返回带指引的错误，避免 exec "/bin/sh" 的裸报错。
+func resolveStreamingShell() (string, error) {
+	if runtime.GOOS != "windows" {
+		return "/bin/sh", nil
+	}
+	if p, err := exec.LookPath("sh"); err == nil {
+		return p, nil
+	}
+	return "", fmt.Errorf("shell streaming 需要 sh：Windows 请安装 Git Bash（含 /usr/bin/sh）并将其加入 PATH，或在 Linux/macOS 环境运行")
+}
 
 // ConfigureShellCmdForAgentExecute 与 exec 工具一致：非交互 stdin、pager/TERM 环境、独立进程组。
 func ConfigureShellCmdForAgentExecute(cmd *exec.Cmd) {
@@ -61,7 +75,12 @@ func runShellInBackground(ctx context.Context, command string, w *schema.StreamW
 	defer w.Close()
 
 	command = PrepareShellCommandForExecute(command)
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
+	shellPath, shellErr := resolveStreamingShell()
+	if shellErr != nil {
+		_ = w.Send(nil, shellErr)
+		return
+	}
+	cmd := exec.CommandContext(ctx, shellPath, "-c", command)
 	applyDefaultTerminalEnv(cmd)
 	attachNonInteractiveStdin(cmd)
 	stdout, err := cmd.StdoutPipe()
@@ -121,7 +140,12 @@ func streamShellForeground(ctx context.Context, command string, w *schema.Stream
 	defer w.Close()
 
 	command = PrepareShellCommandForExecute(command)
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
+	shellPath, shellErr := resolveStreamingShell()
+	if shellErr != nil {
+		_ = w.Send(nil, shellErr)
+		return
+	}
+	cmd := exec.CommandContext(ctx, shellPath, "-c", command)
 	applyDefaultTerminalEnv(cmd)
 	attachNonInteractiveStdin(cmd)
 
