@@ -1,0 +1,67 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>与评分标准逐项对照：我们怎么拿高分？</Text>
+  </Box>
+  <Box style={{ height: 560, flexDirection: 'row', gap: 32 }}>
+    <Box style={{ width: '45%', justifyContent: 'center', alignItems: 'center' }}>
+      <svg width={520} height={520} viewBox='0 0 520 520'>
+        <defs>
+          <radialGradient id='radarGrad' cx='50%' cy='50%' r='50%'>
+            <stop offset='0%' stopColor='rgba(14,165,233,0.35)' />
+            <stop offset='100%' stopColor='rgba(14,165,233,0.05)' />
+          </radialGradient>
+        </defs>
+        <rect width='520' height='520' fill='transparent' />
+        <g transform='translate(260,260)'>
+          <circle cx={0} cy={0} r={50} fill='none' stroke='rgba(148,163,184,0.25)' strokeWidth={1} />
+          <circle cx={0} cy={0} r={100} fill='none' stroke='rgba(148,163,184,0.25)' strokeWidth={1} />
+          <circle cx={0} cy={0} r={150} fill='none' stroke='rgba(148,163,184,0.25)' strokeWidth={1} />
+          <circle cx={0} cy={0} r={200} fill='none' stroke='rgba(148,163,184,0.25)' strokeWidth={1} />
+          {[0, 72, 144, 216, 288].map((a, i) => {
+            const rad = a * Math.PI / 180;
+            const x = 200 * Math.sin(rad);
+            const y = -200 * Math.cos(rad);
+            return <line key={i} x1={0} y1={0} x2={x} y2={y} stroke='rgba(148,163,184,0.25)' strokeWidth={1} />;
+          })}
+          <polygon points='0,-170 121,-58 75,144 -75,144 -121,-58' fill='url(#radarGrad)' stroke='#22D3EE' strokeWidth={3} />
+          <circle cx={0} cy={-170} r={5} fill='#22D3EE' />
+          <circle cx={121} cy={-58} r={5} fill='#22D3EE' />
+          <circle cx={75} cy={144} r={5} fill='#22D3EE' />
+          <circle cx={-75} cy={144} r={5} fill='#22D3EE' />
+          <circle cx={-121} cy={-58} r={5} fill='#22D3EE' />
+        </g>
+        <text x={260} y={35} textAnchor='middle' fill='#F1F5F9' fontSize={16} fontWeight='bold' fontFamily='思源黑体, sans-serif'>自主决策</text>
+        <text x={485} y={210} textAnchor='start' fill='#F1F5F9' fontSize={16} fontWeight='bold' fontFamily='思源黑体, sans-serif'>通用性</text>
+        <text x={420} y={480} textAnchor='middle' fill='#F1F5F9' fontSize={16} fontWeight='bold' fontFamily='思源黑体, sans-serif'>工具协同</text>
+        <text x={100} y={480} textAnchor='middle' fill='#F1F5F9' fontSize={16} fontWeight='bold' fontFamily='思源黑体, sans-serif'>创新性</text>
+        <text x={35} y={210} textAnchor='end' fill='#F1F5F9' fontSize={16} fontWeight='bold' fontFamily='思源黑体, sans-serif'>应用成效</text>
+      </svg>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
+      {[
+        { dim: '自主决策能力', score: '17', resp: '三层编排 + 事实黑板，任务可分解、可回溯' },
+        { dim: '通用性与场景覆盖', score: '18', resp: '90 工具 / 18 个角色化 Agent，覆盖靶场攻防全链路' },
+        { dim: '工具协同与集成', score: '18', resp: 'YAML 工具库 + MCP + 角色权限，可扩展' },
+        { dim: '创新性', score: '17', resp: 'Eino 多代理 + 渐进披露 + 长上下文管理' },
+        { dim: '应用成效与可落地', score: '18', resp: '一键脚本 + 腾讯云部署，可演示可验证' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', alignItems: 'center', padding: '12px 16px', background: 'rgba(14,165,233,0.07)', borderRadius: 10, borderLeft: '3px solid #0EA5E9' }}>
+          <Box style={{ width: 80, alignItems: 'center' }}>
+            <Text style={{ fontSize: 30, fontWeight: 'bold', color: '#22D3EE' }}>{item.score}</Text>
+            <Text style={{ fontSize: 12, color: '#64748B' }}>/ 20</Text>
+          </Box>
+          <Box style={{ flex: 1 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#F1F5F9', marginBottom: 4 }}>{item.dim}</Text>
+            <Text style={{ fontSize: 15, color: '#94A3B8', lineHeight: 1.4 }}>{item.resp}</Text>
+          </Box>
+        </Box>
+      ))}
+      <Box style={{ marginTop: 6, padding: 14, background: 'rgba(34,211,238,0.08)', borderRadius: 10, borderLeft: '4px solid #22D3EE' }}>
+        <Text style={{ fontSize: 18, color: '#22D3EE', lineHeight: 1.5 }}>预估总分：88 / 100。关键补齐项：部署实测截图 + 答辩演示脚本。</Text>
+      </Box>
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>13 / 15</Text>
+  </Box>
+</Slide>

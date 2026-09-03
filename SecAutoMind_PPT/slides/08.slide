@@ -1,0 +1,51 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>通用性：90 个工具 · 18 个角色化 Agent · 全链路覆盖</Text>
+  </Box>
+  <Box style={{ height: 560, flexDirection: 'row', gap: 36 }}>
+    <Box style={{ width: '58%', flexDirection: 'column', justifyContent: 'center', gap: 24 }}>
+      <Box style={{ flexDirection: 'row', gap: 24 }}>
+        <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(14,165,233,0.10)', borderRadius: 16, border: '1px solid rgba(14,165,233,0.35)' }}>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>90</Text>
+          <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>YAML 安全工具</Text>
+        </Box>
+        <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(59,130,246,0.10)', borderRadius: 16, border: '1px solid rgba(59,130,246,0.35)' }}>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#3B82F6', lineHeight: 1 }}>18</Text>
+          <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>角色化 Agent</Text>
+        </Box>
+      </Box>
+      <Box style={{ flexDirection: 'row', gap: 24 }}>
+        <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(59,130,246,0.10)', borderRadius: 16, border: '1px solid rgba(59,130,246,0.35)' }}>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#3B82F6', lineHeight: 1 }}>13</Text>
+          <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>角色定义</Text>
+        </Box>
+        <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(14,165,233,0.10)', borderRadius: 16, border: '1px solid rgba(14,165,233,0.35)' }}>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>27</Text>
+          <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>技能文档</Text>
+        </Box>
+      </Box>
+      <Box style={{ padding: 16, background: 'rgba(34,211,238,0.08)', borderRadius: 12, borderLeft: '4px solid #22D3EE' }}>
+        <Text style={{ fontSize: 19, color: '#22D3EE', lineHeight: 1.5 }}>判断：工具层足够“厚”，才能支撑上层 Agent 的通用性——从信息收集、漏洞验证、横向移动到报告生成，全流程可编排。</Text>
+      </Box>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 14, padding: 24, background: 'rgba(14,165,233,0.06)', borderRadius: 16 }}>
+      <Text style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', marginBottom: 6 }}>覆盖的典型场景</Text>
+      {[
+        '信息收集与资产测绘',
+        '漏洞验证与利用',
+        '横向移动与权限维持',
+        '数据回传与影响评估',
+        '痕迹清理与回滚',
+        '取证溯源与报告生成',
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(11,17,32,0.5)', borderRadius: 8 }}>
+          <Box style={{ width: 8, height: 8, borderRadius: 4, background: '#22D3EE' }} />
+          <Text style={{ fontSize: 18, color: '#94A3B8' }}>{item}</Text>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>08 / 15</Text>
+  </Box>
+</Slide>

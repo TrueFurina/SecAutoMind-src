@@ -1,0 +1,22 @@
+<Slide style={{ width: '1280px', height: '720px', position: 'relative', padding: 0, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <svg width={1280} height={720} viewBox='0 0 1280 720' style={{ position: 'absolute', top: 0, left: 0 }}>
+    <defs>
+      <radialGradient id='rgSec1' cx='70%' cy='35%' r='65%'>
+        <stop offset='0%' stopColor='#0EA5E9' stopOpacity='0.24' />
+        <stop offset='100%' stopColor='#0B1120' stopOpacity='0' />
+      </radialGradient>
+    </defs>
+    <rect width='1280' height='720' fill='#0B1120' />
+    <circle cx={880} cy={260} r={340} fill='url(#rgSec1)' />
+    <line x1={0} y1={360} x2={1280} y2={360} stroke='rgba(59,130,246,0.12)' strokeWidth={1} />
+    <line x1={640} y1={0} x2={640} y2={720} stroke='rgba(59,130,246,0.12)' strokeWidth={1} />
+    <circle cx={880} cy={260} r={160} stroke='#0EA5E9' strokeWidth={3} fill='none' opacity={0.5} />
+    <circle cx={880} cy={260} r={105} stroke='#22D3EE' strokeWidth={3} fill='none' opacity={0.7} />
+    <circle cx={880} cy={260} r={16} fill='#22D3EE' opacity={0.95} />
+  </svg>
+  <Box style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', padding: 48, flexDirection: 'column', justifyContent: 'center' }}>
+    <Text style={{ fontSize: 130, fontWeight: 'bold', color: '#0EA5E9', opacity: 0.18, lineHeight: 1, marginBottom: -36 }}>01</Text>
+    <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#F1F5F9', marginBottom: 16 }}>赛题理解与解决方案</Text>
+    <Text style={{ fontSize: 24, color: '#94A3B8' }}>XH-202609 · 安恒信息揭榜挂帅</Text>
+  </Box>
+</Slide>

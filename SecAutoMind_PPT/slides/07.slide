@@ -1,0 +1,70 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>自主决策：三层多智能体编排</Text>
+  </Box>
+  <Box style={{ height: 560, flexDirection: 'row', gap: 32 }}>
+    <Box style={{ width: '32%', flexDirection: 'column', justifyContent: 'center', gap: 20 }}>
+      <Text style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', lineHeight: 1.5 }}>根据任务复杂度自动选择编排模式，实现“意图→计划→执行→审计”闭环。</Text>
+      {[
+        { title: 'Deep 模式', desc: '单模型深度推理，适合复杂研判与根因分析' },
+        { title: 'Plan-Execute', desc: '规划与执行解耦，适合多步骤攻防任务' },
+        { title: 'Supervisor', desc: '监督式多代理协作，适合高确定性流程' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', gap: 12, padding: 14, background: 'rgba(14,165,233,0.08)', borderRadius: 10, borderLeft: '3px solid #0EA5E9' }}>
+          <Box style={{ width: 10, height: 10, minWidth: 10, borderRadius: 5, background: '#22D3EE', marginTop: 6 }} />
+          <Box>
+            <Text style={{ fontSize: 19, fontWeight: 700, color: '#F1F5F9', marginBottom: 4 }}>{item.title}</Text>
+            <Text style={{ fontSize: 16, color: '#94A3B8', lineHeight: 1.45 }}>{item.desc}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <svg width={760} height={520} viewBox='0 0 760 520'>
+        <defs>
+          <linearGradient id='boxGrad7' x1='0%' y1='0%' x2='0%' y2='100%'>
+            <stop offset='0%' stopColor='rgba(59,130,246,0.35)' />
+            <stop offset='100%' stopColor='rgba(14,165,233,0.12)' />
+          </linearGradient>
+          <marker id='arrow7' markerWidth='10' markerHeight='10' refX='9' refY='3' orient='auto' markerUnits='strokeWidth'>
+            <path d='M0,0 L0,6 L9,3 z' fill='#22D3EE' />
+          </marker>
+        </defs>
+        <rect x={280} y={20} width={200} height={54} rx={10} fill='url(#boxGrad7)' stroke='#22D3EE' strokeWidth={2} />
+        <text x={380} y={52} textAnchor='middle' fill='#F1F5F9' fontSize={18} fontWeight='bold' fontFamily='思源黑体, sans-serif'>用户意图</text>
+        <line x1={380} y1={74} x2={380} y2={116} stroke='#22D3EE' strokeWidth={2} markerEnd='url(#arrow7)' />
+
+        <rect x={80} y={130} width={180} height={70} rx={10} fill='url(#boxGrad7)' stroke='#3B82F6' strokeWidth={2} />
+        <text x={170} y={160} textAnchor='middle' fill='#F1F5F9' fontSize={17} fontWeight='bold' fontFamily='思源黑体, sans-serif'>Deep</text>
+        <text x={170} y={182} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>深度推理</text>
+
+        <rect x={290} y={130} width={180} height={70} rx={10} fill='url(#boxGrad7)' stroke='#3B82F6' strokeWidth={2} />
+        <text x={380} y={160} textAnchor='middle' fill='#F1F5F9' fontSize={17} fontWeight='bold' fontFamily='思源黑体, sans-serif'>Plan-Execute</text>
+        <text x={380} y={182} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>规划 · 执行</text>
+
+        <rect x={500} y={130} width={180} height={70} rx={10} fill='url(#boxGrad7)' stroke='#3B82F6' strokeWidth={2} />
+        <text x={590} y={160} textAnchor='middle' fill='#F1F5F9' fontSize={17} fontWeight='bold' fontFamily='思源黑体, sans-serif'>Supervisor</text>
+        <text x={590} y={182} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>监督协作</text>
+
+        <line x1={170} y1={200} x2={170} y2={250} stroke='#22D3EE' strokeWidth={2} />
+        <line x1={380} y1={200} x2={380} y2={250} stroke='#22D3EE' strokeWidth={2} />
+        <line x1={590} y1={200} x2={590} y2={250} stroke='#22D3EE' strokeWidth={2} />
+        <line x1={170} y1={250} x2={590} y2={250} stroke='#22D3EE' strokeWidth={2} />
+        <line x1={380} y1={250} x2={380} y2={290} stroke='#22D3EE' strokeWidth={2} markerEnd='url(#arrow7)' />
+
+        <rect x={230} y={300} width={300} height={70} rx={10} fill='url(#boxGrad7)' stroke='#0EA5E9' strokeWidth={2} />
+        <text x={380} y={330} textAnchor='middle' fill='#F1F5F9' fontSize={18} fontWeight='bold' fontFamily='思源黑体, sans-serif'>事实黑板</text>
+        <text x={380} y={355} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>共享状态 · 去幻觉 · 可追溯</text>
+
+        <line x1={380} y1={370} x2={380} y2={410} stroke='#22D3EE' strokeWidth={2} markerEnd='url(#arrow7)' />
+
+        <rect x={230} y={430} width={300} height={56} rx={10} fill='url(#boxGrad7)' stroke='#0EA5E9' strokeWidth={2} />
+        <text x={380} y={455} textAnchor='middle' fill='#F1F5F9' fontSize={17} fontWeight='bold' fontFamily='思源黑体, sans-serif'>工具执行</text>
+        <text x={380} y={475} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>90 个 YAML 工具 · MCP 服务</text>
+      </svg>
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>07 / 15</Text>
+  </Box>
+</Slide>

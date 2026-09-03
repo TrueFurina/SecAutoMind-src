@@ -1,0 +1,45 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>赛题 XH-202609：要一个怎样的智能体？</Text>
+  </Box>
+  <Box style={{ height: 480, flexDirection: 'row', gap: 32 }}>
+    <Box style={{ width: '38%', flexDirection: 'column', gap: 16, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', marginBottom: 4 }}>现有靶场/安全运维的痛点</Text>
+      {[
+        { title: '工具割裂', desc: '扫描、利用、取证、报告工具各自为政，人工切换成本高' },
+        { title: '决策依赖人', desc: '攻防研判依赖专家经验，响应慢、知识难以复制' },
+        { title: '风险难控', desc: '自主操作可能误触生产环境，缺乏审计与人机协同' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', gap: 14, padding: 16, background: 'rgba(59,130,246,0.10)', borderRadius: 12, borderLeft: '3px solid #3B82F6' }}>
+          <Box style={{ width: 28, height: 28, minWidth: 28, borderRadius: 6, background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 100%)', marginTop: 2 }} />
+          <Box>
+            <Text style={{ fontSize: 20, fontWeight: 700, color: '#F1F5F9', marginBottom: 6 }}>{item.title}</Text>
+            <Text style={{ fontSize: 17, color: '#94A3B8', lineHeight: 1.45 }}>{item.desc}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+    <Box style={{ flex: 1, flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', marginBottom: 4 }}>评分结构：5 维度 × 20 分</Text>
+      {[
+        { label: '自主决策能力', score: '20' },
+        { label: '通用性与场景覆盖', score: '20' },
+        { label: '工具协同与集成', score: '20' },
+        { label: '创新性', score: '20' },
+        { label: '应用成效与可落地', score: '20' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', alignItems: 'center', padding: '10px 16px', background: 'rgba(14,165,233,0.08)', borderRadius: 8 }}>
+          <Box style={{ width: 10, height: 10, borderRadius: 5, background: '#22D3EE', marginRight: 14 }} />
+          <Text style={{ flex: 1, fontSize: 20, color: '#F1F5F9' }}>{item.label}</Text>
+          <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#22D3EE' }}>{item.score}</Text>
+        </Box>
+      ))}
+      <Box style={{ marginTop: 8, padding: 14, background: 'rgba(34,211,238,0.10)', borderRadius: 10, border: '1px solid rgba(34,211,238,0.35)' }}>
+        <Text style={{ fontSize: 19, color: '#22D3EE', lineHeight: 1.5 }}>判断：SecAutoMind 围绕这 5 个维度构建——自主编排、通用工具库、多场景 Agent、国产大模型、一键部署。</Text>
+      </Box>
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>04 / 15</Text>
+  </Box>
+</Slide>

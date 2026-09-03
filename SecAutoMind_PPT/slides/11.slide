@@ -1,0 +1,45 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>技术创新凝练：我们到底“新”在哪里？</Text>
+  </Box>
+  <Box style={{ height: 560, flexDirection: 'row', gap: 28 }}>
+    <Box style={{ width: '62%', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
+      <Box style={{ flexDirection: 'row', padding: '10px 14px', background: 'rgba(14,165,233,0.18)', borderRadius: 8 }}>
+        <Text style={{ width: '26%', fontSize: 17, fontWeight: 'bold', color: '#F1F5F9' }}>创新维度</Text>
+        <Text style={{ width: '34%', fontSize: 17, fontWeight: 'bold', color: '#94A3B8' }}>常规做法</Text>
+        <Text style={{ flex: 1, fontSize: 17, fontWeight: 'bold', color: '#22D3EE' }}>SecAutoMind</Text>
+      </Box>
+      {[
+        { dim: '编排框架', normal: '单 Agent 或脚本串联', ours: 'Eino 多代理 + Deep / Plan-Execute / Supervisor 三种编排' },
+        { dim: '状态管理', normal: '纯 LLM 上下文记忆', ours: '事实黑板共享状态，减少幻觉，支持回溯' },
+        { dim: '工具暴露', normal: '一次性暴露全部工具', ours: 'Skills 渐进披露，按需加载工具与提示词' },
+        { dim: '模型适配', normal: '海外模型为主，合规风险高', ours: '默认 qwen3-max（qwen-max 通道），支持 DeepSeek 等国内备案模型' },
+      ].map((row, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', padding: '14px 14px', background: 'rgba(14,165,233,0.07)', borderRadius: 8, borderLeft: '3px solid #0EA5E9' }}>
+          <Text style={{ width: '26%', fontSize: 17, fontWeight: 'bold', color: '#F1F5F9' }}>{row.dim}</Text>
+          <Text style={{ width: '34%', fontSize: 16, color: '#94A3B8', lineHeight: 1.45 }}>{row.normal}</Text>
+          <Text style={{ flex: 1, fontSize: 16, color: '#F1F5F9', lineHeight: 1.45 }}>{row.ours}</Text>
+        </Box>
+      ))}
+    </Box>
+    <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+      <Text style={{ fontSize: 22, fontWeight: 700, color: '#F1F5F9', lineHeight: 1.45 }}>判断：我们不是“又一个 Agent”，而是把 Agent 的决策链路从“黑盒提示词”改造成“可编排、可审计、可扩展的工程系统”。</Text>
+      {[
+        { title: '工程化', desc: '基于 CloudWeGo Eino 构建，可复用、可扩展、可集成 MCP' },
+        { title: '可信性', desc: '事实黑板 + HITL，降低幻觉与误操作风险' },
+        { title: '合规性', desc: '默认国产备案模型，满足安恒安全网关接入要求' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', gap: 12, padding: 14, background: 'rgba(59,130,246,0.10)', borderRadius: 10, borderLeft: '3px solid #3B82F6' }}>
+          <Box style={{ width: 10, height: 10, minWidth: 10, borderRadius: 5, background: '#22D3EE', marginTop: 5 }} />
+          <Box>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#F1F5F9', marginBottom: 3 }}>{item.title}</Text>
+            <Text style={{ fontSize: 15, color: '#94A3B8', lineHeight: 1.45 }}>{item.desc}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>11 / 15</Text>
+  </Box>
+</Slide>

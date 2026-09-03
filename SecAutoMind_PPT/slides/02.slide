@@ -1,0 +1,30 @@
+<Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Box style={{ height: 80, justifyContent: 'center' }}>
+    <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#0EA5E9' }}>目录</Text>
+  </Box>
+  <Box style={{ height: 560, flexDirection: 'row', gap: 48 }}>
+    <Box style={{ width: '28%', flexDirection: 'column', justifyContent: 'center', paddingRight: 24, borderRight: '2px solid rgba(59,130,246,0.35)' }}>
+      <Text style={{ fontSize: 24, color: '#94A3B8', lineHeight: 1.6 }}>15 页完整呈现</Text>
+      <Text style={{ fontSize: 24, color: '#94A3B8', lineHeight: 1.6, marginTop: 8 }}>赛题理解、核心能力、技术创新、验证部署</Text>
+    </Box>
+    <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 28, paddingLeft: 8 }}>
+      {[
+        { num: '01', title: '赛题理解与解决方案', desc: 'XH-202609 命题拆解、行业痛点与 SecAutoMind 总体定位' },
+        { num: '02', title: '核心能力与技术架构', desc: '分层多智能体编排、90+ 工具生态、人机协同安全' },
+        { num: '03', title: '技术创新点', desc: 'Eino 多代理框架、事实黑板、Skills 渐进披露、长上下文管理' },
+        { num: '04', title: '应用验证与部署', desc: '5 维度评分对照、腾讯轻量云部署方案与落地路径' },
+      ].map((item, idx) => (
+        <Box key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 24, padding: 20, background: 'rgba(14,165,233,0.08)', borderRadius: 12, borderLeft: '4px solid #0EA5E9' }}>
+          <Text style={{ fontSize: 40, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1, minWidth: 64 }}>{item.num}</Text>
+          <Box>
+            <Text style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', marginBottom: 8 }}>{item.title}</Text>
+            <Text style={{ fontSize: 20, color: '#94A3B8', lineHeight: 1.5 }}>{item.desc}</Text>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+  <Box style={{ height: 40, justifyContent: 'flex-end', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>02 / 15</Text>
+  </Box>
+</Slide>

@@ -71,7 +71,13 @@ desktop.ini
 # Build artifacts (distributed via GitHub Releases, not in source repo)
 *.exe
 installer/
-SecAutoMind_PPT/
+# PPT 源码纳入版本控制（slides/ 源 + 构建脚本 + 设计文档 + 图片资源）；
+# 生成的 .pptx 二进制与工具缓存不入库（可从源码重建）
+SecAutoMind_PPT/*.pptx
+SecAutoMind_PPT/_archive/
+SecAutoMind_PPT/.slidep/
+SecAutoMind_PPT/.cache/
+SecAutoMind_PPT/__pycache__/
 官网/
 *.log
 logs/

@@ -1,0 +1,21 @@
+<Slide style={{ width: '1280px', height: '720px', position: 'relative', padding: 0, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <svg width={1280} height={720} viewBox='0 0 1280 720' style={{ position: 'absolute', top: 0, left: 0 }}>
+    <defs>
+      <radialGradient id='rgSec3' cx='75%' cy='60%' r='65%'>
+        <stop offset='0%' stopColor='#22D3EE' stopOpacity='0.18' />
+        <stop offset='100%' stopColor='#0B1120' stopOpacity='0' />
+      </radialGradient>
+    </defs>
+    <rect width='1280' height='720' fill='#0B1120' />
+    <circle cx={980} cy={420} r={340} fill='url(#rgSec3)' />
+    <line x1={0} y1={360} x2={1280} y2={360} stroke='rgba(59,130,246,0.12)' strokeWidth={1} />
+    <line x1={640} y1={0} x2={640} y2={720} stroke='rgba(59,130,246,0.12)' strokeWidth={1} />
+    <polygon points='920,200 980,150 1040,200 1040,280 980,330 920,280' stroke='#22D3EE' strokeWidth={3} fill='none' opacity={0.5} />
+    <polygon points='920,220 980,180 1040,220 1040,280 980,320 920,280' stroke='#0EA5E9' strokeWidth={2} fill='none' opacity={0.8} />
+  </svg>
+  <Box style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', padding: 48, flexDirection: 'column', justifyContent: 'center' }}>
+    <Text style={{ fontSize: 130, fontWeight: 'bold', color: '#22D3EE', opacity: 0.18, lineHeight: 1, marginBottom: -36 }}>03</Text>
+    <Text style={{ fontSize: 54, fontWeight: 'bold', color: '#F1F5F9', marginBottom: 16 }}>技术创新点</Text>
+    <Text style={{ fontSize: 24, color: '#94A3B8' }}>Eino 多代理 · 事实黑板 · Skills 渐进披露 · 长上下文管理</Text>
+  </Box>
+</Slide>

@@ -1,0 +1,15 @@
+<Slide style={{ width: '1280px', height: '720px', position: 'relative', padding: 0, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
+  <Image src="assets/ending_hero.png" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+  <Box style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(90deg, rgba(11,17,32,0.92) 0%, rgba(11,17,32,0.65) 45%, rgba(11,17,32,0.35) 100%)' }} />
+  <Box style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 160, background: 'linear-gradient(0deg, rgba(11,17,32,0.94) 0%, transparent 100%)' }} />
+  <Box style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', padding: 48, flexDirection: 'column', justifyContent: 'center' }}>
+    <Box style={{ maxWidth: 840 }}>
+      <Text style={{ fontSize: 22, color: '#22D3EE', fontWeight: 700, letterSpacing: 2, marginBottom: 18 }}>SecAutoMind</Text>
+      <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#F1F5F9', lineHeight: 1.25, marginBottom: 28 }}>具备自主决策能力的通用网络安全智能体，正在落地。</Text>
+      <Text style={{ fontSize: 22, color: '#94A3B8', lineHeight: 1.6 }}>技术完整 · 可运行 · 可部署 · 国产合规</Text>
+    </Box>
+  </Box>
+  <Box style={{ position: 'absolute', bottom: 26, left: 48, zIndex: 1 }}>
+    <Text style={{ fontSize: 14, color: '#64748B' }}>感谢聆听 · 在线演示地址占位</Text>
+  </Box>
+</Slide>
