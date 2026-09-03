@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"secautomind-ai/internal/database"
 
@@ -100,6 +101,13 @@ func TestEnsureSchemaFinalizesOnlyHistoricalPlaceholdersWithTerminalEvidence(t *
 	}
 	if _, err := db.AddMessage(supersededConversation.ID, "user", "继续", nil); err != nil {
 		t.Fatalf("create later message: %v", err)
+	}
+	// 保证 user 消息 created_at 严格晚于占位 assistant：AddMessage 用 time.Now()（纳秒级）写入，
+	// 但 SQL CURRENT_TIMESTAMP 秒级、datetime('now') 为空格格式，字符串序与时序不一致，
+	// 全量并行跑时两条消息可能同刻，导致 reconcile SQL 的 `later.created_at > msg.created_at` 不成立。
+	if _, err := db.Exec(`UPDATE messages SET created_at = ? WHERE conversation_id = ? AND role = 'user'`,
+		time.Now().Add(2*time.Second), supersededConversation.ID); err != nil {
+		t.Fatalf("push later message timestamp: %v", err)
 	}
 
 	timeoutConversation, err := db.CreateConversation("timeout placeholder", database.ConversationCreateMeta{})

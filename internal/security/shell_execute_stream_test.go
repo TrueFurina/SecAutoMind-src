@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,9 @@ import (
 )
 
 func TestEinoStreamingShell_StreamsStderrBeforeStdoutEOF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell streaming 依赖 /bin/sh（shell_execute_stream.go），仅类 Unix 环境覆盖；CI Linux job 执行")
+	}
 	shell := NewEinoStreamingShell()
 	cmd := PrepareNonInteractiveShellCommand("echo err-only >&2; exit 1")
 	sr, err := shell.ExecuteStreaming(context.Background(), &filesystem.ExecuteRequest{Command: cmd})
@@ -43,6 +47,9 @@ func TestEinoStreamingShell_StreamsStderrBeforeStdoutEOF(t *testing.T) {
 }
 
 func TestEinoStreamingShell_SudoFailsFast(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell streaming 依赖 /bin/sh（shell_execute_stream.go），仅类 Unix 环境覆盖；CI Linux job 执行")
+	}
 	shell := NewEinoStreamingShell()
 	cmd := PrepareNonInteractiveShellCommand("sudo whoami && sudo cat /etc/os-release")
 	sr, err := shell.ExecuteStreaming(context.Background(), &filesystem.ExecuteRequest{Command: cmd})
@@ -79,6 +86,9 @@ func TestEinoStreamingShell_SudoFailsFast(t *testing.T) {
 }
 
 func TestEinoStreamingShell_StderrWhileStdoutBlocks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell streaming 依赖 /bin/sh（shell_execute_stream.go），仅类 Unix 环境覆盖；CI Linux job 执行")
+	}
 	shell := NewEinoStreamingShell()
 	// 模拟 sudo：stderr 先有输出，stdout 侧进程仍挂起；旧 eino local 在首包 stderr 前不会向流写任何内容。
 	cmd := PrepareNonInteractiveShellCommand(`echo "password prompt" >&2; sleep 30`)
@@ -120,6 +130,9 @@ func TestEinoStreamingShell_StderrWhileStdoutBlocks(t *testing.T) {
 func TestEinoStreamingShell_BackgroundJobDoesNotHoldPipe(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping shell integration in -short")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("shell streaming 依赖 /bin/sh（shell_execute_stream.go），仅类 Unix 环境覆盖；CI Linux job 执行")
 	}
 	shell := NewEinoStreamingShell()
 	cmd := `(sh -c 'printf x; sleep 120') & echo started; sleep 0`

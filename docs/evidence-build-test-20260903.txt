@@ -1,0 +1,48 @@
+SecAutoMind go vet + go test evidence (2026-09-03 12:33 CST)
+Go: go version go1.25.0 windows/amd64
+GOPROXY: https://goproxy.cn,direct
+
+===== go vet ./... =====
+vet exit: 0
+
+===== go test ./... -count=1 -p 2 =====
+?   	secautomind-ai/cmd/mcp-stdio	[no test files]
+?   	secautomind-ai/cmd/selfcheck	[no test files]
+?   	secautomind-ai/cmd/server	[no test files]
+?   	secautomind-ai/cmd/test-config	[no test files]
+?   	secautomind-ai/cmd/test-external-mcp	[no test files]
+?   	secautomind-ai/cmd/test-sse-mcp-server	[no test files]
+ok  	secautomind-ai/internal/agent	3.446s
+ok  	secautomind-ai/internal/agentfinalizer	0.705s
+ok  	secautomind-ai/internal/agents	0.425s
+ok  	secautomind-ai/internal/app	1.307s
+ok  	secautomind-ai/internal/attackchain	1.315s
+?   	secautomind-ai/internal/audit	[no test files]
+?   	secautomind-ai/internal/authctx	[no test files]
+ok  	secautomind-ai/internal/c2	0.809s
+ok  	secautomind-ai/internal/config	0.450s
+ok  	secautomind-ai/internal/database	5.436s
+ok  	secautomind-ai/internal/einomcp	0.444s
+ok  	secautomind-ai/internal/einoobserve	0.431s
+ok  	secautomind-ai/internal/handler	4.510s
+ok  	secautomind-ai/internal/hitl	0.566s
+ok  	secautomind-ai/internal/knowledge	0.386s
+ok  	secautomind-ai/internal/llm	0.461s
+?   	secautomind-ai/internal/logger	[no test files]
+ok  	secautomind-ai/internal/mcp	0.659s
+?   	secautomind-ai/internal/mcp/builtin	[no test files]
+ok  	secautomind-ai/internal/monitor	0.578s
+ok  	secautomind-ai/internal/multiagent	15.546s
+ok  	secautomind-ai/internal/openai	0.381s
+ok  	secautomind-ai/internal/project	0.785s
+?   	secautomind-ai/internal/projectprompt	[no test files]
+ok  	secautomind-ai/internal/reasoning	0.435s
+?   	secautomind-ai/internal/robot	[no test files]
+?   	secautomind-ai/internal/robot/ilink	[no test files]
+ok  	secautomind-ai/internal/security	6.558s
+?   	secautomind-ai/internal/skillpackage	[no test files]
+ok  	secautomind-ai/internal/termout	0.370s
+ok  	secautomind-ai/internal/tooloutput	0.410s
+ok  	secautomind-ai/internal/vision	0.576s
+ok  	secautomind-ai/internal/workflow	0.723s
+ok  	secautomind-ai/internal/workflow/package	0.356s
