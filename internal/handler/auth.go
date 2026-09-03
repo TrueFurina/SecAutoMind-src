@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -234,4 +236,95 @@ func permissionKeys(perms map[string]bool) []string {
 		}
 	}
 	return keys
+}
+
+// initialPasswordFile 返回首启初始密码文件路径（与 app.go bootstrap 落盘路径一致）。
+// 该文件存在 = 平台尚未完成"首次向导"（管理员还没设置专属密码）。
+func (h *AuthHandler) initialPasswordFile() string {
+	dbPath := "data/conversations.db"
+	if h.config != nil && strings.TrimSpace(h.config.Database.Path) != "" {
+		dbPath = h.config.Database.Path
+	}
+	return filepath.Join(filepath.Dir(dbPath), "admin_initial_password.txt")
+}
+
+// SetupStatus 首启向导状态：管理员是否已完成首次密码设置。
+func (h *AuthHandler) SetupStatus(c *gin.Context) {
+	_, err := os.Stat(h.initialPasswordFile())
+	needsSetup := err == nil
+	c.JSON(http.StatusOK, gin.H{
+		"needs_setup": needsSetup,
+		"hint":        "首次启动请先设置管理员专属密码",
+	})
+}
+
+type setupCompleteRequest struct {
+	InitialPassword string `json:"initialPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+// SetupComplete 完成首启向导：校验一次性初始密码 → 设置管理员专属密码 → 删除初始密码文件。
+// 该接口仅在 needs_setup 阶段可用（无需登录，本地首启场景）。
+func (h *AuthHandler) SetupComplete(c *gin.Context) {
+	var req setupCompleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+		return
+	}
+	initial := strings.TrimSpace(req.InitialPassword)
+	newPwd := strings.TrimSpace(req.NewPassword)
+	if initial == "" || newPwd == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "初始密码和新密码均不能为空"})
+		return
+	}
+	if len(newPwd) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码长度至少需要 8 位"})
+		return
+	}
+
+	// 仅首启阶段允许（初始密码文件存在才可走向导）
+	if _, err := os.Stat(h.initialPasswordFile()); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "平台已完成初始化，请直接登录"})
+		return
+	}
+
+	// 校验一次性初始密码（admin 内置账号）
+	if !h.manager.CheckUserPassword("admin", initial) {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{
+				Level:    "warn",
+				Category: "auth",
+				Action:   "setup_complete",
+				Result:   "failure",
+				Message:  "首启向导：初始密码不正确",
+				Actor:    "admin",
+			})
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "初始密码不正确，请查看 data/admin_initial_password.txt"})
+		return
+	}
+
+	// 更新为管理员专属密码
+	if err := h.manager.UpdateUserPassword("admin", newPwd); err != nil {
+		if h.logger != nil {
+			h.logger.Error("首启向导设置密码失败", zap.Error(err))
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "设置密码失败"})
+		return
+	}
+
+	// 删除初始密码文件（一次性凭据使命完成）
+	_ = os.Remove(h.initialPasswordFile())
+
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category: "auth",
+			Action:   "setup_complete",
+			Result:   "success",
+			Message:  "首次初始化完成，管理员专属密码已设置",
+			Actor:    "admin",
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "初始化完成，请使用新密码登录"})
 }

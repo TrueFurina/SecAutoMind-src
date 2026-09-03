@@ -5,7 +5,7 @@
     const BODY_LOCK = 'app-modal-open';
     const LEGACY_BODY_LOCK = 'projects-modal-open';
     const OVERLAY_SELECTOR =
-        '.projects-modal-overlay, .c2-modal-overlay, .modal, .info-collect-cell-modal, #login-overlay';
+        '.projects-modal-overlay, .c2-modal-overlay, .modal, .info-collect-cell-modal, #login-overlay, #setup-overlay';
 
     const FLEX_MODAL_IDS = new Set([
         'role-modal',
@@ -15,6 +15,7 @@
         'workflow-meta-modal',
         'workflow-dry-run-modal',
         'login-overlay',
+        'setup-overlay',
     ]);
 
     function resolveEl(idOrEl) {

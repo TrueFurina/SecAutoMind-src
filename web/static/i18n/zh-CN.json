@@ -4680,5 +4680,17 @@
         "delete": "删除执行监控记录"
       }
     }
+  },
+  "setup": {
+    "title": "欢迎使用",
+    "subtitle": "首次启动 · 请设置管理员专属密码（约 30 秒完成）",
+    "initialPasswordLabel": "一次性初始密码",
+    "initialPasswordPlaceholder": "查看 data/admin_initial_password.txt 中「密码:」的值",
+    "initialPasswordHint": "提示：打开程序目录下 data/admin_initial_password.txt 复制「密码:」后面的内容",
+    "newPasswordLabel": "设置你的专属密码",
+    "newPasswordPlaceholder": "至少 8 位，仅你本人知道",
+    "confirmPasswordLabel": "确认新密码",
+    "confirmPasswordPlaceholder": "再次输入新密码",
+    "submit": "完成初始化"
   }
 }

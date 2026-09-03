@@ -951,6 +951,13 @@ func setupRoutes(
 		authRoutes.DELETE("/robot-bindings/:id", security.AuthMiddleware(authManager), security.RequirePermission("auth:self"), robotHandler.DeleteMyRobotBinding)
 	}
 
+	// 首启初始化向导（首次启动设置管理员专属密码；本地首启无需登录）
+	setupRoutes := api.Group("/setup")
+	{
+		setupRoutes.GET("/status", authHandler.SetupStatus)
+		setupRoutes.POST("/complete", security.RateLimitMiddleware(loginRL), authHandler.SetupComplete)
+	}
+
 	// 机器人回调（无需登录，供企业微信/钉钉/飞书服务器调用）
 	// 添加速率限制：每个 IP 每分钟最多 60 次请求，防止滥用
 	robotRL := security.NewRateLimiter(60, 1*time.Minute)

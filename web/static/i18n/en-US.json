@@ -4692,5 +4692,17 @@
         "delete": "Delete execution-monitor records"
       }
     }
+  },
+  "setup": {
+    "title": "Welcome",
+    "subtitle": "First launch · Set an exclusive admin password (~30s)",
+    "initialPasswordLabel": "One-time initial password",
+    "initialPasswordPlaceholder": "Open data/admin_initial_password.txt and copy the value after 「密码:」",
+    "initialPasswordHint": "Hint: open data/admin_initial_password.txt in the program directory and copy the value after 密码:",
+    "newPasswordLabel": "Set your own password",
+    "newPasswordPlaceholder": "At least 8 characters, known only to you",
+    "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordPlaceholder": "Re-enter the new password",
+    "submit": "Finish Setup"
   }
 }

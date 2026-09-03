@@ -668,6 +668,97 @@ function setupLoginUI() {
     if (loginForm) {
         loginForm.addEventListener('submit', submitLogin);
     }
+    const setupForm = document.getElementById('setup-form');
+    if (setupForm) {
+        setupForm.addEventListener('submit', handleSetupSubmit);
+    }
+}
+
+// 首启初始化向导：未登录时先探测是否需要设置管理员专属密码。
+async function checkFirstRunSetup() {
+    try {
+        const response = await fetch('/api/setup/status', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) {
+            return false;
+        }
+        const data = await response.json();
+        if (data && data.needs_setup) {
+            openAppModal('setup-overlay', { focus: false });
+            const input = document.getElementById('setup-initial-password');
+            if (input) {
+                setTimeout(function () { input.focus(); }, 120);
+            }
+            return true;
+        }
+    } catch (error) {
+        console.warn('探测首启状态失败', error);
+    }
+    return false;
+}
+
+function hideSetupOverlay() {
+    if (typeof closeAppModal === 'function') {
+        closeAppModal('setup-overlay');
+    } else {
+        const el = document.getElementById('setup-overlay');
+        if (el) el.style.display = 'none';
+    }
+}
+
+async function handleSetupSubmit(event) {
+    event.preventDefault();
+    const initialInput = document.getElementById('setup-initial-password');
+    const newInput = document.getElementById('setup-new-password');
+    const confirmInput = document.getElementById('setup-confirm-password');
+    const errorBox = document.getElementById('setup-error');
+    const submitBtn = document.getElementById('setup-submit-btn');
+    const showError = function (msg) {
+        if (errorBox) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+    };
+    const initial = initialInput ? initialInput.value.trim() : '';
+    const newPwd = newInput ? newInput.value : '';
+    const confirm = confirmInput ? confirmInput.value : '';
+    if (!initial || !newPwd) {
+        showError('初始密码与新密码均不能为空');
+        return;
+    }
+    if (newPwd.length < 8) {
+        showError('新密码长度至少需要 8 位');
+        return;
+    }
+    if (newPwd !== confirm) {
+        showError('两次输入的新密码不一致');
+        return;
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+    }
+    try {
+        const response = await fetch('/api/setup/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initialPassword: initial, newPassword: newPwd }),
+        });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+            showError((data && data.error) || '初始化失败，请重试');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
+        hideSetupOverlay();
+        if (newInput) newInput.value = '';
+        if (confirmInput) confirmInput.value = '';
+        showLoginOverlay('初始化完成！请使用新设置的密码登录');
+    } catch (error) {
+        showError('网络错误，请重试');
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 async function initializeApp() {
@@ -698,7 +789,11 @@ async function initializeApp() {
     }
 
     clearAuthStorage();
-    showLoginOverlay();
+    // 首启向导：平台尚未设置管理员专属密码时，先展示初始化页而非登录框
+    const showingSetup = await checkFirstRunSetup();
+    if (!showingSetup) {
+        showLoginOverlay();
+    }
 }
 
 // 用户菜单控制
