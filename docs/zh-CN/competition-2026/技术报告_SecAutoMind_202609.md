@@ -11,7 +11,7 @@
 
 ## 1. 摘要
 
-SecAutoMind 是一个面向攻防实战与应急响应场景的**通用网络安全智能体平台**。它把"任务理解 → 多智能体编排 → 工具调用 → 决策审计"做成一条可运营链路：Web 管理面 / 8 类 IM 机器人 / OpenAPI 三种入口接收自然语言任务，由 Eino ADK（CloudWeGo）驱动的单代理与三种多代理编排（Deep / Plan-Execute / Supervisor）负责拆解与执行，通过 **90 个 YAML 内置工具 + 外部 MCP 联邦 + 23 个技能包 + 可视化工作流引擎**四层插件化能力池完成动作，全过程支持 HITL 人工审批、推理轨迹流式展示、工具执行监控与平台审计，默认使用国内备案大模型（通义 qwen / DeepSeek），可一键部署于受控环境。
+SecAutoMind 是一个面向攻防实战与应急响应场景的**通用网络安全智能体平台**。它把"任务理解 → 多智能体编排 → 工具调用 → 决策审计"做成一条可运营链路：Web 管理面 / 8 类 IM 机器人 / OpenAPI 三种入口接收自然语言任务，由 Eino ADK（CloudWeGo）驱动的单代理与三种多代理编排（Deep / Plan-Execute / Supervisor）负责拆解与执行，通过 **90 个 YAML 内置工具 + 外部 MCP 联邦 + 23 个技能包 + 可视化工作流引擎**四层插件化能力池完成动作，全过程支持 HITL 人工审批、推理轨迹流式展示、工具执行监控与平台审计，默认使用国内备案大模型（通义 qwen 系列，配置默认 qwen3-max / DeepSeek），可一键部署于受控环境。
 
 作品以"**通用**"为设计目标：不止覆盖传统渗透测试，还内置应急响应、防护加固、攻击面枚举、漏洞研判、报告整改等 18 个角色化子代理；以"**可信可解释**"为安全基线：决策链（thinking/reasoningChain/planning）全量入审计、高危工具默认经 HITL、凭据仅走环境变量注入；以"**低门槛落地**"为工程基线：单体 Go + SQLite + 静态前端，预编译 150MB 单文件一键启动，零公网回调（机器人走 Stream 长连接）即可演示。
 
@@ -67,7 +67,7 @@ flowchart LR
 3. Agent 组装模型输入：历史消息 + 角色提示 + **项目事实（facts 黑板）** + 工具白名单；
 4. Eino Runner 调国内备案模型（qwen/deepseek，支持 retry/failover 多通道）；
 5. 模型需要工具 → 走 MCP Tool 桥（`einomcp`）；工具列表过长时 `toolsearch` 中间件按阈值动态裁剪；
-6. 高危工具调用前触发 **HITL 审批**（off/approval/review_edit 三态，全局默认 off，演示/生产可开）；
+6. 高危工具调用前触发 **HITL 审批**（off/approval/review_edit 三态，全局默认 approval 以满足赛题 human-in-the-loop 硬需求，无人值守批量跑可改回 off）；
 7. 工具结果经 reduction 截断/落盘后回填，写入 monitor 与过程详情；
 8. 推理链（thinking/reasoningChain/planning）经 SSE `thinking_stream_*` 事件实时推送前端时间线；
 9. 会话、消息、过程详情、用量摘要（`eino_usage_summary`）落 SQLite。
@@ -115,7 +115,7 @@ flowchart LR
 ### 4.4 决策逻辑与可解释性
 
 - **推理可见**：reasoning 中间件产出 `thinking/reasoningChain/planning` 结构化字段；SSE 以 `thinking_stream_*` 流式呈现；前端时间线展示每步 thought/工具事件/用量（含 `eino_model_retry` / `eino_model_failover` / `eino_usage_summary`）。
-- **人机协同 HITL**（`internal/hitl/`，对应终审"3 名队员 + AI Agent 人机协同"）：approval / review_edit 两种审批原语，全局默认 `off`，演示配置可一键开启；工具调用前统一拦截点，审批记录入库。
+- **人机协同 HITL**（`internal/hitl/`，对应终审"3 名队员 + AI Agent 人机协同"）：approval / review_edit 两种审批原语，全局默认 `approval`（赛题终审 human-in-the-loop 硬需求），无人值守批量跑可改回 off；工具调用前统一拦截点，审批记录入库。
 - **全程审计**：`internal/audit/` 记录平台管理动作；`internal/monitor/` 记录每次工具执行（含调用链、耗时、结果摘要），支撑任务取消、复盘、通知。
 - **可解释上下文管理**：长对话自动 typed summarization，携带用户意图 ledger 与事实索引（fact index），压缩历史后仍保留"为什么在做什么"。
 
@@ -130,7 +130,7 @@ flowchart LR
 - **网络默认安全**：`config.example.yaml` 默认 `server.host: 127.0.0.1`（仅本机），需外联才显式放开并配网络层访问控制；TLS 可选自签/受信证书。
 - **凭据管理**：`config.example.yaml` 仅占位模板（真实 `config.yaml` 已 gitignore）；支持 `${VAR}` 环境变量展开与同名 env fallback（`internal/config` `envsecrets.go`/`robots_env.go`），**密钥不落盘、不入库、不提交**；机器人 8 通道凭据不全时仅 Warn 并软禁用，不 panic。
 - **权限与边界**：RBAC（`internal/rbac`）、认证/限流（`internal/security`）、Shell 命令流处理；高危能力（Terminal/WebShell/C2/外部 MCP/Skill FS）文档化强调需 HITL + 部署隔离（`docs/zh-CN/security-model.md`、`tool-execution-governance.md`）。
-- **模型合规**：默认通义 qwen / DeepSeek（国内备案）；支持把 base_url 指向主办方指定 AI 安全网关（`docs/zh-CN/ai-gateway-compliance.md`），满足终审"报备模型 + 经安全网关接入"约束。
+- **模型合规**：默认通义 qwen 系列（配置默认 qwen3-max）/ DeepSeek（国内备案）；支持把 base_url 指向主办方指定 AI 安全网关（`docs/zh-CN/ai-gateway-compliance.md`），满足终审"报备模型 + 经安全网关接入"约束。
 
 ### 4.7 部署与运维
 

@@ -211,7 +211,7 @@ schema 演进须兼容旧库（`internal/database` 有版本化约定）。
 ### 6.3 合规设计
 
 - 模型层 `llm` 支持 provider/base_url 覆盖 → 指向安恒 AI 安全网关；文档 `ai-gateway-compliance.md` 给出指引；
-- 默认 `qwen-max`（阿里 DashScope）/ DeepSeek，均为国内备案；
+- 默认 `qwen3-max`（阿里 DashScope，通义 qwen 系列）/ DeepSeek，均为国内备案；
 - 演示前需按主办方流程报备模型 API 与部署地址。
 
 ---

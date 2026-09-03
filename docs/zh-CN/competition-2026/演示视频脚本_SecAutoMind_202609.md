@@ -108,7 +108,7 @@
 
 - [ ] 确认组委会视频格式/时长/命名要求（mp4？≤8/10 分钟？分辨率？）；
 - [ ] 模型 API：已报备的国内模型 key 就位，`config.yaml` 指向报备端点（或安恒网关实测连通）；
-- [ ] HITL 开启为 approval；准备 2~3 个审批演示动作；
+- [ ] 确认 HITL 处于 approval（config.example.yaml 默认即 approval，满足赛题 human-in-the-loop 硬需求）；准备 2~3 个审批演示动作；
 - [ ] 靶场/演示目标：受控靶机或授权目标，网络可达，复跑 2 遍全流程无抖动；
 - [ ] 钉钉场景判定：有无真实 `DING_APP_KEY/SECRET`（见 S11 条件分支）；
 - [ ] S8 应急案例：准备一条可复现的 WebShell/告警样本与处置话术；
