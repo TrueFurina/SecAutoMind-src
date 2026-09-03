@@ -3154,7 +3154,9 @@
     "detailCategory": "Category",
     "detailResult": "Result",
     "detailMessage": "Message",
-    "detailSession": "Session"
+    "detailSession": "Session",
+    "filterActor": "Actor",
+    "filterActorPlaceholder": "Filter by actor (e.g. admin / auditor)"
   },
   "settingsSecurity": {
     "changePasswordTitle": "Change password",

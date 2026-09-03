@@ -151,6 +151,119 @@ func ResolveAPIKeyFromEnv(configured, baseURL, provider string) string {
 	return key
 }
 
+// resolveSecretFromEnv 通用回退：configured 为空/占位符时，按候选环境变量名依次取第一个非空值。
+func resolveSecretFromEnv(configured string, envNames ...string) string {
+	key := strings.TrimSpace(expandEnvVar(configured))
+	if !isPlaceholderKey(key) {
+		return key
+	}
+	for _, n := range envNames {
+		if v := strings.TrimSpace(os.Getenv(n)); v != "" && !isPlaceholderKey(v) {
+			return v
+		}
+	}
+	return key
+}
+
+// ResolveRobotSecretsFromEnv 机器人通道凭据环境变量回退：
+// config 中留空/占位的 app_id/app_secret/bot_token 等，按通道约定环境变量自动补齐
+// （如 FEISHU_APP_ID / LARK_APP_SECRET / DINGTALK_APP_KEY / TELEGRAM_BOT_TOKEN …）。
+func ResolveRobotSecretsFromEnv(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	r := &cfg.Robots
+	// 飞书（lark）
+	r.Lark.AppID = resolveSecretFromEnv(r.Lark.AppID, "FEISHU_APP_ID", "LARK_APP_ID")
+	r.Lark.AppSecret = resolveSecretFromEnv(r.Lark.AppSecret, "FEISHU_APP_SECRET", "LARK_APP_SECRET")
+	r.Lark.VerifyToken = resolveSecretFromEnv(r.Lark.VerifyToken, "FEISHU_VERIFY_TOKEN", "LARK_VERIFY_TOKEN")
+	// 钉钉
+	r.Dingtalk.ClientID = resolveSecretFromEnv(r.Dingtalk.ClientID, "DINGTALK_APP_KEY", "DINGTALK_CLIENT_ID", "DINGDING_APP_KEY")
+	r.Dingtalk.ClientSecret = resolveSecretFromEnv(r.Dingtalk.ClientSecret, "DINGTALK_APP_SECRET", "DINGTALK_CLIENT_SECRET")
+	// 企业微信
+	r.Wecom.CorpID = resolveSecretFromEnv(r.Wecom.CorpID, "WECOM_CORP_ID", "WECHAT_WORK_CORP_ID")
+	r.Wecom.Secret = resolveSecretFromEnv(r.Wecom.Secret, "WECOM_SECRET", "WECHAT_WORK_SECRET")
+	r.Wecom.Token = resolveSecretFromEnv(r.Wecom.Token, "WECOM_TOKEN")
+	r.Wecom.EncodingAESKey = resolveSecretFromEnv(r.Wecom.EncodingAESKey, "WECOM_ENCODING_AES_KEY")
+	// Telegram
+	r.Telegram.BotToken = resolveSecretFromEnv(r.Telegram.BotToken, "TELEGRAM_BOT_TOKEN")
+	// Slack
+	r.Slack.BotToken = resolveSecretFromEnv(r.Slack.BotToken, "SLACK_BOT_TOKEN")
+	r.Slack.AppToken = resolveSecretFromEnv(r.Slack.AppToken, "SLACK_APP_TOKEN")
+	// 微信 iLink
+	r.Wechat.BotToken = resolveSecretFromEnv(r.Wechat.BotToken, "WECHAT_ILINK_BOT_TOKEN", "ILINK_BOT_TOKEN")
+}
+
+// envChannelPreset 描述一个可由环境变量一键激活的 LLM 通道预设。
+type envChannelPreset struct {
+	EnvName  string // 探测的环境变量名
+	ID       string // 通道 ID（NormalizeAIChannelID 规范化后写入）
+	Name     string
+	BaseURL  string
+	Model    string
+	Provider string
+}
+
+// envChannelPresets 常见 LLM 提供方预设（按探测顺序，第一个命中成为默认通道候选）。
+var envChannelPresets = []envChannelPreset{
+	{EnvName: "DASHSCOPE_API_KEY", ID: "qwen-max", Name: "Qwen Max", BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen3-max", Provider: "openai_compatible"},
+	{EnvName: "DEEPSEEK_API_KEY", ID: "deepseek", Name: "DeepSeek", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-chat", Provider: "openai_compatible"},
+	{EnvName: "OPENAI_API_KEY", ID: "openai", Name: "OpenAI", BaseURL: "https://api.openai.com/v1", Model: "gpt-4o-mini", Provider: "openai"},
+	{EnvName: "SILICONFLOW_API_KEY", ID: "siliconflow", Name: "SiliconFlow", BaseURL: "https://api.siliconflow.cn/v1", Model: "Qwen/Qwen2.5-7B-Instruct", Provider: "openai_compatible"},
+	{EnvName: "MOONSHOT_API_KEY", ID: "moonshot", Name: "Moonshot", BaseURL: "https://api.moonshot.cn/v1", Model: "moonshot-v1-8k", Provider: "openai_compatible"},
+	{EnvName: "ZHIPU_API_KEY", ID: "zhipu", Name: "智谱 GLM", BaseURL: "https://open.bigmodel.cn/api/paas/v4", Model: "glm-4-flash", Provider: "openai_compatible"},
+	{EnvName: "ARK_API_KEY", ID: "ark", Name: "火山方舟", BaseURL: "https://ark.cn-beijing.volces.com/api/v3", Model: "doubao-seed-1-6-250615", Provider: "openai_compatible"},
+	{EnvName: "QIANFAN_API_KEY", ID: "qianfan", Name: "百度千帆", BaseURL: "https://qianfan.baidubce.com/v2", Model: "ernie-4.0-turbo-8k", Provider: "openai_compatible"},
+	{EnvName: "ANTHROPIC_API_KEY", ID: "claude", Name: "Claude", BaseURL: "https://api.anthropic.com", Model: "claude-sonnet-4-20250514", Provider: "claude"},
+}
+
+// DetectAIChannelsFromEnv 探测常见 LLM 环境变量，自动补全 AI 通道：
+// - config 未定义的通道 + 环境变量存在真实 key → 按预设写入通道（用户免配置，开箱即用多 provider）
+// - 默认通道缺失真实 key 时，自动切到第一个探测命中的通道
+func DetectAIChannelsFromEnv(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	if cfg.AI.Channels == nil {
+		cfg.AI.Channels = make(map[string]AIChannelConfig)
+	}
+
+	// 1) 补全缺失通道
+	for _, p := range envChannelPresets {
+		envKey := strings.TrimSpace(os.Getenv(p.EnvName))
+		if envKey == "" || isPlaceholderKey(envKey) {
+			continue
+		}
+		id := NormalizeAIChannelID(p.ID)
+		if existing, ok := cfg.AI.Channels[id]; ok {
+			// 已存在：仅当 key 仍为空/占位时回填 env key（不覆盖用户显式 key）
+			if isPlaceholderKey(existing.APIKey) {
+				existing.APIKey = envKey
+				cfg.AI.Channels[id] = existing
+			}
+			continue
+		}
+		cfg.AI.Channels[id] = AIChannelConfig{
+			Name:     p.Name,
+			Provider: p.Provider,
+			APIKey:   envKey,
+			BaseURL:  p.BaseURL,
+			Model:    p.Model,
+		}
+	}
+
+	// 2) 默认通道兜底：当前默认通道 key 无效时，切到第一个探测命中的通道
+	defID := NormalizeAIChannelID(cfg.AI.DefaultChannel)
+	if ch, ok := cfg.AI.Channels[defID]; !ok || isPlaceholderKey(ch.APIKey) {
+		for _, p := range envChannelPresets {
+			if v := strings.TrimSpace(os.Getenv(p.EnvName)); v != "" && !isPlaceholderKey(v) {
+				cfg.AI.DefaultChannel = NormalizeAIChannelID(p.ID)
+				break
+			}
+		}
+	}
+}
+
 // ResolveAllAPIKeysFromEnv 在 Load 完成后统一处理全部凭据：
 // 1) 所有敏感字段的 ${VAR} 已由 ExpandSecretEnv 展开；
 // 2) 对 AI 主配置与各通道：空/占位 key 按 base_url 自动回退环境变量；

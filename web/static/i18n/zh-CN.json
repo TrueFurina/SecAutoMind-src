@@ -3142,7 +3142,9 @@
     "detailCategory": "类别",
     "detailResult": "结果",
     "detailMessage": "说明",
-    "detailSession": "会话"
+    "detailSession": "会话",
+    "filterActor": "操作者",
+    "filterActorPlaceholder": "按操作者筛选（如 admin / auditor）"
   },
   "settingsSecurity": {
     "changePasswordTitle": "修改密码",

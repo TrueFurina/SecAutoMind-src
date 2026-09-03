@@ -87,3 +87,74 @@ func TestResolveAllAPIKeysFromEnvChannelsAndKnowledge(t *testing.T) {
 		t.Fatalf("知识库 embedding 回退失败: got %q", cfg.Knowledge.Embedding.APIKey)
 	}
 }
+
+func TestResolveRobotSecretsFromEnv(t *testing.T) {
+	os.Setenv("FEISHU_APP_ID", "cli_test_app_id_123")
+	os.Setenv("FEISHU_APP_SECRET", "feishu-secret-abcdef123456")
+	os.Setenv("TELEGRAM_BOT_TOKEN", "123456:ABC-DEF-telegram-token")
+	os.Setenv("DINGTALK_APP_KEY", "ding-client-id-xyz")
+	os.Setenv("DINGTALK_APP_SECRET", "ding-secret-xyz")
+	defer os.Unsetenv("FEISHU_APP_ID")
+	defer os.Unsetenv("FEISHU_APP_SECRET")
+	defer os.Unsetenv("TELEGRAM_BOT_TOKEN")
+	defer os.Unsetenv("DINGTALK_APP_KEY")
+	defer os.Unsetenv("DINGTALK_APP_SECRET")
+
+	cfg := &Config{}
+	cfg.Robots.Lark.AppID = ""
+	cfg.Robots.Lark.AppSecret = "sk-xxxxxxx" // 占位符 → 应回退
+	cfg.Robots.Telegram.BotToken = ""
+	cfg.Robots.Dingtalk.ClientID = "${DINGTALK_APP_KEY}" // 显式 ${VAR} 展开
+	cfg.Robots.Dingtalk.ClientSecret = ""
+
+	ResolveRobotSecretsFromEnv(cfg)
+
+	if cfg.Robots.Lark.AppID != "cli_test_app_id_123" {
+		t.Fatalf("Lark.AppID 空值未回退 FEISHU_APP_ID: got %q", cfg.Robots.Lark.AppID)
+	}
+	if cfg.Robots.Lark.AppSecret != "feishu-secret-abcdef123456" {
+		t.Fatalf("Lark.AppSecret 占位符未回退: got %q", cfg.Robots.Lark.AppSecret)
+	}
+	if cfg.Robots.Telegram.BotToken != "123456:ABC-DEF-telegram-token" {
+		t.Fatalf("Telegram.BotToken 未回退: got %q", cfg.Robots.Telegram.BotToken)
+	}
+	if cfg.Robots.Dingtalk.ClientID != "ding-client-id-xyz" {
+		t.Fatalf("Dingtalk.ClientID ${VAR} 展开失败: got %q", cfg.Robots.Dingtalk.ClientID)
+	}
+	if cfg.Robots.Dingtalk.ClientSecret != "ding-secret-xyz" {
+		t.Fatalf("Dingtalk.ClientSecret 未回退: got %q", cfg.Robots.Dingtalk.ClientSecret)
+	}
+}
+
+func TestDetectAIChannelsFromEnv(t *testing.T) {
+	os.Setenv("DEEPSEEK_API_KEY", "sk-deepseek-real-0987654321")
+	os.Setenv("OPENAI_API_KEY", "sk-openai-real-1122334455")
+	defer os.Unsetenv("DEEPSEEK_API_KEY")
+	defer os.Unsetenv("OPENAI_API_KEY")
+
+	cfg := &Config{}
+	// 只有 qwen-max（占位符 key），无 deepseek/openai 通道
+	cfg.AI.DefaultChannel = "qwen-max"
+	cfg.AI.Channels = map[string]AIChannelConfig{
+		"qwen-max": {Name: "Qwen Max", APIKey: "sk-xxxxxxx", BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen3-max"},
+	}
+
+	DetectAIChannelsFromEnv(cfg)
+
+	// qwen-max 占位符应被回填（DASHSCOPE 不在 env，但 deepseek/openai 探测命中）
+	// 说明：qwen-max 没有 DASHSCOPE_API_KEY 环境变量，这里不要求它被填
+	if _, ok := cfg.AI.Channels["deepseek"]; !ok {
+		t.Fatalf("未自动补全 deepseek 通道: %+v", cfg.AI.Channels)
+	}
+	ds := cfg.AI.Channels["deepseek"]
+	if ds.APIKey != "sk-deepseek-real-0987654321" || ds.Model != "deepseek-chat" {
+		t.Fatalf("deepseek 通道配置错误: %+v", ds)
+	}
+	if _, ok := cfg.AI.Channels["openai"]; !ok {
+		t.Fatalf("未自动补全 openai 通道: %+v", cfg.AI.Channels)
+	}
+	// 默认通道 qwen-max 无真实 key → 应自动切到第一个命中（deepseek 在预设中位于 openai 之前…实际预设顺序 DASHSCOPE→DEEPSEEK→OPENAI）
+	if cfg.AI.DefaultChannel != "deepseek" {
+		t.Fatalf("默认通道未自动切换到可用通道: got %q, channels=%+v", cfg.AI.DefaultChannel, cfg.AI.Channels)
+	}
+}

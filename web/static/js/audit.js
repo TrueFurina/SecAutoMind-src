@@ -237,6 +237,8 @@ function buildAuditQueryParams(forExport) {
     const act = document.getElementById('audit-filter-action');
     const res = document.getElementById('audit-filter-result');
     const q = document.getElementById('audit-filter-q');
+    const actorEl = document.getElementById('audit-filter-actor');
+    if (actorEl && actorEl.value.trim()) params.set('actor', actorEl.value.trim());
     if (cat && cat.value) params.set('category', cat.value);
     if (act && !act.disabled && act.value) params.set('action', act.value);
     if (res && res.value) params.set('result', res.value);
@@ -417,9 +419,11 @@ function resetAuditLogFilters() {
     const act = document.getElementById('audit-filter-action');
     const res = document.getElementById('audit-filter-result');
     const q = document.getElementById('audit-filter-q');
+    const actorEl = document.getElementById('audit-filter-actor');
     if (cat) cat.value = '';
     if (res) res.value = '';
     if (q) q.value = '';
+    if (actorEl) actorEl.value = '';
     if (typeof window.AuditDatetimePicker !== 'undefined' && typeof window.AuditDatetimePicker.clearAll === 'function') {
         window.AuditDatetimePicker.clearAll();
     }

@@ -1451,9 +1451,13 @@ func Load(path string) (*Config, error) {
 		cfg.Audit.MaxDetailBytes = 8192
 	}
 	// 环境变量化凭据：1) 敏感字段支持 ${VAR}/${VAR:-default} 展开；
-	// 2) AI key 为空/占位符时按 base_url 自动回退约定环境变量（用户免填 config）。
+	// 2) AI key 为空/占位符时按 base_url 自动回退约定环境变量（用户免填 config）；
+	// 3) 机器人通道 app_id/app_secret/bot_token 同理回退（FEISHU_/LARK_/DINGTALK_/…）；
+	// 4) 探测常见 LLM 环境变量自动补全 AI 通道（不只默认的 qwen-max，deepseek/openai 等开箱即用）。
 	ExpandSecretEnv(&cfg)
 	ResolveAllAPIKeysFromEnv(&cfg)
+	ResolveRobotSecretsFromEnv(&cfg)
+	DetectAIChannelsFromEnv(&cfg)
 	cfg.NormalizeAIProviderProfiles()
 	cfg.ApplyDefaultAIChannel()
 	if err := validateOpenAIOutputLimits(cfg.OpenAI); err != nil {
