@@ -158,3 +158,37 @@ func TestDetectAIChannelsFromEnv(t *testing.T) {
 		t.Fatalf("默认通道未自动切换到可用通道: got %q, channels=%+v", cfg.AI.DefaultChannel, cfg.AI.Channels)
 	}
 }
+
+func TestAutoFailoverChannelIDs(t *testing.T) {
+	os.Setenv("DEEPSEEK_API_KEY", "sk-deepseek-real-0987654321")
+	os.Setenv("OPENAI_API_KEY", "sk-openai-real-1122334455")
+	defer os.Unsetenv("DEEPSEEK_API_KEY")
+	defer os.Unsetenv("OPENAI_API_KEY")
+
+	cfg := &Config{}
+	cfg.AI.DefaultChannel = "qwen-max"
+	cfg.AI.Channels = map[string]AIChannelConfig{
+		"qwen-max":  {APIKey: "sk-xxxxxxx", BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen3-max"},
+		"deepseek": {APIKey: "", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-chat"},
+		"openai":   {APIKey: "sk-openai-real-1122334455", BaseURL: "https://api.openai.com/v1", Model: "gpt-4o-mini"},
+		"dead":     {APIKey: "sk-xxxxxxx", BaseURL: "https://dead.example/v1", Model: "x"},
+	}
+	ResolveAllAPIKeysFromEnv(cfg)
+	DetectAIChannelsFromEnv(cfg)
+
+	ids := cfg.AutoFailoverChannelIDs(cfg.OpenAI)
+	// deepseek（env 回退生效）与 openai 应在候选；dead（占位）与 qwen-max（主通道）不在
+	joined := strings.Join(ids, ",")
+	if !strings.Contains(joined, "deepseek") {
+		t.Fatalf("deepseek 未进自动轮询候选: %v", ids)
+	}
+	if !strings.Contains(joined, "openai") {
+		t.Fatalf("openai 未进自动轮询候选: %v", ids)
+	}
+	if strings.Contains(joined, "dead") {
+		t.Fatalf("占位 key 通道不应进候选: %v", ids)
+	}
+	if strings.Contains(joined, "qwen-max") {
+		t.Fatalf("主通道 qwen-max 不应进候选: %v", ids)
+	}
+}

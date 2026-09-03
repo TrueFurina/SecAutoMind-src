@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -124,14 +125,7 @@ func envKeyCandidatesForBaseURL(baseURL, provider string) []string {
 	case strings.Contains(u, "siliconflow"):
 		add("SILICONFLOW_API_KEY")
 	case strings.Contains(u, "openai"), strings.Contains(u, "openrouter"):
-		add("OPENROUTER_API_KEY")
-	}
-	// 兜底：常见通用名（不要求环境变量已存在，交给调用方判断空）
-	fallback := []string{"OPENAI_API_KEY", "DASHSCOPE_API_KEY", "QWEN_API_KEY", "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY"}
-	for _, n := range fallback {
-		if os.Getenv(n) != "" {
-			cands = append(cands, n)
-		}
+		add("OPENAI_API_KEY", "OPENROUTER_API_KEY")
 	}
 	return cands
 }
@@ -262,6 +256,38 @@ func DetectAIChannelsFromEnv(cfg *Config) {
 			}
 		}
 	}
+}
+
+// AutoFailoverChannelIDs 返回"开箱即用的自动轮询候选"通道 ID 列表：
+// - 通道存在且 APIKey 有效（非空、非占位符——通常是环境变量自动激活的通道）
+// - 排除与 primary 相同端点/模型的通道（避免重复请求同一服务）
+// 返回按 ID 排序（确定性，便于测试与日志）。当用户显式配置 model_failover_channels
+// 时优先使用显式列表；本方法仅作为显式列表为空时的自动兜底。
+func (c *Config) AutoFailoverChannelIDs(primary OpenAIConfig) []string {
+	if c == nil || c.AI.Channels == nil {
+		return nil
+	}
+	var out []string
+	for id, ch := range c.AI.Channels {
+		if isPlaceholderKey(ch.APIKey) {
+			continue
+		}
+		oa := ch.ToOpenAIConfig()
+		if sameEndpointKeyModel(primary, oa) {
+			continue
+		}
+		out = append(out, NormalizeAIChannelID(id))
+	}
+	sort.Strings(out)
+	return out
+}
+
+// sameEndpointKeyModel 判断两个 OpenAI 配置是否指向同一服务端点 + 同一凭据 + 同一模型。
+func sameEndpointKeyModel(a, b OpenAIConfig) bool {
+	return strings.EqualFold(strings.TrimSpace(a.Provider), strings.TrimSpace(b.Provider)) &&
+		strings.TrimRight(strings.TrimSpace(a.BaseURL), "/") == strings.TrimRight(strings.TrimSpace(b.BaseURL), "/") &&
+		strings.TrimSpace(a.APIKey) == strings.TrimSpace(b.APIKey) &&
+		strings.TrimSpace(a.Model) == strings.TrimSpace(b.Model)
 }
 
 // ResolveAllAPIKeysFromEnv 在 Load 完成后统一处理全部凭据：

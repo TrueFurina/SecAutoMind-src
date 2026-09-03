@@ -427,13 +427,26 @@ type resolvedEinoFailoverChannel struct {
 }
 
 func resolveEinoFailoverChannels(appCfg *config.Config, mw *config.MultiAgentEinoMiddlewareConfig) []resolvedEinoFailoverChannel {
-	if appCfg == nil || mw == nil || len(mw.ModelFailoverChannels) == 0 {
+	if appCfg == nil {
 		return nil
 	}
 	primary := appCfg.OpenAI
 	seen := map[string]struct{}{}
-	out := make([]resolvedEinoFailoverChannel, 0, len(mw.ModelFailoverChannels))
-	for _, raw := range mw.ModelFailoverChannels {
+	out := make([]resolvedEinoFailoverChannel, 0, 8)
+
+	// 候选通道 ID 来源：
+	// 1) 显式配置 model_failover_channels（用户/前端指定）；
+	// 2) 为空时自动兜底：所有"已激活"（APIKey 有效）的 AI 通道——
+	//    默认 qwen-max 失败后自动轮询 deepseek/openai 等，开箱即用无需配置。
+	candidates := []string(nil)
+	if mw != nil {
+		candidates = append(candidates, mw.ModelFailoverChannels...)
+	}
+	if len(candidates) == 0 {
+		candidates = appCfg.AutoFailoverChannelIDs(primary)
+	}
+
+	for _, raw := range candidates {
 		id := config.NormalizeAIChannelID(raw)
 		if id == "" {
 			continue
