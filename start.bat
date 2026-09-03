@@ -43,7 +43,7 @@ set /a tries=0
 :wait_ready
 set /a tries+=1
 if %tries% GTR 30 (
-    echo [WARN] Server did not respond within 15s. Check server.out.log.
+    echo [WARN] Server did not respond within 15s. Check console output / config log file.
     goto :open_browser
 )
 timeout /t 1 /nobreak >NUL

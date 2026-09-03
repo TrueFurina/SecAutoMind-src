@@ -29,7 +29,7 @@
 1. 解压本目录到任意位置，**路径不要有中文和空格**（推荐 `C:\SecAutoMind\`）
 2. 双击 `start.bat`
 3. 等浏览器自动打开 `http://127.0.0.1:8080/`
-4. 首次启动会生成随机 admin 密码，**在控制台窗口里**（黑色 cmd 窗口）
+4. 首次启动会生成随机 admin 密码，**在控制台窗口里打印，并同时写入 `data/admin_initial_password.txt`**（可直接打开该文件查看，GUI 无控制台也不受影响）
 5. 用 `admin` + 那个密码登录
 
 ### 2.2 完整启动（主服务 + 安全工具 + MCP）
@@ -55,7 +55,7 @@ start.bat
 |---|---|
 | 启动 | `start.bat` |
 | 停止 | `stop.bat` 或 `taskkill /F /IM secautomind-ai.exe` |
-| 查看日志 | `server.out.log` / `server.err.log` |
+| 查看日志 | 控制台窗口（默认 `log.output: stdout`）；如需落盘改 `config.yaml` 的 `log.output` 为文件路径（如 `server.out.log`） |
 | 修改配置 | 直接编辑 `config.yaml`，**修改后重启**才生效 |
 | 桌面快捷方式 | `install-shortcut.ps1` (PowerShell) |
 
@@ -64,11 +64,11 @@ start.bat
 ## 4. 默认账号
 
 - 用户名：`admin`
-- 密码：**首次启动时在控制台打印一次**（形如 `Initial admin password: xxxxxxxx`），仅打印一次，请当场复制保存
-- 密码丢失：运行 `secautomind-ai.exe -config config.yaml --reset-admin-password` 交互式重置后重启
+- 密码：**首次启动时在控制台打印一次**（形如 `Initial admin password: xxxxxxxx`），同时**已自动写入 `data/admin_initial_password.txt`**（仅首次初始化生成，可直接打开该文件查看，GUI 无控制台也不受影响）
+- 密码丢失（文件误删或忘记）：运行 `secautomind-ai.exe -config config.yaml --reset-admin-password` 交互式重置后重启
 - 修改密码：登录后 → 右上角"设置"→"用户管理"
 
-> ⚠️ 后台/重定向方式启动时控制台输出可能不可见，请务必在交互式终端完成首次启动并保存密码。
+> 💡 控制台输出不可见（如后台/无窗口启动）时无需担心——`data/admin_initial_password.txt` 始终提供首次密码。
 
 ---
 
@@ -76,7 +76,7 @@ start.bat
 
 ```
 SecAutoMind/
-├── secautomind-ai.exe        # 主服务 (150MB Go 编译产物, v1.7.17)
+├── secautomind-ai.exe        # 主服务 (~154MB Go 编译产物, v1.7.17)
 ├── config.yaml               # 主配置
 ├── config.example.yaml       # 配置模板 (config.yaml 缺失时会自动拷贝)
 ├── start.bat                 # 启动脚本
@@ -135,7 +135,7 @@ A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉�
 
 如果页面打不开或 404，检查：
 1. 防火墙是否拦截 8080
-2. `server.out.log` 末尾是否有 ERROR
+2. 控制台窗口（或 `config.yaml` 指定的日志文件）末尾是否有 ERROR
 3. 浏览器开发者工具 Network 是否有 401（多半是 admin 密码没拿到）
 
 ---
@@ -149,5 +149,5 @@ A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉�
 ---
 
 **版本**: v1.7.17
-**构建时间**: 2026-08-31
-**分发包制作**: 2026-09-01
+**构建时间**: 2026-09-03（已含引导密码落盘与 shell 流式执行修复）
+**分发包制作**: 2026-09-03
