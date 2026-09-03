@@ -65,6 +65,7 @@ start.bat
 
 - 用户名：`admin`
 - 密码：**首次启动时在控制台打印一次**（形如 `Initial admin password: xxxxxxxx`），同时**已自动写入 `data/admin_initial_password.txt`**（仅首次初始化生成，可直接打开该文件查看，GUI 无控制台也不受影响）
+- **首次运行向导**：首次启动后访问 `http://127.0.0.1:<port>/`，页面会引导用上述一次性初始密码设置**管理员专属密码**（完成后 `data/admin_initial_password.txt` 自动删除，之后用你设置的密码登录）。跳过向导也可直接以初始密码登录。
 - 密码丢失（文件误删或忘记）：运行 `secautomind-ai.exe -config config.yaml --reset-admin-password` 交互式重置后重启
 - 修改密码：登录后 → 右上角"设置"→"用户管理"
 
