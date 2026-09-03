@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
+	"os"
 	"os/exec"
+	"os/signal"
+	"path/filepath"
 	"runtime"
 	"secautomind-ai/internal/app"
 	"secautomind-ai/internal/config"
@@ -10,10 +15,6 @@ import (
 	"secautomind-ai/internal/logger"
 	"secautomind-ai/internal/security"
 	"secautomind-ai/internal/termout"
-	"flag"
-	"fmt"
-	"os"
-	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -107,6 +108,9 @@ func main() {
 			time.Sleep(3 * time.Second) // 等待 HTTP 服务真正监听
 			openBrowser(url)
 		}(webURL)
+		// 产品级体验：绿色版首次运行自动在桌面创建快捷方式（幂等），
+		// 用户无需手动建图标——点一次 exe，桌面就有入口。
+		go ensureDesktopShortcut()
 		fmt.Printf("→ 已在默认浏览器打开管理界面：%s://127.0.0.1:%d （如未弹出请手动访问）\n", scheme, port)
 	}
 
@@ -252,4 +256,38 @@ func openBrowser(url string) {
 	} else {
 		_ = exec.Command("xdg-open", url).Start()
 	}
+}
+
+// ensureDesktopShortcut 绿色版产品化：首次运行自动在桌面创建 SecAutoMind 快捷方式。
+// - 幂等：桌面已有同名 .lnk 则跳过（不覆盖用户可能修改过的快捷方式）
+// - 静默：任何失败（无桌面/无 PowerShell/权限）都不影响服务启动
+// - 桌面路径用 [Environment]::GetFolderPath('Desktop')——兼容 OneDrive 重定向
+func ensureDesktopShortcut() {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	exePath, err := os.Executable()
+	if err != nil || exePath == "" {
+		return
+	}
+	if abs, aErr := filepath.Abs(exePath); aErr == nil {
+		exePath = abs
+	}
+	workDir := filepath.Dir(exePath)
+	// 单引号包裹路径避免空格问题；脚本内不做二次转义（Windows 路径不含单引号）
+	ps := fmt.Sprintf(
+		"$d=[Environment]::GetFolderPath('Desktop');"+
+			"$l=Join-Path $d 'SecAutoMind.lnk';"+
+			"if(Test-Path $l){exit 0};"+
+			"$s=(New-Object -ComObject WScript.Shell).CreateShortcut($l);"+
+			"$s.TargetPath='%s';"+
+			"$s.WorkingDirectory='%s';"+
+			"$s.IconLocation='%s,0';"+
+			"$s.Description='SecAutoMind - 自主决策多智能体攻防推演平台';"+
+			"$s.Save()",
+		strings.ReplaceAll(exePath, "'", "''"),
+		strings.ReplaceAll(workDir, "'", "''"),
+		strings.ReplaceAll(exePath, "'", "''"),
+	)
+	_ = exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", ps).Run()
 }
