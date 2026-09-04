@@ -4744,3 +4744,28 @@ document.addEventListener('languagechange', function () {
 window.initSettingsCustomSelects = initSettingsCustomSelects;
 window.refreshSettingsCustomSelects = refreshSettingsCustomSelects;
 window.closeAllSettingsCustomSelects = closeAllSettingsCustomSelects;
+
+// 知识库启用开关：勾选/取消后自动保存并应用配置。
+// 修复：此前勾选「启用知识检索功能」仅改变 UI 状态，未点击「应用配置」
+// 按钮则配置不落盘、知识库组件不初始化，切到知识管理页仍提示未启用。
+(function bindKnowledgeAutoApply() {
+    function bind() {
+        var cb = document.getElementById('knowledge-enabled');
+        if (cb && !cb.dataset.autoApplyBound) {
+            cb.dataset.autoApplyBound = '1';
+            cb.addEventListener('change', function () {
+                if (typeof applySettings === 'function') {
+                    // applySettings 内部含 try/catch + 结果提示，异常不会外抛
+                    applySettings();
+                }
+            });
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind);
+    } else {
+        bind();
+    }
+    window.addEventListener('load', bind);
+    document.addEventListener('languagechange', bind);
+})();

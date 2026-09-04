@@ -977,6 +977,12 @@ func (db *DB) initTables() error {
 	if err := db.BackfillModelTokenUsageFromProcessDetails(); err != nil {
 		return fmt.Errorf("回填模型Token用量失败: %w", err)
 	}
+
+	// 会话库模式下（knowledge_db_path 为空）知识库数据落在主库；
+	// 主库同样需要知识库表，否则启用知识检索后查询报 no such table。
+	if err := db.initKnowledgeTables(); err != nil {
+		return fmt.Errorf("初始化主库知识库表失败: %w", err)
+	}
 	db.logger.Debug("数据库表初始化完成")
 	return nil
 }
