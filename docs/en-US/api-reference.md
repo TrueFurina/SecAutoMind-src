@@ -232,6 +232,8 @@ Every record being removed must share a domain, IP address, or Host with the pri
 - Vulnerabilities: `/api/vulnerabilities`
 - Knowledge: `/api/knowledge/*`
 - Roles: `/api/roles`
+- RBAC user management: `GET/POST /api/rbac/users`, `PUT/DELETE /api/rbac/users/:id`, plus `/api/rbac/me` and `/api/rbac/metadata`.
+  - ⚠️ The create/update payload field is **`roles` (plural, array of role IDs)**, e.g. `"roles": ["auditor"]`. Passing `role` (singular) is silently ignored: the user is created with **no roles bound** and every protected API returns 403.
 - Skills: `/api/skills`
 - External MCP: `/api/external-mcp`
 - Monitoring: `/api/monitor`

@@ -290,6 +290,18 @@ MCP：
 - `PUT /api/roles/:name`
 - `DELETE /api/roles/:name`
 
+用户管理（RBAC）：
+
+- `GET /api/rbac/me` —— 当前登录用户与角色
+- `GET /api/rbac/metadata` —— 可用权限元数据
+- `GET /api/rbac/users`
+- `POST /api/rbac/users`
+- `PUT /api/rbac/users/:id`
+- `DELETE /api/rbac/users/:id`
+
+> ⚠️ **创建/更新用户的请求体字段是 `roles`（复数、字符串数组，元素为角色 ID）**，例如 `"roles": ["auditor"]`。
+> 若误传 `role`（单数），该字段会被忽略：用户能创建成功但**不绑定任何角色**（`rbac_user_roles` 为空），随后访问受保护接口一律 403。排查"新建用户全部 403"时先检查此处拼写。
+
 Skills：
 
 - `GET /api/skills`

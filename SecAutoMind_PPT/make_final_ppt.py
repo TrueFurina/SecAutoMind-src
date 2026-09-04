@@ -320,7 +320,7 @@ bg(s)
 sec_banner(s, 5, "通用性：90 工具 × 18 Agent × 全链路覆盖")
 stats = [
     ("90", "YAML 安全工具配方", ACCENT),
-    ("16", "角色化 Agent", ACCENT2),
+    ("18", "角色化 Agent", ACCENT2),
     ("13", "安全场景覆盖", WARN),
     ("27", "外部协议 / 注入型工具", GOLD),
 ]
@@ -578,7 +578,7 @@ sec_banner(s, 14, "实测验证：编译零错误 · 测试全绿 · 全流程�
 text(s, Inches(0.6), Inches(1.2), Inches(12), Inches(0.4),
      "（2026-09 实测，全部为磁盘/接口真实数据，无模拟）", size=13, color=MUTED)
 stats2 = [
-    ("0", "编译错误\n（26,893 行 Go）", ACCENT),
+    ("0", "编译错误\n（111,058 行 Go）", ACCENT),
     ("26/26", "测试包全绿\n（0 FAIL，见证据文件）", ACCENT2),
     ("1s", "双击启动\nHTTP 200 服务就绪", WARN),
     ("7/7", "首启向导实测\n（设密码→登录→文件删除）", GOLD),
