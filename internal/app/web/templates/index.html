@@ -38,6 +38,40 @@
     <script src="/static/js/router.js?v=20260819-3"></script>
 </head>
 <body>
+    <!-- 首启初始化向导（首次启动设置管理员专属密码） -->
+    <div id="setup-overlay" class="login-overlay" style="display: none;">
+        <div class="login-card">
+            <div class="login-brand">
+                <h2 class="login-title">
+                    <span data-i18n="setup.title">欢迎使用</span>
+                    <span class="brand-wordmark brand-wordmark--sm" aria-label="SecAutoMind">
+                        <span class="brand-wordmark__core">SecAutoMind</span><span class="brand-wordmark__ai">AI</span>
+                    </span>
+                </h2>
+                <p class="login-subtitle" data-i18n="setup.subtitle">首次启动 · 请设置管理员专属密码（约 30 秒完成）</p>
+            </div>
+            <form id="setup-form" class="login-form">
+                <div class="form-group">
+                    <label for="setup-initial-password" data-i18n="setup.initialPasswordLabel">一次性初始密码</label>
+                    <input type="password" id="setup-initial-password" autocomplete="off" data-i18n="setup.initialPasswordPlaceholder" data-i18n-attr="placeholder" placeholder="查看 data/admin_initial_password.txt 中「密码:」的值" />
+                    <p class="setup-hint" data-i18n="setup.initialPasswordHint">提示：打开程序目录下 data/admin_initial_password.txt 复制「密码:」后面的内容</p>
+                </div>
+                <div class="form-group">
+                    <label for="setup-new-password" data-i18n="setup.newPasswordLabel">设置你的专属密码</label>
+                    <input type="password" id="setup-new-password" minlength="8" autocomplete="new-password" data-i18n="setup.newPasswordPlaceholder" data-i18n-attr="placeholder" placeholder="至少 8 位，仅你本人知道" />
+                </div>
+                <div class="form-group">
+                    <label for="setup-confirm-password" data-i18n="setup.confirmPasswordLabel">确认新密码</label>
+                    <input type="password" id="setup-confirm-password" minlength="8" autocomplete="new-password" data-i18n="setup.confirmPasswordPlaceholder" data-i18n-attr="placeholder" placeholder="再次输入新密码" />
+                </div>
+                <div id="setup-error" class="login-error" role="alert" style="display: none;"></div>
+                <button type="submit" class="btn-primary login-submit" id="setup-submit-btn">
+                    <span data-i18n="setup.submit">完成初始化</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div id="login-overlay" class="login-overlay" style="display: none;">
         <div class="login-card">
             <div class="login-brand">
@@ -4912,6 +4946,10 @@
                                         </div>
                                     </div>
                                     <div class="audit-filter-bottom">
+                                        <label class="audit-field audit-field--keyword">
+                                            <span data-i18n="settingsAudit.filterActor">操作者</span>
+                                            <input type="text" id="audit-filter-actor" data-i18n="settingsAudit.filterActorPlaceholder" data-i18n-attr="placeholder" placeholder="按操作者筛选（如 admin / auditor）" autocomplete="off" />
+                                        </label>
                                         <label class="audit-field audit-field--keyword">
                                             <span data-i18n="settingsAudit.filterQuery">关键词</span>
                                             <input type="text" id="audit-filter-q" data-i18n="settingsAudit.filterQueryPlaceholder" data-i18n-attr="placeholder" placeholder="消息 / 资源 ID / 操作名" />
