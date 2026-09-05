@@ -100,3 +100,5 @@ config.yaml.bak_*
 # Local scratch / probes
 tmp_recon_*/
 work/
+secautomind-ai.exe.new
+*.exe.new
