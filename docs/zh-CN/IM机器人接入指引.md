@@ -93,7 +93,18 @@ export DINGTALK_ENABLED=true DING_APP_KEY=... DING_APP_SECRET=...
 ./secautomind-ai            # Windows: secautomind-ai.exe
 ```
 - 日志出现 `robot/ding.go:46 "钉钉 Stream 正在连接…"` 表示已走到建连；出现连接成功日志即大功告成。
-- 🔴 **铁证（判断是否真连上）**：用 `netstat` / 任务管理器看进程是否有到 `*.dingtalk.com:443` 的 **ESTABLISHED** 长连接。**只有"正在连接"日志、却看不到 443 长连接 = 多半是应用没发布**，回到 §2.1 第 5 步点「保存并发布」。
+
+- 🔴 **②-1 网络层前置诊断（最易被误判为"应用没发布"）**：钉钉 Stream 长连走的是 **`stream-open.dingtalk.com:443`**（与 gettoken 用的 `oapi.dingtalk.com` **不是同一个域名**）。若 `gettoken` 能通、但 Stream 死活连不上，**先查客户端网络能否解析/访问 `stream-open.dingtalk.com`**：
+  ```bash
+  # Windows PowerShell
+  Resolve-DnsName stream-open.dingtalk.com                 # 若"DNS解析失败" → 网络/DNS 挡了，与应用发布无关
+  Test-NetConnection stream-open.dingtalk.com -Port 443   # TcpTestSucceeded=True 才说明链路通
+  ```
+  - 现象：`netstat` 全程看不到该进程的任何外联（连 `SYN_SENT` 都没有），日志只有"正在连接…"循环、既无成功也无 `Warn 长连接断开`——这是 **DNS 解析失败导致 SDK 连 SYN 都发不出**，典型发生在校园网/公司网/代理只放行了部分钉钉域名的环境。
+  - 对策：换能直连公网的网络（如手机热点）、或把 DNS 改到 `223.5.5.5`/`119.29.29.29` 让该域名可解析、或给运行环境配 HTTP 代理。**这一步是网络环境依赖，不是代码/配置问题。**
+  - 实测案例（2026-09-05）：同一台机 `oapi.dingtalk.com` 解析+443 全通（gettoken errcode:0），而 `stream-open.dingtalk.com` **DNS 解析失败、443 不通**，两个不同 ClientID 的 App 都连不上，根因一致为网络层。
+
+- 🔴 **铁证（判断是否真连上）**：用 `netstat` / `Get-NetTCPConnection` 看进程是否有到 `*.dingtalk.com:443` 的 **ESTABLISHED** 长连接。**只有"正在连接"日志、却看不到 443 长连接**——先按 ②-1 排除网络层 DNS 不通，再排查"应用没保存并发布"（§2.1 第 5 步）。
 - 在钉钉里给该应用发消息「扫描 192.168.x.x 的 Web 服务」，智能体应回任务计划；API 测试 `POST /api/robot/test {"platform":"dingtalk",...}` 应返回执行结果。
 
 ---
