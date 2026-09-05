@@ -1,0 +1,47 @@
+=== BUILD 16:16:34 ===
+build exit=0
+=== VET ===
+vet exit=0
+=== TEST ===
+?   	secautomind-ai/cmd/dingprobe	[no test files]
+?   	secautomind-ai/cmd/mcp-stdio	[no test files]
+?   	secautomind-ai/cmd/selfcheck	[no test files]
+?   	secautomind-ai/cmd/server	[no test files]
+?   	secautomind-ai/cmd/test-config	[no test files]
+?   	secautomind-ai/cmd/test-external-mcp	[no test files]
+?   	secautomind-ai/cmd/test-sse-mcp-server	[no test files]
+ok  	secautomind-ai/internal/agent	3.090s
+ok  	secautomind-ai/internal/agentfinalizer	0.668s
+ok  	secautomind-ai/internal/agents	0.162s
+ok  	secautomind-ai/internal/app	1.427s
+ok  	secautomind-ai/internal/attackchain	1.146s
+?   	secautomind-ai/internal/audit	[no test files]
+?   	secautomind-ai/internal/authctx	[no test files]
+ok  	secautomind-ai/internal/c2	0.844s
+ok  	secautomind-ai/internal/config	0.090s
+ok  	secautomind-ai/internal/database	6.550s
+ok  	secautomind-ai/internal/einomcp	0.061s
+ok  	secautomind-ai/internal/einoobserve	0.145s
+ok  	secautomind-ai/internal/handler	4.871s
+ok  	secautomind-ai/internal/hitl	0.220s
+ok  	secautomind-ai/internal/knowledge	0.087s
+ok  	secautomind-ai/internal/llm	0.177s
+?   	secautomind-ai/internal/logger	[no test files]
+ok  	secautomind-ai/internal/mcp	0.326s
+?   	secautomind-ai/internal/mcp/builtin	[no test files]
+ok  	secautomind-ai/internal/monitor	0.438s
+ok  	secautomind-ai/internal/multiagent	16.280s
+ok  	secautomind-ai/internal/openai	0.084s
+ok  	secautomind-ai/internal/project	0.582s
+?   	secautomind-ai/internal/projectprompt	[no test files]
+ok  	secautomind-ai/internal/reasoning	0.076s
+?   	secautomind-ai/internal/robot	[no test files]
+?   	secautomind-ai/internal/robot/ilink	[no test files]
+ok  	secautomind-ai/internal/security	3.698s
+?   	secautomind-ai/internal/skillpackage	[no test files]
+ok  	secautomind-ai/internal/termout	0.038s
+ok  	secautomind-ai/internal/tooloutput	0.060s
+ok  	secautomind-ai/internal/vision	0.247s
+ok  	secautomind-ai/internal/workflow	0.456s
+ok  	secautomind-ai/internal/workflow/package	0.024s
+test exit=0
