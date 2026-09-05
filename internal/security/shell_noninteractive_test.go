@@ -112,8 +112,13 @@ func TestNonInteractiveStdinReadBlocksWithoutRedirect(t *testing.T) {
 	cmd := exec.Command("sh", "-c", `read x; echo done`)
 	cmd.Stdin = r
 
+	// Start 在主 goroutine 执行（cmd.Process 由 Start 写入，Start 返回后不再变化），
+	// 子 goroutine 只做 cmd.Wait()——避免主 goroutine 读 cmd.Process 与 Run()/Start() 写入竞争（09-05 CI -race 实证）。
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start command: %v", err)
+	}
 	done := make(chan error, 1)
-	go func() { done <- cmd.Run() }()
+	go func() { done <- cmd.Wait() }()
 
 	select {
 	case err := <-done:

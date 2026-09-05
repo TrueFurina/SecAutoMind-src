@@ -318,8 +318,11 @@ func (s *ExecutionService) Wait(ctx context.Context, executionID string, timeout
 	if entry == nil {
 		return s.getPersistedSnapshot(executionID)
 	}
-	if isExecutionTerminal(entry.exec.Status) {
-		return &ExecutionSnapshot{Execution: cloneToolExecution(entry.exec)}, nil
+	// entry.exec（含 Status）由 worker goroutine 在 s.mu 内写入；任何读取必须持锁，
+	// 否则与 markEntryRunning/finishEntry 构成数据竞争（09-05 CI -race 实证）。
+	snap := s.entrySnapshot(entry)
+	if isExecutionTerminal(snap.Status) {
+		return &ExecutionSnapshot{Execution: snap}, nil
 	}
 
 	var timeoutCh <-chan time.Time
@@ -332,18 +335,24 @@ func (s *ExecutionService) Wait(ctx context.Context, executionID string, timeout
 
 	select {
 	case <-entry.done:
-		return &ExecutionSnapshot{Execution: cloneToolExecution(entry.exec)}, nil
+		return &ExecutionSnapshot{Execution: s.entrySnapshot(entry)}, nil
 	case <-timeoutCh:
-		return &ExecutionSnapshot{Execution: cloneToolExecution(entry.exec)}, ErrExecutionWaitTimeout
+		return &ExecutionSnapshot{Execution: s.entrySnapshot(entry)}, ErrExecutionWaitTimeout
 	case <-ctxDone(ctx):
-		return &ExecutionSnapshot{Execution: cloneToolExecution(entry.exec)}, ctx.Err()
+		return &ExecutionSnapshot{Execution: s.entrySnapshot(entry)}, ctx.Err()
 	}
 }
 
+// entrySnapshot 在持锁状态下克隆 entry 的执行状态，供跨 goroutine 安全读取。
+func (s *ExecutionService) entrySnapshot(entry *executionEntry) *ToolExecution {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return cloneToolExecution(entry.exec)
+}
+
 func (s *ExecutionService) Get(executionID string) (*ExecutionSnapshot, error) {
-	entry := s.getEntry(executionID)
-	if entry != nil {
-		return &ExecutionSnapshot{Execution: cloneToolExecution(entry.exec)}, nil
+	if entry := s.getEntry(executionID); entry != nil {
+		return &ExecutionSnapshot{Execution: s.entrySnapshot(entry)}, nil
 	}
 	return s.getPersistedSnapshot(executionID)
 }

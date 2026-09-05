@@ -72,7 +72,10 @@ func TestExternalMCPManager_CallToolBoundedWaitThenContinue(t *testing.T) {
 	manager.ConfigureToolWaitTimeoutSeconds(1)
 	manager.toolWaitTimeout = 10 * time.Millisecond
 	client := newBlockingExternalMCPClient("slow result ready")
+	// startToolCountRefresh 后台 goroutine 会持 m.mu 读 clients，写入必须持锁（09-05 CI -race 实证）
+	manager.mu.Lock()
 	manager.clients["lab"] = client
+	manager.mu.Unlock()
 
 	callCtx, callCancel := context.WithCancel(context.Background())
 	result, executionID, err := manager.CallTool(callCtx, "lab::slow_tool", map[string]interface{}{"target": "example"})

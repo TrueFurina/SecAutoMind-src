@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -49,6 +51,14 @@ func TestEinoStreamingShell_StreamsStderrBeforeStdoutEOF(t *testing.T) {
 func TestEinoStreamingShell_SudoFailsFast(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell streaming 依赖 /bin/sh（shell_execute_stream.go），仅类 Unix 环境覆盖；CI Linux job 执行")
+	}
+	// CI runner（ubuntu-latest）配置了免密 sudo，sudo whoami 会直接成功而不是要求密码——
+	// 此时「sudo 失败」前提不成立，跳过（09-05 CI 实证：runner 上拿到了 root 输出）。
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: sudo 不会要求密码，前提不成立")
+	}
+	if err := exec.Command("sudo", "-n", "true").Run(); err == nil {
+		t.Skip("passwordless sudo available: sudo 不会要求密码，前提不成立")
 	}
 	shell := NewEinoStreamingShell()
 	cmd := PrepareNonInteractiveShellCommand("sudo whoami && sudo cat /etc/os-release")
