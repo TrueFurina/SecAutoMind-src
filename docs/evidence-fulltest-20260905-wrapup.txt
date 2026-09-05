@@ -1,0 +1,40 @@
+?   	secautomind-ai/cmd/mcp-stdio	[no test files]
+?   	secautomind-ai/cmd/selfcheck	[no test files]
+?   	secautomind-ai/cmd/server	[no test files]
+?   	secautomind-ai/cmd/test-config	[no test files]
+?   	secautomind-ai/cmd/test-external-mcp	[no test files]
+?   	secautomind-ai/cmd/test-sse-mcp-server	[no test files]
+ok  	secautomind-ai/internal/agent	3.203s
+ok  	secautomind-ai/internal/agentfinalizer	0.468s
+ok  	secautomind-ai/internal/agents	0.081s
+ok  	secautomind-ai/internal/app	1.250s
+ok  	secautomind-ai/internal/attackchain	1.274s
+?   	secautomind-ai/internal/audit	[no test files]
+?   	secautomind-ai/internal/authctx	[no test files]
+ok  	secautomind-ai/internal/c2	0.712s
+ok  	secautomind-ai/internal/config	0.094s
+ok  	secautomind-ai/internal/database	9.514s
+ok  	secautomind-ai/internal/einomcp	0.211s
+ok  	secautomind-ai/internal/einoobserve	0.145s
+ok  	secautomind-ai/internal/handler	7.250s
+ok  	secautomind-ai/internal/hitl	0.226s
+ok  	secautomind-ai/internal/knowledge	0.094s
+ok  	secautomind-ai/internal/llm	0.068s
+?   	secautomind-ai/internal/logger	[no test files]
+ok  	secautomind-ai/internal/mcp	0.336s
+?   	secautomind-ai/internal/mcp/builtin	[no test files]
+ok  	secautomind-ai/internal/monitor	0.432s
+ok  	secautomind-ai/internal/multiagent	16.983s
+ok  	secautomind-ai/internal/openai	0.092s
+ok  	secautomind-ai/internal/project	0.578s
+?   	secautomind-ai/internal/projectprompt	[no test files]
+ok  	secautomind-ai/internal/reasoning	0.084s
+?   	secautomind-ai/internal/robot	[no test files]
+?   	secautomind-ai/internal/robot/ilink	[no test files]
+ok  	secautomind-ai/internal/security	3.630s
+?   	secautomind-ai/internal/skillpackage	[no test files]
+ok  	secautomind-ai/internal/termout	0.047s
+ok  	secautomind-ai/internal/tooloutput	0.059s
+ok  	secautomind-ai/internal/vision	0.287s
+ok  	secautomind-ai/internal/workflow	0.437s
+ok  	secautomind-ai/internal/workflow/package	0.032s
