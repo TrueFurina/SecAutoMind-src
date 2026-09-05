@@ -31,7 +31,16 @@ func StartDing(ctx context.Context, robotsCfg config.RobotsConfig, h MessageHand
 	go runDingLoop(ctx, cfg, robotsCfg.Session.StrictUserIdentityEnabled(), h, logger)
 }
 
-// runDingLoop 循环维持钉钉长连接：断开且 ctx 未取消时按退避间隔重连。
+// runDingLoop 维持钉钉长连接。
+//
+// 关键：SDK 的 StreamClient.Start() 是**同步且会自行守护**的——
+//   - 它在 client.go 内部完成 网关取票 → WebSocket 拨号 → 成功后启动 processLoop goroutine → 返回 nil；
+//   - SDK 默认开启 WithAutoReconnect(true)，断线时由 processLoop 自行重连（client.go:135）。
+//
+// 因此外层**不能**在 Start() 成功返回后继续循环重建 client：
+// 那会在连接健康时不断丢弃旧连接、新建 client，导致日志刷"正在连接"、
+// 僵尸连接累积，且消息路由在多个连接间抖动。
+// 正确语义：Start() 失败才按退避重建；成功则阻塞到 ctx 取消，把重连交给 SDK。
 func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) {
 	backoff := dingReconnectInitial
 	for {
@@ -50,20 +59,29 @@ func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUser
 			return
 		}
 		if err != nil {
+			// 只有真正失败才重建连接，退避后重试
 			logger.Warn("钉钉 Stream 长连接断开（如睡眠/断网），将自动重连", zap.Error(err), zap.Duration("retry_after", backoff))
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(backoff):
-			// 下次重连间隔递增，上限 60 秒，避免频繁重试
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
+			}
 			if backoff < dingReconnectMax {
 				backoff *= 2
 				if backoff > dingReconnectMax {
 					backoff = dingReconnectMax
 				}
 			}
+			continue
 		}
+		// 连接已建立：SDK 内部的 processLoop 持续收帧，断线时 AutoReconnect 会调
+		// reconnect() 每 3 秒重试直到成功（client.go:311）。连接状态字段是私有的、
+		// 无对外查询接口，因此外层只能也只应阻塞到 ctx 取消（配置变更/进程退出）。
+		logger.Info("钉钉 Stream 连接成功，已进入长连接守护（断线由 SDK 自动重连）")
+		backoff = dingReconnectInitial
+		<-ctx.Done()
+		logger.Info("钉钉 Stream 已退出")
+		return
 	}
 }
 
