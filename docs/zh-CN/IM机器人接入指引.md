@@ -87,8 +87,10 @@ curl -s "https://oapi.dingtalk.com/gettoken?appkey=$DING_APP_KEY&appsecret=$DING
 # 返回 {"errcode":0,"access_token":"..."} 即凭据有效
 # 返回 errcode:40096 "不合法的appKey或appSecret" → 多半是复制到了带 * 的遮挡值，回到 §2.1 第 3 步重新「查看」复制
 ```
-**② 启动连接**——注入环境变量后启动（详见 §2.2 方式 A）：
+**②-2 启动连接（务必绕过代理）**——注入环境变量后启动（详见 §2.2 方式 A）。若本机挂了系统代理（见 ②-1），**必须先 unset 代理**，否则 exe 仍走代理、被拦截：
 ```bash
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy   # Linux/Mac
+Remove-Item Env:HTTP_PROXY,Env:HTTPS_PROXY             # Windows PowerShell
 export DINGTALK_ENABLED=true DING_APP_KEY=... DING_APP_SECRET=...
 ./secautomind-ai            # Windows: secautomind-ai.exe
 ```
@@ -100,9 +102,21 @@ export DINGTALK_ENABLED=true DING_APP_KEY=... DING_APP_SECRET=...
   Resolve-DnsName stream-open.dingtalk.com                 # 若"DNS解析失败" → 网络/DNS 挡了，与应用发布无关
   Test-NetConnection stream-open.dingtalk.com -Port 443   # TcpTestSucceeded=True 才说明链路通
   ```
-  - 现象：`netstat` 全程看不到该进程的任何外联（连 `SYN_SENT` 都没有），日志只有"正在连接…"循环、既无成功也无 `Warn 长连接断开`——这是 **DNS 解析失败导致 SDK 连 SYN 都发不出**，典型发生在校园网/公司网/代理只放行了部分钉钉域名的环境。
-  - 对策：换能直连公网的网络（如手机热点）、或把 DNS 改到 `223.5.5.5`/`119.29.29.29` 让该域名可解析、或给运行环境配 HTTP 代理。**这一步是网络环境依赖，不是代码/配置问题。**
-  - 实测案例（2026-09-05）：同一台机 `oapi.dingtalk.com` 解析+443 全通（gettoken errcode:0），而 `stream-open.dingtalk.com` **DNS 解析失败、443 不通**，两个不同 ClientID 的 App 都连不上，根因一致为网络层。
+  - 现象：`netstat` 全程看不到该进程的任何外联（连 `SYN_SENT` 都没有），日志只有"正在连接…"循环、既无成功也无 `Warn 长连接断开`——通常是 **DNS 解析失败导致 SDK 连 SYN 都发不出**，典型发生在校园网/公司网/或本机挂了**只放行部分钉钉域名**的 HTTP 代理的环境。
+  - 🔴 **代理层拦截（2026-09-05 实测新发现，比"纯 DNS 不通"更常见）**：若本机设了系统代理（如 `HTTP(S)_PROXY=http://127.0.0.1:11226` 这类 Clash/v2rayN），代理常**放行 `oapi`/`api` 但拦截 `stream-open`**——表现为 `gettoken` 通、但 Stream 走代理时 `CONNECT stream-open…` 返回 **502**，且系统 DNS 也被代理吞掉该域名解析。而**钉钉客户端能连**，是因为它**绕过系统代理直连**到了钉钉边缘节点（如 `110.253.188.240`）。
+    ```powershell
+    # 看本机是否挂了代理
+    echo $env:HTTP_PROXY $env:HTTPS_PROXY
+    # 看钉钉客户端此刻直连的钉钉边缘 IP（绕过了代理）
+    $p=Get-Process DingTalk; Get-NetTCPConnection -OwningProcess $p[0].Id -State Established | Select RemoteAddress,RemotePort
+    ```
+  - 🔴 **破局（已实测可行，两层一起绕）**：① 把 `stream-open.dingtalk.com` 写进 hosts 指向钉钉客户端正在连的可达 IP（如 `110.253.188.240`，用上面命令实时查，不要硬编码旧 IP）；② 启动 exe 时**绕过代理**（见 ②-2）。原理：`curl --noproxy '*' --resolve stream-open.dingtalk.com:443:110.253.188.240 https://stream-open.dingtalk.com/` 实测 `ssl_verify=0`（该 IP 持有 stream-open 有效证书）且能建连。
+    ```powershell
+    # 需管理员 PowerShell：写 hosts（IP 用上面实时查到的钉钉边缘 IP 替换）
+    Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "110.253.188.240 stream-open.dingtalk.com" -Encoding ASCII
+    ```
+  - 其他对策：换能直连公网的网络、或在代理软件里把 `stream-open.dingtalk.com` 加为"直连"规则并开启 TUN/增强模式接管系统 DNS。**这一步是网络环境依赖，不是代码/配置问题。**
+  - 实测案例（2026-09-05）：同一台机 `oapi`/`api` 解析+443 全通（gettoken errcode:0），而 `stream-open.dingtalk.com` 在阿里/腾讯/Google/Cloudflare 公共 DNS **全部解析失败**、且本机代理 `127.0.0.1:11226` 拦截它（CONNECT 502）；钉钉客户端靠直连 `110.253.188.240` 正常收发。写 hosts + 绕代理后 `ssl_verify=0` 直连成功。
 
 - 🔴 **铁证（判断是否真连上）**：用 `netstat` / `Get-NetTCPConnection` 看进程是否有到 `*.dingtalk.com:443` 的 **ESTABLISHED** 长连接。**只有"正在连接"日志、却看不到 443 长连接**——先按 ②-1 排除网络层 DNS 不通，再排查"应用没保存并发布"（§2.1 第 5 步）。
 - 在钉钉里给该应用发消息「扫描 192.168.x.x 的 Web 服务」，智能体应回任务计划；API 测试 `POST /api/robot/test {"platform":"dingtalk",...}` 应返回执行结果。
