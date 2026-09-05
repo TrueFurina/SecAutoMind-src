@@ -96,29 +96,58 @@ export DINGTALK_ENABLED=true DING_APP_KEY=... DING_APP_SECRET=...
 ```
 - 日志出现 `robot/ding.go:46 "钉钉 Stream 正在连接…"` 表示已走到建连；出现连接成功日志即大功告成。
 
-- 🔴 **②-1 网络层前置诊断（最易被误判为"应用没发布"）**：钉钉 Stream 长连走的是 **`stream-open.dingtalk.com:443`**（与 gettoken 用的 `oapi.dingtalk.com` **不是同一个域名**）。若 `gettoken` 能通、但 Stream 死活连不上，**先查客户端网络能否解析/访问 `stream-open.dingtalk.com`**：
-  ```bash
-  # Windows PowerShell
-  Resolve-DnsName stream-open.dingtalk.com                 # 若"DNS解析失败" → 网络/DNS 挡了，与应用发布无关
-  Test-NetConnection stream-open.dingtalk.com -Port 443   # TcpTestSucceeded=True 才说明链路通
-  ```
-  - 现象：`netstat` 全程看不到该进程的任何外联（连 `SYN_SENT` 都没有），日志只有"正在连接…"循环、既无成功也无 `Warn 长连接断开`——通常是 **DNS 解析失败导致 SDK 连 SYN 都发不出**，典型发生在校园网/公司网/或本机挂了**只放行部分钉钉域名**的 HTTP 代理的环境。
-  - 🔴 **代理层拦截（2026-09-05 实测新发现，比"纯 DNS 不通"更常见）**：若本机设了系统代理（如 `HTTP(S)_PROXY=http://127.0.0.1:11226` 这类 Clash/v2rayN），代理常**放行 `oapi`/`api` 但拦截 `stream-open`**——表现为 `gettoken` 通、但 Stream 走代理时 `CONNECT stream-open…` 返回 **502**，且系统 DNS 也被代理吞掉该域名解析。而**钉钉客户端能连**，是因为它**绕过系统代理直连**到了钉钉边缘节点（如 `110.253.188.240`）。
-    ```powershell
-    # 看本机是否挂了代理
-    echo $env:HTTP_PROXY $env:HTTPS_PROXY
-    # 看钉钉客户端此刻直连的钉钉边缘 IP（绕过了代理）
-    $p=Get-Process DingTalk; Get-NetTCPConnection -OwningProcess $p[0].Id -State Established | Select RemoteAddress,RemotePort
-    ```
-  - 🔴 **破局（已实测可行，两层一起绕）**：① 把 `stream-open.dingtalk.com` 写进 hosts 指向钉钉客户端正在连的可达 IP（如 `110.253.188.240`，用上面命令实时查，不要硬编码旧 IP）；② 启动 exe 时**绕过代理**（见 ②-2）。原理：`curl --noproxy '*' --resolve stream-open.dingtalk.com:443:110.253.188.240 https://stream-open.dingtalk.com/` 实测 `ssl_verify=0`（该 IP 持有 stream-open 有效证书）且能建连。
-    ```powershell
-    # 需管理员 PowerShell：写 hosts（IP 用上面实时查到的钉钉边缘 IP 替换）
-    Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "110.253.188.240 stream-open.dingtalk.com" -Encoding ASCII
-    ```
-  - 其他对策：换能直连公网的网络、或在代理软件里把 `stream-open.dingtalk.com` 加为"直连"规则并开启 TUN/增强模式接管系统 DNS。**这一步是网络环境依赖，不是代码/配置问题。**
-  - 实测案例（2026-09-05）：同一台机 `oapi`/`api` 解析+443 全通（gettoken errcode:0），而 `stream-open.dingtalk.com` 在阿里/腾讯/Google/Cloudflare 公共 DNS **全部解析失败**、且本机代理 `127.0.0.1:11226` 拦截它（CONNECT 502）；钉钉客户端靠直连 `110.253.188.240` 正常收发。写 hosts + 绕代理后 `ssl_verify=0` 直连成功。
+- 🔴 **②-1 "正在连接…"不停循环——先分清是代码还是网络**
+  > ⚠️ **本节旧版写过的"DNS 不通 / 代理拦截 / 改 hosts"结论已作废**，那是用失效的检测通道
+  > （Google DoH `dns.google` 返回空）造成的误读。真实端点由网关动态下发，**也不叫 `stream-open`**。
 
-- 🔴 **铁证（判断是否真连上）**：用 `netstat` / `Get-NetTCPConnection` 看进程是否有到 `*.dingtalk.com:443` 的 **ESTABLISHED** 长连接。**只有"正在连接"日志、却看不到 443 长连接**——先按 ②-1 排除网络层 DNS 不通，再排查"应用没保存并发布"（§2.1 第 5 步）。
+  **唯一成功标志**：日志出现 **`钉钉 Stream 连接成功，已进入长连接守护`**（`robot/ding.go`）。
+  有这句 = 已建连，此后不应再出现"正在连接…"；没有这句却在反复打印"正在连接…" = 异常。
+  **现象**：日志只有"正在连接…"循环、既无成功也无 `Warn 长连接断开`，`netstat` 可见多条到钉钉端点的 ESTABLISHED 且**不断累积**。
+
+  **根因 A（代码层 —— 本项目的真实病因，已修于 commit `9ce1041`）**
+  SDK 的 `StreamClient.Start()` 是**同步**的：`dialer.Dial` 成功 → 启动 `processLoop` → `return nil`；
+  且 SDK 默认 `WithAutoReconnect(true)`，断线由 `reconnect()` 每 3 秒重试直到成功（`client.go:311`）。
+  若外层循环在 `Start()` **成功后仍重建 client**，就会在健康连接上反复重连——
+  **表现与"连不上"一模一样，但网络其实是好的**。
+  判定：`Start()` 返回 `nil` 就代表**已连上**；此时不应再出现第二次"正在连接…"。
+
+  **根因 B（网络/DNS 层 —— 罕见，但排查时极易误判）**
+  WebSocket 端点**不是固定域名**，而是由网关动态下发。取真实端点：
+  ```bash
+  curl -sS --noproxy '*' -X POST https://api.dingtalk.com/v1.0/gateway/connections/open \
+    -H 'Content-Type: application/json' \
+    -d '{"clientId":"<ClientID>","clientSecret":"<ClientSecret>","subscriptions":[]}'
+  # 返回体里的 endpoint 字段即真实 wss:// 地址（形如 wss://wss-open-connection.dingtalk.com:443/connect）
+  ```
+  拿到端点后再测它能否解析：`getent hosts wss-open-connection.dingtalk.com`（能出 39.x 即正常）。
+
+  ⚠️ **诊断陷阱（本节旧结论就栽在这三条上）**：
+  1. **不要用单一 DNS 通道下结论**。`dns.google` 这类 DoH 在部分网络返回空，会被误读成"域名不存在"。
+     **务必做阳性对照**——同时查一个已知能解析的域名（如 `oapi.dingtalk.com`），并用 ≥2 种 DNS（本机 / `223.5.5.5` / `nslookup`）。
+  2. **`ssl_verify=0` 不能证明该 IP 服务于该主机名**。钉钉边缘用**泛域名证书 `*.dingtalk.com`**，
+     任何 dingtalk 子域在任何阿里边缘节点上都会 `ssl_verify=0`。
+  3. **代理通常不是元凶**：SDK 走 `websocket.DefaultDialer`，**不读 `HTTP_PROXY` 环境变量**。
+     只有代码里显式 `WithProxy(...)` 时，才需确认该代理放行钉钉端点。
+
+  🗑️ **已作废、请勿再照做**：给 `stream-open.dingtalk.com` 加 hosts 条目**无效**（真实端点由网关下发、且不叫这个名字）。
+  若按旧版指引加过，请从 `C:\Windows\System32\drivers\etc\hosts` 删除该行并 `ipconfig /flushdns`。
+
+- 🔴 **铁证（判断是否真连上）**——两条同时满足才算成功：
+  1. **日志**：出现 `钉钉 Stream 连接成功，已进入长连接守护`，且 `钉钉 Stream 正在连接…` **只出现一次**。
+  2. **连接**：`Get-NetTCPConnection -OwningProcess <PID>` 可见到钉钉端点（`39.x.x.x:443`）的 **ESTABLISHED**，
+     且数量**稳定在 1 条**。
+     ⚠️ 若连接数**不断累加**（2、3、4…条）→ 那正是"连接被反复重建"（根因 A），
+     此时网络其实是好的，别再去折腾 DNS/hosts/代理。
+
+- 🔴 **构建 exe 的坑（否则你可能根本跑不起来，误判成"连不上"）**
+  本机用 Go 1.25 直接 `go build` 生成的 exe 可能报 **`%1 不是有效的 Win32 应用程序`**，
+  原因是链接器给 DWARF 调试节分配了越界虚拟地址（`0xFFC00000` 超出 `SizeOfImage`），
+  导致 Windows 判定 PE 无效。**加 `-ldflags "-w -s"` 去掉调试信息即可**：
+  ```bash
+  CGO_ENABLED=1 go build -trimpath -ldflags "-w -s" -o secautomind-ai.exe cmd/server/main.go
+  ```
+  实测对照（2026-09-05）：不加 `-w -s` → 157~159MB，`BAD_EXE_FORMAT` 无法运行；
+  加上 → 86MB，正常启动。
 - 在钉钉里给该应用发消息「扫描 192.168.x.x 的 Web 服务」，智能体应回任务计划；API 测试 `POST /api/robot/test {"platform":"dingtalk",...}` 应返回执行结果。
 
 ---
