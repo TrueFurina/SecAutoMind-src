@@ -51,16 +51,38 @@ func expandEnvVar(s string) string {
 
 // ExpandConfigEnv 展开 ExternalMCPServerConfig 中所有支持环境变量的字段。
 // 展开范围：Command、Args、Env values、URL、Headers values。
+//
+// 注意：Args/Env/Headers 必须整体替换为新切片/新 map（禁止原地写 cfg.Args[i]）——
+// 同一配置对象可能同时被 lazy SDK client 并发读取（createSDKClient→exec.Command 读 Args），
+// 原地写共享底层数组会构成数据竞争（09-05 CI -race 实证）。
 func ExpandConfigEnv(cfg *ExternalMCPServerConfig) {
 	cfg.Command = expandEnvVar(cfg.Command)
-	for i, arg := range cfg.Args {
-		cfg.Args[i] = expandEnvVar(arg)
-	}
-	for k, v := range cfg.Env {
-		cfg.Env[k] = expandEnvVar(v)
-	}
+	cfg.Args = expandEnvVarSlice(cfg.Args)
+	cfg.Env = expandEnvVarMapStr(cfg.Env)
 	cfg.URL = expandEnvVar(cfg.URL)
-	for k, v := range cfg.Headers {
-		cfg.Headers[k] = expandEnvVar(v)
+	cfg.Headers = expandEnvVarMapStr(cfg.Headers)
+}
+
+// expandEnvVarSlice 返回展开后的新切片，不写传入切片的底层数组。
+func expandEnvVarSlice(in []string) []string {
+	if in == nil {
+		return nil
 	}
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = expandEnvVar(s)
+	}
+	return out
+}
+
+// expandEnvVarMapStr 返回展开后的新 map，不写传入 map。
+func expandEnvVarMapStr(in map[string]string) map[string]string {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		out[k] = expandEnvVar(v)
+	}
+	return out
 }

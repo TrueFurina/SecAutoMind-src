@@ -120,7 +120,10 @@ func TestExecutionControlWaitToolReturnsCompletedResult(t *testing.T) {
 	manager := NewExternalMCPManager(zap.NewNop())
 	manager.toolWaitTimeout = 10 * time.Millisecond
 	client := newBlockingExternalMCPClient("control wait result")
+	// startToolCountRefresh 后台 goroutine 会持 m.mu 读 clients，写入必须持锁（09-05 CI -race 实证）
+	manager.mu.Lock()
 	manager.clients["lab"] = client
+	manager.mu.Unlock()
 
 	result, executionID, err := manager.CallTool(context.Background(), "lab::slow_tool", nil)
 	if err != nil {
@@ -160,7 +163,9 @@ func TestExternalMCPManager_PerServerConcurrencyLimitsWorkers(t *testing.T) {
 		CircuitCooldown:         time.Second,
 	})
 	client := newBlockingExternalMCPClient("ok")
+	manager.mu.Lock()
 	manager.clients["lab"] = client
+	manager.mu.Unlock()
 
 	done1 := make(chan struct{})
 	go func() {
@@ -220,7 +225,9 @@ func TestExternalMCPManager_CircuitBreakerOpensAfterFailures(t *testing.T) {
 		CircuitFailureThreshold: 1,
 		CircuitCooldown:         time.Minute,
 	})
+	manager.mu.Lock()
 	manager.clients["lab"] = &failingExternalMCPClient{}
+	manager.mu.Unlock()
 
 	_, _, err := manager.CallTool(context.Background(), "lab::fail_tool", nil)
 	if err == nil || !strings.Contains(err.Error(), "boom") {
