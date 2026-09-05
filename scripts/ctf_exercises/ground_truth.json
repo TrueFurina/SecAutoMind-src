@@ -1,0 +1,22 @@
+{
+  "c1_zip_chain": {
+    "flag": "flag{zip_chain_layer3_secret}",
+    "flag_sha256": "4502e88b1931bb4cacf1d33b27352d7583820e3ebe62ec942c8be9bce364eda1"
+  },
+  "c2_xor_prefix": {
+    "flag": "flag{xor_known_prefix_attack}",
+    "flag_sha256": "1be42fe966a55e4ecd4d79fe12193c8912d9882688822971d9a054e88a54e211"
+  },
+  "c3_rsa_fermat": {
+    "flag": "flag{f3rma7}",
+    "flag_sha256": "fa78c428ecc7fafaf096a3117f4bb78f3e99c46efbd8c97201daf946c6494806"
+  },
+  "c4_log_forensics": {
+    "flag": "flag{log_forensics_exfil_found}",
+    "flag_sha256": "9e1be75988dfd3ca8350db51c02c75f39f81c0161cd6d8c27eebca4108e1e6ca"
+  },
+  "c5_png_lsb": {
+    "flag": "flag{png_lsb_stego_hidden}",
+    "flag_sha256": "645c8379ed89f5db73bf48f273c3dee03c9f04cdc8e8ef498de2aa1e8a6e2d0f"
+  }
+}

@@ -1,0 +1,1 @@
+deployment notes: apache + php backend, admin console at /admin

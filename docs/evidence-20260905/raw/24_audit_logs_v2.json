@@ -1,0 +1,173 @@
+# GET /api/audit/logs?limit=50
+# status=200
+
+{
+  "logs": [
+    {
+      "id": "audit_a39f3a4288d14d6e86f99970dbec1848",
+      "createdAt": "2026-09-04T19:06:13.2606224Z",
+      "level": "info",
+      "category": "auth",
+      "action": "login",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "dda23409",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录成功",
+      "detail": {
+        "expires_at": "2026-09-05T07:06:13Z"
+      }
+    },
+    {
+      "id": "audit_9049ab9089f341c5899f024ba34a1091",
+      "createdAt": "2026-09-04T19:05:31.3004389Z",
+      "level": "info",
+      "category": "auth",
+      "action": "login",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "6b44f750",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录成功",
+      "detail": {
+        "expires_at": "2026-09-05T07:05:31Z"
+      }
+    },
+    {
+      "id": "audit_c34eb362799045278828e18885bf527a",
+      "createdAt": "2026-09-04T19:05:30.5781366Z",
+      "level": "info",
+      "category": "auth",
+      "action": "change_password",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "8bd15a01",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录密码已修改"
+    },
+    {
+      "id": "audit_a13c9f718af64845a4cc3214e3491de9",
+      "createdAt": "2026-09-04T19:05:30.1127311Z",
+      "level": "warn",
+      "category": "rbac",
+      "action": "access_denied",
+      "result": "failure",
+      "actor": "auditor_evd",
+      "sessionHint": "3a994a49",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "route",
+      "resourceId": "/api/terminal/run",
+      "message": "RBAC 拒绝访问",
+      "detail": {
+        "method": "POST",
+        "permission": "terminal:execute",
+        "reason": "permission_denied"
+      }
+    },
+    {
+      "id": "audit_fb904d9545624157a101ee2a60b5e426",
+      "createdAt": "2026-09-04T19:05:30.0874Z",
+      "level": "warn",
+      "category": "rbac",
+      "action": "access_denied",
+      "result": "failure",
+      "actor": "auditor_evd",
+      "sessionHint": "3a994a49",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "route",
+      "resourceId": "/api/rbac/users",
+      "message": "RBAC 拒绝访问",
+      "detail": {
+        "method": "POST",
+        "permission": "rbac:write",
+        "reason": "permission_denied"
+      }
+    },
+    {
+      "id": "audit_b590db5b8b04444d9ec6ff1114ee8952",
+      "createdAt": "2026-09-04T19:05:29.8190695Z",
+      "level": "info",
+      "category": "auth",
+      "action": "login",
+      "result": "success",
+      "actor": "auditor_evd",
+      "sessionHint": "3a994a49",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录成功",
+      "detail": {
+        "expires_at": "2026-09-05T07:05:29Z"
+      }
+    },
+    {
+      "id": "audit_810d02355a6f4339b84fad4e9f4e6000",
+      "createdAt": "2026-09-04T19:05:29.6782912Z",
+      "level": "info",
+      "category": "rbac",
+      "action": "create_user",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "8bd15a01",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "user",
+      "resourceId": "4ebf483b-9cde-47ff-a41e-0945f73eec54",
+      "message": "创建平台用户",
+      "detail": {
+        "username": "auditor_evd"
+      }
+    },
+    {
+      "id": "audit_ef42e72a28124cd3aa37522af25fe7a6",
+      "createdAt": "2026-09-04T19:05:29.5156493Z",
+      "level": "info",
+      "category": "auth",
+      "action": "login",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "8bd15a01",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录成功",
+      "detail": {
+        "expires_at": "2026-09-05T07:05:29Z"
+      }
+    },
+    {
+      "id": "audit_c989302a2462413aa1422a8201c69e8e",
+      "createdAt": "2026-09-04T19:04:43.3254039Z",
+      "level": "warn",
+      "category": "auth",
+      "action": "login",
+      "result": "failure",
+      "actor": "admin",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "message": "登录失败：密码错误"
+    },
+    {
+      "id": "audit_568ca828efcf4d9d88fd8b17b1efbcad",
+      "createdAt": "2026-09-04T19:04:06.3294078Z",
+      "level": "info",
+      "category": "auth",
+      "action": "login",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "b14a6c16",
+      "clientIp": "127.0.0.1",
+      "userAgent": "curl/8.21.0",
+      "message": "登录成功",
+      "detail": {
+        "expires_at": "2026-09-05T07:04:06Z"
+      }
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 10
+}

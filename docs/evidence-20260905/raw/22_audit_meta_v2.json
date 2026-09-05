@@ -1,0 +1,10 @@
+# GET /api/audit/meta
+# status=200
+
+{
+  "default_page_size": 20,
+  "enabled": true,
+  "max_export": 5000,
+  "max_page_size": 100,
+  "retention_days": 15
+}

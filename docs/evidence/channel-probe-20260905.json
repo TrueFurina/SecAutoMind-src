@@ -1,0 +1,97 @@
+{
+  "probed_at": "2026-09-05T10:28:10",
+  "config": "config.yaml",
+  "channels_total": 8,
+  "channels_ok": 2,
+  "note": "通道能力档不同质——跨通道的实验数据必须分层标注，禁止合并统计同一指标。",
+  "results": [
+    {
+      "id": "ark",
+      "name": "火山方舟",
+      "model": "doubao-seed-1-6-250615",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "ok": false,
+      "http": 404,
+      "latency_ms": 343,
+      "reply": null,
+      "error": "HTTP 404: {\"error\":{\"code\":\"InvalidEndpointOrModel.NotFound\",\"message\":\"The model or endpoint doubao-seed-1-6-250615 does not exist or you do not have access to it. Request id: 0217885752770817093713527b8c530401a403eec8fc152132271\",\"param\":\"\",\"type\":\"Not Found\"}}"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "model": "deepseek-chat",
+      "base_url": "https://api.deepseek.com/v1",
+      "ok": false,
+      "http": 402,
+      "latency_ms": 505,
+      "reply": null,
+      "error": "HTTP 402: {\"error\":{\"message\":\"Insufficient Balance\",\"type\":\"unknown_error\",\"param\":null,\"code\":\"invalid_request_error\"}}"
+    },
+    {
+      "id": "moonshot",
+      "name": "Moonshot",
+      "model": "moonshot-v1-8k",
+      "base_url": "https://api.moonshot.cn/v1",
+      "ok": false,
+      "http": 404,
+      "latency_ms": 437,
+      "reply": null,
+      "error": "HTTP 404: {\"error\":{\"message\":\"Not found the model moonshot-v1-8k or Permission denied\",\"type\":\"resource_not_found_error\"}}"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "model": "gpt-4o-mini",
+      "base_url": "https://api.openai.com/v1",
+      "ok": false,
+      "http": null,
+      "latency_ms": 10078,
+      "reply": null,
+      "error": "URLError: <urlopen error Tunnel connection failed: 502 Bad Gateway>"
+    },
+    {
+      "id": "qianfan",
+      "name": "百度千帆",
+      "model": "ernie-4.0-turbo-8k",
+      "base_url": "https://qianfan.baidubce.com/v2",
+      "ok": false,
+      "http": 401,
+      "latency_ms": 391,
+      "reply": null,
+      "error": "HTTP 401: {\"error\":{\"code\":\"invalid_model\",\"message\":\"The model does not exist or you do not have access to it.\",\"type\":\"invalid_request_error\"},\"id\":\"as-36fnqikkji\"}"
+    },
+    {
+      "id": "qwen-max",
+      "name": "Qwen Max",
+      "model": "qwen3-max",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "ok": true,
+      "http": 200,
+      "latency_ms": 802,
+      "reply": "OK",
+      "error": null
+    },
+    {
+      "id": "siliconflow",
+      "name": "SiliconFlow",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "ok": false,
+      "http": 402,
+      "latency_ms": 288,
+      "reply": null,
+      "error": "HTTP 402: {\"code\":30001,\"message\":\"Sorry, your account balance is insufficient\",\"data\":null}"
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱 GLM",
+      "model": "glm-4-flash",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "ok": true,
+      "http": 200,
+      "latency_ms": 569,
+      "reply": "OK",
+      "error": null
+    }
+  ]
+}

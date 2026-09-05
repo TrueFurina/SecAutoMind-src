@@ -1,0 +1,40 @@
+# GET /api/hitl/tool-whitelist
+# status=200 elapsed_ms=13
+
+{
+  "defaultReviewer": "audit_agent",
+  "toolWhitelist": [
+    "read_file",
+    "ls",
+    "list_dir",
+    "glob",
+    "grep",
+    "tool_search",
+    "upsert_project_fact",
+    "get_project_fact",
+    "list_project_facts",
+    "search_project_facts",
+    "list_vulnerabilities",
+    "get_vulnerability",
+    "get_asset",
+    "query_assets",
+    "list_knowledge_risk_types",
+    "get_tool_execution",
+    "wait_tool_execution",
+    "batch_task_list",
+    "batch_task_get",
+    "manage_webshell_list",
+    "c2_event",
+    "c2_file",
+    "skill",
+    "task",
+    "write_todos",
+    "write_file",
+    "transfer_to_agent",
+    "exit",
+    "TaskCreate",
+    "TaskGet",
+    "TaskUpdate",
+    "TaskList"
+  ]
+}

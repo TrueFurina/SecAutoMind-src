@@ -1,0 +1,9 @@
+# GET /api/audit/summary
+# status=200 elapsed_ms=25
+
+{
+  "failures": 3,
+  "has_filters": false,
+  "recent_7d": 7,
+  "total": 7
+}

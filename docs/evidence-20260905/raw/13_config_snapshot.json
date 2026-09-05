@@ -1,0 +1,675 @@
+# GET /api/config
+# status=200 elapsed_ms=37
+
+{
+  "ai": {
+    "default_channel": "qwen-max",
+    "channels": {
+      "ark": {
+        "name": "火山方舟",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+        "model": "doubao-seed-1-6-250615",
+        "reasoning": {}
+      },
+      "deepseek": {
+        "name": "DeepSeek",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "reasoning": {
+          "profile": "deepseek"
+        }
+      },
+      "moonshot": {
+        "name": "Moonshot",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://api.moonshot.cn/v1",
+        "model": "moonshot-v1-8k",
+        "reasoning": {}
+      },
+      "openai": {
+        "name": "OpenAI",
+        "provider": "openai",
+        "api_key": "***REDACTED***",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "reasoning": {}
+      },
+      "qianfan": {
+        "name": "百度千帆",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://qianfan.baidubce.com/v2",
+        "model": "ernie-4.0-turbo-8k",
+        "reasoning": {}
+      },
+      "qwen-max": {
+        "name": "Qwen Max",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "model": "qwen3-max",
+        "max_total_tokens": 120000,
+        "max_completion_tokens": 32768,
+        "reasoning": {
+          "mode": "on",
+          "effort": "high",
+          "allow_client_reasoning": true,
+          "profile": "openai_compat"
+        }
+      },
+      "siliconflow": {
+        "name": "SiliconFlow",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "reasoning": {}
+      },
+      "zhipu": {
+        "name": "智谱 GLM",
+        "provider": "openai_compatible",
+        "api_key": "***REDACTED***",
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "model": "glm-4-flash",
+        "reasoning": {}
+      }
+    }
+  },
+  "openai": {
+    "provider": "openai",
+    "api_key": "***REDACTED***",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen3-max",
+    "max_total_tokens": 120000,
+    "max_completion_tokens": 32768,
+    "reasoning": {
+      "mode": "on",
+      "effort": "high",
+      "allow_client_reasoning": true,
+      "profile": "openai_compat"
+    }
+  },
+  "vision": {
+    "enabled": false,
+    "model": "qwen-vl",
+    "timeout_seconds": 60,
+    "max_image_bytes": 5242880,
+    "max_dimension": 2048,
+    "jpeg_quality": 82,
+    "max_payload_bytes": 524288,
+    "skip_preprocess_below_bytes": 2097152,
+    "detail": "auto"
+  },
+  "fofa": {
+    "base_url": "https://fofa.info/api/v1/search/all"
+  },
+  "zoomeye": {
+    "base_url": "https://api.zoomeye.ai/v2/search"
+  },
+  "quake": {
+    "base_url": "https://quake.360.net/api/v3/search/quake_service"
+  },
+  "shodan": {
+    "base_url": "https://api.shodan.io"
+  },
+  "mcp": {
+    "Enabled": false,
+    "Host": "127.0.0.1",
+    "Port": 18098,
+    "AuthHeader": "X-MCP-Token",
+    "AuthHeaderValue": "",
+    "AllowGlobalAccess": false
+  },
+  "tools": [
+    {
+      "name": "c2_payload",
+      "description": "C2 Payload 生成。通过 action 参数选择操作：\n- oneliner: 生成单行 payload。kind 必须与监听器协议一致，否则会失败：\n  • tcp_reverse：默认仅支持 build 加密 Beacon；若监听器 config.allow_legacy_shell=true，才可用 kind: bash, nc, nc_mkfifo, python, perl, powershell。\n  • http_beacon / https_beacon / websocket：仅 HTTP(S) Beacon 轮询，oneliner 只能用 kind: curl_beacon（脚本内用 bash+curl，与「tcp 的 bash」不同）。curl_beacon 返回串末尾含「 &」用于把整个 bash -c 放后台；若用 exec/execute 同步执行，必须整段原样复制（含末尾 &）。若删掉 &，内部 while 死循环占满前台，调用会一直阻塞到超时/杀进程。\n  • 公网部署 tcp_reverse 请用 build 生成加密 Beacon，勿开启 allow_legacy_shell。\n  • 省略 kind 时，会按监听器类型自动选第一个兼容类型（HTTP 系默认为 curl_beacon）。\n- build: 交叉编译 beacon 二进制。支持 http_beacon / https_beacon / websocket / tcp_reverse（tcp_reverse 植入端回连后先发魔数 CSB1，再经 AES-GCM 解密且校验 ImplantToken 后才登记会话）。\n依赖的监听器 bind_port 须避开本服务 Web 端口 18099（配置 server.port，与 c2_listener 描述一致），否则 Beacon 无法正确回连。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_get",
+      "description": "根据 queue_id 获取单个批量任务队列详情（含子任务列表、Cron、调度开关与最近错误信息）。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确提及查看/管理批量任务、任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_pause",
+      "description": "暂停正在运行的批量任务队列（当前子任务会被取消）。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求暂停批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_add_task",
+      "description": "向处于 pending 状态的队列追加一条子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求向批量任务队列添加子任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "query_assets",
+      "description": "分页查询资产。支持精确字段、时间范围、扫描状态和白名单排序。查最久未扫描资产请使用 sort_by=last_scan_at、sort_order=asc；从未扫描资产会排在最前。默认每页 20 条，最大 50 条，返回精简摘要；使用 get_asset 获取单条详情。",
+      "enabled": true
+    },
+    {
+      "name": "list_project_facts",
+      "description": "列出当前项目的事实（分页）。",
+      "enabled": true
+    },
+    {
+      "name": "get_tool_execution",
+      "description": "查询后台工具 execution 的当前状态、结果和错误。用于外部 MCP 工具等待超时后，凭 execution_id 继续查看进度。",
+      "enabled": true
+    },
+    {
+      "name": "webshell_file_write",
+      "description": "在指定 WebShell 连接上写入文件内容（会覆盖已有文件）。",
+      "enabled": true
+    },
+    {
+      "name": "manage_webshell_delete",
+      "description": "删除指定的 WebShell 连接。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_task",
+      "description": "修改 pending 队列中仍为 pending 的子任务文案。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量子任务内容时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "get_vulnerability",
+      "description": "按漏洞 ID 获取完整详情（含 POC、影响、修复建议）。仅能访问当前项目或当前会话下的漏洞（与 list_vulnerabilities 授权范围一致）。",
+      "enabled": true
+    },
+    {
+      "name": "create_asset",
+      "description": "向资产库新增资产。按目标+端口+协议去重；若资产已存在则更新非空字段。至少提供 host、ip、domain 之一。",
+      "enabled": true
+    },
+    {
+      "name": "complete_asset_scan",
+      "description": "目标扫描完成后调用：把资产的上次扫描时间更新为当前时间，并关联当前对话。相关漏洞数量不手填，而是自动统计当前扫描对话中通过 record_vulnerability 保存的漏洞。应在漏洞均已落库后调用；一个扫描对话建议只对应一个资产。",
+      "enabled": true
+    },
+    {
+      "name": "restore_project_fact",
+      "description": "将已废弃（deprecated）的事实恢复为 tentative 或 confirmed，重新参与黑板索引。",
+      "enabled": true
+    },
+    {
+      "name": "cancel_tool_execution",
+      "description": "取消一个后台工具 execution。用于外部 MCP 工具长时间运行、误调用或用户要求停止时。",
+      "enabled": true
+    },
+    {
+      "name": "c2_session",
+      "description": "C2 会话管理。通过 action 参数选择操作：\n- list: 列出会话（可按 listener_id/status/os/search/suspicious 过滤）\n- get: 获取会话详情及最近任务历史（需 session_id）\n- set_sleep: 设置心跳间隔（需 session_id）\n- kill: 下发 exit 任务让 implant 退出（需 session_id）\n- delete: 删除单个会话记录（需 session_id）\n- delete_batch: 批量删除会话（需 session_ids 数组）",
+      "enabled": true
+    },
+    {
+      "name": "c2_event",
+      "description": "获取 C2 事件（上线/掉线/任务/错误），支持按级别/类别/会话/任务/时间过滤",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_schedule_enabled",
+      "description": "设置是否允许 Cron 自动触发该队列。关闭后仍保留 Cron 表达式，仅停止定时自动跑；可用手工「启动」执行。\n仅对 schedule_mode 为 cron 的队列有意义。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求开关批量任务自动调度时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "upsert_project_fact",
+      "description": "写入或更新项目黑板事实，用于跨会话沉淀可复现上下文（非正式漏洞条目；可交付漏洞另用 record_vulnerability）。边渗透边记录：每确认新认知（端口/入口/凭据/可利用点）后立即调用，同 fact_key 覆盖更新，勿等会话结束。禁止仅写结论：summary 须含什么+在哪+如何验证；body 须含攻击链/请求响应/命令等复现细节。发现类建议 fact_key 为 finding|chain|exploit|poc/<slug>，category 对应 finding|chain|exploit|poc，body 按攻击链模板填写。环境类用 target|auth|infra|business/<slug>。同 fact_key 覆盖更新。需当前对话已绑定项目。",
+      "enabled": true
+    },
+    {
+      "name": "wait_tool_execution",
+      "description": "继续等待一个后台工具 execution 完成。每次等待都有 timeout_seconds 上限；若仍未完成，会返回当前状态，模型可稍后再次调用。",
+      "enabled": true
+    },
+    {
+      "name": "webshell_file_read",
+      "description": "在指定 WebShell 连接上读取文件内容。",
+      "enabled": true
+    },
+    {
+      "name": "manage_webshell_update",
+      "description": "更新已存在的 WebShell 连接信息。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_start",
+      "description": "启动或继续执行批量任务队列（pending / paused）。\n与 batch_task_create 配合使用：仅创建队列不会自动执行，需调用本工具才会开始跑子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求启动/继续批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_delete",
+      "description": "删除批量任务队列及其子任务记录。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求删除批量任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_metadata",
+      "description": "修改批量任务队列的标题、角色和代理模式。仅在队列非 running 状态下可修改。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量任务队列属性时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_remove_task",
+      "description": "从 pending 队列中删除仍为 pending 的子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求删除批量子任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "delete_asset",
+      "description": "按 ID 永久删除资产记录。仅在用户明确要求删除时调用。",
+      "enabled": true
+    },
+    {
+      "name": "manage_webshell_test",
+      "description": "测试指定的 WebShell 连接是否可用，会尝试执行一个简单的命令（如 whoami 或 dir）。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_list",
+      "description": "列出批量任务队列（精简摘要，省上下文）。含队列元数据、子任务 id/status/截断后的 message、各状态计数。完整子任务（含 result/error/conversationId/时间等）请用 batch_task_get(queue_id)。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确提及查看/管理批量任务、任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_rerun",
+      "description": "重跑已完成或已取消的批量任务队列。会重置所有子任务状态后重新执行一轮。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求重跑批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_schedule",
+      "description": "修改批量任务队列的调度方式和 Cron 表达式。仅在队列非 running 状态下可修改。\nschedule_mode 为 cron 时必须提供有效 cron_expr；为 manual 时会清除 Cron 配置。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量任务调度配置时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "list_vulnerabilities",
+      "description": "列出当前授权范围内的漏洞（摘要）。默认：对话已绑定项目时列出该项目下全部漏洞；未绑项目时仅列出当前会话漏洞。可用 scope=conversation 仅看本会话。记录新漏洞前建议先调用以避免重复。",
+      "enabled": true
+    },
+    {
+      "name": "update_asset",
+      "description": "按 ID 局部更新资产，只修改显式传入的字段；可传空 project_id 清除项目绑定，可传空 tags 清空标签。",
+      "enabled": true
+    },
+    {
+      "name": "get_project_fact",
+      "description": "按 fact_key 获取项目事实完整 body 与元数据。摘要不足时必须调用本工具，禁止臆造细节。",
+      "enabled": true
+    },
+    {
+      "name": "manage_webshell_list",
+      "description": "列出已保存的 WebShell 连接，返回连接ID、URL、类型、所属项目、备注等信息。默认按当前对话项目边界过滤：项目对话看本项目，未绑定项目的对话看未绑定连接；显式传 project_id 时按指定项目过滤。",
+      "enabled": true
+    },
+    {
+      "name": "c2_listener",
+      "description": "C2 监听器管理。通过 action 参数选择操作：\n- list: 列出所有监听器\n- get: 获取监听器详情（需 listener_id）\n- create: 创建监听器（需 name, type, bind_port）。成功时除 listener 外会返回 implant_token（仅此一次，用于 X-Implant-Token / oneliner；list/get/start 不再返回）\n- update: 更新监听器配置（需 listener_id，可改 name/bind_host/bind_port/remark/config/callback_host）\n- start: 启动监听器（需 listener_id）\n- stop: 停止监听器（需 listener_id）\n- delete: 删除监听器（需 listener_id）\n监听器类型: tcp_reverse, http_beacon, https_beacon, websocket\ntcp_reverse 默认仅接受 CSB1 加密 Beacon（AES-GCM + ImplantToken）才登记会话；经典 bash/nc 反弹需在 config.allow_legacy_shell=true（公网不推荐）。\n端口约束：create/update 的 bind_port 禁止与本平台 Web/API 所用端口相同。当前本服务该端口为 18099（配置项 server.port，随进程启动从配置文件加载）。若 bind_port 与此相同会导致本服务或监听器 bind 失败、Beacon/oneliner 误连到 Web 而非 C2。请为监听器另选空闲端口。",
+      "enabled": true
+    },
+    {
+      "name": "c2_task",
+      "description": "在 C2 会话上下发任务。所有任务类型通过 task_type 参数指定：\n- exec: 执行命令（需 command）\n- shell: 交互式命令，保持 cwd（需 command）\n- pwd/ps/screenshot/socks_stop: 无额外参数\n- cd/ls: 需 path\n- kill_proc: 需 pid\n- upload: 需 remote_path + file_id\n- download: 需 remote_path\n- port_fwd: 需 action(start/stop) + local_port + remote_host + remote_port\n- socks_start: 需 port（默认 1080）\n- load_assembly: 需 data(base64) 或 file_id，可选 args\n- persist: 可选 method(auto/cron/bashrc/launchagent/registry/schtasks)\n返回 task_id，用 c2_task_manage 的 wait/get_result 获取结果。",
+      "enabled": true
+    },
+    {
+      "name": "c2_file",
+      "description": "C2 文件管理。通过 action 参数选择操作：\n- list: 列出会话的文件传输记录（需 session_id）\n- get_result: 获取任务结果文件路径（截图等，需 task_id）",
+      "enabled": true
+    },
+    {
+      "name": "list_knowledge_risk_types",
+      "description": "获取知识库中所有可用的风险类型（risk_type）列表。在搜索知识库之前，可以先调用此工具获取可用的风险类型，然后使用正确的风险类型进行精确搜索，这样可以大幅减少检索时间并提高检索准确性。",
+      "enabled": true
+    },
+    {
+      "name": "record_vulnerability",
+      "description": "记录发现的漏洞详情到漏洞管理系统。必须按“仅看本记录即可复现”的标准填写：目标、漏洞类型、触发点、复现步骤、证据/POC、实际影响和修复建议；前置条件与复测方式为推荐填写项。边渗透边记录：每验证出一条可复现漏洞后立即调用，勿等会话结束。记录前可先 list_vulnerabilities 避免重复。",
+      "enabled": true
+    },
+    {
+      "name": "get_asset",
+      "description": "按资产 ID 返回完整资产详情。查询列表时先用 query_assets，避免一次拉取过多详情。",
+      "enabled": true
+    },
+    {
+      "name": "search_knowledge_base",
+      "description": "在知识库中搜索相关的安全知识。当你需要了解特定漏洞类型、攻击技术、检测方法等安全知识时，可以使用此工具进行检索。工具基于向量嵌入与余弦相似度检索（与 Eino retriever 语义一致）。建议：在搜索前可以先调用 list_knowledge_risk_types 工具获取可用的风险类型，然后使用正确的 risk_type 参数进行精确搜索，这样可以大幅减少检索时间。",
+      "enabled": true
+    },
+    {
+      "name": "webshell_exec",
+      "description": "在指定的 WebShell 连接上执行一条系统命令，返回命令的标准输出。connection_id 由用户在 AI 助手上下文中选定。",
+      "enabled": true
+    },
+    {
+      "name": "manage_webshell_add",
+      "description": "添加新的 WebShell 连接到管理系统。支持 PHP、ASP、ASPX、JSP 等类型的一句话木马。",
+      "enabled": true
+    },
+    {
+      "name": "c2_task_manage",
+      "description": "C2 任务管理。通过 action 参数选择操作：\n- get_result: 获取任务详情和结果（需 task_id）\n- wait: 阻塞等待任务完成并返回结果（需 task_id）\n- list: 列出任务（可按 session_id/status 过滤）\n- cancel: 取消排队中的任务（需 task_id）",
+      "enabled": true
+    },
+    {
+      "name": "c2_profile",
+      "description": "C2 Malleable Profile 管理（控制 beacon 通信伪装）。通过 action 参数选择操作：\n- list: 列出所有 Profile\n- get: 获取 Profile 详情（需 profile_id）\n- create: 创建 Profile（需 name，可选 user_agent/uris/request_headers/response_headers/body_template/jitter_min_ms/jitter_max_ms）\n- update: 更新 Profile（需 profile_id）\n- delete: 删除 Profile（需 profile_id）",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_create",
+      "description": "⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求创建批量任务、任务队列时才可调用。禁止在用户未提及”批量任务””任务队列””定时任务”等关键词时自行调用。如果用户只是让你做某件事，请在当前对话中直接完成，不要自作主张创建任务队列。\n\n【用途】应用内「任务管理 / 批量任务队列」：把多条彼此独立的用户指令登记成一条队列，便于在界面里查看进度、暂停/继续、定时重跑等。这是队列数据与调度入口，不是再开一个”子代理会话”替你探索当前问题。\n\n【何时用】用户明确要批量排队执行、Cron 周期跑同一批指令、或需要与任务管理页面对齐时调用。需要即时追问、强依赖当前对话上下文的分析/编码，应在本对话内直接完成，不要为了”委派”而创建队列。\n\n【参数】tasks（字符串数组）或 tasks_text（多行，每行一条）二选一；每项是一条将来由系统按队列顺序执行的指令文案。agent_mode：eino_single（Eino ADK 单代理，默认）、deep / plan_execute / supervisor（需系统启用多代理）。非”把主对话拆给子代理”。schedule_mode：manual（默认）或 cron；cron 须填 cron_expr（5 段，如 “0 */6 * * *”）。\n\n【执行】默认创建后为 pending，不自动跑。execute_now=true 可创建后立即跑；否则之后调用 batch_task_start。Cron 自动下一轮需 schedule_enabled 为 true（可用 batch_task_schedule_enabled）。",
+      "enabled": true
+    },
+    {
+      "name": "search_project_facts",
+      "description": "按关键词搜索项目事实（summary/body/fact_key）。",
+      "enabled": true
+    },
+    {
+      "name": "deprecate_project_fact",
+      "description": "将事实标记为 deprecated，从黑板索引中排除。",
+      "enabled": true
+    },
+    {
+      "name": "webshell_file_list",
+      "description": "在指定 WebShell 连接上列出目录内容。path 默认为当前目录（.）。",
+      "enabled": true
+    }
+  ],
+  "agent": {
+    "max_iterations": 12000,
+    "tool_timeout_minutes": 60,
+    "tool_wait_timeout_seconds": 300,
+    "external_mcp_max_concurrent_per_server": 5,
+    "external_mcp_max_concurrent_total": 16,
+    "external_mcp_circuit_failure_threshold": 15,
+    "external_mcp_circuit_cooldown_seconds": 60,
+    "shell_no_output_timeout_seconds": 1200
+  },
+  "hitl": {
+    "audit_model": {
+      "api_key": "",
+      "base_url": "",
+      "model": "",
+      "reasoning": {}
+    },
+    "tool_whitelist": [
+      "read_file",
+      "ls",
+      "list_dir",
+      "glob",
+      "grep",
+      "tool_search",
+      "upsert_project_fact",
+      "get_project_fact",
+      "list_project_facts",
+      "search_project_facts",
+      "list_vulnerabilities",
+      "get_vulnerability",
+      "get_asset",
+      "query_assets",
+      "list_knowledge_risk_types",
+      "get_tool_execution",
+      "wait_tool_execution",
+      "batch_task_list",
+      "batch_task_get",
+      "manage_webshell_list",
+      "c2_event",
+      "c2_file"
+    ],
+    "audit_agent_prompt": "你是 SecAutoMind 人机协同审计 Agent。审查 Agent 即将执行的工具调用是否会对系统造成实质性损害。\n\n你会收到 JSON，包含 hitlMode、toolName、arguments/argumentsObj、userMessage、thinking、reasoningChain、planning 等字段。\n\n规则优先级：\n- 必须 reject 的规则\n- 必须 approve 的规则\n- 默认放行规则\n\n规则匹配要求：\n- 如果同时命中 reject 和 approve，必须 reject。\n- 每次裁决必须给出一个规则编号，不得输出“命中规则：无”。\n- 未命中明确 reject 或 approve 规则，但未发现明确破坏行为时，命中 D1：默认放行。\n- 不得仅凭“本地执行”“设置超时”“文件名包含 test”判断脚本无害；必须检查实际 command、代码或请求参数。\n- 如果脚本具体内容不可见，应表述为“当前参数未显示明确高危操作”，不能断言“无持久化影响”。\n\n裁决基调（默认放行）：\n- 绝大多数渗透测试操作（包括各类攻击 payload）都应放行\n- 在裁决之前需要判断出：1、此请求的是干什么（理解请求内容）？2、此请求造成什么后果？\n- 仅在「明确会直接破坏目标业务系统正常运行，或造成真实用户数据丢失/不可逆篡改」时 → reject\n- 信息不足、参数略宽泛、仅为探测意图时 → approve\n- 拿不准时 → approve（宁可放过可恢复的测试，不要误拦合法攻击）\n\n必须 reject 的高危情形（示例，非穷举）：\n- 修改/重置任意用户或管理员密码、强制下线真实用户\n- 修改服务器或服务配置（系统配置、Web/数据库参数、防火墙、启动项、计划任务）\n- 修改/创建/删除用户、角色、权限（账户体系篡改）\n- 删除或大规模破坏数据/文件（DROP/TRUNCATE/DELETE 全表、rm 重要文件、清空数据库）\n- 停止、禁用、重启业务服务（systemctl stop、kill 关键进程、shutdown、reboot）\n- 大规模压测或高并发造成 DoS\n\n以下情形必须 approve（即使看起来“攻击性强”或包含写操作）：\n- 各类漏洞探测与利用 payload（SQL 注入含读写型、命令注入、反序列化、文件包含、路径遍历、SSRF、SSTI、XXE 等）\n- 文件上传测试，包括上传 webshell、写入 webshell 文件\n- 命令执行探测、反弹 Shell、dnslog / 数据外带探测\n- 数据库命令执行、写文件、写计划任务、内存马注入等 getshell 利用\n- 常规速率的口令爆破（非 DoS 级）\n- 信息收集、端口/目录扫描、枚举、抓取\n- 读取、查询、探测类操作（含敏感文件）\n- 攻陷后无害侦察命令（whoami/id/uname/ls/cat 等）\n- 参数宽泛但无明确破坏意图的请求\n\n判定原则：\n- “写”本身不是拦截理由——渗透测试大量依赖写操作（注入、上传、爆破、getshell）\n- 关键看是否破坏「业务可用性 / 关键数据完整性」\n- 只有明确命中上方 reject 清单才 reject\n\n仅输出一行 JSON，不要 markdown 代码块：\n{\"decision\":\"approve\"|\"reject\",\"comment\":\"实际操作：...；成功后的后果：...；命中规则：...\"}",
+    "audit_agent_prompt_review_edit": "你是 SecAutoMind 人机协同审计 Agent。审查 Agent 即将执行的工具调用是否会对系统造成实质性损害。\n\n你会收到 JSON，包含 hitlMode、toolName、arguments/argumentsObj、userMessage、thinking、reasoningChain、planning 等字段。\n\n规则优先级：\n- 必须 reject 的规则\n- 必须 approve 的规则\n- 默认放行规则\n\n规则匹配要求：\n- 如果同时命中 reject 和 approve，必须 reject。\n- 每次裁决必须给出一个规则编号，不得输出“命中规则：无”。\n- 未命中明确 reject 或 approve 规则，但未发现明确破坏行为时，命中 D1：默认放行。\n- 不得仅凭“本地执行”“设置超时”“文件名包含 test”判断脚本无害；必须检查实际 command、代码或请求参数。\n- 如果脚本具体内容不可见，应表述为“当前参数未显示明确高危操作”，不能断言“无持久化影响”。\n\n裁决基调（默认放行）：\n- 绝大多数渗透测试操作（包括各类攻击 payload）都应放行\n- 在裁决之前需要判断出：1、此请求的是干什么（理解请求内容）？2、此请求造成什么后果？\n- 仅在「明确会直接破坏目标业务系统正常运行，或造成真实用户数据丢失/不可逆篡改」时 → reject\n- 信息不足、参数略宽泛、仅为探测意图时 → approve\n- 拿不准时 → approve（宁可放过可恢复的测试，不要误拦合法攻击）\n\n必须 reject 的高危情形（示例，非穷举）：\n- 修改/重置任意用户或管理员密码、强制下线真实用户\n- 修改服务器或服务配置（系统配置、Web/数据库参数、防火墙、启动项、计划任务）\n- 修改/创建/删除用户、角色、权限（账户体系篡改）\n- 删除或大规模破坏数据/文件（DROP/TRUNCATE/DELETE 全表、rm 重要文件、清空数据库）\n- 停止、禁用、重启业务服务（systemctl stop、kill 关键进程、shutdown、reboot）\n- 大规模压测或高并发造成 DoS\n\n以下情形必须 approve（即使看起来“攻击性强”或包含写操作）：\n- 各类漏洞探测与利用 payload（SQL 注入含读写型、命令注入、反序列化、文件包含、路径遍历、SSRF、SSTI、XXE 等）\n- 文件上传测试，包括上传 webshell、写入 webshell 文件\n- 命令执行探测、反弹 Shell、dnslog / 数据外带探测\n- 数据库命令执行、写文件、写计划任务、内存马注入等 getshell 利用\n- 常规速率的口令爆破（非 DoS 级）\n- 信息收集、端口/目录扫描、枚举、抓取\n- 读取、查询、探测类操作（含敏感文件）\n- 攻陷后无害侦察命令（whoami/id/uname/ls/cat 等）\n- 参数宽泛但无明确破坏意图的请求\n\n判定原则：\n- “写”本身不是拦截理由——渗透测试大量依赖写操作（注入、上传、爆破、getshell）\n- 关键看是否破坏「业务可用性 / 关键数据完整性」\n- 只有明确命中上方 reject 清单才 reject\n\n仅输出一行 JSON，不要 markdown 代码块：\n{\"decision\":\"approve\"|\"reject\",\"comment\":\"实际操作：...；成功后的后果：...；命中规则：...\",\"editedArguments\":{...}}\n\neditedArguments 规则（仅 approve 且需要改参时填写，否则省略该字段）：\n- 提供完整替换后的工具参数对象，键名与 argumentsObj 一致\n- 只做最小必要修改以收窄范围、消除风险（如限制 path、去掉危险 flag）\n- 禁止扩大攻击面：不得扩大目标范围、提升权限或引入破坏性参数\n- 无法安全改参且存在上述高危情形时应 reject，不要勉强 approve",
+    "retention_days": 90,
+    "default_mode": "approval",
+    "default_reviewer": "audit_agent",
+    "default_timeout_seconds": 300
+  },
+  "knowledge": {
+    "enabled": true,
+    "base_path": "knowledge_base",
+    "embedding": {
+      "provider": "openai",
+      "model": "text-embedding-v4",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key": "***REDACTED***"
+    },
+    "retrieval": {
+      "top_k": 5,
+      "similarity_threshold": 0.4,
+      "multi_query": {
+        "max_queries": 4
+      },
+      "rerank": {},
+      "post_retrieve": {
+        "prefetch_top_k": 20
+      }
+    },
+    "indexing": {
+      "chunk_strategy": "markdown_then_recursive",
+      "request_timeout_seconds": 120,
+      "chunk_size": 512,
+      "chunk_overlap": 50,
+      "rate_limit_delay_ms": 300,
+      "max_retries": 3,
+      "retry_delay_ms": 1000,
+      "batch_size": 10
+    }
+  },
+  "robots": {
+    "session": {},
+    "wechat": {
+      "enabled": false,
+      "base_url": "https://ilinkai.weixin.qq.com",
+      "bot_type": "3",
+      "bot_agent": "SecAutoMind/1.0",
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "wecom": {
+      "enabled": false,
+      "token": "",
+      "encoding_aes_key": "",
+      "corp_id": "",
+      "secret": "",
+      "agent_id": 0,
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "dingtalk": {
+      "enabled": false,
+      "client_id": "",
+      "client_secret": "",
+      "allow_conversation_id_fallback": false,
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "lark": {
+      "enabled": false,
+      "app_id": "cli_a90c9506f1381cd3",
+      "app_secret": "***REDACTED***",
+      "verify_token": "",
+      "allow_chat_id_fallback": false,
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "telegram": {
+      "enabled": false,
+      "bot_token": "",
+      "allow_group_messages": false,
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "slack": {
+      "enabled": false,
+      "bot_token": "",
+      "app_token": "",
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "discord": {
+      "enabled": false,
+      "bot_token": "",
+      "allow_guild_messages": false,
+      "auth": {
+        "mode": "user_binding"
+      }
+    },
+    "qq": {
+      "enabled": false,
+      "app_id": "",
+      "client_secret": "",
+      "sandbox": true,
+      "auth": {
+        "mode": "user_binding"
+      }
+    }
+  },
+  "multi_agent": {
+    "enabled": true,
+    "robot_default_agent_mode": "eino_single",
+    "batch_use_multi_agent": false,
+    "sub_agent_count": 0,
+    "orchestration": "deep",
+    "plan_execute_loop_max_iterations": 0,
+    "summarization_user_intent_ledger_max_runes": 96000,
+    "summarization_user_intent_ledger_entry_max_runes": 16000,
+    "latest_user_message_max_runes": 48000,
+    "latest_user_message_head_runes": 24000,
+    "latest_user_message_tail_runes": 24000,
+    "model_retry_max_retries": 0,
+    "model_retry_max_backoff_sec": 0,
+    "model_failover_max_retries": 0,
+    "tool_search_always_visible_tools": [
+      "read_file",
+      "glob",
+      "grep",
+      "analyze_image",
+      "write_file",
+      "edit_file",
+      "execute",
+      "task",
+      "transfer_to_agent",
+      "exit",
+      "write_todos",
+      "skill",
+      "tool_search",
+      "TaskCreate",
+      "TaskGet",
+      "TaskUpdate",
+      "TaskList",
+      "record_vulnerability",
+      "list_vulnerabilities",
+      "get_vulnerability",
+      "get_tool_execution",
+      "wait_tool_execution",
+      "cancel_tool_execution",
+      "list_knowledge_risk_types",
+      "search_knowledge_base",
+      "webshell_exec",
+      "webshell_file_list",
+      "webshell_file_read",
+      "webshell_file_write",
+      "manage_webshell_list",
+      "manage_webshell_add",
+      "manage_webshell_update",
+      "manage_webshell_delete",
+      "manage_webshell_test",
+      "batch_task_list",
+      "batch_task_get",
+      "batch_task_start",
+      "batch_task_rerun",
+      "batch_task_pause",
+      "batch_task_update_metadata",
+      "batch_task_update_schedule",
+      "batch_task_schedule_enabled",
+      "batch_task_update_task",
+      "batch_task_remove_task",
+      "batch_task_delete",
+      "batch_task_create",
+      "batch_task_add_task",
+      "http-framework-test",
+      "exec"
+    ],
+    "tool_search_always_visible_effective_tools": [
+      "read_file",
+      "glob",
+      "grep",
+      "analyze_image",
+      "write_file",
+      "edit_file",
+      "execute",
+      "task",
+      "transfer_to_agent",
+      "exit",
+      "write_todos",
+      "skill",
+      "tool_search",
+      "TaskCreate",
+      "TaskGet",
+      "TaskUpdate",
+      "TaskList",
+      "record_vulnerability",
+      "list_vulnerabilities",
+      "get_vulnerability",
+      "get_tool_execution",
+      "wait_tool_execution",
+      "cancel_tool_execution",
+      "list_knowledge_risk_types",
+      "search_knowledge_base",
+      "webshell_exec",
+      "webshell_file_list",
+      "webshell_file_read",
+      "webshell_file_write",
+      "manage_webshell_list",
+      "manage_webshell_add",
+      "manage_webshell_update",
+      "manage_webshell_delete",
+      "manage_webshell_test",
+      "batch_task_list",
+      "batch_task_get",
+      "batch_task_start",
+      "batch_task_rerun",
+      "batch_task_pause",
+      "batch_task_update_metadata",
+      "batch_task_update_schedule",
+      "batch_task_schedule_enabled",
+      "batch_task_update_task",
+      "batch_task_remove_task",
+      "batch_task_delete",
+      "batch_task_create",
+      "batch_task_add_task",
+      "http-framework-test",
+      "exec",
+      "create_asset",
+      "get_asset",
+      "query_assets",
+      "update_asset",
+      "delete_asset",
+      "complete_asset_scan",
+      "upsert_project_fact",
+      "get_project_fact",
+      "list_project_facts",
+      "search_project_facts",
+      "deprecate_project_fact",
+      "restore_project_fact",
+      "c2_listener",
+      "c2_session",
+      "c2_task",
+      "c2_task_manage",
+      "c2_payload",
+      "c2_event",
+      "c2_profile",
+      "c2_file"
+    ]
+  },
+  "c2": {
+    "enabled": true
+  }
+}

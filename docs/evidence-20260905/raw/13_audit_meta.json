@@ -1,0 +1,6 @@
+# GET /api/audit/meta
+# status=401 elapsed_ms=22
+
+{
+  "error": "未授权访问，请先登录"
+}

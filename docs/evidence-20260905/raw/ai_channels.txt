@@ -1,0 +1,2 @@
+channel_ids=ark,deepseek,moonshot,openai,qianfan,qwen-max,siliconflow,zhipu
+default=qwen-max

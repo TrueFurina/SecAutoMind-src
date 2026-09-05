@@ -272,6 +272,45 @@ func RegisterKnowledgeTool(
 
 	mcpServer.RegisterTool(searchTool, searchHandler)
 	logger.Debug("知识检索工具已注册", zap.String("toolName", searchTool.Name))
+
+	// 知识沉淀工具：Agent 可将高价值工具执行结果/复盘结论显式写入知识库，
+	// 实现「工具调用伴随知识库、随运行过程热更新」（创新点 1）。
+	if manager != nil {
+		ingestTool := mcp.Tool{
+			Name:             builtin.ToolIngestKnowledgeItem,
+			Description:      "将一条知识沉淀写入知识库（热更新）：用于把工具执行得到的高价值结论、复盘经验、漏洞情报等固化为可检索知识。写入后可被后续检索命中。参数：category 分类（建议用已有风险类型或 tool_insights）、title 标题（建议含工具名/目标摘要）、content 正文、source 来源说明（可选，建议填触发工具名）。",
+			ShortDescription: "把工具执行结论沉淀写入知识库",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"category": map[string]interface{}{"type": "string", "description": "知识分类（已有风险类型或新分类）"},
+					"title":    map[string]interface{}{"type": "string", "description": "知识条目标题"},
+					"content":  map[string]interface{}{"type": "string", "description": "知识正文（建议结构化）"},
+					"source":   map[string]interface{}{"type": "string", "description": "来源说明（触发工具名/任务），可选"},
+				},
+				"required": []string{"category", "title", "content"},
+			},
+		}
+		ingestHandler := func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
+			category := strings.TrimSpace(toolStringArg(args, "category"))
+			title := strings.TrimSpace(toolStringArg(args, "title"))
+			content := toolStringArg(args, "content")
+			if category == "" || title == "" || strings.TrimSpace(content) == "" {
+				return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "参数缺失：category/title/content 均必填"}}, IsError: true}, nil
+			}
+			if source := toolStringArg(args, "source"); source != "" {
+				content = "> 来源: " + source + "\n\n" + content
+			}
+			item, err := manager.CreateItem(category, title, content)
+			if err != nil {
+				logger.Error("知识沉淀失败", zap.Error(err), zap.String("category", category), zap.String("title", title))
+				return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: "知识沉淀失败: " + err.Error()}}, IsError: true}, nil
+			}
+			return &mcp.ToolResult{Content: []mcp.Content{{Type: "text", Text: fmt.Sprintf("知识沉淀成功。\nid: %s\ncategory: %s\ntitle: %s\n（已入库，可被检索命中）", item.ID, item.Category, item.Title)}}}, nil
+		}
+		mcpServer.RegisterTool(ingestTool, ingestHandler)
+		logger.Debug("知识沉淀工具已注册", zap.String("toolName", ingestTool.Name))
+	}
 }
 
 // contains 检查切片是否包含元素
@@ -282,6 +321,27 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// toolStringArg 从工具调用参数中安全读取字符串（兼容 map[string]interface{} 各种取值形态）
+func toolStringArg(args map[string]interface{}, key string) string {
+	if args == nil {
+		return ""
+	}
+	raw, ok := args[key]
+	if !ok || raw == nil {
+		return ""
+	}
+	switch v := raw.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
 
 // GetRetrievalMetadata 从工具调用中提取检索元数据（用于日志记录）

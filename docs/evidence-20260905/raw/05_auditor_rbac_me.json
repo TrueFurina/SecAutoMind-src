@@ -1,0 +1,64 @@
+# GET /api/rbac/me
+# status=200 elapsed_ms=33
+
+{
+  "permission_scopes": {
+    "agents:read": "all",
+    "asset:read": "all",
+    "attackchain:read": "all",
+    "audit:read": "all",
+    "auth:self": "all",
+    "c2:read": "all",
+    "chat:read": "all",
+    "dashboard:read": "all",
+    "files:read": "all",
+    "hitl:read": "all",
+    "knowledge:read": "all",
+    "mcp:read": "all",
+    "monitor:read": "all",
+    "notification:read": "all",
+    "openapi:read": "all",
+    "project:read": "all",
+    "robot:read": "all",
+    "roles:read": "all",
+    "skills:read": "all",
+    "tasks:read": "all",
+    "vulnerability:read": "all",
+    "webshell:read": "all",
+    "workflow:read": "all"
+  },
+  "permissions": [
+    "audit:read",
+    "dashboard:read",
+    "knowledge:read",
+    "notification:read",
+    "roles:read",
+    "vulnerability:read",
+    "webshell:read",
+    "files:read",
+    "hitl:read",
+    "monitor:read",
+    "robot:read",
+    "attackchain:read",
+    "chat:read",
+    "mcp:read",
+    "openapi:read",
+    "project:read",
+    "skills:read",
+    "workflow:read",
+    "agents:read",
+    "asset:read",
+    "auth:self",
+    "c2:read",
+    "tasks:read"
+  ],
+  "roles": [
+    "auditor"
+  ],
+  "scope": "all",
+  "user": {
+    "display_name": "",
+    "id": "4ebf483b-9cde-47ff-a41e-0945f73eec54",
+    "username": "auditor_evd"
+  }
+}

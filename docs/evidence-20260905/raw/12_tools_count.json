@@ -1,0 +1,112 @@
+# GET /api/config/tools
+# status=200 elapsed_ms=36
+
+{
+  "tools": [
+    {
+      "name": "batch_task_add_task",
+      "description": "向处于 pending 状态的队列追加一条子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求向批量任务队列添加子任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_create",
+      "description": "⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求创建批量任务、任务队列时才可调用。禁止在用户未提及”批量任务””任务队列””定时任务”等关键词时自行调用。如果用户只是让你做某件事，请在当前对话中直接完成，不要自作主张创建任务队列。\n\n【用途】应用内「任务管理 / 批量任务队列」：把多条彼此独立的用户指令登记成一条队列，便于在界面里查看进度、暂停/继续、定时重跑等。这是队列数据与调度入口，不是再开一个”子代理会话”替你探索当前问题。\n\n【何时用】用户明确要批量排队执行、Cron 周期跑同一批指令、或需要与任务管理页面对齐时调用。需要即时追问、强依赖当前对话上下文的分析/编码，应在本对话内直接完成，不要为了”委派”而创建队列。\n\n【参数】tasks（字符串数组）或 tasks_text（多行，每行一条）二选一；每项是一条将来由系统按队列顺序执行的指令文案。agent_mode：eino_single（Eino ADK 单代理，默认）、deep / plan_execute / supervisor（需系统启用多代理）。非”把主对话拆给子代理”。schedule_mode：manual（默认）或 cron；cron 须填 cron_expr（5 段，如 “0 */6 * * *”）。\n\n【执行】默认创建后为 pending，不自动跑。execute_now=true 可创建后立即跑；否则之后调用 batch_task_start。Cron 自动下一轮需 schedule_enabled 为 true（可用 batch_task_schedule_enabled）。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_delete",
+      "description": "删除批量任务队列及其子任务记录。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求删除批量任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_get",
+      "description": "根据 queue_id 获取单个批量任务队列详情（含子任务列表、Cron、调度开关与最近错误信息）。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确提及查看/管理批量任务、任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_list",
+      "description": "列出批量任务队列（精简摘要，省上下文）。含队列元数据、子任务 id/status/截断后的 message、各状态计数。完整子任务（含 result/error/conversationId/时间等）请用 batch_task_get(queue_id)。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确提及查看/管理批量任务、任务队列时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_pause",
+      "description": "暂停正在运行的批量任务队列（当前子任务会被取消）。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求暂停批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_remove_task",
+      "description": "从 pending 队列中删除仍为 pending 的子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求删除批量子任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_rerun",
+      "description": "重跑已完成或已取消的批量任务队列。会重置所有子任务状态后重新执行一轮。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求重跑批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_schedule_enabled",
+      "description": "设置是否允许 Cron 自动触发该队列。关闭后仍保留 Cron 表达式，仅停止定时自动跑；可用手工「启动」执行。\n仅对 schedule_mode 为 cron 的队列有意义。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求开关批量任务自动调度时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_start",
+      "description": "启动或继续执行批量任务队列（pending / paused）。\n与 batch_task_create 配合使用：仅创建队列不会自动执行，需调用本工具才会开始跑子任务。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求启动/继续批量任务时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_metadata",
+      "description": "修改批量任务队列的标题、角色和代理模式。仅在队列非 running 状态下可修改。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量任务队列属性时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_schedule",
+      "description": "修改批量任务队列的调度方式和 Cron 表达式。仅在队列非 running 状态下可修改。\nschedule_mode 为 cron 时必须提供有效 cron_expr；为 manual 时会清除 Cron 配置。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量任务调度配置时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "batch_task_update_task",
+      "description": "修改 pending 队列中仍为 pending 的子任务文案。\n\n⚠️ 调用约束：本工具属于「任务管理」模块，仅当用户明确要求修改批量子任务内容时才可调用。不要在用户未要求时自行调用。",
+      "enabled": true
+    },
+    {
+      "name": "c2_event",
+      "description": "获取 C2 事件（上线/掉线/任务/错误），支持按级别/类别/会话/任务/时间过滤",
+      "enabled": true
+    },
+    {
+      "name": "c2_file",
+      "description": "C2 文件管理。通过 action 参数选择操作：\n- list: 列出会话的文件传输记录（需 session_id）\n- get_result: 获取任务结果文件路径（截图等，需 task_id）",
+      "enabled": true
+    },
+    {
+      "name": "c2_listener",
+      "description": "C2 监听器管理。通过 action 参数选择操作：\n- list: 列出所有监听器\n- get: 获取监听器详情（需 listener_id）\n- create: 创建监听器（需 name, type, bind_port）。成功时除 listener 外会返回 implant_token（仅此一次，用于 X-Implant-Token / oneliner；list/get/start 不再返回）\n- update: 更新监听器配置（需 listener_id，可改 name/bind_host/bind_port/remark/config/callback_host）\n- start: 启动监听器（需 listener_id）\n- stop: 停止监听器（需 listener_id）\n- delete: 删除监听器（需 listener_id）\n监听器类型: tcp_reverse, http_beacon, https_beacon, websocket\ntcp_reverse 默认仅接受 CSB1 加密 Beacon（AES-GCM + ImplantToken）才登记会话；经典 bash/nc 反弹需在 config.allow_legacy_shell=true（公网不推荐）。\n端口约束：create/update 的 bind_port 禁止与本平台 Web/API 所用端口相同。当前本服务该端口为 18099（配置项 server.port，随进程启动从配置文件加载）。若 bind_port 与此相同会导致本服务或监听器 bind 失败、Beacon/oneliner 误连到 Web 而非 C2。请为监听器另选空闲端口。",
+      "enabled": true
+    },
+    {
+      "name": "c2_payload",
+      "description": "C2 Payload 生成。通过 action 参数选择操作：\n- oneliner: 生成单行 payload。kind 必须与监听器协议一致，否则会失败：\n  • tcp_reverse：默认仅支持 build 加密 Beacon；若监听器 config.allow_legacy_shell=true，才可用 kind: bash, nc, nc_mkfifo, python, perl, powershell。\n  • http_beacon / https_beacon / websocket：仅 HTTP(S) Beacon 轮询，oneliner 只能用 kind: curl_beacon（脚本内用 bash+curl，与「tcp 的 bash」不同）。curl_beacon 返回串末尾含「 &」用于把整个 bash -c 放后台；若用 exec/execute 同步执行，必须整段原样复制（含末尾 &）。若删掉 &，内部 while 死循环占满前台，调用会一直阻塞到超时/杀进程。\n  • 公网部署 tcp_reverse 请用 build 生成加密 Beacon，勿开启 allow_legacy_shell。\n  • 省略 kind 时，会按监听器类型自动选第一个兼容类型（HTTP 系默认为 curl_beacon）。\n- build: 交叉编译 beacon 二进制。支持 http_beacon / https_beacon / websocket / tcp_reverse（tcp_reverse 植入端回连后先发魔数 CSB1，再经 AES-GCM 解密且校验 ImplantToken 后才登记会话）。\n依赖的监听器 bind_port 须避开本服务 Web 端口 18099（配置 server.port，与 c2_listener 描述一致），否则 Beacon 无法正确回连。",
+      "enabled": true
+    },
+    {
+      "name": "c2_profile",
+      "description": "C2 Malleable Profile 管理（控制 beacon 通信伪装）。通过 action 参数选择操作：\n- list: 列出所有 Profile\n- get: 获取 Profile 详情（需 profile_id）\n- create: 创建 Profile（需 name，可选 user_agent/uris/request_headers/response_headers/body_template/jitter_min_ms/jitter_max_ms）\n- update: 更新 Profile（需 profile_id）\n- delete: 删除 Profile（需 profile_id）",
+      "enabled": true
+    },
+    {
+      "name": "c2_session",
+      "description": "C2 会话管理。通过 action 参数选择操作：\n- list: 列出会话（可按 listener_id/status/os/search/suspicious 过滤）\n- get: 获取会话详情及最近任务历史（需 session_id）\n- set_sleep: 设置心跳间隔（需 session_id）\n- kill: 下发 exit 任务让 implant 退出（需 session_id）\n- delete: 删除单个会话记录（需 session_id）\n- delete_batch: 批量删除会话（需 session_ids 数组）",
+      "enabled": true
+    },
+    {
+      "name": "c2_task",
+      "description": "在 C2 会话上下发任务。所有任务类型通过 task_type 参数指定：\n- exec: 执行命令（需 command）\n- shell: 交互式命令，保持 cwd（需 command）\n- pwd/ps/screenshot/socks_stop: 无额外参数\n- cd/ls: 需 path\n- kill_proc: 需 pid\n- upload: 需 remote_path + file_id\n- download: 需 remote_path\n- port_fwd: 需 action(start/stop) + local_port + remote_host + remote_port\n- socks_start: 需 port（默认 1080）\n- load_assembly: 需 data(base64) 或 file_id，可选 args\n- persist: 可选 method(auto/cron/bashrc/launchagent/registry/schtasks)\n返回 task_id，用 c2_task_manage 的 wait/get_result 获取结果。",
+      "enabled": true
+    }
+  ],
+  "total": 50,
+  "total_enabled": 50,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 3
+}

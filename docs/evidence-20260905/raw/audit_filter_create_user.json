@@ -1,0 +1,25 @@
+{
+  "logs": [
+    {
+      "id": "audit_810d02355a6f4339b84fad4e9f4e6000",
+      "createdAt": "2026-09-04T19:05:29.6782912Z",
+      "level": "info",
+      "category": "rbac",
+      "action": "create_user",
+      "result": "success",
+      "actor": "admin",
+      "sessionHint": "8bd15a01",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "user",
+      "resourceId": "4ebf483b-9cde-47ff-a41e-0945f73eec54",
+      "message": "创建平台用户",
+      "detail": {
+        "username": "auditor_evd"
+      }
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 1
+}

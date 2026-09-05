@@ -1,0 +1,13 @@
+# POST /api/rbac/users
+# status=200 elapsed_ms=130
+
+{
+  "user": {
+    "id": "4ebf483b-9cde-47ff-a41e-0945f73eec54",
+    "username": "auditor_evd",
+    "enabled": true,
+    "isBuiltin": false,
+    "createdAt": "2026-09-05T03:05:29.6782912+08:00",
+    "updatedAt": "2026-09-05T03:05:29.6782912+08:00"
+  }
+}

@@ -1,0 +1,31 @@
+# GET /api/rbac/users
+# status=200
+
+{
+  "users": [
+    {
+      "created_at": "2026-09-05T02:58:34.2882982+08:00",
+      "display_name": "管理员",
+      "enabled": true,
+      "id": "admin",
+      "is_builtin": true,
+      "roles": [
+        "admin"
+      ],
+      "updated_at": "2026-09-05T03:05:30.5781366+08:00",
+      "username": "admin"
+    },
+    {
+      "created_at": "2026-09-05T03:05:29.6782912+08:00",
+      "display_name": "",
+      "enabled": true,
+      "id": "4ebf483b-9cde-47ff-a41e-0945f73eec54",
+      "is_builtin": false,
+      "roles": [
+        "auditor"
+      ],
+      "updated_at": "2026-09-05T03:05:29.6782912+08:00",
+      "username": "auditor_evd"
+    }
+  ]
+}

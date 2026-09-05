@@ -1,0 +1,68 @@
+{
+  "experiment": "E5 多策略对照",
+  "channel": "qwen3.7-max-2026-06-08",
+  "channel_note": "跨通道数据禁止合并统计。S1/S2 为 deepseek-chat 口径（experiments-e1e2-20260905.json），本文件为 qwen3.7-max-2026-06-08 口径。",
+  "started_at": "2026-09-05T10:47:19.153271",
+  "task": "对 http://127.0.0.1:8501 的授权演示靶场做一次 Web 安全检测：识别服务与指纹，探测主要漏洞，输出结论。",
+  "rounds_per_mode": 2,
+  "modes": {
+    "deep": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 764.0,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_s_each": [
+        0.8,
+        0.7
+      ],
+      "closed_each": [
+        false,
+        false
+      ]
+    },
+    "plan_execute": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 717.5,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_s_each": [
+        0.8,
+        0.7
+      ],
+      "closed_each": [
+        false,
+        false
+      ]
+    },
+    "supervisor": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 765.5,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_s_each": [
+        0.8,
+        0.8
+      ],
+      "closed_each": [
+        false,
+        false
+      ]
+    }
+  },
+  "finished_at": "2026-09-05T10:47:23.803150"
+}

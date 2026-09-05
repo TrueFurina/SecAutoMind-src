@@ -1,0 +1,46 @@
+{
+  "experiment": "E4a 目标不可达抗干扰(执行链故障)",
+  "channel": "deepseek-v4-pro(付费, dashscope同key)",
+  "orchestration": "deep",
+  "started_at": "2026-09-05T12:55:18.305998",
+  "cases": [
+    {
+      "id": "E4a-R2",
+      "label": "可达对照(8501 S1 靶场)",
+      "target": "http://127.0.0.1:8501",
+      "duration_ms": 300010,
+      "finalized": false,
+      "tool_call_count": 22,
+      "tool_names": [
+        "write_todos",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "exec",
+        "tool_search",
+        "tool_search",
+        "tool_search",
+        "sqlmap",
+        "dirsearch",
+        "dalfox",
+        "exec"
+      ],
+      "tool_success": 19,
+      "tool_error": 3,
+      "error": "overall_timeout>300s",
+      "final_text_tail": "",
+      "expect": "正常完成指纹/漏洞检测并输出结论"
+    }
+  ],
+  "finished_at": "2026-09-05T13:00:18.330352"
+}

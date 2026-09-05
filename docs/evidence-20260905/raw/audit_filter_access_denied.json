@@ -1,0 +1,47 @@
+{
+  "logs": [
+    {
+      "id": "audit_a13c9f718af64845a4cc3214e3491de9",
+      "createdAt": "2026-09-04T19:05:30.1127311Z",
+      "level": "warn",
+      "category": "rbac",
+      "action": "access_denied",
+      "result": "failure",
+      "actor": "auditor_evd",
+      "sessionHint": "3a994a49",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "route",
+      "resourceId": "/api/terminal/run",
+      "message": "RBAC 拒绝访问",
+      "detail": {
+        "method": "POST",
+        "permission": "terminal:execute",
+        "reason": "permission_denied"
+      }
+    },
+    {
+      "id": "audit_fb904d9545624157a101ee2a60b5e426",
+      "createdAt": "2026-09-04T19:05:30.0874Z",
+      "level": "warn",
+      "category": "rbac",
+      "action": "access_denied",
+      "result": "failure",
+      "actor": "auditor_evd",
+      "sessionHint": "3a994a49",
+      "clientIp": "127.0.0.1",
+      "userAgent": "Python-urllib/3.13",
+      "resourceType": "route",
+      "resourceId": "/api/rbac/users",
+      "message": "RBAC 拒绝访问",
+      "detail": {
+        "method": "POST",
+        "permission": "rbac:write",
+        "reason": "permission_denied"
+      }
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 2
+}

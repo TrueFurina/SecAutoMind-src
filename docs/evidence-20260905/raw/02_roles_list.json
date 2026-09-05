@@ -1,0 +1,6 @@
+# GET /api/roles
+# status=200 elapsed_ms=24
+
+{
+  "roles": []
+}

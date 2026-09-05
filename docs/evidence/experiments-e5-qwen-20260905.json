@@ -1,0 +1,60 @@
+{
+  "experiment": "E5 多策略对照",
+  "channel": "qwen3.7-max(付费裸名, dashscope)",
+  "channel_note": "E5 三模式对照（deep/plan_execute/supervisor）严格同模型同任务可比：均为 qwen3.7-max（dashscope 付费裸名，2026-09-05 新千问账号 key 经 环境变量 DASHSCOPE_API_KEY 注入）。supervisor 于 12:0x 由 backfill_e5_supervisor.py 补跑。",
+  "started_at": "2026-09-05T10:54:28.365337",
+  "task": "对 http://127.0.0.1:8501 的授权演示靶场做一次 Web 安全检测：识别服务与指纹，探测主要漏洞，输出结论。",
+  "rounds_per_mode": 1,
+  "modes": {
+    "deep": {
+      "rounds": 1,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 600021.0,
+      "tool_calls_avg": 71.0,
+      "vuln_recall_avg": 0.6667,
+      "vuln_found_each": [
+        4
+      ],
+      "duration_s_each": [
+        600.0
+      ],
+      "closed_each": [
+        false
+      ]
+    },
+    "plan_execute": {
+      "rounds": 1,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 143819.0,
+      "tool_calls_avg": 34.0,
+      "vuln_recall_avg": 1.0,
+      "vuln_found_each": [
+        6
+      ],
+      "duration_s_each": [
+        143.8
+      ],
+      "closed_each": [
+        false
+      ]
+    },
+    "supervisor": {
+      "rounds": 1,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 347820.0,
+      "tool_calls_avg": 39.0,
+      "vuln_recall_avg": 0.1667,
+      "vuln_found_each": [
+        1
+      ],
+      "duration_s_each": [
+        347.8
+      ],
+      "closed_each": [
+        false
+      ]
+    }
+  },
+  "finished_at": "2026-09-05T12:07:47.390611",
+  "backfill_note": "supervisor 补跑 + channel 口径修正 @ 2026-09-05T12:07:47.390540"
+}

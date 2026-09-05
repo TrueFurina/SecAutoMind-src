@@ -1,0 +1,10 @@
+# GET /api/hitl/logs?limit=20
+# status=200
+
+{
+  "items": [],
+  "page": 1,
+  "pageSize": 20,
+  "retentionDays": 90,
+  "total": 0
+}

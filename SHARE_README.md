@@ -77,7 +77,7 @@ start.bat
 
 ```
 SecAutoMind/
-├── secautomind-ai.exe        # 主服务 (~154MB Go 编译产物, v1.7.17)
+├── secautomind-ai.exe        # 主服务 (~154MB Go 编译产物, v1.7.25)
 ├── config.yaml               # 主配置
 ├── config.example.yaml       # 配置模板 (config.yaml 缺失时会自动拷贝)
 ├── start.bat                 # 启动脚本
@@ -149,6 +149,6 @@ A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉�
 
 ---
 
-**版本**: v1.7.17
+**版本**: v1.7.25
 **构建时间**: 2026-09-03（已含引导密码落盘与 shell 流式执行修复）
 **分发包制作**: 2026-09-03

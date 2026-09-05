@@ -1,0 +1,54 @@
+{
+  "experiment": "E5",
+  "started_at": "2026-09-05T09:32:56.390840",
+  "task": "对 http://127.0.0.1:8501 的授权演示靶场做一次 Web 安全检测：识别服务与指纹，探测主要漏洞，输出结论。",
+  "rounds_per_mode": 2,
+  "modes": {
+    "deep": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 2036.0,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_each": [
+        2032,
+        2040
+      ]
+    },
+    "plan_execute": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 2039.0,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_each": [
+        2039,
+        2039
+      ]
+    },
+    "supervisor": {
+      "rounds": 2,
+      "closed_loop_rate": 0.0,
+      "duration_ms_avg": 2043.0,
+      "tool_calls_avg": 0.0,
+      "vuln_recall_avg": 0.0,
+      "vuln_found_each": [
+        0,
+        0
+      ],
+      "duration_each": [
+        2043,
+        2043
+      ]
+    }
+  },
+  "finished_at": "2026-09-05T09:33:08.637275"
+}

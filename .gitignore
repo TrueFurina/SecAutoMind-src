@@ -86,3 +86,17 @@ rsrc.syso
 # Local toolchains / agent workspace (NOT project source)
 .workbuddy/
 .atomcode/
+
+# PPT QA intermediates (single-underscore prefix; regenerable from slides/ + scripts)
+SecAutoMind_PPT/_*
+
+# Final deliverable binaries are attachments in the submission package
+# (百度云盘 01_程序材料 / 02_文档材料), NOT in the git source archive
+*.pptx
+*.docx
+*.pdf
+config.yaml.bak_*
+
+# Local scratch / probes
+tmp_recon_*/
+work/

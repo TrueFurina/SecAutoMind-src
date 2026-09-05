@@ -1,0 +1,7 @@
+# POST /api/terminal/run
+# status=403 elapsed_ms=23
+
+{
+  "error": "权限不足",
+  "permission": "terminal:execute"
+}

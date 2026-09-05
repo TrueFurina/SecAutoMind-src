@@ -1,0 +1,9 @@
+# GET /api/audit/summary
+# status=200
+
+{
+  "failures": 3,
+  "has_filters": false,
+  "recent_7d": 10,
+  "total": 10
+}

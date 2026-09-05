@@ -1,0 +1,9 @@
+# GET /api/skills
+# status=200
+
+{
+  "limit": 20,
+  "offset": 0,
+  "skills": [],
+  "total": 0
+}

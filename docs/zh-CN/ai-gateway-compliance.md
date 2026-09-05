@@ -59,12 +59,24 @@ ai:
       model: "qwen-max"                        # 模型名以网关注册为准
 ```
 
-**接入验收清单**（赛前完成）：
+**接入验收清单**（赛前完成）——4 条均已脚本化，可一键执行：
 
-- [ ] 网关连通性：`curl <网关>/v1/chat/completions` 带分配 Key 返回 200
-- [ ] 系统内任一 Agent 对话走网关成功（观察网关侧流量日志）
-- [ ] 网关审计/限流策略对调试行为（如代码解释、批量扫描）不误伤
-- [ ] 断网/网关故障时系统降级行为明确（错误提示 vs 静默重试）
+```bash
+# 一键自检（网关连通后执行；base-url 为网关 OpenAI 兼容端点，key 为网关分配 Key）
+bash scripts/verify_gateway.sh --base-url https://<网关>/v1 --api-key <网关Key> [--model qwen-max]
+# 环境变量等价写法：AI_GATEWAY_BASE_URL=... AI_GATEWAY_API_KEY=... bash scripts/verify_gateway.sh
+```
+
+| # | 验收项 | 脚本化检查 | 说明 |
+|---|---|---|---|
+| 1 | 网关连通性：带分配 Key 返回 200 | `verify_gateway.sh [1/4]` | 自动 |
+| 2 | 系统内任一 Agent 对话走网关成功 | `verify_gateway.sh [2/4]`（平台侧） | 自动发最小任务；**网关侧流量日志需人工复核**（`scripts/experiments/gw_probe.sh`） |
+| 3 | 审计/限流策略对调试行为不误伤 | `verify_gateway.sh [3/4]`（代码解释+批量特征探测） | 200=放行；429/403=需在网关侧调策略 |
+| 4 | 网关故障时降级行为明确 | `verify_gateway.sh [4/4]`（错误 Key 注入） | 应显式报错(401/403)而非静默重试 |
+
+> 网关未开放前：`config.yaml → ai.gateway.enabled: false`（保持直连，供本地/初审演示），
+> 现场拿到网关地址与分配 Key 后置 `enabled: true` 并填 `base_url`/`api_key` 即可，
+> 无需改任何业务代码（所有通道均为 OpenAI 兼容协议）。
 
 ## 4. 模型预报备清单（提交/答辩前填写）
 

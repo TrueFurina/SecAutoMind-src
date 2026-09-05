@@ -201,6 +201,9 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// 注册工具
 	executor.RegisterTools(mcpServer)
 
+	// 注册 CTF 确定性求解器（实战赛解题：先确定性后 LLM，零 token 消耗）
+	mcp.RegisterCTFSolvers(mcpServer)
+
 	// 注册漏洞记录工具
 	registerVulnerabilityTools(mcpServer, db, log.Logger)
 	registerAssetTools(mcpServer, db, log.Logger)

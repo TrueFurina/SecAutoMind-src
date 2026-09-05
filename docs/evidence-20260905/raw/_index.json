@@ -1,0 +1,142 @@
+[
+  {
+    "step": "01_login_with_initial_password.json",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "ms": 119
+  },
+  {
+    "step": "02_roles_list.json",
+    "method": "GET",
+    "path": "/api/roles",
+    "status": 200,
+    "ms": 24
+  },
+  {
+    "step": "03_rbac_create_auditor.json",
+    "method": "POST",
+    "path": "/api/rbac/users",
+    "status": 200,
+    "ms": 130
+  },
+  {
+    "step": "04_login_as_auditor.json",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "ms": 138
+  },
+  {
+    "step": "05_auditor_rbac_me.json",
+    "method": "GET",
+    "path": "/api/rbac/me",
+    "status": 200,
+    "ms": 33
+  },
+  {
+    "step": "06_auditor_WRITE_expect_403.json",
+    "method": "POST",
+    "path": "/api/rbac/users",
+    "status": 403,
+    "ms": 228
+  },
+  {
+    "step": "07_auditor_terminal_expect_403.json",
+    "method": "POST",
+    "path": "/api/terminal/run",
+    "status": 403,
+    "ms": 23
+  },
+  {
+    "step": "08_auditor_READ_audit_summary.json",
+    "method": "GET",
+    "path": "/api/audit/summary",
+    "status": 200,
+    "ms": 25
+  },
+  {
+    "step": "09_hitl_default_config.json",
+    "method": "GET",
+    "path": "/api/hitl/default-config",
+    "status": 200,
+    "ms": 25
+  },
+  {
+    "step": "10_hitl_tool_whitelist.json",
+    "method": "GET",
+    "path": "/api/hitl/tool-whitelist",
+    "status": 200,
+    "ms": 13
+  },
+  {
+    "step": "11_hitl_pending_list.json",
+    "method": "GET",
+    "path": "/api/hitl/pending",
+    "status": 200,
+    "ms": 38
+  },
+  {
+    "step": "12_tools_count.json",
+    "method": "GET",
+    "path": "/api/config/tools",
+    "status": 200,
+    "ms": 36
+  },
+  {
+    "step": "13_config_snapshot.json",
+    "method": "GET",
+    "path": "/api/config",
+    "status": 200,
+    "ms": 37
+  },
+  {
+    "step": "14_change_password.json",
+    "method": "POST",
+    "path": "/api/auth/change-password",
+    "status": 200,
+    "ms": 224
+  },
+  {
+    "step": "15_relogin_initial_password_EXPECT_FAIL.json",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "ms": 125
+  },
+  {
+    "step": "16_relogin_new_password_EXPECT_OK.json",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "ms": 96
+  },
+  {
+    "step": "17_audit_meta.json",
+    "method": "GET",
+    "path": "/api/audit/meta",
+    "status": 401,
+    "ms": 3
+  },
+  {
+    "step": "18_audit_summary.json",
+    "method": "GET",
+    "path": "/api/audit/summary",
+    "status": 401,
+    "ms": 14
+  },
+  {
+    "step": "19_audit_logs_recent.json",
+    "method": "GET",
+    "path": "/api/audit/logs?limit=30",
+    "status": 401,
+    "ms": 23
+  },
+  {
+    "step": "20_hitl_logs.json",
+    "method": "GET",
+    "path": "/api/hitl/logs?limit=20",
+    "status": 401,
+    "ms": 24
+  }
+]
