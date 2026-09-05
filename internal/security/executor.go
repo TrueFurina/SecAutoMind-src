@@ -168,6 +168,26 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		zap.Int("argsCount", len(cmdArgs)),
 	)
 
+	// Windows 命令行长度保护：python3 -c <巨型源码> 类工具自动落盘为临时脚本，
+	// 规避 32767 字符上限（曾导致 http-framework-test 等工具 100% 失败）。
+	runCommand := toolConfig.Command
+	runArgs := cmdArgs
+	if materialized, newArgs, matErr := materializeInlineScript(runCommand, runArgs); matErr == nil {
+		if len(newArgs) != len(runArgs) || (len(newArgs) > 0 && len(runArgs) > 0 && newArgs[0] != runArgs[0]) {
+			e.logger.Info("巨型内联脚本已落盘为临时文件执行",
+				zap.String("tool", toolName),
+				zap.Int("origArgs", len(runArgs)),
+				zap.Int("newArgs", len(newArgs)),
+			)
+		}
+		runCommand, runArgs = materialized, newArgs
+	} else {
+		e.logger.Warn("命令行长度保护未生效",
+			zap.String("tool", toolName),
+			zap.Error(matErr),
+		)
+	}
+
 	// 验证命令参数
 	if len(cmdArgs) == 0 {
 		e.logger.Warn("命令参数为空",
@@ -186,14 +206,14 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 	}
 
 	// 执行命令
-	cmd := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+	cmd := exec.CommandContext(ctx, runCommand, runArgs...)
 	applyDefaultTerminalEnv(cmd)
 	attachNonInteractiveStdin(cmd)
 	_ = prepareShellCmdSession(cmd)
 
 	e.logger.Debug("执行安全工具",
 		zap.String("tool", toolName),
-		zap.Strings("args", cmdArgs),
+		zap.Strings("args", runArgs),
 	)
 
 	var output string
@@ -207,7 +227,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
 				zap.String("tool", toolName),
 			)
-			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+			cmd2 := exec.CommandContext(ctx, runCommand, runArgs...)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, cb, e.toolOutputMaxBytes, spill)
@@ -219,7 +239,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
 				zap.String("tool", toolName),
 			)
-			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
+			cmd2 := exec.CommandContext(ctx, runCommand, runArgs...)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
 			output, err = runCommandWithPTY(ctx, cmd2, nil, e.toolOutputMaxBytes, spill)
