@@ -102,3 +102,8 @@ tmp_recon_*/
 work/
 secautomind-ai.exe.new
 *.exe.new
+
+# Local ops scripts with embedded credentials (NEVER commit)
+scripts/deploy_baidu.py
+scripts/diagnose_gcc.py
+range_scan/
