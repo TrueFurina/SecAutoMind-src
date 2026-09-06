@@ -783,7 +783,10 @@ func (h *RobotHandler) cmdStatus(platform, userID string) string {
 	role := h.getRole(platform, userID)
 	reply := fmt.Sprintf("【当前状态】\n当前对话: %s\n对话 ID: %s\n当前模式: %s\n当前角色: %s", conv.Title, conv.ID, robotAgentModeLabel(h.getAgentMode(platform, userID)), role)
 	if h.projectsEnabled() {
-		projectID, _ := h.db.GetConversationProjectID(conv.ID)
+		projectID, err := h.db.GetConversationProjectID(conv.ID)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "GetConversationProjectID"), zap.Error(err))
+		}
 		reply += "\n当前项目: " + h.formatProjectLabel(projectID)
 	} else {
 		reply += "\n当前项目: 未启用"

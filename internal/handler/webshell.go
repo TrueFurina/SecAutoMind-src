@@ -522,7 +522,10 @@ func (h *WebShellHandler) UpdateConnection(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	updated, _ := h.db.GetWebshellConnection(id)
+	updated, err := h.db.GetWebshellConnection(id)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetWebshellConnection"), zap.Error(err))
+	}
 	if updated != nil {
 		c.JSON(http.StatusOK, updated)
 	} else {

@@ -527,7 +527,10 @@ func (h *AssetHandler) Merge(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	updated, _ := h.db.GetAsset(primary.ID, writeAccess)
+	updated, err := h.db.GetAsset(primary.ID, writeAccess)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetAsset"), zap.Error(err))
+	}
 	c.JSON(http.StatusOK, gin.H{"merged": merged, "asset": updated})
 }
 

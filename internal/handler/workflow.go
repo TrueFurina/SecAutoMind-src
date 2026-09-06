@@ -229,7 +229,10 @@ func (h *WorkflowHandler) save(c *gin.Context, pathID string) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	saved, _ := h.db.GetWorkflowDefinition(id)
+	saved, err := h.db.GetWorkflowDefinition(id)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetWorkflowDefinition"), zap.Error(err))
+	}
 	workflowrunner.InvalidateCompiledCache(id)
 	if h.audit != nil {
 		h.audit.RecordOK(c, "workflow", "save", "保存工作流", "workflow", id, map[string]interface{}{"name": name})

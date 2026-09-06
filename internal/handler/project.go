@@ -169,7 +169,10 @@ func (h *ProjectHandler) ListProjectConversations(c *gin.Context) {
 	if list == nil {
 		list = []*database.Conversation{}
 	}
-	total, _ := h.db.CountConversationsByProjectID(projectID)
+	total, err := h.db.CountConversationsByProjectID(projectID)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "CountConversationsByProjectID"), zap.Error(err))
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"conversations": list,
 		"total":         total,
@@ -325,8 +328,14 @@ func (h *ProjectHandler) factResponseWithLinks(projectID string, f *database.Pro
 	if !includeLinks || f == nil {
 		return f
 	}
-	out, _ := h.db.ListOutgoingProjectFactEdges(projectID, f.FactKey)
-	in, _ := h.db.ListIncomingProjectFactEdges(projectID, f.FactKey)
+	out, err := h.db.ListOutgoingProjectFactEdges(projectID, f.FactKey)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "ListOutgoingProjectFactEdges"), zap.Error(err))
+	}
+	in, err := h.db.ListIncomingProjectFactEdges(projectID, f.FactKey)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "ListIncomingProjectFactEdges"), zap.Error(err))
+	}
 	return &factWithLinksResponse{
 		ProjectFact:   f,
 		OutgoingLinks: out,
@@ -622,7 +631,10 @@ func (h *ProjectHandler) CreateFactEdge(c *gin.Context) {
 		return
 	}
 	if f, err := h.db.GetProjectFactByKey(projectID, req.TargetFactKey); err == nil {
-		in, _ := h.db.ListIncomingProjectFactEdges(projectID, req.TargetFactKey)
+		in, err := h.db.ListIncomingProjectFactEdges(projectID, req.TargetFactKey)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "ListIncomingProjectFactEdges"), zap.Error(err))
+		}
 		f.Body = project.SyncBodyLinksSection(f.Body, in)
 		if _, err := h.db.UpsertProjectFact(f); err != nil {
 			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertProjectFact"), zap.Error(err))
@@ -645,7 +657,10 @@ func (h *ProjectHandler) DeleteFactEdge(c *gin.Context) {
 		return
 	}
 	if f, err := h.db.GetProjectFactByKey(projectID, edge.TargetFactKey); err == nil {
-		in, _ := h.db.ListIncomingProjectFactEdges(projectID, edge.TargetFactKey)
+		in, err := h.db.ListIncomingProjectFactEdges(projectID, edge.TargetFactKey)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "ListIncomingProjectFactEdges"), zap.Error(err))
+		}
 		f.Body = project.SyncBodyLinksSection(f.Body, in)
 		if _, err := h.db.UpsertProjectFact(f); err != nil {
 			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertProjectFact"), zap.Error(err))

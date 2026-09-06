@@ -63,7 +63,10 @@ func (h *RBACHandler) Metadata(c *gin.Context) {
 	}
 	rolePermissions := map[string][]string{}
 	for _, role := range roles {
-		keys, _ := h.db.ListRBACRolePermissionKeys(role.ID)
+		keys, err := h.db.ListRBACRolePermissionKeys(role.ID)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "ListRBACRolePermissionKeys"), zap.Error(err))
+		}
 		rolePermissions[role.ID] = keys
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -82,7 +85,10 @@ func (h *RBACHandler) ListRoles(c *gin.Context) {
 	}
 	out := make([]gin.H, 0, len(roles))
 	for _, role := range roles {
-		keys, _ := h.db.ListRBACRolePermissionKeys(role.ID)
+		keys, err := h.db.ListRBACRolePermissionKeys(role.ID)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "ListRBACRolePermissionKeys"), zap.Error(err))
+		}
 		out = append(out, gin.H{
 			"id":          role.ID,
 			"name":        role.Name,
@@ -199,7 +205,10 @@ func (h *RBACHandler) ListUsers(c *gin.Context) {
 	}
 	out := make([]gin.H, 0, len(users))
 	for _, user := range users {
-		roleIDs, _ := h.db.ListRBACUserRoleIDs(user.ID)
+		roleIDs, err := h.db.ListRBACUserRoleIDs(user.ID)
+		if err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "ListRBACUserRoleIDs"), zap.Error(err))
+		}
 		out = append(out, gin.H{
 			"id":           user.ID,
 			"username":     user.Username,
@@ -300,7 +309,10 @@ func (h *RBACHandler) UpdateUser(c *gin.Context) {
 	if h.auth != nil {
 		h.auth.RevokeUserSessions(id)
 	}
-	updated, _ := h.db.GetRBACUserByID(id)
+	updated, err := h.db.GetRBACUserByID(id)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetRBACUserByID"), zap.Error(err))
+	}
 	c.JSON(http.StatusOK, gin.H{"user": updated})
 }
 

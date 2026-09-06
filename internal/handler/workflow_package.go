@@ -18,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type workflowPackageResolution struct {
@@ -177,7 +178,10 @@ func (h *WorkflowHandler) ApplyPackageImport(c *gin.Context) {
 		h.writeWorkflowPackageImportError(c, req.InspectionID, err)
 		return
 	}
-	wf, _ := h.db.GetWorkflowDefinition(imp.ResultingWorkflowID)
+	wf, err := h.db.GetWorkflowDefinition(imp.ResultingWorkflowID)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetWorkflowDefinition"), zap.Error(err))
+	}
 	if !replayed && (imp.Result == "created" || imp.Result == "overwritten" || imp.Result == "renamed") {
 		workflowrunner.InvalidateCompiledCache(imp.ResultingWorkflowID)
 	}
@@ -207,7 +211,10 @@ func (h *WorkflowHandler) GetPackageImport(c *gin.Context) {
 		writeWorkflowPackageError(c, http.StatusNotFound, "WFPKG_INSPECTION_NOT_FOUND", "导入结果不存在", nil)
 		return
 	}
-	wf, _ := h.db.GetWorkflowDefinition(imp.ResultingWorkflowID)
+	wf, err := h.db.GetWorkflowDefinition(imp.ResultingWorkflowID)
+	if err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetWorkflowDefinition"), zap.Error(err))
+	}
 	c.JSON(http.StatusOK, gin.H{"import": h.workflowPackageImportResponse(imp, wf)})
 }
 
