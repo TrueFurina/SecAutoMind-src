@@ -261,6 +261,13 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "base45", Category: CategoryMiscS, Priority: 91, Solver: solveBase45})
 	RegisterSolver(SolverEntry{Name: "bech32", Category: CategoryMiscS, Priority: 92, Solver: solveBech32})
 	RegisterSolver(SolverEntry{Name: "base62", Category: CategoryMiscS, Priority: 93, Solver: solveBase62})
+
+	// P14 批次：量子计算/生物信息/游戏安全/数字取证高级/密码学实现细节
+	RegisterSolver(SolverEntry{Name: "quantum_computing", Category: CategoryMiscS, Priority: 120, Solver: solveQuantumComputing})
+	RegisterSolver(SolverEntry{Name: "bioinformatics", Category: CategoryMiscS, Priority: 121, Solver: solveBioinformatics})
+	RegisterSolver(SolverEntry{Name: "game_security", Category: CategoryMiscS, Priority: 122, Solver: solveGameSecurity})
+	RegisterSolver(SolverEntry{Name: "digital_forensics_adv", Category: CategoryMiscS, Priority: 123, Solver: solveDigitalForensicsAdvanced})
+	RegisterSolver(SolverEntry{Name: "crypto_impl_details", Category: CategoryCryptoS, Priority: 61, Solver: solveCryptoImplementationDetails})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -695,3 +702,11 @@ func solveOSKernelSecurity(ctx context.Context, text string, attachments map[str
 func solveBase45(ctx context.Context, text string, attachments map[string]string) []string { return tryBase45(text) }
 func solveBech32(ctx context.Context, text string, attachments map[string]string) []string { return tryBech32(text) }
 func solveBase62(ctx context.Context, text string, attachments map[string]string) []string { return tryBase62(text) }
+
+// ── P14 批次适配函数 ──────────────────────────────────────
+
+func solveQuantumComputing(ctx context.Context, text string, attachments map[string]string) []string { return tryQuantumComputing(text, attachments) }
+func solveBioinformatics(ctx context.Context, text string, attachments map[string]string) []string { return tryBioinformatics(text, attachments) }
+func solveGameSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryGameSecurity(text, attachments) }
+func solveDigitalForensicsAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryDigitalForensicsAdvanced(text, attachments) }
+func solveCryptoImplementationDetails(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoImplementationDetails(text, attachments) }

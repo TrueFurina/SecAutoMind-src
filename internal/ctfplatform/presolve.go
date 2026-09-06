@@ -6150,3 +6150,225 @@ func tryBase62(text string) []string {
 	}
 	return []string{"Base62 检测: 纯字母数字编码（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
 }
+
+// ── P14 批次：量子计算 ──────────────────────────────────
+
+// tryQuantumComputing 检测量子计算特征（Shor/Grover/Qiskit/Cirq）。
+func tryQuantumComputing(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	qcKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"quantum", "量子计算"},
+		{"shor algorithm", "Shor 算法（量子因式分解）"},
+		{"grover algorithm", "Grover 算法（量子搜索）"},
+		{"qiskit", "Qiskit（IBM 量子框架）"},
+		{"cirq", "Cirq（Google 量子框架）"},
+		{"pennylane", "PennyLane（量子机器学习）"},
+		{"qubit", "量子比特"},
+		{"superposition", "叠加态"},
+		{"entanglement", "纠缠"},
+		{"quantum gate", "量子门"},
+		{"hadamard", "Hadamard 门"},
+		{"cnot", "CNOT 门"},
+		{"toffoli", "Toffoli 门"},
+		{"quantum circuit", "量子电路"},
+		{"quantum error correction", "量子纠错"},
+		{"post-quantum", "后量子密码学"},
+		{"lattice-based", "格基密码学（后量子）"},
+		{"code-based", "编码密码学（后量子）"},
+		{"multivariate", "多元密码学（后量子）"},
+		{"hash-based", "哈希签名（后量子）"},
+	}
+	for _, kw := range qcKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"量子计算: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P14 批次：生物信息学 ──────────────────────────────────
+
+// tryBioinformatics 检测生物信息学特征（DNA序列/蛋白质结构）。
+func tryBioinformatics(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	bioKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"bioinformatics", "生物信息学"},
+		{"dna sequence", "DNA 序列"},
+		{"rna sequence", "RNA 序列"},
+		{"protein structure", "蛋白质结构"},
+		{"amino acid", "氨基酸"},
+		{"nucleotide", "核苷酸"},
+		{"genome", "基因组"},
+		{"gene", "基因"},
+		{"phylogenetic", "系统发育"},
+		{"alignment", "序列比对"},
+		{"blast", "BLAST 比对"},
+		{"fasta", "FASTA 格式"},
+		{"pdb", "PDB 蛋白质结构"},
+		{"bio python", "Biopython"},
+		{"bioconductor", "Bioconductor"},
+		{"crispr", "CRISPR 基因编辑"},
+		{"pcr", "PCR 扩增"},
+		{"sequencing", "测序"},
+		{"polymerase chain", "聚合酶链式反应"},
+	}
+	for _, kw := range bioKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"生物信息: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P14 批次：游戏安全 ──────────────────────────────────
+
+// tryGameSecurity 检测游戏安全特征（Unity/Unreal/反作弊/内存修改）。
+func tryGameSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	gameKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"game hacking", "游戏破解"},
+		{"unity", "Unity 引擎"},
+		{"unreal engine", "Unreal Engine"},
+		{"godot", "Godot 引擎"},
+		{"memory editing", "内存修改"},
+		{"cheat engine", "Cheat Engine"},
+		{"gameguardian", "GameGuardian"},
+		{"anti-cheat", "反作弊系统"},
+		{"vac", "VAC（Valve 反作弊）"},
+		{"battleye", "BattlEye"},
+		{"easy anti-cheat", "Easy Anti-Cheat"},
+		{"eac", "EAC"},
+		{"punkbuster", "PunkBuster"},
+		{"speed hack", "加速外挂"},
+		{"aimbot", "自瞄外挂"},
+		{"wallhack", "透视外挂"},
+		{"god mode", "无敌模式"},
+		{"noclip", "穿墙模式"},
+		{"dll injection", "DLL 注入"},
+		{"hook", "Hook 挂钩"},
+		{"opcode patch", "操作码补丁"},
+		{"game trainer", "游戏修改器"},
+	}
+	for _, kw := range gameKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"游戏安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P14 批次：数字取证高级 ──────────────────────────────
+
+// tryDigitalForensicsAdvanced 检测数字取证高级特征（内存取证/网络取证/日志分析）。
+func tryDigitalForensicsAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	dfKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"digital forensics", "数字取证"},
+		{"memory forensics", "内存取证"},
+		{"volatility", "Volatility 内存取证"},
+		{"rekall", "Rekall 内存取证"},
+		{"network forensics", "网络取证"},
+		{"packet capture", "数据包捕获"},
+		{"pcap analysis", "PCAP 分析"},
+		{"wireshark", "Wireshark"},
+		{"zeek", "Zeek（Bro）网络安全监控"},
+		{"suricata", "Suricata IDS"},
+		{"snort", "Snort IDS"},
+		{"log analysis", "日志分析"},
+		{"siem", "SIEM 安全信息和事件管理"},
+		{"splunk", "Splunk"},
+		{"elk stack", "ELK Stack"},
+		{"elasticsearch", "Elasticsearch"},
+		{"timeline analysis", "时间线分析"},
+		{"artifact analysis", "工件分析"},
+		{"evidence preservation", "证据保全"},
+		{"chain of custody", "监管链"},
+		{"forensic imaging", "取证镜像"},
+		{"write blocker", "写保护器"},
+	}
+	for _, kw := range dfKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"数字取证: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P14 批次：密码学实现细节 ──────────────────────────────
+
+// tryCryptoImplementationDetails 检测密码学实现细节特征。
+func tryCryptoImplementationDetails(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ciKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"rsa-crt", "RSA-CRT 优化实现"},
+		{"chinese remainder theorem", "中国剩余定理"},
+		{"point compression", "椭圆曲线点压缩"},
+		{"compressed point", "压缩点格式"},
+		{"uncompressed point", "非压缩点格式"},
+		{"hmac construction", "HMAC 构造"},
+		{"key derivation function", "密钥派生函数"},
+		{"pbkdf2", "PBKDF2"},
+		{"bcrypt", "bcrypt"},
+		{"scrypt", "scrypt"},
+		{"argon2", "Argon2"},
+		{"hkdf", "HKDF"},
+		{"concat kdf", "Concat KDF"},
+		{"x963 kdf", "X9.63 KDF"},
+		{"ansi x963", "ANSI X9.63"},
+		{"nonce", "随机数/Nonce"},
+		{"iv", "初始化向量"},
+		{"salt", "盐值"},
+		{"pepper", "胡椒值"},
+		{"key stretching", "密钥拉伸"},
+		{"key wrapping", "密钥包装"},
+		{"aes-key-wrap", "AES Key Wrap"},
+		{"ecb mode", "ECB 模式"},
+		{"cbc mode", "CBC 模式"},
+		{"ctr mode", "CTR 模式"},
+		{"gcm mode", "GCM 模式"},
+		{"ccm mode", "CCM 模式"},
+		{"poly1305", "Poly1305 MAC"},
+		{"siphash", "SipHash"},
+	}
+	for _, kw := range ciKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"密码学实现: " + kw.hint}
+		}
+	}
+	return nil
+}
