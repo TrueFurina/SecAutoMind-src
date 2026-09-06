@@ -185,6 +185,22 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "obfuscation_detect", Category: CategoryRevS, Priority: 97, Solver: solveObfuscationDetection})
 	RegisterSolver(SolverEntry{Name: "emulator_detect", Category: CategoryRevS, Priority: 98, Solver: solveEmulatorDetection})
 	RegisterSolver(SolverEntry{Name: "code_virtualization", Category: CategoryRevS, Priority: 99, Solver: solveCodeVirtualization})
+
+	// P9 批次
+	RegisterSolver(SolverEntry{Name: "elgamal_signature", Category: CategoryCryptoS, Priority: 51, Solver: solveElGamalSignature})
+	RegisterSolver(SolverEntry{Name: "schnorr_signature", Category: CategoryCryptoS, Priority: 52, Solver: solveSchnorrSignature})
+	RegisterSolver(SolverEntry{Name: "rsa_oracle_attack", Category: CategoryCryptoS, Priority: 53, Solver: solveRSAOracleAttack})
+	RegisterSolver(SolverEntry{Name: "exif_metadata", Category: CategoryMiscS, Priority: 79, Solver: solveEXIFMetadata})
+	RegisterSolver(SolverEntry{Name: "audio_stego", Category: CategoryMiscS, Priority: 80, Solver: solveAudioStego})
+	RegisterSolver(SolverEntry{Name: "magic_bytes", Category: CategoryMiscS, Priority: 81, Solver: solveMagicBytes})
+	RegisterSolver(SolverEntry{Name: "waf_bypass", Category: CategoryWebS, Priority: 93, Solver: solveWAFBypass})
+	RegisterSolver(SolverEntry{Name: "rce_detection", Category: CategoryWebS, Priority: 94, Solver: solveRCEDetection})
+	RegisterSolver(SolverEntry{Name: "file_inclusion", Category: CategoryWebS, Priority: 95, Solver: solveFileInclusion})
+	RegisterSolver(SolverEntry{Name: "deserialization", Category: CategoryWebS, Priority: 96, Solver: solveDeserialization})
+	RegisterSolver(SolverEntry{Name: "obfuscation_variant", Category: CategoryRevS, Priority: 100, Solver: solveObfuscationVariant})
+	RegisterSolver(SolverEntry{Name: "decompiler_chain", Category: CategoryRevS, Priority: 101, Solver: solveDecompilerChain})
+	RegisterSolver(SolverEntry{Name: "io_file_exploit", Category: CategoryPwnS, Priority: 103, Solver: solveIOFileExploit})
+	RegisterSolver(SolverEntry{Name: "heap_spray", Category: CategoryPwnS, Priority: 104, Solver: solveHeapSpray})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -537,3 +553,20 @@ func solveEmulatorDetection(ctx context.Context, text string, attachments map[st
 func solveCodeVirtualization(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryCodeVirtualization(text, attachments)
 }
+
+// ── P9 批次适配函数 ──────────────────────────────────────
+
+func solveElGamalSignature(ctx context.Context, text string, attachments map[string]string) []string { return tryElGamalSignature(text, attachments) }
+func solveSchnorrSignature(ctx context.Context, text string, attachments map[string]string) []string { return trySchnorrSignature(text, attachments) }
+func solveRSAOracleAttack(ctx context.Context, text string, attachments map[string]string) []string { return tryRSAOracleAttack(text, attachments) }
+func solveEXIFMetadata(ctx context.Context, text string, attachments map[string]string) []string { return tryEXIFMetadata(text, attachments) }
+func solveAudioStego(ctx context.Context, text string, attachments map[string]string) []string { return tryAudioStego(text, attachments) }
+func solveMagicBytes(ctx context.Context, text string, attachments map[string]string) []string { return tryMagicBytes(text, attachments) }
+func solveWAFBypass(ctx context.Context, text string, attachments map[string]string) []string { return tryWAFBypass(text, attachments) }
+func solveRCEDetection(ctx context.Context, text string, attachments map[string]string) []string { return tryRCEDetection(text, attachments) }
+func solveFileInclusion(ctx context.Context, text string, attachments map[string]string) []string { return tryFileInclusion(text, attachments) }
+func solveDeserialization(ctx context.Context, text string, attachments map[string]string) []string { return tryDeserialization(text, attachments) }
+func solveObfuscationVariant(ctx context.Context, text string, attachments map[string]string) []string { return tryObfuscationVariant(text, attachments) }
+func solveDecompilerChain(ctx context.Context, text string, attachments map[string]string) []string { return tryDecompilerChain(text, attachments) }
+func solveIOFileExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryIOFileExploit(text, attachments) }
+func solveHeapSpray(ctx context.Context, text string, attachments map[string]string) []string { return tryHeapSpray(text, attachments) }

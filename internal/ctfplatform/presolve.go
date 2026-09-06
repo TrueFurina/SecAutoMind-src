@@ -4064,3 +4064,494 @@ func tryCodeVirtualization(text string, attachments map[string]string) []string 
 	}
 	return nil
 }
+
+// ── P9 批次：crypto ──────────────────────────────────────
+
+// tryElGamalSignature 检测 ElGamal 签名攻击特征（重复 k/弱参数）。
+func tryElGamalSignature(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	elKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"elgamal", "ElGamal 加密/签名"},
+		{"ephemeral key", "临时密钥 k"},
+		{"random nonce", "随机数 k"},
+		{"nonce reuse", "k 重用攻击"},
+		{"same nonce", "相同 k 值"},
+		{"discrete log", "离散对数"},
+		{"generator", "生成元 g"},
+		{"primitive root", "原根"},
+		{"modular inverse", "模逆"},
+		{"extended euclidean", "扩展欧几里得"},
+		{"signed message", "签名消息"},
+		{"message hash", "消息哈希"},
+	}
+	for _, kw := range elKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"ElGamal特征: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// trySchnorrSignature 检测 Schnorr 签名特征。
+func trySchnorrSignature(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	schKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"schnorr", "Schnorr 签名"},
+		{"schnorr signature", "Schnorr 签名方案"},
+		{"sigma protocol", "Sigma 协议"},
+		{"commitment scheme", "承诺方案"},
+		{"challenge response", "挑战-应答"},
+		{"zero knowledge proof", "零知识证明"},
+		{"interactive proof", "交互式证明"},
+		{"non-interactive", "非交互式证明"},
+		{"fiat-shamir", "Fiat-Shamir 变换"},
+		{"random oracle", "随机预言机"},
+	}
+	for _, kw := range schKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"Schnorr特征: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryRSAOracleAttack 检测 RSA Oracle 攻击模式（签名/解密预言机）。
+func tryRSAOracleAttack(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	oracleKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"oracle attack", "预言机攻击"},
+		{"signing oracle", "签名预言机"},
+		{"decryption oracle", "解密预言机"},
+		{"bleichenbacher", "Bleichenbacher 攻击（PKCS#1 v1.5 填充预言机）"},
+		{"manger", "Manger 攻击（OAEP 填充预言机）"},
+		{"padding oracle", "填充预言机"},
+		{"chosen ciphertext", "选择密文攻击"},
+		{"cca2", "CCA2 安全性"},
+		{"adaptive chosen", "自适应选择攻击"},
+		{"signature forgery", "签名伪造"},
+		{"existential forgery", "存在性伪造"},
+		{"blind signature", "盲签名"},
+		{"rsa blinding", "RSA 盲化攻击"},
+	}
+	for _, kw := range oracleKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"RSA Oracle: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P9 批次：misc ──────────────────────────────────────
+
+// tryEXIFMetadata 检测图片 EXIF 元数据特征（GPS/相机/编辑痕迹）。
+func tryEXIFMetadata(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	exifKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"exif", "EXIF 元数据"},
+		{"gps", "GPS 定位信息"},
+		{"latitude", "纬度"},
+		{"longitude", "经度"},
+		{"camera", "相机信息"},
+		{"make", "设备制造商"},
+		{"model", "设备型号"},
+		{"software", "编辑软件"},
+		{"datetime", "拍摄时间"},
+		{"thumbnail", "缩略图"},
+		{"iptc", "IPTC 元数据"},
+		{"xmp", "XMP 元数据"},
+		{"metadata", "元数据"},
+		{"geolocation", "地理定位"},
+	}
+	for _, kw := range exifKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"EXIF取证: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryAudioStego 检测音频隐写特征（频谱分析/LSB/回声隐藏）。
+func tryAudioStego(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	audioKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"audio steganography", "音频隐写"},
+		{"spectrogram", "频谱图"},
+		{"frequency domain", "频域分析"},
+		{"echo hiding", "回声隐藏"},
+		{"lsb audio", "音频 LSB 隐写"},
+		{"phase coding", "相位编码"},
+		{"spread spectrum", "扩频隐写"},
+		{"tone insertion", "音调插入"},
+		{"wav", "WAV 音频"},
+		{"mp3", "MP3 音频"},
+		{"flac", "FLAC 音频"},
+		{"ogg", "OGG 音频"},
+		{"waveform", "波形分析"},
+		{"audacity", "Audacity 音频编辑"},
+	}
+	for _, kw := range audioKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"音频隐写: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryMagicBytes 检测文件魔术字节（文件头/尾/签名识别）。
+func tryMagicBytes(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	magicKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"magic bytes", "文件魔术字节"},
+		{"file signature", "文件签名"},
+		{"file header", "文件头"},
+		{"89504e47", "PNG 文件头"},
+		{"ffd8ff", "JPEG 文件头"},
+		{"47494638", "GIF 文件头"},
+		{"504b0304", "ZIP 文件头"},
+		{"25504446", "PDF 文件头"},
+		{"7f454c46", "ELF 文件头"},
+		{"4d5a", "PE/EXE 文件头"},
+		{"cafebabe", "Java Class 文件头"},
+		{"52617221", "RAR 文件头"},
+		{"1f8b08", "GZIP 文件头"},
+		{"425a68", "BZ2 文件头"},
+		{"377abcaf271c", "7Z 文件头"},
+		{"hex dump", "十六进制转储"},
+		{"binwalk", "Binwalk 文件分析"},
+	}
+	for _, kw := range magicKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"文件签名: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P9 批次：web ──────────────────────────────────────
+
+// tryWAFBypass 检测 WAF 绕过特征。
+func tryWAFBypass(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	wafKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"waf bypass", "WAF 绕过"},
+		{"web application firewall", "Web 应用防火墙"},
+		{"bypass waf", "WAF 绕过"},
+		{"sql injection bypass", "SQL 注入绕过"},
+		{"xss filter bypass", "XSS 过滤绕过"},
+		{"payload encoding", "Payload 编码绕过"},
+		{"double encoding", "双重编码"},
+		{"unicode bypass", "Unicode 绕过"},
+		{"case manipulation", "大小写变换"},
+		{"comment injection", "注释注入"},
+		{"null byte", "空字节注入"},
+		{"chunked transfer", "分块传输绕过"},
+		{"ip rotation", "IP 轮换"},
+		{"user-agent rotation", "UA 轮换"},
+		{"rate limit bypass", "速率限制绕过"},
+	}
+	for _, kw := range wafKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"WAF绕过: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryRCEDetection 检测远程代码执行（RCE）特征。
+func tryRCEDetection(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	rceKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"remote code execution", "远程代码执行（RCE）"},
+		{"command injection", "命令注入"},
+		{"os command", "操作系统命令"},
+		{"shell command", "Shell 命令"},
+		{"exec(", "exec 函数调用"},
+		{"system(", "system 函数调用"},
+		{"popen", "popen 命令执行"},
+		{"subprocess", "子进程调用"},
+		{"eval(", "eval 动态执行"},
+		{"runtime.exec", "Runtime.exec"},
+		{"processbuilder", "ProcessBuilder"},
+		{"deserialization", "反序列化"},
+		{"pickle", "Python pickle 反序列化"},
+		{"yaml.load", "YAML 反序列化"},
+		{"unserialize", "PHP 反序列化"},
+		{"template injection", "模板注入"},
+		{"server-side include", "服务端包含（SSI）"},
+		{"code injection", "代码注入"},
+	}
+	for _, kw := range rceKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"RCE特征: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryFileInclusion 检测文件包含漏洞链（LFI/RFI/路径遍历）。
+func tryFileInclusion(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	fiKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"file inclusion", "文件包含漏洞"},
+		{"local file inclusion", "本地文件包含（LFI）"},
+		{"remote file inclusion", "远程文件包含（RFI）"},
+		{"path traversal", "路径遍历"},
+		{"directory traversal", "目录遍历"},
+		{"dot dot slash", "目录遍历（../）"},
+		{"null byte", "空字节截断"},
+		{"php://filter", "PHP 流包装器"},
+		{"php://input", "PHP 输入流"},
+		{"data://", "data:// 协议"},
+		{"expect://", "expect:// 协议"},
+		{"zip://", "zip:// 协议"},
+		{"phar://", "phar:// 协议"},
+		{"file://", "file:// 协议"},
+		{"log poisoning", "日志投毒"},
+		{"log injection", "日志注入"},
+	}
+	for _, kw := range fiKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"文件包含: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryDeserialization 检测反序列化漏洞特征（Java/Python/PHP/Ruby/.NET）。
+func tryDeserialization(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	deserKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"deserialization", "反序列化漏洞"},
+		{"ysoserial", "Ysoserial（Java 反序列化）"},
+		{"commons collections", "Commons Collections"},
+		{"pickle", "Python pickle"},
+		{"yaml.load", "YAML 反序列化"},
+		{"unserialize", "PHP 反序列化"},
+		{"gadget chain", "利用链"},
+		{"magic method", "魔术方法"},
+		{"__wakeup", "__wakeup 方法"},
+		{"__destruct", "__destruct 方法"},
+	}
+	for _, kw := range deserKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"反序列化: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P9 补全：heredoc 截断恢复 ──────────────────────────────
+
+// tryObfuscationVariant 检测混淆算法变体（OLLVM/虚拟机壳/DEX混淆）。
+func tryObfuscationVariant(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	obfKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ollvm", "OLLVM 混淆编译器"},
+		{"obfuscator-llvm", "Obfuscator-LLVM"},
+		{"string obfuscation", "字符串混淆"},
+		{"control flow", "控制流混淆"},
+		{"bogus control flow", "虚假控制流"},
+		{"flattening", "控制流平坦化"},
+		{"proguard", "ProGuard（Android 混淆）"},
+		{"dexguard", "DexGuard"},
+		{"dex2jar", "dex2jar"},
+		{"jadx", "JADX 反编译"},
+		{"apktool", "APKTool"},
+		{"smali", "Smali 汇编"},
+		{"dalvik", "Dalvik 虚拟机"},
+		{"ndk", "Android NDK"},
+	}
+	for _, kw := range obfKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"混淆变体: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryDecompilerChain 检测反编译工具链特征。
+func tryDecompilerChain(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	decKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"decompiler", "反编译器"},
+		{"disassembler", "反汇编器"},
+		{"ida pro", "IDA Pro"},
+		{"ghidra", "Ghidra"},
+		{"binary ninja", "Binary Ninja"},
+		{"radare2", "Radare2"},
+		{"rizin", "Rizin"},
+		{"angr", "angr 符号执行"},
+		{"capstone", "Capstone 反汇编"},
+		{"keystone", "Keystone 汇编"},
+		{"unicorn", "Unicorn 模拟器"},
+		{"frida", "Frida 动态插桩"},
+		{"gdb", "GDB 调试器"},
+		{"lldb", "LLDB 调试器"},
+		{"windbg", "WinDbg"},
+		{"x64dbg", "x64dbg"},
+		{"ollydbg", "OllyDbg"},
+		{"pwntools", "Pwntools"},
+		{"one_gadget", "one_gadget"},
+	}
+	for _, kw := range decKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"逆向工具链: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryIOFileExploit 检测 IO_FILE/FSOP 利用特征。
+func tryIOFileExploit(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ioKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"io_file", "IO_FILE 结构体利用"},
+		{"_io_list_all", "_IO_list_all"},
+		{"fsop", "FSOP（File Stream Oriented Programming）"},
+		{"fake file stream", "伪造文件流"},
+		{"vtable hijacking", "vtable 劫持"},
+		{"house of apple", "House of Apple"},
+		{"house of banana", "House of Banana"},
+		{"house of cat", "House of Cat"},
+		{"house of orange", "House of Orange"},
+		{"house of spirit", "House of Spirit"},
+		{"house of force", "House of Force"},
+		{"got overwrite", "GOT 表覆写"},
+		{"ret2dlresolve", "ret2dlresolve"},
+		{"lazy binding", "延迟绑定"},
+	}
+	for _, kw := range ioKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"IO_FILE/FSOP: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryHeapSpray 检测堆喷射/格式化字符串漏洞特征。
+func tryHeapSpray(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	heapKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"heap spray", "堆喷射"},
+		{"format string", "格式化字符串漏洞"},
+		{"format string attack", "格式化字符串攻击"},
+		{"printf vulnerability", "printf 漏洞"},
+		{"%n", "格式化字符串 %n 写入"},
+		{"%x", "格式化字符串 %x 泄露"},
+		{"stack pivot", "栈迁移"},
+		{"stack smash", "栈溢出"},
+		{"return address", "返回地址覆写"},
+		{"canary bypass", "Canary 绕过"},
+		{"information leak", "信息泄露"},
+		{"partial overwrite", "部分覆写"},
+		{"one gadget", "one_gadget"},
+		{"ret2libc", "ret2libc"},
+		{"rop chain", "ROP 链"},
+		{"jop", "JOP（Jump-Oriented Programming）"},
+		{"cop", "COP（Call-Oriented Programming）"},
+	}
+	for _, kw := range heapKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"Pwn利用: " + kw.hint}
+		}
+	}
+	return nil
+}
