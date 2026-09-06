@@ -33,6 +33,7 @@ type PresolveResult struct {
 // Presolver 确定性预解层。
 type Presolver struct {
 	logger *zap.Logger
+	cache  *presolveCache
 }
 
 // NewPresolver 创建预解层。
