@@ -2,7 +2,7 @@
 
 # SecAutoMind
 
-**多智能体驱动的靶场自主攻防推演平台**
+**多智能体自主决策通用网络安全平台**
 
 [中文](README_CN.md) | [English](README.md)
 
@@ -10,79 +10,54 @@
 
 ## 项目简介
 
-SecAutoMind 依托开源安全底座重构优化，搭建分层协同多智能体架构，面向
-高校网络靶场实训场景实现攻防自主推演。系统借助轻量化本地大模型完成离线
-自主决策，可自动识别靶场环境、动态规划攻防流程，集成全套安全检测分析
-工具，一键生成标准化实训复盘报告。轻量化部署适配学生设备，仅用于合规
-授权靶场演练，解决传统攻防工具操作繁琐、流程固化的痛点。
+SecAutoMind 是一个基于 Go 与大语言模型构建的多智能体自主决策通用网络安全平台。系统通过规划、执行、审计、复盘四类 Agent 协同工作，配合共享事实黑板，实现从目标侦察到漏洞发现再到后渗透的端到端安全运营——只需一句自然语言意图。
+
+平台内置 **90 个 YAML 安全工具配方**与 **50 个内置工具**（运行时可调用 140 个），支持敏感操作的人工审批（HITL），全程审计留痕可追溯。可完全离线运行在单台机器上，无需集群或云端账号。
 
 ## 核心特性
 
-### 分层多智能体协同
-
-- 规划 / 执行 / 审计 / 复盘 四类 Agent 协同工作
-- 通过共享「事实黑板」在 Agent 间传递上下文
-- 支持 Deep / Plan-Execute / Supervisor 三种编排模式
-
-### 离线自主决策
-
-- 适配学生笔记本本地部署，无需云端算力
-- 自动识别靶场环境类型（Linux / Windows / Web / 云）
-- 根据前序 Agent 输出动态调整后续步骤
-
-### 全量安全工具集成
-
-- 90 个内置 YAML 工具配方：网络扫描、Web 应用、漏洞扫描、子域名枚举、
-  容器安全、云安全、二进制分析、密码破解、取证、后渗透
-- 支持自定义工具扩展（YAML 格式）
-- 按角色控制工具可用范围
-
-### 人机协同与审计
-
-- 敏感操作需人工审批，含倒计时与拒绝机制
-- 工具白名单 + 审计 Agent 复核
-- 完整的操作日志与证据留存
-
-### 多端 IM 机器人（可选扩展）
-
-- 支持钉钉 / 企业微信 / 飞书 / Telegram / Slack / Discord / QQ / 个人微信共 8 个通道，默认关闭
-- 钉钉、飞书等走长连接模式，无需公网回调地址，本地笔记本即可演示"在钉钉给智能体下任务"
-- 凭证支持 `config.yaml` 或环境变量注入（优先级：环境变量 > 配置文件，如 `DING_APP_KEY` / `DING_APP_SECRET`），详见 [机器人使用说明](docs/zh-CN/robot.md)
-- 凭证缺失的通道仅告警并自动禁用，不影响主系统全部核心能力；真实密钥不进入代码仓库（`config.yaml` 已被 `.gitignore` 忽略，分发只含 `config.example.yaml` 占位模板）
-
-### 标准化复盘报告
-
-- 一键导出 Markdown / PDF 格式
-- 含攻击链时间线、风险评分、IOC 提取
-- 适合教学评分与赛后复盘
+- **四类 Agent 协同** — 规划/执行/审计/复盘，三种编排模式（Deep / Plan-Execute / Supervisor）按任务复杂度自动选型
+- **自主决策** — 自动识别目标环境、规划多步攻击链、实时适应发现结果
+- **140 个运行时工具** — 90 个 YAML 安全工具配方（侦察/Web/云/二进制分析/取证/后渗透）+ 50 个内置/MCP 工具
+- **人机协同安全** — 敏感操作（命令执行/提权/数据删除）需人工审批，含倒计时与拒绝机制
+- **8 通道 IM 机器人**（可选）— 钉钉/飞书/企业微信/Telegram/Slack/Discord/QQ/个人微信，默认关闭；钉钉、飞书走长连接，无需公网回调
+- **轻量部署** — 单二进制（Go，零外部依赖），首次启动向导设密码，Windows/Linux/macOS 三端可用
 
 ## 快速开始
 
-### 环境要求
+### 下载
 
-- Go 1.25+
-- Python 3.10+
+从 [GitHub Releases](https://github.com/TrueFurina/SecAutoMind-src/releases) 获取最新版本。
 
-### 一键启动
+### 启动
 
+**Windows**：双击 `secautomind-ai.exe`，浏览器自动打开。
+
+**Linux / macOS**：
 ```bash
-git clone https://github.com/<your-org>/SecAutoMind.git
-cd SecAutoMind
-chmod +x run.sh
-./run.sh
+chmod +x secautomind-ai
+./secautomind-ai --http
 ```
 
-首次启动时控制台会输出本地访问地址与一次性 `admin` 密码，请妥善保存
-并在登录后立即修改。
+首次启动时，控制台会输出访问地址与一次性 `admin` 密码（同时保存到 `data/admin_initial_password.txt`）。登录后请立即修改密码。
 
 ### 配置 AI 通道
 
-启动后进入「系统设置 → 基本设置 → AI 通道配置」新增通道，填写：
-- 服务商（OpenAI / DeepSeek / Qwen 等 OpenAI 兼容协议）
-- Base URL
-- API Key
-- 模型名
-- Token 上限
+编辑 `config.yaml`（或通过 Web 界面「系统设置 → AI 通道配置」）添加至少一个通道：
+
+```yaml
+ai:
+  default_channel: deepseek
+  channels:
+    deepseek:
+      name: DeepSeek
+      provider: openai_compatible
+      base_url: https://api.deepseek.com/v1
+      api_key: ""          # 留空，通过环境变量注入
+      model: deepseek-chat
+```
+
+API 密钥可通过环境变量注入（如 `DEEPSEEK_API_KEY`）——config.yaml 中零明文。
 
 ## 架构总览
 
@@ -97,12 +72,12 @@ chmod +x run.sh
 ┌───────────────────────────────────────────────────────┐
 │  编排器（Deep / Plan-Execute / Supervisor）             │
 └───────────────────────────────────────────────────────┘
-    ▲                ▲                  ▲
-    │                │                  │
-┌───┴────┐      ┌────┴────┐        ┌────┴────┐
-│ 规划器  │      │ 执行器   │        │ 审计器   │
-│  Agent │      │  Agents │        │  Agent │
-└────────┘      └─────────┘        └─────────┘
+    ▲            ▲            ▲            ▲
+    │            │            │            │
+┌───┴────┐  ┌────┴────┐  ┌────┴────┐  ┌────┴─────┐
+│ 规划器  │  │ 执行器   │  │ 审计器   │  │ 复盘器   │
+│  Agent │  │  Agents │  │  Agent │  │  Agent  │
+└────────┘  └─────────┘  └─────────┘  └──────────┘
                        │
                        ▼
        ┌───────────────────────────────┐
@@ -114,32 +89,29 @@ chmod +x run.sh
 
 ```
 SecAutoMind/
-├── cmd/                # Web 服务入口
-├── internal/           # Agent / MCP / 路由 / C2
-├── web/                # 前端静态资源
-├── tools/              # YAML 工具配方
-├── roles/              # 角色配置
-├── skills/             # Agent Skills
-├── agents/             # 多代理定义
-├── docs/               # 专题文档
-├── config.yaml         # 运行配置
-├── run.sh              # 启动脚本
-└── README*.md
+├── cmd/server/          # Web 服务入口
+├── internal/            # Agent / MCP / 路由 / 数据库 / 安全
+├── web/static/          # 前端静态资源（嵌入二进制）
+├── tools/               # 90 个 YAML 工具配方
+├── agents/              # 18 个 Agent 角色定义
+├── skills/              # Agent 技能
+├── roles/               # 13 个 RBAC 角色定义
+├── docs/                # 文档（部署/API 参考/机器人说明）
+├── config.example.yaml  # 配置模板（无真实密钥）
+└── README.md
 ```
 
 ## 适用场景
 
-- **高校网络靶场实训** — 攻防演练自动化，标准化评分
-- **CTF 训练** — 智能体辅助解题，工具自动化
-- **安全研究** — 复现 CVE、验证 PoC、攻击链分析
+- **高校网络安全实训** — 攻防演练自动化，标准化评分
+- **CTF 竞赛训练** — AI 辅助解题，工具自动化
+- **安全研究** — CVE 复现、PoC 验证、攻击链分析
 - **企业蓝队培训** — 检测能力训练，告警研判练习
 
 ## 许可证
 
-Apache License 2.0。完整条款见 `LICENSE` 文件。
+源码可用，非开源。完整条款见 `installer/LICENSE.txt`。
 
 ## 免责声明
 
-SecAutoMind 仅用于已获得明确授权的靶场演练与教学科研目的。使用者需自行
-确保符合当地法律法规及所在机构的使用规范。维护者不对任何未授权使用
-承担责任。使用前请阅读 `SECURITY.md` 与内置安全模型文档。
+SecAutoMind 仅用于已获得明确授权的安全测试与教学科研目的。使用者需自行确保符合当地法律法规及所在机构的使用规范。维护者不对任何未授权使用承担责任。使用前请阅读 `SECURITY.md` 与内置安全模型文档。

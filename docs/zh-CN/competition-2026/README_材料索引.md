@@ -16,7 +16,7 @@
 
 - 工程证据：`docs/evidence-build-test-20260903.txt`（go vet exit 0；26 包 test ok）
 - 架构细节：`docs/zh-CN/architecture.md`、`MULTI_AGENT_EINO.md`、`robot.md`
-- 评分对照：根目录 `质检报告_*.md`、`对标评分报告_20260903.md`
+- 评分对照/质检历史：已收编至《本地改动总览_队长效审》附录 A（根目录过程质检/对标报告已清扫删除，git 历史可恢复）
 - 演示 PPT：`SecAutoMind_PPT/`（已有两版 .pptx，本文档可作为讲稿数据源）
 
 ## 提交前硬门槛（倒排）

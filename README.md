@@ -2,7 +2,7 @@
 
 # SecAutoMind
 
-**多智能体驱动的靶场自主攻防推演平台**
+**Multi-Agent Autonomous Cybersecurity Platform**
 
 [English](README.md) | [中文](README_CN.md)
 
@@ -10,56 +10,54 @@
 
 ## Overview
 
-SecAutoMind is a multi-agent platform purpose-built for autonomous attack–defense
-simulation in authorized range environments. It coordinates a layered agent
-stack (planning / execution / audit / review) so that high-fidelity offensive
-and defensive scenarios can be reproduced end-to-end with a single natural
-language intent.
+SecAutoMind is a multi-agent autonomous cybersecurity platform built with Go and large language models. It coordinates a layered agent stack (planning / execution / audit / review) through a shared fact blackboard, enabling end-to-end security operations — from target reconnaissance to vulnerability discovery to post-exploitation — with a single natural language intent.
 
-The system integrates a curated library of 90 security tool recipes, supports
-human-in-the-loop approval, and produces standardized review reports suitable
-for classroom and lab evaluation.
+The platform ships with **90 YAML-defined security tool recipes** and **50 built-in tools** (140 runtime-callable total), supports human-in-the-loop approval for sensitive operations, and produces audit-trail-backed reports. It runs fully offline on a single machine — no cluster or cloud account required.
 
 ## Key Features
 
-- **Layered multi-agent orchestration** — planning, execution, audit, and
-  review agents collaborate through a shared fact blackboard.
-- **Autonomous decision making** — the orchestrator can identify the target
-  environment, plan next steps, and adapt to findings on the fly.
-- **Tooling library** — 90 YAML-defined security tools (recon, web, cloud,
-  binary analysis, forensics, post-exploitation) ready to be invoked by the
-  agent layer.
-- **Human-in-the-loop safety** — sensitive operations require explicit user
-  approval with an auditable trail.
-- **Standardized reporting** — every run produces a structured report that
-  can be exported for grading and post-mortem discussion.
-- **Lightweight deployment** — designed to run on a single student laptop
-  with a local LLM, no cluster or cloud account required.
+- **4-agent orchestration** — planning, execution, audit, and review agents collaborate through a shared fact blackboard with three selectable modes (Deep / Plan-Execute / Supervisor).
+- **Autonomous decision making** — the orchestrator identifies the target environment, plans multi-step attack chains, and adapts to findings in real time.
+- **140 runtime tools** — 90 YAML-defined security tool recipes (recon, web, cloud, binary analysis, forensics, post-exploitation) + 50 built-in/MCP tools.
+- **Human-in-the-loop safety** — sensitive operations (command execution, privilege escalation, data deletion) require explicit user approval with countdown timer and reject path.
+- **8-channel IM integration** — DingTalk / Feishu / WeCom / Telegram / Slack / Discord / QQ / WeChat (optional, off by default, long-connection mode for DingTalk & Feishu — no public callback needed).
+- **Lightweight deployment** — single binary (Go, no external dependencies), first-run wizard for admin password, works on Windows / Linux / macOS.
 
 ## Quick Start
 
-### Requirements
+### Download
 
-- Go 1.25+
-- Python 3.10+
+Grab the latest release from [GitHub Releases](https://github.com/TrueFurina/SecAutoMind-src/releases).
 
 ### Run
 
+**Windows**: Double-click `secautomind-ai.exe`. A browser window opens automatically.
+
+**Linux / macOS**:
 ```bash
-git clone https://github.com/<your-org>/SecAutoMind.git
-cd SecAutoMind
-chmod +x run.sh
-./run.sh
+chmod +x secautomind-ai
+./secautomind-ai --http
 ```
 
-The server will print the local URL and an initial `admin` password on the
-first start. Open the URL, log in, and you are ready to go.
+On first start, a one-time admin password is printed to the console and saved to `data/admin_initial_password.txt`. Open the URL, log in, and change the password immediately.
 
-### Configuration
+### Configure an AI Channel
 
-Edit `config.yaml` to register at least one AI channel (provider, base URL,
-API key, model). The default channel is used for new conversations and
-unspecified tasks.
+Edit `config.yaml` (or use the web UI under **Settings → AI Channels**) to add at least one channel:
+
+```yaml
+ai:
+  default_channel: deepseek
+  channels:
+    deepseek:
+      name: DeepSeek
+      provider: openai_compatible
+      base_url: https://api.deepseek.com/v1
+      api_key: ""          # leave empty, inject via env var
+      model: deepseek-chat
+```
+
+API keys can be injected via environment variables (e.g., `DEEPSEEK_API_KEY`) — no plaintext in config files.
 
 ## Architecture
 
@@ -74,12 +72,12 @@ unspecified tasks.
 ┌───────────────────────────────────────────────────────┐
 │  Orchestrator (Deep / Plan-Execute / Supervisor)       │
 └───────────────────────────────────────────────────────┘
-        ▲                ▲                ▲
-        │                │                │
-   ┌────┴───┐       ┌────┴────┐      ┌────┴────┐
-   │ Planner │       │ Executor │      │ Auditor │
-   │  Agent  │       │  Agents  │      │  Agent  │
-   └────────┘       └──────────┘      └─────────┘
+        ▲            ▲            ▲            ▲
+        │            │            │            │
+   ┌────┴───┐   ┌────┴────┐  ┌────┴────┐  ┌────┴─────┐
+   │ Planner │   │ Executor │  │ Auditor │  │ Reviewer │
+   │  Agent  │   │  Agents  │  │  Agent  │  │  Agent   │
+   └────────┘   └──────────┘  └─────────┘  └──────────┘
                          │
                          ▼
         ┌────────────────────────────────────┐
@@ -87,13 +85,33 @@ unspecified tasks.
         └────────────────────────────────────┘
 ```
 
+## Project Structure
+
+```
+SecAutoMind/
+├── cmd/server/          # Web service entry point
+├── internal/            # Agent / MCP / routing / database / security
+├── web/static/          # Frontend assets (embedded in binary)
+├── tools/               # 90 YAML tool recipes
+├── agents/              # 18 agent role definitions
+├── skills/              # Agent skills
+├── roles/               # 13 RBAC role definitions
+├── docs/                # Documentation (deployment, API reference, robot guide)
+├── config.example.yaml  # Configuration template (no real keys)
+└── README.md
+```
+
+## Use Cases
+
+- **University cyber range training** — automated attack-defense simulation with standardized grading
+- **CTF competition training** — AI-assisted problem solving with tool automation
+- **Security research** — CVE reproduction, PoC validation, attack chain analysis
+- **Blue team training** — detection capability training, alert triage drills
+
 ## License
 
-Apache License 2.0. See `LICENSE` for the full text.
+Source-available, non-open-source. See `installer/LICENSE.txt` for terms.
 
 ## Disclaimer
 
-SecAutoMind is intended for use only on systems you own or have explicit
-written authorization to test. The maintainers disclaim responsibility for
-any misuse. Please read `SECURITY.md` before operating this tool in any
-shared or production environment.
+SecAutoMind is intended for use only on systems you own or have explicit written authorization to test. The maintainers disclaim responsibility for any misuse. Please read `SECURITY.md` before operating this tool in any shared or production environment.
