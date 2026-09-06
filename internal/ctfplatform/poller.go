@@ -15,11 +15,11 @@ type SolverFunc func(ctx context.Context, ch *Challenge) ([]string, error)
 
 // PollerConfig 轮询器配置。
 type PollerConfig struct {
-	PollInterval      time.Duration `json:"poll_interval"`       // 拉题间隔，默认 30s
-	SolveTimeout      time.Duration `json:"solve_timeout"`       // 单题求解超时，默认 300s
-	SubmitAfterSolve  bool          `json:"submit_after_solve"`  // 解出后自动提交
-	MaxRetrySubmit    int           `json:"max_retry_submit"`    // 提交失败重试次数，默认 2
-	MaxConcurrency    int           `json:"max_concurrency"`     // 跨题并发上限，默认 2
+	PollInterval     time.Duration `json:"poll_interval"`      // 拉题间隔，默认 30s
+	SolveTimeout     time.Duration `json:"solve_timeout"`      // 单题求解超时，默认 300s
+	SubmitAfterSolve bool          `json:"submit_after_solve"` // 解出后自动提交
+	MaxRetrySubmit   int           `json:"max_retry_submit"`   // 提交失败重试次数，默认 2
+	MaxConcurrency   int           `json:"max_concurrency"`    // 跨题并发上限，默认 2
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -39,9 +39,9 @@ type Poller struct {
 	config   PollerConfig
 	logger   *zap.Logger
 
-	mu         sync.Mutex
-	processed  map[string]bool        // 已处理题目 ID（去重）
-	records    map[string]*PollRecord  // 审计记录
+	mu        sync.Mutex
+	processed map[string]bool        // 已处理题目 ID（去重）
+	records   map[string]*PollRecord // 审计记录
 }
 
 // NewPoller 创建轮询器。

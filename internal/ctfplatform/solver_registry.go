@@ -17,12 +17,12 @@ import (
 type SolverCategory string
 
 const (
-	CategoryAll     SolverCategory = "all"      // 全题型通用（如 flag 扫描）
-	CategoryCryptoS SolverCategory = "crypto"   // 密码学
-	CategoryMiscS   SolverCategory = "misc"     // 杂项
-	CategoryWebS    SolverCategory = "web"      // Web 安全
-	CategoryRevS    SolverCategory = "reverse"  // 逆向工程
-	CategoryPwnS    SolverCategory = "pwn"      // 二进制漏洞利用
+	CategoryAll     SolverCategory = "all"     // 全题型通用（如 flag 扫描）
+	CategoryCryptoS SolverCategory = "crypto"  // 密码学
+	CategoryMiscS   SolverCategory = "misc"    // 杂项
+	CategoryWebS    SolverCategory = "web"     // Web 安全
+	CategoryRevS    SolverCategory = "reverse" // 逆向工程
+	CategoryPwnS    SolverCategory = "pwn"     // 二进制漏洞利用
 )
 
 // SolverFunc 求解器函数签名：输入题目描述+附件，返回候选 flag 列表。
@@ -32,11 +32,11 @@ type ContextSolverFunc func(ctx context.Context, text string, attachments map[st
 
 // SolverEntry 求解器注册条目。
 type SolverEntry struct {
-	Name       string         // 求解器名（如 "flag_scan"、"rsa_fermat"）
-	Category   SolverCategory // 分类（用于按题型过滤）
-	Priority   int            // 优先级（越小越先执行，0=最高）
-	Solver     ContextSolverFunc     // 求解函数
-	Enabled    bool           // 是否启用
+	Name     string            // 求解器名（如 "flag_scan"、"rsa_fermat"）
+	Category SolverCategory    // 分类（用于按题型过滤）
+	Priority int               // 优先级（越小越先执行，0=最高）
+	Solver   ContextSolverFunc // 求解函数
+	Enabled  bool              // 是否启用
 }
 
 // solverRegistry 全局求解器注册表。
@@ -628,96 +628,240 @@ func solveCodeVirtualization(ctx context.Context, text string, attachments map[s
 
 // ── P9 批次适配函数 ──────────────────────────────────────
 
-func solveElGamalSignature(ctx context.Context, text string, attachments map[string]string) []string { return tryElGamalSignature(text, attachments) }
-func solveSchnorrSignature(ctx context.Context, text string, attachments map[string]string) []string { return trySchnorrSignature(text, attachments) }
-func solveRSAOracleAttack(ctx context.Context, text string, attachments map[string]string) []string { return tryRSAOracleAttack(text, attachments) }
-func solveEXIFMetadata(ctx context.Context, text string, attachments map[string]string) []string { return tryEXIFMetadata(text, attachments) }
-func solveAudioStego(ctx context.Context, text string, attachments map[string]string) []string { return tryAudioStego(text, attachments) }
-func solveMagicBytes(ctx context.Context, text string, attachments map[string]string) []string { return tryMagicBytes(text, attachments) }
-func solveWAFBypass(ctx context.Context, text string, attachments map[string]string) []string { return tryWAFBypass(text, attachments) }
-func solveRCEDetection(ctx context.Context, text string, attachments map[string]string) []string { return tryRCEDetection(text, attachments) }
-func solveFileInclusion(ctx context.Context, text string, attachments map[string]string) []string { return tryFileInclusion(text, attachments) }
-func solveDeserialization(ctx context.Context, text string, attachments map[string]string) []string { return tryDeserialization(text, attachments) }
-func solveObfuscationVariant(ctx context.Context, text string, attachments map[string]string) []string { return tryObfuscationVariant(text, attachments) }
-func solveDecompilerChain(ctx context.Context, text string, attachments map[string]string) []string { return tryDecompilerChain(text, attachments) }
-func solveIOFileExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryIOFileExploit(text, attachments) }
-func solveHeapSpray(ctx context.Context, text string, attachments map[string]string) []string { return tryHeapSpray(text, attachments) }
+func solveElGamalSignature(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryElGamalSignature(text, attachments)
+}
+func solveSchnorrSignature(ctx context.Context, text string, attachments map[string]string) []string {
+	return trySchnorrSignature(text, attachments)
+}
+func solveRSAOracleAttack(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRSAOracleAttack(text, attachments)
+}
+func solveEXIFMetadata(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEXIFMetadata(text, attachments)
+}
+func solveAudioStego(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryAudioStego(text, attachments)
+}
+func solveMagicBytes(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryMagicBytes(text, attachments)
+}
+func solveWAFBypass(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWAFBypass(text, attachments)
+}
+func solveRCEDetection(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRCEDetection(text, attachments)
+}
+func solveFileInclusion(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryFileInclusion(text, attachments)
+}
+func solveDeserialization(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDeserialization(text, attachments)
+}
+func solveObfuscationVariant(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryObfuscationVariant(text, attachments)
+}
+func solveDecompilerChain(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDecompilerChain(text, attachments)
+}
+func solveIOFileExploit(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryIOFileExploit(text, attachments)
+}
+func solveHeapSpray(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHeapSpray(text, attachments)
+}
 
 // ── P10 批次适配函数 ──────────────────────────────────────
 
 // crypto
-func solveHomomorphicEncryption(ctx context.Context, text string, attachments map[string]string) []string { return tryHomomorphicEncryption(text, attachments) }
-func solveECPointOps(ctx context.Context, text string, attachments map[string]string) []string { return tryEllipticCurvePointOps(text, attachments) }
-func solveLatticeKeywords(ctx context.Context, text string, attachments map[string]string) []string { return tryLatticeKeywords(text, attachments) }
+func solveHomomorphicEncryption(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHomomorphicEncryption(text, attachments)
+}
+func solveECPointOps(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEllipticCurvePointOps(text, attachments)
+}
+func solveLatticeKeywords(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryLatticeKeywords(text, attachments)
+}
+
 // misc 编码变体
-func solveBase32(ctx context.Context, text string, attachments map[string]string) []string { return tryBase32(text) }
-func solveBase85(ctx context.Context, text string, attachments map[string]string) []string { return tryBase85(text) }
-func solveBase91(ctx context.Context, text string, attachments map[string]string) []string { return tryBase91(text) }
-func solveUUencode(ctx context.Context, text string, attachments map[string]string) []string { return tryUUencode(text) }
-func solveQuotedPrintable(ctx context.Context, text string, attachments map[string]string) []string { return tryQuotedPrintable(text) }
-func solvePunycode(ctx context.Context, text string, attachments map[string]string) []string { return tryPunycode(text) }
+func solveBase32(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBase32(text)
+}
+func solveBase85(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBase85(text)
+}
+func solveBase91(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBase91(text)
+}
+func solveUUencode(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryUUencode(text)
+}
+func solveQuotedPrintable(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryQuotedPrintable(text)
+}
+func solvePunycode(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPunycode(text)
+}
+
 // web
-func solveSSRFChain(ctx context.Context, text string, attachments map[string]string) []string { return trySSRFChain(text, attachments) }
-func solveDOMXSS(ctx context.Context, text string, attachments map[string]string) []string { return tryDOMXSS(text, attachments) }
-func solveStoredXSS(ctx context.Context, text string, attachments map[string]string) []string { return tryStoredXSS(text, attachments) }
+func solveSSRFChain(ctx context.Context, text string, attachments map[string]string) []string {
+	return trySSRFChain(text, attachments)
+}
+func solveDOMXSS(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDOMXSS(text, attachments)
+}
+func solveStoredXSS(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryStoredXSS(text, attachments)
+}
+
 // reverse
-func solveGoReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryGoReverseAdvanced(text, attachments) }
-func solvePythonReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryPythonReverseAdvanced(text, attachments) }
-func solveDotNetReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryDotNetReverseAdvanced(text, attachments) }
+func solveGoReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryGoReverseAdvanced(text, attachments)
+}
+func solvePythonReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPythonReverseAdvanced(text, attachments)
+}
+func solveDotNetReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDotNetReverseAdvanced(text, attachments)
+}
+
 // pwn
-func solveRet2csu(ctx context.Context, text string, attachments map[string]string) []string { return tryRet2csu(text, attachments) }
-func solveRet2Syscall(ctx context.Context, text string, attachments map[string]string) []string { return tryRet2Syscall(text, attachments) }
-func solveFormatStringArbitraryWrite(ctx context.Context, text string, attachments map[string]string) []string { return tryFormatStringArbitraryWrite(text, attachments) }
-func solveStackOverflow(ctx context.Context, text string, attachments map[string]string) []string { return tryStackOverflow(text, attachments) }
+func solveRet2csu(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRet2csu(text, attachments)
+}
+func solveRet2Syscall(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRet2Syscall(text, attachments)
+}
+func solveFormatStringArbitraryWrite(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryFormatStringArbitraryWrite(text, attachments)
+}
+func solveStackOverflow(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryStackOverflow(text, attachments)
+}
 
 // ── P11 批次适配函数 ──────────────────────────────────────
 
-func solveCloudSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryCloudSecurity(text, attachments) }
-func solveIoTSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryIoTSecurity(text, attachments) }
-func solveMobileSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryMobileSecurity(text, attachments) }
-func solveAIMLSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryAIMLSecurity(text, attachments) }
-func solveBlockchainAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryBlockchainAdvanced(text, attachments) }
-func solveTimingAttack(ctx context.Context, text string, attachments map[string]string) []string { return tryTimingAttack(text, attachments) }
-func solveZ85(ctx context.Context, text string, attachments map[string]string) []string { return tryZ85(text) }
-func solveRustReverse(ctx context.Context, text string, attachments map[string]string) []string { return tryRustReverse(text, attachments) }
-func solveSwiftReverse(ctx context.Context, text string, attachments map[string]string) []string { return trySwiftReverse(text, attachments) }
-func solveWebAssemblyReverse(ctx context.Context, text string, attachments map[string]string) []string { return tryWebAssemblyReverse(text, attachments) }
-func solveKernelExploitAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryKernelExploitAdvanced(text, attachments) }
-func solveHypervisorEscape(ctx context.Context, text string, attachments map[string]string) []string { return tryHypervisorEscape(text, attachments) }
-func solveFirmwareExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryFirmwareExploit(text, attachments) }
+func solveCloudSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCloudSecurity(text, attachments)
+}
+func solveIoTSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryIoTSecurity(text, attachments)
+}
+func solveMobileSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryMobileSecurity(text, attachments)
+}
+func solveAIMLSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryAIMLSecurity(text, attachments)
+}
+func solveBlockchainAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBlockchainAdvanced(text, attachments)
+}
+func solveTimingAttack(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryTimingAttack(text, attachments)
+}
+func solveZ85(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryZ85(text)
+}
+func solveRustReverse(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRustReverse(text, attachments)
+}
+func solveSwiftReverse(ctx context.Context, text string, attachments map[string]string) []string {
+	return trySwiftReverse(text, attachments)
+}
+func solveWebAssemblyReverse(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWebAssemblyReverse(text, attachments)
+}
+func solveKernelExploitAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryKernelExploitAdvanced(text, attachments)
+}
+func solveHypervisorEscape(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHypervisorEscape(text, attachments)
+}
+func solveFirmwareExploit(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryFirmwareExploit(text, attachments)
+}
 
 // ── P12 批次适配函数 ──────────────────────────────────────
 
-func solveCryptoAlgorithmDetect(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoAlgorithmDetect(text, attachments) }
-func solveEncodingChain(ctx context.Context, text string, attachments map[string]string) []string { return tryEncodingChain(text, attachments) }
-func solveWeb3Security(ctx context.Context, text string, attachments map[string]string) []string { return tryWeb3Security(text, attachments) }
-func solveAutomotiveSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryAutomotiveSecurity(text, attachments) }
-func solveSatelliteSecurity(ctx context.Context, text string, attachments map[string]string) []string { return trySatelliteSecurity(text, attachments) }
-func solveAdvancedCrypto(ctx context.Context, text string, attachments map[string]string) []string { return tryAdvancedCrypto(text, attachments) }
-func solveEncodingDetectionAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryEncodingDetectionAdvanced(text, attachments) }
-func solveCryptoAttackPatterns(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoAttackPatterns(text, attachments) }
+func solveCryptoAlgorithmDetect(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCryptoAlgorithmDetect(text, attachments)
+}
+func solveEncodingChain(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEncodingChain(text, attachments)
+}
+func solveWeb3Security(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWeb3Security(text, attachments)
+}
+func solveAutomotiveSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryAutomotiveSecurity(text, attachments)
+}
+func solveSatelliteSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return trySatelliteSecurity(text, attachments)
+}
+func solveAdvancedCrypto(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryAdvancedCrypto(text, attachments)
+}
+func solveEncodingDetectionAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEncodingDetectionAdvanced(text, attachments)
+}
+func solveCryptoAttackPatterns(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCryptoAttackPatterns(text, attachments)
+}
 
 // ── P13 批次适配函数 ──────────────────────────────────────
 
-func solveNetworkProtocol(ctx context.Context, text string, attachments map[string]string) []string { return tryNetworkProtocol(text, attachments) }
-func solveDatabaseSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryDatabaseSecurity(text, attachments) }
-func solveWirelessSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryWirelessSecurity(text, attachments) }
-func solveHardwareSecurityAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryHardwareSecurityAdvanced(text, attachments) }
-func solveOSKernelSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryOSKernelSecurity(text, attachments) }
-func solveBase45(ctx context.Context, text string, attachments map[string]string) []string { return tryBase45(text) }
-func solveBech32(ctx context.Context, text string, attachments map[string]string) []string { return tryBech32(text) }
-func solveBase62(ctx context.Context, text string, attachments map[string]string) []string { return tryBase62(text) }
+func solveNetworkProtocol(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryNetworkProtocol(text, attachments)
+}
+func solveDatabaseSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDatabaseSecurity(text, attachments)
+}
+func solveWirelessSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWirelessSecurity(text, attachments)
+}
+func solveHardwareSecurityAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHardwareSecurityAdvanced(text, attachments)
+}
+func solveOSKernelSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryOSKernelSecurity(text, attachments)
+}
+func solveBase45(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBase45(text)
+}
+func solveBech32(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBech32(text)
+}
+func solveBase62(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBase62(text)
+}
 
 // ── P14 批次适配函数 ──────────────────────────────────────
 
-func solveQuantumComputing(ctx context.Context, text string, attachments map[string]string) []string { return tryQuantumComputing(text, attachments) }
-func solveBioinformatics(ctx context.Context, text string, attachments map[string]string) []string { return tryBioinformatics(text, attachments) }
-func solveGameSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryGameSecurity(text, attachments) }
-func solveDigitalForensicsAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryDigitalForensicsAdvanced(text, attachments) }
-func solveCryptoImplementationDetails(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoImplementationDetails(text, attachments) }
+func solveQuantumComputing(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryQuantumComputing(text, attachments)
+}
+func solveBioinformatics(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBioinformatics(text, attachments)
+}
+func solveGameSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryGameSecurity(text, attachments)
+}
+func solveDigitalForensicsAdvanced(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDigitalForensicsAdvanced(text, attachments)
+}
+func solveCryptoImplementationDetails(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCryptoImplementationDetails(text, attachments)
+}
 
 // ── P15 批次适配函数 ──────────────────────────────────────
 
-func solveCryptoProtocol(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoProtocolAnalysis(text, attachments) }
-func solveNetworkForensics(ctx context.Context, text string, attachments map[string]string) []string { return tryNetworkForensics(text, attachments) }
-func solveExploitChain(ctx context.Context, text string, attachments map[string]string) []string { return tryExploitChainDetection(text, attachments) }
+func solveCryptoProtocol(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCryptoProtocolAnalysis(text, attachments)
+}
+func solveNetworkForensics(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryNetworkForensics(text, attachments)
+}
+func solveExploitChain(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryExploitChainDetection(text, attachments)
+}

@@ -148,7 +148,7 @@ func base64Encode(s string) string {
 			encoded += string(std[((b[1]&0x0f)<<2)|(b[2]>>6)])
 			encoded += string(std[b[2]&0x3f])
 		} else if n > 1 {
-			encoded += string(std[((b[1]&0x0f)<<2)])
+			encoded += string(std[((b[1] & 0x0f) << 2)])
 			encoded += "="
 		} else {
 			encoded += "=="

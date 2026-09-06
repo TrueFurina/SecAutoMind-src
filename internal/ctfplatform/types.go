@@ -13,33 +13,33 @@ import (
 
 // Challenge 表示一道 CTF 题目。
 type Challenge struct {
-	ID            string `json:"id"`
-	Title         string `json:"title"`
-	Category      string `json:"category"`       // web / crypto / misc / reverse / pwn
-	Description   string `json:"description"`
-	FlagFormat    string `json:"flag_format"`     // 如 "flag{[^}]+}"
-	Score         int    `json:"score"`
-	HasInstance   bool   `json:"has_instance"`    // 是否需要启动容器
-	HasAttachment bool   `json:"has_attachment"`  // 是否有附件
-	Difficulty    string `json:"difficulty"`       // VERY_EASY / EASY / MEDIUM / HARD
+	ID            string                 `json:"id"`
+	Title         string                 `json:"title"`
+	Category      string                 `json:"category"` // web / crypto / misc / reverse / pwn
+	Description   string                 `json:"description"`
+	FlagFormat    string                 `json:"flag_format"` // 如 "flag{[^}]+}"
+	Score         int                    `json:"score"`
+	HasInstance   bool                   `json:"has_instance"`   // 是否需要启动容器
+	HasAttachment bool                   `json:"has_attachment"` // 是否有附件
+	Difficulty    string                 `json:"difficulty"`     // VERY_EASY / EASY / MEDIUM / HARD
 	Extra         map[string]interface{} `json:"extra,omitempty"`
 }
 
 // Instance 表示一个启动的题目环境实例。
 type Instance struct {
-	InstanceID string `json:"instance_id"`
-	Status     string `json:"status"` // starting / running / error / stopped
+	InstanceID string                 `json:"instance_id"`
+	Status     string                 `json:"status"` // starting / running / error / stopped
 	Extra      map[string]interface{} `json:"extra,omitempty"`
 }
 
 // Access 表示实例的访问信息（IP/端口/凭证）。
 type Access struct {
-	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	URL         string `json:"url"`          // 若平台给的是 URL
-	EntryPoints []EntryPoint `json:"entry_points,omitempty"`
+	Host        string                 `json:"host"`
+	Port        int                    `json:"port"`
+	Username    string                 `json:"username"`
+	Password    string                 `json:"password"`
+	URL         string                 `json:"url"` // 若平台给的是 URL
+	EntryPoints []EntryPoint           `json:"entry_points,omitempty"`
 	Extra       map[string]interface{} `json:"extra,omitempty"`
 }
 
@@ -53,28 +53,28 @@ type EntryPoint struct {
 
 // SubmitResult 表示提交 flag 的结果。
 type SubmitResult struct {
-	Accepted         bool   `json:"accepted"`           // 平台是否接受
-	Correct          bool   `json:"correct"`            // flag 是否正确
-	Detail           string `json:"detail"`             // 平台返回详情
-	RemainingAttempts int   `json:"remaining_attempts"` // 剩余提交次数
-	RequestFailed    bool   `json:"request_failed"`     // 请求层是否失败（网络/HTTP/鉴权）
-	                                  // 与 Correct=false 区分：请求失败时 flag 可能是对的
-	Extra            map[string]interface{} `json:"extra,omitempty"`
+	Accepted          bool   `json:"accepted"`           // 平台是否接受
+	Correct           bool   `json:"correct"`            // flag 是否正确
+	Detail            string `json:"detail"`             // 平台返回详情
+	RemainingAttempts int    `json:"remaining_attempts"` // 剩余提交次数
+	RequestFailed     bool   `json:"request_failed"`     // 请求层是否失败（网络/HTTP/鉴权）
+	// 与 Correct=false 区分：请求失败时 flag 可能是对的
+	Extra map[string]interface{} `json:"extra,omitempty"`
 }
 
 // PollRecord 表示单题的轮询处理记录（审计可追溯）。
 type PollRecord struct {
-	ChallengeID    string    `json:"challenge_id"`
-	Title          string    `json:"title"`
-	Category       string    `json:"category"`
-	StartedAt      time.Time `json:"started_at"`
-	FinishedAt     time.Time `json:"finished_at"`
-	Flag           string    `json:"flag"`
-	Submitted      bool      `json:"submitted"`
-	Accepted       bool      `json:"accepted"`
-	Detail         string    `json:"detail"`
-	Error          string    `json:"error"`
-	ExtraCandidates []string `json:"extra_candidates,omitempty"`
+	ChallengeID     string    `json:"challenge_id"`
+	Title           string    `json:"title"`
+	Category        string    `json:"category"`
+	StartedAt       time.Time `json:"started_at"`
+	FinishedAt      time.Time `json:"finished_at"`
+	Flag            string    `json:"flag"`
+	Submitted       bool      `json:"submitted"`
+	Accepted        bool      `json:"accepted"`
+	Detail          string    `json:"detail"`
+	Error           string    `json:"error"`
+	ExtraCandidates []string  `json:"extra_candidates,omitempty"`
 }
 
 // PlatformAPI 定义 CTF 平台的完整生命周期接口。

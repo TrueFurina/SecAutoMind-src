@@ -198,9 +198,9 @@ func (p *DasCTFPlatform) CreateInstance(ctx context.Context, challengeID string)
 		return nil, fmt.Errorf("启动环境失败: HTTP %d, body=%s", status, string(data))
 	}
 	var resp struct {
-		Code int       `json:"code"`
-		Data Instance  `json:"data"`
-		Msg  string    `json:"msg"`
+		Code int      `json:"code"`
+		Data Instance `json:"data"`
+		Msg  string   `json:"msg"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("解析实例信息失败: %w", err)
@@ -243,7 +243,7 @@ func (p *DasCTFPlatform) SubmitFlag(ctx context.Context, challengeID string, fla
 		return result, fmt.Errorf("提交失败: HTTP %d", status)
 	}
 	var resp struct {
-		Code int    `json:"code"`
+		Code int `json:"code"`
 		Data struct {
 			Correct bool   `json:"correct"`
 			Detail  string `json:"detail"`

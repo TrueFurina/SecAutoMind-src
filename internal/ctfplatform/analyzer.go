@@ -16,22 +16,22 @@ import (
 type TaskCategory string
 
 const (
-	CategoryCrypto TaskCategory = "crypto"
-	CategoryMisc   TaskCategory = "misc"
-	CategoryWeb    TaskCategory = "web"
+	CategoryCrypto  TaskCategory = "crypto"
+	CategoryMisc    TaskCategory = "misc"
+	CategoryWeb     TaskCategory = "web"
 	CategoryReverse TaskCategory = "reverse"
-	CategoryPwn    TaskCategory = "pwn"
+	CategoryPwn     TaskCategory = "pwn"
 	CategoryUnknown TaskCategory = "unknown"
 )
 
 // SolveRoute 表示求解路由建议。
 type SolveRoute struct {
-	Category    TaskCategory `json:"category"`
-	SubType     string       `json:"sub_type"`      // 子类型（如 RSA 小指数）
-	Solver      string       `json:"solver"`         // 推荐求解器名
-	Reason      string       `json:"reason"`         // 路由原因
-	Params      map[string]interface{} `json:"params"` // 提取的参数（如 e, n, c）
-	Confidence  float64      `json:"confidence"`     // 路由置信度 0-1
+	Category   TaskCategory           `json:"category"`
+	SubType    string                 `json:"sub_type"`   // 子类型（如 RSA 小指数）
+	Solver     string                 `json:"solver"`     // 推荐求解器名
+	Reason     string                 `json:"reason"`     // 路由原因
+	Params     map[string]interface{} `json:"params"`     // 提取的参数（如 e, n, c）
+	Confidence float64                `json:"confidence"` // 路由置信度 0-1
 }
 
 // TaskAnalyzer 任务分析器。
@@ -92,10 +92,10 @@ func (a *TaskAnalyzer) Analyze(ch *Challenge, attachments map[string]string) []S
 // ── 关键词模板匹配 ──────────────────────────────────────
 
 var keywordPatterns = []struct {
-	kind      string
-	keywords  []string
-	category  TaskCategory
-	solver    string
+	kind       string
+	keywords   []string
+	category   TaskCategory
+	solver     string
 	confidence float64
 }{
 	{"caesar", []string{"caesar", "凯撒"}, CategoryCrypto, "caesar", 0.8},

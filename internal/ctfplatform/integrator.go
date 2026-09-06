@@ -18,9 +18,9 @@ import (
 // PresolveAgentIntegrator 将 presolve 集成到 Agent 编排链路。
 type PresolveAgentIntegrator struct {
 	presolver *Presolver
-	analyzer *TaskAnalyzer
-	platform PlatformAPI
-	logger   *zap.Logger
+	analyzer  *TaskAnalyzer
+	platform  PlatformAPI
+	logger    *zap.Logger
 }
 
 // NewPresolveAgentIntegrator 创建集成器。
@@ -30,21 +30,21 @@ func NewPresolveAgentIntegrator(presolver *Presolver, analyzer *TaskAnalyzer, pl
 	}
 	return &PresolveAgentIntegrator{
 		presolver: presolver,
-		analyzer: analyzer,
-		platform: platform,
-		logger:   logger,
+		analyzer:  analyzer,
+		platform:  platform,
+		logger:    logger,
 	}
 }
 
 // PresolveAttempt 表示一次 presolve 尝试结果。
 type PresolveAttempt struct {
-	Solved       bool     `json:"solved"`
-	Engine       string   `json:"engine"`
-	Flags        []string `json:"flags"`
-	Detail       string   `json:"detail"`
-	DurationMs   int64    `json:"duration_ms"`
-	SkipAgent    bool     `json:"skip_agent"`     // 是否跳过 Agent（命中则跳）
-	RedirectTo   string   `json:"redirect_to"`    // 路由建议（如有）
+	Solved     bool     `json:"solved"`
+	Engine     string   `json:"engine"`
+	Flags      []string `json:"flags"`
+	Detail     string   `json:"detail"`
+	DurationMs int64    `json:"duration_ms"`
+	SkipAgent  bool     `json:"skip_agent"`  // 是否跳过 Agent（命中则跳）
+	RedirectTo string   `json:"redirect_to"` // 路由建议（如有）
 }
 
 // TryPresolve 在 Agent 推理前尝试确定性预解。
