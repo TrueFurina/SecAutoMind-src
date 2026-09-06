@@ -6372,3 +6372,140 @@ func tryCryptoImplementationDetails(text string, attachments map[string]string) 
 	}
 	return nil
 }
+
+// ── P15 批次：密码学协议分析 ──────────────────────────────────
+
+// tryCryptoProtocolAnalysis 检测密码学协议分析特征（TLS握手/证书链/密钥交换）。
+func tryCryptoProtocolAnalysis(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	protoKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"tls handshake", "TLS 握手分析"},
+		{"ssl handshake", "SSL 握手分析"},
+		{"certificate chain", "证书链分析"},
+		{"certificate transparency", "证书透明度"},
+		{"certificate pinning", "证书固定"},
+		{"public key pinning", "公钥固定"},
+		{"key exchange", "密钥交换"},
+		{"diffie-hellman", "Diffie-Hellman 密钥交换"},
+		{"elliptic curve diffie-hellman", "ECDH 椭圆曲线密钥交换"},
+		{"rsa key exchange", "RSA 密钥交换"},
+		{"forward secrecy", "前向保密"},
+		{"perfect forward secrecy", "完美前向保密（PFS）"},
+		{"cipher suite", "密码套件"},
+		{"tls version", "TLS 版本"},
+		{"ssl version", "SSL 版本"},
+		{"handshake failure", "握手失败"},
+		{"certificate expired", "证书过期"},
+		{"certificate revoked", "证书吊销"},
+		{"self-signed certificate", "自签名证书"},
+		{"certificate authority", "证书颁发机构（CA）"},
+		{"ocsp", "在线证书状态协议（OCSP）"},
+		{"crl", "证书吊销列表（CRL）"},
+		{"sni", "服务器名称指示（SNI）"},
+		{"alpn", "应用层协议协商（ALPN）"},
+	}
+	for _, kw := range protoKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"协议分析: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P15 批次：网络取证 ──────────────────────────────────
+
+// tryNetworkForensics 检测网络取证特征（PCAP分析/流量还原/协议解析）。
+func tryNetworkForensics(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	netKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"pcap", "PCAP 流量捕获"},
+		{"pcapng", "PCAPNG 流量捕获"},
+		{"tcpdump", "tcpdump 流量捕获"},
+		{"wireshark", "Wireshark 协议分析"},
+		{"tshark", "tshark 命令行分析"},
+		{"zeek", "Zeek（Bro）网络安全监控"},
+		{"suricata", "Suricata IDS"},
+		{"snort", "Snort IDS"},
+		{"network forensics", "网络取证"},
+		{"packet analysis", "数据包分析"},
+		{"flow analysis", "流量分析"},
+		{"conversation analysis", "会话分析"},
+		{"protocol dissection", "协议解析"},
+		{"http analysis", "HTTP 流量分析"},
+		{"dns analysis", "DNS 流量分析"},
+		{"tls decryption", "TLS 流量解密"},
+		{"ssl decryption", "SSL 流量解密"},
+		{"key log file", "SSL Key Log 文件"},
+		{"master secret", "主密钥"},
+		{"pre-master secret", "预主密钥"},
+		{"network tap", "网络分流器"},
+		{"packet capture", "数据包捕获"},
+		{"traffic mirroring", "流量镜像"},
+	}
+	for _, kw := range netKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"网络取证: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P15 批次：漏洞利用链检测 ──────────────────────────────────
+
+// tryExploitChainDetection 检测漏洞利用链特征（多步攻击/链式利用/工具组合）。
+func tryExploitChainDetection(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	chainKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"exploit chain", "漏洞利用链"},
+		{"attack chain", "攻击链"},
+		{"kill chain", "杀伤链"},
+		{"ttp", "战术、技术与程序（TTPs）"},
+		{"mitre att&ck", "MITRE ATT&CK 框架"},
+		{"initial access", "初始访问"},
+		{"execution", "执行"},
+		{"persistence", "持久化"},
+		{"privilege escalation", "权限提升"},
+		{"defense evasion", "防御规避"},
+		{"credential access", "凭证访问"},
+		{"discovery", "发现"},
+		{"lateral movement", "横向移动"},
+		{"collection", "收集"},
+		{"command and control", "命令与控制（C2）"},
+		{"exfiltration", "数据外泄"},
+		{"impact", "影响"},
+		{"apt", "高级持续威胁（APT）"},
+		{"advanced persistent threat", "高级持续威胁"},
+		{"threat intelligence", "威胁情报"},
+		{"ioc", "入侵指标（IOC）"},
+		{"indicator of compromise", "入侵指标"},
+		{"indicator of attack", "攻击指标"},
+		{"threat hunting", "威胁狩猎"},
+	}
+	for _, kw := range chainKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"攻击链检测: " + kw.hint}
+		}
+	}
+	return nil
+}

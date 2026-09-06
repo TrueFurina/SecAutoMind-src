@@ -268,6 +268,11 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "game_security", Category: CategoryMiscS, Priority: 122, Solver: solveGameSecurity})
 	RegisterSolver(SolverEntry{Name: "digital_forensics_adv", Category: CategoryMiscS, Priority: 123, Solver: solveDigitalForensicsAdvanced})
 	RegisterSolver(SolverEntry{Name: "crypto_impl_details", Category: CategoryCryptoS, Priority: 61, Solver: solveCryptoImplementationDetails})
+
+	// P15 批次：密码学协议分析/网络取证/漏洞利用链检测
+	RegisterSolver(SolverEntry{Name: "crypto_protocol", Category: CategoryCryptoS, Priority: 62, Solver: solveCryptoProtocol})
+	RegisterSolver(SolverEntry{Name: "network_forensics", Category: CategoryMiscS, Priority: 94, Solver: solveNetworkForensics})
+	RegisterSolver(SolverEntry{Name: "exploit_chain", Category: CategoryPwnS, Priority: 113, Solver: solveExploitChain})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -710,3 +715,9 @@ func solveBioinformatics(ctx context.Context, text string, attachments map[strin
 func solveGameSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryGameSecurity(text, attachments) }
 func solveDigitalForensicsAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryDigitalForensicsAdvanced(text, attachments) }
 func solveCryptoImplementationDetails(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoImplementationDetails(text, attachments) }
+
+// ── P15 批次适配函数 ──────────────────────────────────────
+
+func solveCryptoProtocol(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoProtocolAnalysis(text, attachments) }
+func solveNetworkForensics(ctx context.Context, text string, attachments map[string]string) []string { return tryNetworkForensics(text, attachments) }
+func solveExploitChain(ctx context.Context, text string, attachments map[string]string) []string { return tryExploitChainDetection(text, attachments) }
