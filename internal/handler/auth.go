@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"secautomind-ai/internal/audit"
@@ -15,6 +16,72 @@ import (
 	"go.uber.org/zap"
 )
 
+// loginRateLimiter 登录失败限流器（内存级，服务重启后重置）。
+// 每用户 5 次失败内不限；超过 5 次后锁定 5 分钟。
+type loginRateLimiter struct {
+	mu      sync.Mutex
+	entries map[string]*loginAttempt
+}
+
+type loginAttempt struct {
+	failures  int
+	lockedAt  time.Time
+}
+
+func newLoginRateLimiter() *loginRateLimiter {
+	return &loginRateLimiter{entries: make(map[string]*loginAttempt)}
+}
+
+const (
+	maxLoginFailures = 5
+	lockoutDuration  = 5 * time.Minute
+)
+
+// Check 检查用户是否被锁定。返回 (locked, remainingSeconds)。
+func (l *loginRateLimiter) Check(username string) (bool, int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	e, ok := l.entries[username]
+	if !ok || e.failures < maxLoginFailures {
+		return false, 0
+	}
+	elapsed := time.Since(e.lockedAt)
+	if elapsed >= lockoutDuration {
+		// 锁定期已过，重置
+		delete(l.entries, username)
+		return false, 0
+	}
+	remaining := int((lockoutDuration - elapsed).Seconds())
+	return true, remaining
+}
+
+// RecordFailure 记录一次登录失败。
+func (l *loginRateLimiter) RecordFailure(username string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	e, ok := l.entries[username]
+	if !ok {
+		l.entries[username] = &loginAttempt{failures: 1}
+		return
+	}
+	// 如果已过锁定期，重置计数
+	if e.failures >= maxLoginFailures && time.Since(e.lockedAt) >= lockoutDuration {
+		l.entries[username] = &loginAttempt{failures: 1}
+		return
+	}
+	e.failures++
+	if e.failures >= maxLoginFailures {
+		e.lockedAt = time.Now()
+	}
+}
+
+// Reset 成功登录后重置计数。
+func (l *loginRateLimiter) Reset(username string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.entries, username)
+}
+
 // AuthHandler handles authentication-related endpoints.
 type AuthHandler struct {
 	manager    *security.AuthManager
@@ -22,6 +89,8 @@ type AuthHandler struct {
 	configPath string
 	logger     *zap.Logger
 	audit      *audit.Service
+	// loginLimiter 登录失败限流（内存级，服务重启后重置）
+	loginLimiter *loginRateLimiter
 }
 
 // SetAudit wires platform audit logging.
@@ -32,10 +101,11 @@ func (h *AuthHandler) SetAudit(s *audit.Service) {
 // NewAuthHandler creates a new AuthHandler.
 func NewAuthHandler(manager *security.AuthManager, cfg *config.Config, configPath string, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
-		manager:    manager,
-		config:     cfg,
-		configPath: configPath,
-		logger:     logger,
+		manager:      manager,
+		config:       cfg,
+		configPath:   configPath,
+		logger:       logger,
+		loginLimiter: newLoginRateLimiter(),
 	}
 }
 
@@ -57,8 +127,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	username := strings.TrimSpace(req.Username)
+
+	// 限流检查：5 次失败后锁定 5 分钟
+	if locked, remaining := h.loginLimiter.Check(username); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":   "登录失败次数过多，账号已临时锁定",
+			"locked":  true,
+			"retry_after_sec": remaining,
+		})
+		return
+	}
+
 	token, expiresAt, err := h.manager.Authenticate(req.Username, req.Password)
 	if err != nil {
+		h.loginLimiter.RecordFailure(username)
 		if h.audit != nil {
 			h.audit.Record(c, audit.Entry{
 				Level:    "warn",
@@ -66,12 +149,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 				Action:   "login",
 				Result:   "failure",
 				Message:  "登录失败：密码错误",
-				Actor:    strings.TrimSpace(req.Username),
+				Actor:    username,
 			})
 		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
 		return
 	}
+	// 成功登录重置计数
+	h.loginLimiter.Reset(username)
 	session, _ := h.manager.ValidateToken(token)
 
 	if h.audit != nil {

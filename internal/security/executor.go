@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -124,7 +125,7 @@ func (e *Executor) buildToolIndex() {
 func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[string]interface{}) (*mcp.ToolResult, error) {
 	e.logger.Debug("ExecuteTool被调用",
 		zap.String("toolName", toolName),
-		zap.Any("args", args),
+		zap.Any("args", sanitizeLogArgs(args)),
 	)
 
 	// 特殊处理：exec工具直接执行系统命令
@@ -254,7 +255,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 					e.logger.Debug("工具执行完成（退出码在允许列表中）",
 						zap.String("tool", toolName),
 						zap.Int("exitCode", *exitCode),
-						zap.String("output", string(output)),
+						zap.String("output", sanitizeLogOutput(string(output))),
 					)
 					return &mcp.ToolResult{
 						Content: []mcp.Content{
@@ -273,7 +274,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			zap.String("tool", toolName),
 			zap.Error(err),
 			zap.Int("exitCode", getExitCodeValue(err)),
-			zap.String("output", string(output)),
+			zap.String("output", sanitizeLogOutput(string(output))),
 		)
 		return &mcp.ToolResult{
 			Content: []mcp.Content{
@@ -288,7 +289,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 
 	e.logger.Debug("工具执行成功",
 		zap.String("tool", toolName),
-		zap.String("output", string(output)),
+		zap.String("output", sanitizeLogOutput(string(output))),
 	)
 
 	return &mcp.ToolResult{
@@ -354,7 +355,7 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 		handler := func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 			e.logger.Debug("工具handler被调用",
 				zap.String("toolName", toolName),
-				zap.Any("args", args),
+				zap.Any("args", sanitizeLogArgs(args)),
 			)
 			return e.ExecuteTool(ctx, toolName, args)
 		}
@@ -821,6 +822,21 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		zap.String("command", command),
 	)
 
+	// 安全拦截：exec 工具是设计内 RCE 接口，仅依赖网关鉴权兜底。
+	// 此处加保底最小集拦截——不改核心逻辑，仅拦截明确危险的 shell 元字符组合。
+	// 拦截策略：阻止包含管道/逻辑链接/子shell替换的复合命令（单命令+参数安全）。
+	if blocked, reason := isDangerousShellCommand(command); blocked {
+		return &mcp.ToolResult{
+			Content: []mcp.Content{
+				{
+					Type: "text",
+					Text: fmt.Sprintf("安全拦截: 命令包含危险特征「%s」，exec 工具禁止复合命令注入。如需执行复合命令请使用专用工具。", reason),
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+
 	command = PrepareShellCommandForExecute(command)
 
 	// 获取shell类型（可选，默认为sh）
@@ -1013,7 +1029,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		e.logger.Error("系统命令执行失败",
 			zap.String("command", command),
 			zap.Error(err),
-			zap.String("output", string(output)),
+			zap.String("output", sanitizeLogOutput(string(output))),
 		)
 		return &mcp.ToolResult{
 			Content: []mcp.Content{
@@ -1355,9 +1371,12 @@ chunksLoop:
 		case <-ctx.Done():
 			TerminateShellCmdSession(session)
 			flush()
+			drainChunks(chunks) // 排空缓冲，防止 readFn goroutine 永久阻塞
 			_ = session.Wait()
 			return outBuilder.String(), ctx.Err()
 		case <-idleCh:
+			TerminateShellCmdSession(session)
+			drainChunks(chunks)
 			fireInactivity()
 			return finalizeBoundedOutput(outBuilder, maxBytes, tee), fmt.Errorf("shell inactivity timeout (%ds)", idleWatch.Sec)
 		case chunk, ok := <-chunks:
@@ -1643,4 +1662,85 @@ func getExitCodeValue(err error) int {
 		return *code
 	}
 	return -1
+}
+
+// isDangerousShellCommand 保底最小集拦截：检测明确危险的 shell 元字符组合。
+// 拦截策略：阻止管道/逻辑链接/子shell替换/命令注入。
+// 单命令 + 参数放行；合法 shell 语法（分号/重定向/算术展开/变量展开）放行。
+func isDangerousShellCommand(cmd string) (bool, string) {
+	dangerous := []struct {
+		pattern string
+		reason  string
+	}{
+		{"|", "管道（|）"},
+		{"&&", "逻辑与（&&）"},
+		{"||", "逻辑或（||）"},
+		{"`", "反引号替换"},
+		{"curl ", "curl（可能外联）"},
+		{"wget ", "wget（可能外联）"},
+		{"nc ", "netcat（可能建立反向shell）"},
+		{"/dev/tcp", "bash反向shell"},
+		{"bash -i", "交互式bash"},
+		{"python -c", "Python代码执行"},
+		{"perl -e", "Perl代码执行"},
+		{"ruby -e", "Ruby代码执行"},
+	}
+	for _, d := range dangerous {
+		if strings.Contains(cmd, d.pattern) {
+			return true, d.reason
+		}
+	}
+	// $(...) 子 shell 替换：排除 $(( 算术展开（合法语法）
+	if strings.Contains(cmd, "$(") && !strings.Contains(cmd, "$((") {
+		return true, "子shell替换（$()）"
+	}
+	return false, ""
+}
+
+// drainChunks 排空 chunks 通道缓冲，防止 readFn goroutine 在 chunks <- 上永久阻塞。
+// 用于 streamCommandOutput 提前返回（ctx取消/超时）时解除 goroutine 死锁。
+func drainChunks(ch <-chan string) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
+}
+
+// sanitizeLogOutput 日志脱敏：将输出中的 API key / token / 密码等敏感信息打码。
+// 匹配规则：sk-xxx / Bearer xxx / api_key=xxx / password=xxx 等常见模式。
+func sanitizeLogOutput(s string) string {
+	// 1. sk- 开头的 API key（16+ 字符）
+	re1 := regexp.MustCompile(`sk-[A-Za-z0-9_-]{16,}`)
+	s = re1.ReplaceAllString(s, "***REDACTED_API_KEY***")
+
+	// 2. Bearer token
+	re2 := regexp.MustCompile(`(?i)Bearer\s+[A-Za-z0-9._-]{16,}`)
+	s = re2.ReplaceAllString(s, "***REDACTED_BEARER***")
+
+	// 3. 密码/secret/token 字段值（key=value 或 key: value 格式）
+	re3 := regexp.MustCompile(`(?i)(password|passwd|secret|token|api[_-]?key|api[_-]?secret|app[_-]?secret)\s*[=:]\s*[^\s,;}{]{8,}`)
+	s = re3.ReplaceAllString(s, "$1=***REDACTED***")
+
+	return s
+}
+
+// sanitizeLogArgs 日志脱敏：对 args map 中的敏感字段值打码。
+func sanitizeLogArgs(args map[string]interface{}) map[string]interface{} {
+	sensitive := map[string]bool{
+		"api_key": true, "apiKey": true, "api_secret": true,
+		"password": true, "passwd": true, "token": true,
+		"secret": true, "app_secret": true, "bearer": true,
+	}
+	result := make(map[string]interface{}, len(args))
+	for k, v := range args {
+		if sensitive[strings.ToLower(k)] {
+			result[k] = "***REDACTED***"
+		} else {
+			result[k] = v
+		}
+	}
+	return result
 }
