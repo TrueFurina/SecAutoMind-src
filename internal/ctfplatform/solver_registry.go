@@ -251,6 +251,16 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "advanced_crypto", Category: CategoryCryptoS, Priority: 59, Solver: solveAdvancedCrypto})
 	RegisterSolver(SolverEntry{Name: "encoding_advanced", Category: CategoryMiscS, Priority: 90, Solver: solveEncodingDetectionAdvanced})
 	RegisterSolver(SolverEntry{Name: "crypto_attack_patterns", Category: CategoryCryptoS, Priority: 60, Solver: solveCryptoAttackPatterns})
+
+	// P13 批次：网络协议安全/数据库安全/无线安全/硬件安全/OS内核/编码变体
+	RegisterSolver(SolverEntry{Name: "network_protocol", Category: CategoryWebS, Priority: 100, Solver: solveNetworkProtocol})
+	RegisterSolver(SolverEntry{Name: "database_security", Category: CategoryWebS, Priority: 101, Solver: solveDatabaseSecurity})
+	RegisterSolver(SolverEntry{Name: "wireless_security", Category: CategoryMiscS, Priority: 118, Solver: solveWirelessSecurity})
+	RegisterSolver(SolverEntry{Name: "hardware_security_adv", Category: CategoryMiscS, Priority: 119, Solver: solveHardwareSecurityAdvanced})
+	RegisterSolver(SolverEntry{Name: "os_kernel_security", Category: CategoryPwnS, Priority: 112, Solver: solveOSKernelSecurity})
+	RegisterSolver(SolverEntry{Name: "base45", Category: CategoryMiscS, Priority: 91, Solver: solveBase45})
+	RegisterSolver(SolverEntry{Name: "bech32", Category: CategoryMiscS, Priority: 92, Solver: solveBech32})
+	RegisterSolver(SolverEntry{Name: "base62", Category: CategoryMiscS, Priority: 93, Solver: solveBase62})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -674,3 +684,14 @@ func solveSatelliteSecurity(ctx context.Context, text string, attachments map[st
 func solveAdvancedCrypto(ctx context.Context, text string, attachments map[string]string) []string { return tryAdvancedCrypto(text, attachments) }
 func solveEncodingDetectionAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryEncodingDetectionAdvanced(text, attachments) }
 func solveCryptoAttackPatterns(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoAttackPatterns(text, attachments) }
+
+// ── P13 批次适配函数 ──────────────────────────────────────
+
+func solveNetworkProtocol(ctx context.Context, text string, attachments map[string]string) []string { return tryNetworkProtocol(text, attachments) }
+func solveDatabaseSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryDatabaseSecurity(text, attachments) }
+func solveWirelessSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryWirelessSecurity(text, attachments) }
+func solveHardwareSecurityAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryHardwareSecurityAdvanced(text, attachments) }
+func solveOSKernelSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryOSKernelSecurity(text, attachments) }
+func solveBase45(ctx context.Context, text string, attachments map[string]string) []string { return tryBase45(text) }
+func solveBech32(ctx context.Context, text string, attachments map[string]string) []string { return tryBech32(text) }
+func solveBase62(ctx context.Context, text string, attachments map[string]string) []string { return tryBase62(text) }

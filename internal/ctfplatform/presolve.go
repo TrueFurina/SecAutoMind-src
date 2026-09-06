@@ -5890,3 +5890,263 @@ func tryCryptoAttackPatterns(text string, attachments map[string]string) []strin
 	}
 	return nil
 }
+
+// ── P13 批次：网络协议安全 ──────────────────────────────────
+
+// tryNetworkProtocol 检测网络协议安全特征（TCP/IP/DNS/HTTP2/QUIC等）。
+func tryNetworkProtocol(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	protoKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"tcp/ip", "TCP/IP 协议栈"},
+		{"tcp reset", "TCP RST 注入"},
+		{"tcp sequence", "TCP 序列号预测"},
+		{"syn flood", "SYN 洪泛攻击"},
+		{"dns poisoning", "DNS 投毒"},
+		{"dns rebinding", "DNS 重绑定"},
+		{"dns tunneling", "DNS 隧道"},
+		{"dns exfiltration", "DNS 数据外泄"},
+		{"dnssec", "DNSSEC"},
+		{"http/2", "HTTP/2 协议"},
+		{"http/3", "HTTP/3 协议"},
+		{"quic", "QUIC 协议"},
+		{"server-sent events", "SSE 服务器推送"},
+		{"grpc", "gRPC 协议"},
+		{"protobuf", "Protocol Buffers"},
+		{"graphql subscription", "GraphQL 订阅"},
+		{"websocket upgrade", "WebSocket 升级握手"},
+		{"hsts", "HSTS 严格传输安全"},
+		{"csp", "内容安全策略（CSP）"},
+		{"cors misconfiguration", "CORS 配置错误"},
+		{"host header injection", "Host 头注入"},
+		{"request smuggling", "HTTP 请求走私"},
+		{"cache poisoning", "缓存投毒"},
+		{"clickjacking", "点击劫持"},
+	}
+	for _, kw := range protoKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"网络协议: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryDatabaseSecurity 检测数据库安全特征（SQL注入变体/NoSQL注入）。
+func tryDatabaseSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	dbKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"sql injection", "SQL 注入"},
+		{"nosql injection", "NoSQL 注入"},
+		{"mongodb injection", "MongoDB 注入"},
+		{"couchdb", "CouchDB 注入"},
+		{"redis injection", "Redis 注入"},
+		{"ldap injection", "LDAP 注入"},
+		{"xpath injection", "XPath 注入"},
+		{"xml injection", "XML 注入"},
+		{"orm injection", "ORM 注入"},
+		{"second order injection", "二次注入"},
+		{"blind sql injection", "SQL 盲注"},
+		{"time-based sql", "时间盲注"},
+		{"union select", "UNION 注入"},
+		{"error-based sql", "报错注入"},
+		{"stacked queries", "堆叠查询"},
+		{"information_schema", "INFORMATION_SCHEMA"},
+		{"mysql", "MySQL"},
+		{"postgresql", "PostgreSQL"},
+		{"sqlite", "SQLite"},
+		{"oracle", "Oracle"},
+		{"mssql", "Microsoft SQL Server"},
+		{"cassandra", "Cassandra"},
+		{"neo4j", "Neo4j 图数据库"},
+	}
+	for _, kw := range dbKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"数据库安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P13 批次：无线安全 ──────────────────────────────────
+
+// tryWirelessSecurity 检测无线安全特征（WiFi/Bluetooth/NFC/RFID）。
+func tryWirelessSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	wlKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"wifi", "WiFi 安全"},
+		{"wpa2", "WPA2 加密"},
+		{"wpa3", "WPA3 加密"},
+		{"wep", "WEP 加密"},
+		{"deauthentication", "解除认证攻击"},
+		{"evil twin", "Evil Twin 攻击"},
+		{"evil ap", "Evil AP 攻击"},
+		{"rogue ap", "Rogue AP"},
+		{"handshake capture", "握手包捕获"},
+		{"pmkid", "PMKID 攻击"},
+		{"bluetooth", "蓝牙安全"},
+		{"ble", "低功耗蓝牙"},
+		{"bluejacking", "蓝牙骚扰"},
+		{"bluesnarfing", "蓝牙窃取"},
+		{"bluebugging", "蓝牙窃听"},
+		{"nfc", "NFC 安全"},
+		{"rfid", "RFID 安全"},
+		{"rfid cloning", "RFID 克隆"},
+		{"proxmark", "Proxmark 工具"},
+		{"sdr", "软件定义无线电"},
+		{"rtl-sdr", "RTL-SDR"},
+		{"gnu radio", "GNU Radio"},
+		{"signal analysis", "信号分析"},
+		{"frequency hopping", "跳频"},
+	}
+	for _, kw := range wlKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"无线安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P13 批次：硬件安全高级 ──────────────────────────────────
+
+// tryHardwareSecurityAdvanced 检测硬件安全高级特征。
+func tryHardwareSecurityAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	hwKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"jtag", "JTAG 调试接口"},
+		{"uart", "UART 串口"},
+		{"spi", "SPI 协议"},
+		{"i2c", "I2C 协议"},
+		{"can bus", "CAN 总线"},
+		{"openocd", "OpenOCD 调试器"},
+		{"bus pirate", "Bus Pirate"},
+		{"logic analyzer", "逻辑分析仪"},
+		{"oscilloscope", "示波器"},
+		{"fpga", "FPGA"},
+		{"asic", "ASIC"},
+		{"microcontroller", "微控制器"},
+		{"arm cortex", "ARM Cortex"},
+		{"risc-v", "RISC-V"},
+		{"mips", "MIPS 架构"},
+		{"power analysis", "功耗分析"},
+		{"electromagnetic", "电磁分析"},
+		{"fault injection", "故障注入"},
+		{"chip whisperer", "ChipWhisperer"},
+		{"side channel attack", "侧信道攻击"},
+	}
+	for _, kw := range hwKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"硬件安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P13 批次：操作系统内核安全 ──────────────────────────────
+
+// tryOSKernelSecurity 检测操作系统内核安全特征。
+func tryOSKernelSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	osKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"windows kernel", "Windows 内核"},
+		{"nt kernel", "NT 内核"},
+		{"driver vulnerability", "驱动漏洞"},
+		{"kernel exploit", "内核漏洞利用"},
+		{"syscall", "系统调用"},
+		{"sysenter", "sysenter 指令"},
+		{"int 0x80", "int 0x80 中断"},
+		{"linux kernel", "Linux 内核"},
+		{"loadable kernel module", "可加载内核模块（LKM）"},
+		{"rootkit", "Rootkit"},
+		{"bootkit", "Bootkit"},
+		{"ring 0", "Ring 0（内核态）"},
+		{"ring 3", "Ring 3（用户态）"},
+		{"privileged instruction", "特权指令"},
+		{"page fault", "页错误"},
+		{"segmentation fault", "段错误"},
+		{"memory management", "内存管理"},
+		{"virtual memory", "虚拟内存"},
+		{"address space", "地址空间"},
+		{"aslr", "ASLR 地址空间随机化"},
+		{"dep", "DEP 数据执行保护"},
+		{"sme", "SME 安全内存加密"},
+		{"sev", "SEV 安全加密虚拟化"},
+	}
+	for _, kw := range osKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"内核安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P13 批次：编码变体扩展 ──────────────────────────────
+
+// tryBase45 检测 Base45 编码（RFC 9285，用于 COVID 证书）。
+func tryBase45(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Base45 字符集：0-9, A-Z, space, $%*+-./:
+	b45Re := regexp.MustCompile(`^[0-9A-Z\s$%*+\-./:]{8,}$`)
+	if !b45Re.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	return []string{"Base45 检测: 符合 Base45 字符集（RFC 9285，" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+}
+
+// tryBech32 检测 Bech32 编码（比特币隔离见证地址）。
+func tryBech32(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Bech32 特征：小写字母+数字，含 '1' 分隔符
+	bech32Re := regexp.MustCompile(`^[a-z2-9]+1[a-z2-9]+$`)
+	if !bech32Re.MatchString(clean) || len(clean) < 14 {
+		return nil
+	}
+	return []string{"Bech32 检测: 比特币隔离见证地址格式（" + clean[:minInt(20, len(clean))] + "）"}
+}
+
+// tryBase62 检测 Base62 编码（URL 短链常用）。
+func tryBase62(text string) []string {
+	clean := strings.TrimSpace(text)
+	b62Re := regexp.MustCompile(`^[0-9A-Za-z]{8,}$`)
+	if !b62Re.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	// 排除 base64（含+/=）
+	if strings.ContainsAny(clean, "+/=") {
+		return nil
+	}
+	return []string{"Base62 检测: 纯字母数字编码（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+}
