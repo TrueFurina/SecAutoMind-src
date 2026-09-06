@@ -756,8 +756,12 @@ func (h *AgentHandler) finalizeRobotAgentError(ctx context.Context, assistantMes
 	}
 	errMsg := "执行失败: " + multiagent.EinoClientRunErrorMessage(errMA)
 	if assistantMessageID != "" {
-		_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID)
-		_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil)
+		if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID); err != nil {
+			h.logger.Warn("机器人：错误消息写回失败", zap.String("messageId", assistantMessageID), zap.Error(err))
+		}
+		if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil); err != nil {
+			h.logger.Warn("机器人：错误过程详情落库失败", zap.String("messageId", assistantMessageID), zap.Error(err))
+		}
 	}
 	return "", conversationID, errMA
 }
@@ -779,7 +783,9 @@ func (h *AgentHandler) finalizeRobotAgentSuccess(taskCtx context.Context, assist
 		}
 	}
 	if resultMA.LastAgentTraceInput != "" || resultMA.LastAgentTraceOutput != "" {
-		_ = h.db.SaveAgentTrace(conversationID, resultMA.LastAgentTraceInput, resultMA.LastAgentTraceOutput)
+		if err := h.db.SaveAgentTrace(conversationID, resultMA.LastAgentTraceInput, resultMA.LastAgentTraceOutput); err != nil {
+			h.logger.Warn("机器人：AgentTrace 保存失败", zap.String("conversationId", conversationID), zap.Error(err))
+		}
 	}
 	return responseText, conversationID, nil
 }
@@ -851,7 +857,9 @@ func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, platform stri
 			return "", "", fmt.Errorf("创建对话失败: %w", createErr)
 		}
 		conversationID = conv.ID
-		_ = h.db.SetResourceOwner("conversation", conversationID, ownerUserID)
+		if err := h.db.SetResourceOwner("conversation", conversationID, ownerUserID); err != nil {
+			h.logger.Warn("对话资源归属设置失败", zap.String("conversationId", conversationID), zap.Error(err))
+		}
 	} else {
 		if _, getErr := h.db.GetConversation(conversationID); getErr != nil || !h.db.UserCanAccessResource(ownerUserID, principal.ScopeFor("chat:write"), "conversation", conversationID) {
 			return "", "", fmt.Errorf("对话不存在")
@@ -1948,8 +1956,12 @@ func (h *AgentHandler) CreateBatchQueue(c *gin.Context) {
 		return
 	}
 	if session, ok := security.CurrentSession(c); ok && h.db != nil {
-		_ = h.db.SetResourceOwner("batch_task", queue.ID, session.UserID)
-		_ = h.db.AssignResourceToUser(session.UserID, "batch_task", queue.ID)
+		if err := h.db.SetResourceOwner("batch_task", queue.ID, session.UserID); err != nil {
+			h.logger.Warn("批量任务资源归属设置失败", zap.String("queueId", queue.ID), zap.Error(err))
+		}
+		if err := h.db.AssignResourceToUser(session.UserID, "batch_task", queue.ID); err != nil {
+			h.logger.Warn("批量任务资源分配失败", zap.String("queueId", queue.ID), zap.Error(err))
+		}
 	}
 	started := false
 	if req.ExecuteNow {
