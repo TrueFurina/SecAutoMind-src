@@ -166,6 +166,25 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "prototype_pollution", Category: CategoryWebS, Priority: 88, Solver: solvePrototypePollution})
 	RegisterSolver(SolverEntry{Name: "graphql_batch", Category: CategoryWebS, Priority: 89, Solver: solveGraphQLBatch})
 	RegisterSolver(SolverEntry{Name: "http_smuggling", Category: CategoryWebS, Priority: 90, Solver: solveHTTPRequestSmuggling})
+
+	// P8 批次：crypto 深水区
+	RegisterSolver(SolverEntry{Name: "elliptic_curve", Category: CategoryCryptoS, Priority: 48, Solver: solveEllipticCurve})
+	RegisterSolver(SolverEntry{Name: "lattice_lll", Category: CategoryCryptoS, Priority: 49, Solver: solveLatticeLLL})
+	RegisterSolver(SolverEntry{Name: "polynomial_discrete_log", Category: CategoryCryptoS, Priority: 50, Solver: solvePolynomialDiscreteLog})
+
+	// P8 批次：misc 深水区
+	RegisterSolver(SolverEntry{Name: "dna_coding", Category: CategoryMiscS, Priority: 76, Solver: solveDNACoding})
+	RegisterSolver(SolverEntry{Name: "braille", Category: CategoryMiscS, Priority: 77, Solver: solveBraille})
+	RegisterSolver(SolverEntry{Name: "barcode", Category: CategoryMiscS, Priority: 78, Solver: solveBarcode})
+
+	// P8 批次：web 深水区
+	RegisterSolver(SolverEntry{Name: "websocket_hijack", Category: CategoryWebS, Priority: 91, Solver: solveWebSocketHijack})
+	RegisterSolver(SolverEntry{Name: "pp_variant", Category: CategoryWebS, Priority: 92, Solver: solvePrototypePollutionVariant})
+
+	// P8 批次：reverse 深水区
+	RegisterSolver(SolverEntry{Name: "obfuscation_detect", Category: CategoryRevS, Priority: 97, Solver: solveObfuscationDetection})
+	RegisterSolver(SolverEntry{Name: "emulator_detect", Category: CategoryRevS, Priority: 98, Solver: solveEmulatorDetection})
+	RegisterSolver(SolverEntry{Name: "code_virtualization", Category: CategoryRevS, Priority: 99, Solver: solveCodeVirtualization})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -474,4 +493,47 @@ func solveGraphQLBatch(ctx context.Context, text string, attachments map[string]
 
 func solveHTTPRequestSmuggling(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryHTTPRequestSmuggling(text, attachments)
+}
+
+// ── P8 批次适配函数 ──────────────────────────────────────
+
+// crypto 深水区
+func solveEllipticCurve(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEllipticCurve(text, attachments)
+}
+func solveLatticeLLL(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryLatticeLLL(text, attachments)
+}
+func solvePolynomialDiscreteLog(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPolynomialDiscreteLog(text, attachments)
+}
+
+// misc 深水区
+func solveDNACoding(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDNACoding(text)
+}
+func solveBraille(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBraille(text)
+}
+func solveBarcode(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBarcode(text, attachments)
+}
+
+// web 深水区
+func solveWebSocketHijack(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWebSocketHijack(text, attachments)
+}
+func solvePrototypePollutionVariant(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPrototypePollutionVariant(text, attachments)
+}
+
+// reverse 深水区
+func solveObfuscationDetection(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryObfuscationDetection(text, attachments)
+}
+func solveEmulatorDetection(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryEmulatorDetection(text, attachments)
+}
+func solveCodeVirtualization(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCodeVirtualization(text, attachments)
 }

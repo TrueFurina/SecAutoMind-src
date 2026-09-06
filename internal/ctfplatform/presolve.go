@@ -3664,3 +3664,402 @@ func tryHTTPRequestSmuggling(text string, attachments map[string]string) []strin
 	}
 	return nil
 }
+
+// ── P8 批次：crypto 深水区 ──────────────────────────────────
+
+// tryEllipticCurve 检测椭圆曲线密码学特征（ECC/ECDSA/ECDH/点运算）。
+func tryEllipticCurve(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ecKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"elliptic curve", "椭圆曲线密码学（ECC）"},
+		{"ecdsa", "ECDSA 椭圆曲线数字签名"},
+		{"ecdh", "ECDH 椭圆曲线密钥交换"},
+		{"ed25519", "Ed25519 椭圆曲线"},
+		{"ed448", "Ed448 椭圆曲线"},
+		{"curve25519", "Curve25519 椭圆曲线"},
+		{"secp256k1", "secp256k1 曲线（比特币）"},
+		{"secp256r1", "secp256r1/P-256 曲线"},
+		{"secp384r1", "secp384r1/P-384 曲线"},
+		{"point addition", "椭圆曲线点加运算"},
+		{"point multiplication", "椭圆曲线标量乘"},
+		{"scalar multiplication", "标量乘法"},
+		{"generator point", "基点/生成元"},
+		{"order", "曲线阶"},
+		{"cofactor", "辅因子"},
+		{"embedding degree", "嵌入度（MOV 攻击条件）"},
+		{"mov attack", "MOV 攻击（将 ECDLP 映射到有限域）"},
+		{"smart attack", "Smart 攻击（超奇异曲线）"},
+		{"pollard kangaroo", "Pollard's Kangaroo 算法"},
+		{"baby-step giant-step", "BSGS 算法"},
+		{"weierstrass", "Weierstrass 形式"},
+		{"montgomery", "Montgomery 形式"},
+		{"edwards", "Edwards 形式"},
+		{"twisted edwards", "Twisted Edwards 形式"},
+		{"infinity point", "无穷远点"},
+		{"point at infinity", "无穷远点"},
+	}
+	for _, kw := range ecKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"椭圆曲线: " + kw.hint}
+		}
+	}
+	// 检测疑似椭圆曲线参数（a, b, p, G, n 格式）
+	if strings.Contains(fullText, "y^2") && strings.Contains(fullText, "x^3") {
+		return []string{"椭圆曲线: 检测到 y²=x³+ax+b 形式的曲线方程"}
+	}
+	return nil
+}
+
+// tryLatticeLLL 检测格基规约攻击特征（LLL/BKZ/Coppersmith）。
+func tryLatticeLLL(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	lllKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"lattice", "格基规约"},
+		{"lll algorithm", "LLL 算法（Lenstra-Lenstra-Lovász）"},
+		{"bkz", "BKZ 算法（Block Korkine-Zolotarev）"},
+		{"coppersmith", "Coppersmith 方法（小根/部分密钥泄露）"},
+		{"howgrave-graham", "Howgrave-Graham 方法"},
+		{"small roots", "小根问题"},
+		{"partial key exposure", "部分密钥泄露"},
+		{"boneh-durfee", "Boneh-Durfee 攻击（小 d）"},
+		{"wiener attack", "Wiener 攻击（连分数）"},
+		{"franklin-reiter", "Franklin-Reiter 相关消息攻击"},
+		{"related message", "相关消息攻击"},
+		{"hidden number problem", "隐藏数问题（HNP）"},
+		{"dsa", "DSA 签名"},
+		{"lattice reduction", "格基规约"},
+		{"gram-schmidt", "Gram-Schmidt 正交化"},
+		{"hermite normal form", "Hermite 标准型"},
+		{"smith normal form", "Smith 标准型"},
+		{"short vector", "短向量问题（SVP）"},
+		{"closest vector", "最近向量问题（CVP）"},
+	}
+	for _, kw := range lllKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"格基攻击: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryPolynomialDiscreteLog 检测多项式离散对数特征。
+func tryPolynomialDiscreteLog(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	polyKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"polynomial", "多项式运算"},
+		{"finite field", "有限域"},
+		{"galois field", "伽罗瓦域（GF）"},
+		{"gf(", "有限域 GF(p^n)"},
+		{"irreducible polynomial", "不可约多项式"},
+		{"primitive polynomial", "本原多项式"},
+		{"minimal polynomial", "最小多项式"},
+		{"characteristic", "域特征"},
+		{"extension field", "扩域"},
+		{"splitting field", "分裂域"},
+		{"algebraic closure", "代数闭包"},
+		{"polynomial factorization", "多项式分解"},
+		{"berlekamp", "Berlekamp 算法"},
+		{"cantor-zassenhaus", "Cantor-Zassenhaus 算法"},
+	}
+	for _, kw := range polyKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"多项式域: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P8 批次：misc 深水区 ──────────────────────────────────
+
+// tryDNACoding 检测 DNA 编码密码（A/T/C/G 四字母编码）。
+func tryDNACoding(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 8 {
+		return nil
+	}
+	// DNA 编码特征：仅含 A/T/C/G 四个字符，长度为偶数
+	dnaRe := regexp.MustCompile(`^[ATCG\s]+$`)
+	if !dnaRe.MatchString(clean) {
+		return nil
+	}
+	clean = strings.ReplaceAll(clean, " ", "")
+	if len(clean)%2 != 0 || len(clean) < 4 {
+		return nil
+	}
+	// DNA 编码映射（常见变体）
+	dnaMap := map[string]string{
+		"AA": "00", "AC": "01", "AT": "10", "AG": "11",
+		"CA": "00", "CC": "01", "CT": "10", "CG": "11",
+		"TA": "00", "TC": "01", "TT": "10", "TG": "11",
+		"GA": "00", "GC": "01", "GT": "10", "GG": "11",
+	}
+	var binary strings.Builder
+	for i := 0; i+1 < len(clean); i += 2 {
+		pair := clean[i : i+2]
+		if bits, ok := dnaMap[pair]; ok {
+			binary.WriteString(bits)
+		}
+	}
+	// 二进制转 ASCII
+	result := binaryToASCII(binary.String())
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
+		return []string{"DNA解码: " + result}
+	}
+	return nil
+}
+
+// binaryToASCII 将二进制字符串转换为 ASCII 文本。
+func binaryToASCII(bin string) string {
+	var result strings.Builder
+	for i := 0; i+7 < len(bin); i += 8 {
+		val := 0
+		for j := 0; j < 8; j++ {
+			if bin[i+j] == '1' {
+				val |= 1 << (7 - j)
+			}
+		}
+		if val >= 32 && val < 127 {
+			result.WriteByte(byte(val))
+		}
+	}
+	return result.String()
+}
+
+// tryBraille 检测盲文编码（六点阵列模式）。
+func tryBraille(text string) []string {
+	clean := strings.TrimSpace(text)
+	// 盲文特征：含 Unicode 盲文字符（U+2800 到 U+28FF）
+	for _, r := range clean {
+		if r >= 0x2800 && r <= 0x28FF {
+			return []string{"盲文编码: 检测到 Unicode 盲文字符（U+2800-U+28FF），可用盲文解码器还原"}
+		}
+	}
+	// 数字格式盲文（六点阵列用数字表示）
+	brailleRe := regexp.MustCompile(`^[0-6\s/\-]{10,}$`)
+	if brailleRe.MatchString(clean) && len(clean) >= 10 {
+		return []string{"盲文数字编码: 检测到疑似盲文六点阵列数字表示"}
+	}
+	return nil
+}
+
+// tryBarcode 检测条形码/二维码特征。
+func tryBarcode(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	barcodeKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"qr code", "二维码（QR Code）"},
+		{"barcode", "条形码"},
+		{"ean-13", "EAN-13 条形码"},
+		{"ean-8", "EAN-8 条形码"},
+		{"upc-a", "UPC-A 条形码"},
+		{"code 128", "Code 128 条形码"},
+		{"code 39", "Code 39 条形码"},
+		{"data matrix", "Data Matrix 二维码"},
+		{"aztec", "Aztec 二维码"},
+		{"pdf417", "PDF417 二维码"},
+		{"zxing", "ZXing 二维码识别库"},
+		{"qrcode", "二维码"},
+	}
+	for _, kw := range barcodeKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"条码特征: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P8 批次：web 深水区 ──────────────────────────────────
+
+// tryWebSocketHijack 检测 WebSocket 劫持/跨站特征。
+func tryWebSocketHijack(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	wsKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"websocket hijacking", "WebSocket 劫持"},
+		{"cross-site websocket", "跨站 WebSocket 劫持"},
+		{"cswh", "CSWH（跨站 WebSocket 劫持）"},
+		{"ws poisoning", "WebSocket 投毒"},
+		{"ws injection", "WebSocket 注入"},
+		{"websocket frame", "WebSocket 帧分析"},
+		{"binary frame", "二进制帧"},
+		{"text frame", "文本帧"},
+		{"ping pong", "Ping/Pong 帧"},
+		{"close frame", "关闭帧"},
+		{"websocket subprotocol", "WebSocket 子协议"},
+	}
+	for _, kw := range wsKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"WebSocket安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryPrototypePollutionVariant 检测原型链污染变体（Node.js/Express/Koa 特定）。
+func tryPrototypePollutionVariant(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ppKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"express", "Express.js 框架"},
+		{"koa", "Koa.js 框架"},
+		{"hapi", "Hapi.js 框架"},
+		{"fastify", "Fastify 框架"},
+		{"nest.js", "NestJS 框架"},
+		{"next.js", "Next.js 框架"},
+		{"nuxt.js", "Nuxt.js 框架"},
+		{"object.assign", "Object.assign 合并"},
+		{"deep clone", "深克隆"},
+		{"json.parse", "JSON.parse"},
+		{"extend", "extend/merge 函数"},
+		{"polluted", "污染检测标志"},
+		{"__defineGetter__", "__defineGetter__ 方法"},
+		{"__defineSetter__", "__defineSetter__ 方法"},
+		{"__lookupGetter__", "__lookupGetter__ 方法"},
+		{"__lookupSetter__", "__lookupSetter__ 方法"},
+	}
+	for _, kw := range ppKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"JS框架: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P8 补全：reverse 深水区（heredoc 截断恢复） ──────────────
+
+// tryObfuscationDetection 检测代码混淆算法特征。
+func tryObfuscationDetection(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	obfKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"control flow flattening", "控制流平坦化混淆"},
+		{"opaque predicate", "不透明谓词混淆"},
+		{"dead code injection", "死代码注入"},
+		{"string encryption", "字符串加密混淆"},
+		{"instruction substitution", "指令替换"},
+		{"array flattening", "数组扁平化"},
+		{"variable renaming", "变量重命名"},
+		{"proxy call", "代理调用"},
+		{"virtual machine", "虚拟机保护"},
+		{"code virtualization", "代码虚拟化"},
+		{"bytecode obfuscation", "字节码混淆"},
+		{"source map", "Source Map（可能含原始代码）"},
+		{"webpack", "Webpack 打包"},
+	}
+	for _, kw := range obfKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"混淆检测: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryEmulatorDetection 检测模拟器/沙箱检测特征（反调试/反分析）。
+func tryEmulatorDetection(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	emuKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"anti-debug", "反调试技术"},
+		{"anti-vm", "反虚拟机检测"},
+		{"anti-sandbox", "反沙箱检测"},
+		{"vm detection", "虚拟机检测"},
+		{"isdebuggerpresent", "IsDebuggerPresent"},
+		{"ptrace", "ptrace 自检"},
+		{"timing check", "时间检测"},
+		{"cpuid", "CPUID 指令"},
+		{"vmware", "VMware 检测"},
+		{"virtualbox", "VirtualBox 检测"},
+		{"qemu", "QEMU 检测"},
+		{"debugger detection", "调试器检测"},
+		{"integrity check", "完整性校验"},
+		{"crc32", "CRC32 校验"},
+	}
+	for _, kw := range emuKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"反分析: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryCodeVirtualization 检测代码虚拟化保护特征。
+func tryCodeVirtualization(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	vmKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"vmprotect", "VMProtect 虚拟化保护"},
+		{"themida", "Themida 加壳/虚拟化"},
+		{"enigma protector", "Enigma Protector"},
+		{"upx", "UPX 加壳"},
+		{"aspack", "ASPack 加壳"},
+		{"virtual machine", "自定义虚拟机"},
+		{"bytecode interpreter", "字节码解释器"},
+		{"dispatch table", "分发表"},
+	}
+	for _, kw := range vmKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"虚拟化保护: " + kw.hint}
+		}
+	}
+	return nil
+}
