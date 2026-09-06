@@ -1,8 +1,8 @@
 {
-  "total": 10,
-  "hit": 7,
-  "miss": 3,
-  "coverage_pct": 70.0,
+  "total": 20,
+  "hit": 16,
+  "miss": 4,
+  "coverage_pct": 80.0,
   "results": [
     {
       "id": "b64_single",
@@ -101,6 +101,106 @@
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{log_forensics_exfil}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "b64_double",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{double_base64_layer}",
+      "sha256_match": true,
+      "expected_skill": "base64_multilayer"
+    },
+    {
+      "id": "caesar_5",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_five_shift}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_19",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{nineteen_shift}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "xor_55",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_55}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_ff",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_ff_invert}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "net_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{network_packet_found}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "html_comment",
+      "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{html_comment_exfil}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "json_leak",
+      "category": "web",
+      "sub": "api_security",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{json_api_leak}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "hash_md5_ctf",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "cookie_leak",
+      "category": "web",
+      "sub": "web_security",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{cookie_session_hijack}",
       "sha256_match": true,
       "expected_skill": "flag_scan"
     }

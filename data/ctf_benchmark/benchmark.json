@@ -1,8 +1,8 @@
 {
-  "version": "v2",
+  "version": "v3",
   "created": "2026-09-06",
   "description": "CTF 回归基准集 v2（含真实密文数据，SHA-256 验证）",
-  "total": 10,
+  "total": 20,
   "problems": {
     "b64_single": {
       "id": "b64_single",
@@ -111,6 +111,116 @@
       "description": "以下是服务器日志片段，请找出其中隐藏的敏感信息：[INFO] 2026-09-06 12:00:00 normal_request ip=10.0.0.1 [WARN] 2026-09-06 12:01:00 data_exfil detected payload=flag{log_forensics_exfil} [INFO] 2026-09-06 12:02:00 cleanup",
       "flag": "flag{log_forensics_exfil}",
       "flag_sha256": "40a696c673778f7d576e025b6c27f4397ffb1ba92c3fc44d60b23ac7a938ccf3",
+      "presolve_skill": "flag_scan",
+      "source": "自研"
+    },
+    "b64_double": {
+      "id": "b64_double",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
+      "description": "请解码这段双层 base64 编码：Wm14aFozdGtiM1ZpYkdWZlltRnpaVFkwWDJ4aGVXVnlmUT09",
+      "flag": "flag{double_base64_layer}",
+      "flag_sha256": "60f1e5ba47570ea5a9aea40184b6b48278ace76d3b4e275658d292c04eee4638",
+      "presolve_skill": "base64_multilayer",
+      "source": "自研"
+    },
+    "caesar_5": {
+      "id": "caesar_5",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "description": "凯撒移位5位加密：kqfl{hfjxfw_knaj_xmnky}",
+      "flag": "flag{caesar_five_shift}",
+      "flag_sha256": "d7cc6bc5de6266200254cecd7d65b47d184e8a55dd34004fdd22de2b2dcaee81",
+      "presolve_skill": "caesar",
+      "source": "自研"
+    },
+    "caesar_19": {
+      "id": "caesar_19",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "description": "密文（凯撒加密）：yetz{gbgxmxxg_labym}",
+      "flag": "flag{nineteen_shift}",
+      "flag_sha256": "bc04109a048a1715c010e60639c7dbb20612b2cab8b71afbfda8b8d76a23136c",
+      "presolve_skill": "caesar",
+      "source": "自研"
+    },
+    "xor_55": {
+      "id": "xor_55",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "description": "单字节XOR加密hex数据，请还原明文：333934322e2d3a270a3e302c0a606028",
+      "flag": "flag{xor_key_55}",
+      "flag_sha256": "716b8501ad7b2aa7b6ae5d03dfac0d2339893da29f395ae6f9283f7427bac454",
+      "presolve_skill": "xor_single",
+      "source": "自研"
+    },
+    "xor_ff": {
+      "id": "xor_ff",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "description": "XOR加密hex串（key=0xff取反）：99939e988487908da09999a09691899a8d8b82",
+      "flag": "flag{xor_ff_invert}",
+      "flag_sha256": "6ecadf0744e9efcc71d5b3a35f3a50a3f3c17c17c820fa202902b37056d2b626",
+      "presolve_skill": "xor_single",
+      "source": "自研"
+    },
+    "net_forensics": {
+      "id": "net_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "分析以下pcap摘要数据包：[TCP] 10.0.0.1:80 -> 10.0.0.2:12345 GET /api/data?token=flag{network_packet_found} HTTP/1.1 200 OK",
+      "flag": "flag{network_packet_found}",
+      "flag_sha256": "adda69dbaf38b5099926f88ab8015d1d6d4f5433352534dcbb3cbe1bd256dc72",
+      "presolve_skill": "flag_scan",
+      "source": "自研"
+    },
+    "html_comment": {
+      "id": "html_comment",
+      "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
+      "description": "检查网页源码：<!DOCTYPE html><html><head><!-- admin backup: flag{html_comment_exfil} --></head><body>Homepage</body></html>",
+      "flag": "flag{html_comment_exfil}",
+      "flag_sha256": "798e06f1f7d270b62e4dabc7dc952cb27bc7a6e4a6b3bab1474f51aa32981c27",
+      "presolve_skill": "flag_scan",
+      "source": "自研"
+    },
+    "json_leak": {
+      "id": "json_leak",
+      "category": "web",
+      "sub": "api_security",
+      "difficulty": "easy",
+      "description": "API响应：{\"status\":\"ok\",\"data\":{\"user\":\"admin\",\"secret\":\"flag{json_api_leak}\"}}",
+      "flag": "flag{json_api_leak}",
+      "flag_sha256": "5d3ae6e521e926fde62093d2dd55405fc51cc453bdf3ac1054cb49f8e49a7d7c",
+      "presolve_skill": "flag_scan",
+      "source": "自研"
+    },
+    "hash_md5_ctf": {
+      "id": "hash_md5_ctf",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "description": "MD5哈希还原：03d9fdd9db520fbbb59cce27128b92e7",
+      "flag": "flag{ctf_challenge}",
+      "flag_sha256": "441f6e00c66f6625a2120990d9be1098673a91768fd43d47c38a4e0b59cd5f2b",
+      "presolve_skill": "hash_crack",
+      "source": "自研"
+    },
+    "cookie_leak": {
+      "id": "cookie_leak",
+      "category": "web",
+      "sub": "web_security",
+      "difficulty": "easy",
+      "description": "HTTP响应头：Set-Cookie: session=abc123; secret=flag{cookie_session_hijack}; HttpOnly; Path=/",
+      "flag": "flag{cookie_session_hijack}",
+      "flag_sha256": "11d88adfc17aac18abe0a7d7ca15d71b8416e2210aa9cff71666b553b4b1aeb9",
       "presolve_skill": "flag_scan",
       "source": "自研"
     }
