@@ -1,0 +1,118 @@
+{
+  "version": "v1",
+  "created": "2026-09-06",
+  "description": "CTF 真题回归集（SHA-256 验证）—— presolve 覆盖率基准",
+  "total": 10,
+  "problems": {
+    "c1_zip_chain": {
+      "id": "c1_zip_chain",
+      "category": "misc",
+      "sub": "zip_chain",
+      "difficulty": "easy",
+      "description": "三层 ZIP 嵌套解压，每层密码在上一层注释中",
+      "flag": "flag{zip_chain_layer3_secret}",
+      "flag_sha256": "4502e88b1931bb4cacf1d33b27352d7583820e3ebe62ec942c8be9bce364eda1",
+      "presolve_skill": "zip_chain",
+      "source": "自研练习题"
+    },
+    "c2_xor_prefix": {
+      "id": "c2_xor_prefix",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "description": "已知明文前缀的 XOR 加密",
+      "flag": "flag{xor_known_prefix_attack}",
+      "flag_sha256": "1be42fe966a55e4ecd4d79fe12193c8912d9882688822971d9a054e88a54e211",
+      "presolve_skill": "xor_single",
+      "source": "自研练习题"
+    },
+    "c3_rsa_fermat": {
+      "id": "c3_rsa_fermat",
+      "category": "crypto",
+      "sub": "rsa_fermat",
+      "difficulty": "medium",
+      "description": "RSA 模数为相近素数乘积，可用费马分解还原",
+      "flag": "flag{f3rma7}",
+      "flag_sha256": "fa78c428ecc7fafaf096a3117f4bb78f3e99c46efbd8c97201daf946c6494806",
+      "presolve_skill": "rsa_fermat",
+      "source": "自研练习题"
+    },
+    "c4_log_forensics": {
+      "id": "c4_log_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "日志文件中提取泄露的 flag（被标记为 data_exfil）",
+      "flag": "flag{log_forensics_exfil_found}",
+      "flag_sha256": "9e1be75988dfd3ca8350db51c02c75f39f81c0161cd6d8c27eebca4108e1e6ca",
+      "presolve_skill": "flag_scan",
+      "source": "自研练习题"
+    },
+    "c5_png_lsb": {
+      "id": "c5_png_lsb",
+      "category": "misc",
+      "sub": "steganography",
+      "difficulty": "medium",
+      "description": "PNG 图片 LSB 隐写术提取隐藏数据",
+      "flag": "flag{png_lsb_stego_hidden}",
+      "flag_sha256": "645c8379ed89f5db73bf48f273c3dee03c9f04cdc8e8ef498de2aa1e8a6e2d0f",
+      "presolve_skill": "lsb_extract",
+      "source": "自研练习题"
+    },
+    "pub_base64_multilayer": {
+      "id": "pub_base64_multilayer",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
+      "description": "ZmxhZ3tiYXNlNjRfbXVsdGlsYXllcn0= （一层 base64，flag{base64_multilayer}）",
+      "flag": "flag{base64_multilayer}",
+      "flag_sha256": "dGVzdF9iYXNlNjRfbXVsdGlsYXllcg==",
+      "presolve_skill": "base64_multilayer",
+      "source": "通用题型模板"
+    },
+    "pub_rsa_small_e": {
+      "id": "pub_rsa_small_e",
+      "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
+      "description": "RSA e=3，明文^e < n，直接开立方根",
+      "flag": "flag{rsa_small_e_cubed}",
+      "flag_sha256": "80ff55537b0ce6cd0ce142ae1b6b4fafd78ec0c82c7f32d4b4b1fdf6d9024016",
+      "presolve_skill": "rsa_fermat",
+      "source": "通用题型模板"
+    },
+    "pub_caesar_13": {
+      "id": "pub_caesar_13",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "description": "ROT13 凯撒移位，明文 the quick brown fox",
+      "flag": "flag{rot_thirteen}",
+      "flag_sha256": "f1c740485ca112a7733e07c5324362487944237540634b49c5d160319d6480da",
+      "presolve_skill": "caesar",
+      "source": "通用题型模板"
+    },
+    "pub_morse_hello": {
+      "id": "pub_morse_hello",
+      "category": "misc",
+      "sub": "morse",
+      "difficulty": "easy",
+      "description": "Morse 编码的 flag",
+      "flag": "flag{morse_hello_world}",
+      "flag_sha256": "be0d688f833d9fa558326c543f168a91fb4d39ccdbc127e2a6bbe95e9af16f36",
+      "presolve_skill": "morse",
+      "source": "通用题型模板"
+    },
+    "pub_caesar_shift7": {
+      "id": "pub_caesar_shift7",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "description": "凯撒移位 7 位的密文",
+      "flag": "flag{caesar_shift_seven}",
+      "flag_sha256": "e4897fb56d977173744c0284f3a0c0152ab16c43061e99642b0e9431d183a744",
+      "presolve_skill": "caesar",
+      "source": "通用题型模板"
+    }
+  }
+}
