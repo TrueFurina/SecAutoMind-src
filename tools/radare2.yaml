@@ -38,7 +38,6 @@ parameters:
       - 进程ID: "1234" (需要配合 -d 参数)
       - 特殊值: "-" (从stdin读取), "--" (交互模式), "=" (从环境变量读取)
 
-      **示例值：**
       - 二进制文件: "/tmp/vulnerable"
       - 进程调试: "1234" (配合 -d)
       - 从stdin: "-"
@@ -68,7 +67,6 @@ parameters:
       - "i": 显示文件信息
       - "iz": 显示字符串
 
-      **示例值：**
       - "aaa" (自动分析)
       - "aaa; pdf @main" (分析并反汇编main函数)
       - "i; iz" (显示信息和字符串)
@@ -87,7 +85,6 @@ parameters:
       **格式：**
       - 脚本文件路径: "/path/to/script.r2"
 
-      **示例值：**
       - "/tmp/analyze.r2"
       - "./scripts/auto_analyze.r2"
 
@@ -110,7 +107,6 @@ parameters:
       - "mips": MIPS架构
       - "ppc": PowerPC架构
 
-      **示例值：**
       - "x86"
       - "x86_64"
       - "arm"
@@ -127,7 +123,6 @@ parameters:
     description: |
       指定目标位数（16, 32, 64）。
 
-      **示例值：**
       - 16 (16位)
       - 32 (32位)
       - 64 (64位)
@@ -196,7 +191,6 @@ parameters:
       - 十六进制: "0x400000"
       - 表达式: "main+0x10"
 
-      **示例值：**
       - "0x400000"
       - "main"
       - "0x1000"
@@ -215,7 +209,6 @@ parameters:
       **格式：**
       - 十六进制地址: "0x400000"
 
-      **示例值：**
       - "0x400000"
       - "0x1000000"
 
@@ -234,7 +227,6 @@ parameters:
       - "key=value"
       - 多个变量用空格分隔: "asm.arch=x86 asm.bits=32"
 
-      **示例值：**
       - "asm.arch=x86"
       - "asm.bits=32"
       - "scr.color=false"
@@ -253,7 +245,6 @@ parameters:
       **格式：**
       - 项目文件路径: "/path/to/project.r2"
 
-      **示例值：**
       - "./project.r2"
       - "/tmp/analysis.r2"
 
@@ -285,7 +276,6 @@ parameters:
       - "-P patch": 应用补丁
       - "-m maddr": 映射地址
 
-      **示例值：**
       - "-w" (写模式)
       - "-n" (不加载配置文件)
       - "-M" (启用写模式)

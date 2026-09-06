@@ -37,7 +37,6 @@ parameters:
       - 必须包含查询参数，参数值用 * 标记注入点
       - 或者直接提供完整的URL，sqlmap会自动检测参数
 
-      **示例值：**
       - 标记注入点: "http://example.com/page?id=1*"
       - 完整URL: "http://example.com/page?id=1"
       - POST数据: "http://example.com/login" (需要配合data参数)
@@ -125,7 +124,6 @@ parameters:
     description: |
       额外的SQLMap参数。用于传递未在参数列表中定义的SQLMap选项。
 
-      **示例值：**
       - "--dbs": 列出所有数据库
       - "--tables -D database": 列出指定数据库的表
       - "--dump -D database -T table": 导出表数据

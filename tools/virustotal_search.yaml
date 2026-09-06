@@ -44,7 +44,6 @@ parameters:
       - 仅输入主域名，不要包含协议头（http://）或路径
       - 支持二级域名查询
 
-      **示例值：**
       - "example.com"
       - "google.com"
       - "baidu.com"

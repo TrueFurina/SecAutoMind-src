@@ -36,7 +36,6 @@ parameters:
       - **域名**: "example.com" (不带协议头)
       - **文件路径**: "/path/to/targets.txt" (文件中每行一个目标)
 
-      **示例值：**
       - "http://172.16.0.4:9000"
       - "192.168.1.1/24"
       - "targets.txt"

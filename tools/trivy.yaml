@@ -48,7 +48,6 @@ parameters:
     description: |
       额外的Trivy参数。用于传递未在参数列表中定义的Trivy选项。
 
-      **示例值：**
       - "--exit-code 1": 发现漏洞时退出码为1
       - "--skip-dirs": 跳过目录
       - "--skip-files": 跳过文件

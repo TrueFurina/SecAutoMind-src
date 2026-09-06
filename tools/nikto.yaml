@@ -40,7 +40,6 @@ parameters:
       - 可以只提供IP地址或域名
       - 如果只提供IP，默认使用http协议
 
-      **示例值：**
       - 完整URL: "http://example.com"
       - HTTPS: "https://example.com"
       - IP地址: "192.168.1.1"
@@ -58,9 +57,6 @@ parameters:
     type: "string"
     description: |
       额外的nikto参数。用于传递未在参数列表中定义的nikto选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
 
       **注意事项：**
       - 多个参数用空格分隔

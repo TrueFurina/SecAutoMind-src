@@ -271,7 +271,6 @@ parameters:
     description: |
       额外的fscan参数。用于传递未在参数列表中定义的fscan选项。
 
-      **示例值：**
       - "-nobr -nopoc" （禁用爆破和POC，仅做端口扫描）
       - "-ao" （仅进行存活探测）
       - "-silent -nocolor" （静默无颜色输出）

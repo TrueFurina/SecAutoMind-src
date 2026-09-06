@@ -55,7 +55,6 @@ parameters:
     description: |
       额外的Arjun参数。用于传递未在参数列表中定义的Arjun选项。
 
-      **示例值：**
       - "-o output.txt": 输出到文件
       - "-q": 安静模式
       - "-i": 从文件读取URL

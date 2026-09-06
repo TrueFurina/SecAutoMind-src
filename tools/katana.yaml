@@ -49,7 +49,6 @@ parameters:
     description: |
       额外的Katana参数。用于传递未在参数列表中定义的Katana选项。
 
-      **示例值：**
       - "-headless": 使用无头浏览器
       - "-output-template '{{url}}'": 自定义输出格式
       - "-output output.txt": 输出到文件

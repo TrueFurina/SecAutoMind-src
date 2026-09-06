@@ -41,7 +41,6 @@ parameters:
     description: |
       额外的Gau参数。用于传递未在参数列表中定义的Gau选项。
 
-      **示例值：**
       - "--o output.txt": 输出到文件
       - "--threads 4": 线程数
       - "--blacklist ttf,woff,svg,png": 黑名单扩展

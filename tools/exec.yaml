@@ -38,7 +38,6 @@ parameters:
       - 可以包含管道、重定向等Shell特性
       - 支持环境变量
 
-      **示例值：**
       - 简单命令: "ls -la"
       - 带管道: "ps aux | grep nginx"
       - 文件操作: "cat /etc/passwd"
@@ -65,7 +64,6 @@ parameters:
       - zsh: Z Shell
       - 其他系统可用的shell
 
-      **示例值：**
       - "sh" (默认)
       - "bash"
       - "zsh"
@@ -84,7 +82,6 @@ parameters:
       - 绝对路径或相对路径
       - 目录必须存在
 
-      **示例值：**
       - "/tmp"
       - "/var/log"
       - "./data"
@@ -98,9 +95,6 @@ parameters:
     type: "string"
     description: |
       额外的exec参数。用于传递未在参数列表中定义的exec选项。
-
-      **示例值：**
-      - 根据工具特性添加常用参数示例
 
       **注意事项：**
       - 多个参数用空格分隔
