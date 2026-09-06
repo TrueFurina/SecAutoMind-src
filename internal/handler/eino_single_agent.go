@@ -178,7 +178,9 @@ func (h *AgentHandler) EinoSingleAgentLoopStream(c *gin.Context) {
 			sendEvent("error", errorMsg, nil)
 		}
 		if assistantMessageID != "" {
-			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errorMsg, time.Now(), assistantMessageID)
+			if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errorMsg, time.Now(), assistantMessageID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+			}
 		}
 		sendEvent("done", "", map[string]interface{}{"conversationId": conversationID})
 		timeoutCancel()
@@ -339,7 +341,9 @@ func (h *AgentHandler) EinoSingleAgentLoopStream(c *gin.Context) {
 				if err := h.appendAssistantMessageNotice(assistantMessageID, cancelMsg); err != nil {
 					h.logger.Warn("更新取消后的助手消息失败", zap.Error(err))
 				}
-				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil)
+				if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+				}
 			}
 			sendEvent("cancelled", cancelMsg, map[string]interface{}{
 				"conversationId": conversationID,
@@ -355,8 +359,12 @@ func (h *AgentHandler) EinoSingleAgentLoopStream(c *gin.Context) {
 			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
 			timeoutMsg := "任务执行超时，已自动终止。"
 			if assistantMessageID != "" {
-				_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", timeoutMsg, time.Now(), assistantMessageID)
-				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "timeout", timeoutMsg, nil)
+				if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", timeoutMsg, time.Now(), assistantMessageID); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+				}
+				if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "timeout", timeoutMsg, nil); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+				}
 			}
 			sendEvent("error", timeoutMsg, map[string]interface{}{
 				"conversationId": conversationID,
@@ -374,8 +382,12 @@ func (h *AgentHandler) EinoSingleAgentLoopStream(c *gin.Context) {
 		clientErr := multiagent.EinoClientRunErrorMessage(runErr)
 		errMsg := "执行失败: " + clientErr
 		if assistantMessageID != "" {
-			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID)
-			_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil)
+			if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+			}
+			if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+			}
 		}
 		errData := multiagent.EinoClientRunErrorFields(runErr)
 		errData["conversationId"] = conversationID
@@ -518,7 +530,9 @@ func (h *AgentHandler) EinoSingleAgentLoop(c *gin.Context) {
 
 	h.persistFinalizationDecision(prep.ConversationID, prep.AssistantMessageID, "eino_single", result.MCPExecutionIDs, multiagent.AggregatedReasoningFromTraceJSON(result.LastAgentTraceInput), decision)
 	if result.LastAgentTraceInput != "" || result.LastAgentTraceOutput != "" {
-		_ = h.db.SaveAgentTrace(prep.ConversationID, result.LastAgentTraceInput, result.LastAgentTraceOutput)
+		if err := h.db.SaveAgentTrace(prep.ConversationID, result.LastAgentTraceInput, result.LastAgentTraceOutput); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SaveAgentTrace"), zap.Error(err))
+		}
 	}
 
 	responseText := decision.FinalText

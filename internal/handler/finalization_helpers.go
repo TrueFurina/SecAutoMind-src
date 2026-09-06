@@ -86,14 +86,18 @@ func (h *AgentHandler) persistFinalizationDecision(
 	if assistantMessageID == "" || h.db == nil {
 		return
 	}
-	_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision)
+	if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+	}
 	if decision.Finalizable {
 		if err := h.db.UpdateAssistantMessageFinalize(assistantMessageID, decision.FinalText, mcpExecutionIDs, reasoningContent); err != nil && h.logger != nil {
 			h.logger.Warn("更新最终助手消息失败", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
 		}
 		return
 	}
-	_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", finalizationBlockedMessage(decision), time.Now(), assistantMessageID)
+	if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", finalizationBlockedMessage(decision), time.Now(), assistantMessageID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+	}
 }
 
 func (h *AgentHandler) finalizeCandidateForDelivery(
@@ -130,14 +134,18 @@ func (h *AgentHandler) finalizeCandidateForDeliveryWithPolicy(
 	if assistantMessageID == "" || h.db == nil {
 		return decision
 	}
-	_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision)
+	if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "finalization_check", finalizationCheckMessage(decision), decision); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+	}
 	if decision.Finalizable {
 		if err := h.db.UpdateAssistantMessageFinalize(assistantMessageID, decision.FinalText, mcpExecutionIDs, reasoningContent); err != nil && h.logger != nil {
 			h.logger.Warn("更新最终助手消息失败", zap.Error(err), zap.String("conversationId", conversationID), zap.String("agentMode", agentMode))
 		}
 		return decision
 	}
-	_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", finalizationBlockedMessage(decision), time.Now(), assistantMessageID)
+	if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", finalizationBlockedMessage(decision), time.Now(), assistantMessageID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+	}
 	return decision
 }
 

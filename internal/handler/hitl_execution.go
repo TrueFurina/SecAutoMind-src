@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const hitlPayloadExecutionResult = "executionResult"
@@ -128,5 +130,7 @@ func (h *AgentHandler) recordHitlToolExecutionResult(conversationID, toolCallID,
 	if err != nil {
 		return
 	}
-	_, _ = h.db.Exec(`UPDATE hitl_interrupts SET payload = ? WHERE id = ?`, merged, interruptID)
+	if _, err := h.db.Exec(`UPDATE hitl_interrupts SET payload = ? WHERE id = ?`, merged, interruptID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+	}
 }

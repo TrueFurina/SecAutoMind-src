@@ -235,8 +235,12 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 			return batchMCPTextResult("创建队列失败: "+createErr.Error(), true), nil
 		}
 		if principal, ok := authctx.PrincipalFromContext(ctx); ok && h.db != nil {
-			_ = h.db.SetResourceOwner("batch_task", queue.ID, principal.UserID)
-			_ = h.db.AssignResourceToUser(principal.UserID, "batch_task", queue.ID)
+			if err := h.db.SetResourceOwner("batch_task", queue.ID, principal.UserID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+			}
+			if err := h.db.AssignResourceToUser(principal.UserID, "batch_task", queue.ID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+			}
 		}
 		started := false
 		if executeNow {

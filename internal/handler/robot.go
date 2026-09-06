@@ -278,7 +278,9 @@ func (h *RobotHandler) getOrCreateConversation(platform, userID, title string, a
 		return "", false
 	}
 	convID = conv.ID
-	_ = h.db.SetResourceOwner("conversation", convID, ownerID)
+	if err := h.db.SetResourceOwner("conversation", convID, ownerID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+	}
 	h.mu.Lock()
 	role := h.sessionRoles[sk]
 	agentMode := h.sessionModes[sk]
@@ -374,7 +376,9 @@ func (h *RobotHandler) clearConversation(platform, userID string, access *databa
 		h.logger.Warn("创建新对话失败", zap.Error(err))
 		return ""
 	}
-	_ = h.db.SetResourceOwner("conversation", conv.ID, ownerID)
+	if err := h.db.SetResourceOwner("conversation", conv.ID, ownerID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+	}
 	h.setConversation(platform, userID, conv.ID)
 	return conv.ID
 }
@@ -424,7 +428,9 @@ func (h *RobotHandler) HandleMessage(platform, userID, text string) (reply strin
 	if conv, err := h.db.GetConversation(convID); err == nil && strings.HasPrefix(conv.Title, "新对话 ") {
 		newTitle := safeTruncateString(text, 50)
 		if newTitle != "" {
-			_ = h.db.UpdateConversationTitle(convID, newTitle)
+			if err := h.db.UpdateConversationTitle(convID, newTitle); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "UpdateConversationTitle"), zap.Error(err))
+			}
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), h.robotMessageTimeout())
@@ -638,7 +644,9 @@ func (h *RobotHandler) cmdNewProject(platform, userID, name string) string {
 	if err != nil {
 		return "创建项目失败: " + err.Error()
 	}
-	_ = h.db.SetResourceOwner("project", created.ID, access.User.ID)
+	if err := h.db.SetResourceOwner("project", created.ID, access.User.ID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+	}
 	convID, _ := h.getOrCreateConversation(platform, userID, name, access)
 	if convID == "" {
 		return fmt.Sprintf("项目已创建：「%s」\nID: %s\n（绑定当前对话失败，请手动发送「绑定项目 %s」）", created.Name, created.ID, created.ID)

@@ -127,8 +127,12 @@ func (h *AgentHandler) executeOneBatchSubTask(queueID string, queue *BatchTaskQu
 		return
 	}
 	conversationID := conv.ID
-	_ = h.db.SetResourceOwner("conversation", conversationID, access.User.ID)
-	_ = h.db.AssignResourceToUser(access.User.ID, "conversation", conversationID)
+	if err := h.db.SetResourceOwner("conversation", conversationID, access.User.ID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+	}
+	if err := h.db.AssignResourceToUser(access.User.ID, "conversation", conversationID); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+	}
 
 	h.batchTaskManager.UpdateTaskStatusWithConversationID(queueID, task.ID, BatchTaskStatusRunning, "", "", conversationID)
 
@@ -239,9 +243,13 @@ func (h *AgentHandler) executeOneBatchSubTask(queueID string, queue *BatchTaskQu
 		batchOrch = "deep"
 	}
 	if useBatchMulti {
-		_ = h.db.SetConversationAgentMode(conversationID, batchOrch)
+		if err := h.db.SetConversationAgentMode(conversationID, batchOrch); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SetConversationAgentMode"), zap.Error(err))
+		}
 	} else {
-		_ = h.db.SetConversationAgentMode(conversationID, "eino_single")
+		if err := h.db.SetConversationAgentMode(conversationID, "eino_single"); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SetConversationAgentMode"), zap.Error(err))
+		}
 	}
 
 	var resultMA *multiagent.RunResult

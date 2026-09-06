@@ -97,10 +97,16 @@ func (h *ConversationHandler) CreateConversation(c *gin.Context) {
 		return
 	}
 	if session, ok := security.CurrentSession(c); ok {
-		_ = h.db.SetResourceOwner("conversation", conv.ID, session.UserID)
-		_ = h.db.AssignResourceToUser(session.UserID, "conversation", conv.ID)
+		if err := h.db.SetResourceOwner("conversation", conv.ID, session.UserID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+		}
+		if err := h.db.AssignResourceToUser(session.UserID, "conversation", conv.ID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+		}
 		if conv.ProjectID != "" {
-			_ = h.db.AssignResourceToUser(session.UserID, "project", conv.ProjectID)
+			if err := h.db.AssignResourceToUser(session.UserID, "project", conv.ProjectID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+			}
 		}
 	}
 

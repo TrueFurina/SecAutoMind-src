@@ -72,8 +72,12 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 	if session, ok := security.CurrentSession(c); ok {
-		_ = h.db.SetResourceOwner("project", created.ID, session.UserID)
-		_ = h.db.AssignResourceToUser(session.UserID, "project", created.ID)
+		if err := h.db.SetResourceOwner("project", created.ID, session.UserID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+		}
+		if err := h.db.AssignResourceToUser(session.UserID, "project", created.ID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+		}
 	}
 	c.JSON(http.StatusOK, created)
 }
@@ -447,7 +451,11 @@ func (h *ProjectHandler) CreateFact(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	created, _ = h.db.GetProjectFactByKey(projectID, created.FactKey)
+	if refreshed, err := h.db.GetProjectFactByKey(projectID, created.FactKey); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetProjectFactByKey"), zap.Error(err))
+	} else {
+		created = refreshed
+	}
 	c.JSON(http.StatusOK, h.factResponseWithLinks(projectID, created, true))
 }
 
@@ -516,7 +524,11 @@ func (h *ProjectHandler) UpdateFact(c *gin.Context) {
 			return
 		}
 	}
-	updated, _ = h.db.GetProjectFactByKey(projectID, updated.FactKey)
+	if refreshed, err := h.db.GetProjectFactByKey(projectID, updated.FactKey); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "GetProjectFactByKey"), zap.Error(err))
+	} else {
+		updated = refreshed
+	}
 	c.JSON(http.StatusOK, h.factResponseWithLinks(projectID, updated, true))
 }
 
@@ -612,7 +624,9 @@ func (h *ProjectHandler) CreateFactEdge(c *gin.Context) {
 	if f, err := h.db.GetProjectFactByKey(projectID, req.TargetFactKey); err == nil {
 		in, _ := h.db.ListIncomingProjectFactEdges(projectID, req.TargetFactKey)
 		f.Body = project.SyncBodyLinksSection(f.Body, in)
-		_, _ = h.db.UpsertProjectFact(f)
+		if _, err := h.db.UpsertProjectFact(f); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertProjectFact"), zap.Error(err))
+		}
 	}
 	c.JSON(http.StatusOK, edge)
 }
@@ -633,7 +647,9 @@ func (h *ProjectHandler) DeleteFactEdge(c *gin.Context) {
 	if f, err := h.db.GetProjectFactByKey(projectID, edge.TargetFactKey); err == nil {
 		in, _ := h.db.ListIncomingProjectFactEdges(projectID, edge.TargetFactKey)
 		f.Body = project.SyncBodyLinksSection(f.Body, in)
-		_, _ = h.db.UpsertProjectFact(f)
+		if _, err := h.db.UpsertProjectFact(f); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertProjectFact"), zap.Error(err))
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

@@ -82,7 +82,9 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 			sendEvent("error", errorMsg, nil)
 		}
 		if assistantMessageID != "" {
-			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errorMsg, time.Now(), assistantMessageID)
+			if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errorMsg, time.Now(), assistantMessageID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+			}
 		}
 		sendEvent("done", "", map[string]interface{}{"conversationId": conversationID})
 		return true
@@ -116,7 +118,9 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 				if err := h.appendAssistantMessageNotice(assistantMessageID, cancelMsg); err != nil {
 					h.logger.Warn("更新取消后的助手消息失败", zap.Error(err))
 				}
-				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil)
+				if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+				}
 			}
 			sendEvent("cancelled", cancelMsg, map[string]interface{}{
 				"conversationId": conversationID,
@@ -130,8 +134,12 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
 			timeoutMsg := "任务执行超时，已自动终止。"
 			if assistantMessageID != "" {
-				_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", timeoutMsg, time.Now(), assistantMessageID)
-				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "timeout", timeoutMsg, nil)
+				if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", timeoutMsg, time.Now(), assistantMessageID); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+				}
+				if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "timeout", timeoutMsg, nil); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+				}
 			}
 			sendEvent("error", timeoutMsg, map[string]interface{}{
 				"conversationId": conversationID,
@@ -145,8 +153,12 @@ func (h *AgentHandler) runRoleWorkflowStreamIfBound(
 		taskStatus = "failed"
 		h.tasks.UpdateTaskStatus(conversationID, taskStatus)
 		if assistantMessageID != "" {
-			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID)
-			_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil)
+			if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+			}
+			if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+			}
 		}
 		sendEvent("error", errMsg, map[string]interface{}{"conversationId": conversationID})
 		sendEvent("done", "", map[string]interface{}{"conversationId": conversationID})
@@ -251,7 +263,9 @@ func (h *AgentHandler) runRoleWorkflowJSONIfBound(c *gin.Context, req *ChatReque
 			cancelMsg := "任务已被用户取消，后续操作已停止。"
 			if assistantMessageID != "" {
 				_ = h.appendAssistantMessageNotice(assistantMessageID, cancelMsg)
-				_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil)
+				if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "cancelled", cancelMsg, nil); err != nil {
+					h.logger.Warn("数据库操作失败", zap.String("method", "AddProcessDetail"), zap.Error(err))
+				}
 			}
 			c.JSON(http.StatusOK, gin.H{
 				"status":         "cancelled",
@@ -263,7 +277,9 @@ func (h *AgentHandler) runRoleWorkflowJSONIfBound(c *gin.Context, req *ChatReque
 		errMsg := "执行角色绑定流程失败: " + err.Error()
 		taskStatus = "failed"
 		if assistantMessageID != "" {
-			_, _ = h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID)
+			if _, err := h.db.Exec("UPDATE messages SET content = ?, updated_at = ? WHERE id = ?", errMsg, time.Now(), assistantMessageID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+			}
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg, "conversationId": conversationID})
 		return true

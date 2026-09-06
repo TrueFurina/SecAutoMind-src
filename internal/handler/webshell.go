@@ -445,8 +445,12 @@ func (h *WebShellHandler) CreateConnection(c *gin.Context) {
 		return
 	}
 	if session, ok := security.CurrentSession(c); ok {
-		_ = h.db.SetResourceOwner("webshell", conn.ID, session.UserID)
-		_ = h.db.AssignResourceToUser(session.UserID, "webshell", conn.ID)
+		if err := h.db.SetResourceOwner("webshell", conn.ID, session.UserID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+		}
+		if err := h.db.AssignResourceToUser(session.UserID, "webshell", conn.ID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+		}
 	}
 	if h.audit != nil {
 		host := req.URL

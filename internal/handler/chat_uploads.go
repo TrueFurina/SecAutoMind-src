@@ -1194,7 +1194,9 @@ func (h *ChatUploadsHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	_ = h.db.DeleteChatUploadArtifactPath(filepath.ToSlash(filepath.Clean(filepath.FromSlash(body.Path))))
+	if err := h.db.DeleteChatUploadArtifactPath(filepath.ToSlash(filepath.Clean(filepath.FromSlash(body.Path)))); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "DeleteChatUploadArtifactPath"), zap.Error(err))
+	}
 	if h.audit != nil {
 		h.audit.RecordOK(c, "file", "delete", "删除对话附件", "chat_upload", body.Path, nil)
 	}
@@ -1320,7 +1322,9 @@ func (h *ChatUploadsHandler) Rename(c *gin.Context) {
 	}
 	newRel, _ := filepath.Rel(root, newAbs)
 	oldRel := filepath.ToSlash(filepath.Clean(filepath.FromSlash(body.Path)))
-	_ = h.db.RenameChatUploadArtifactPath(oldRel, filepath.ToSlash(newRel))
+	if err := h.db.RenameChatUploadArtifactPath(oldRel, filepath.ToSlash(newRel)); err != nil {
+		h.logger.Warn("数据库操作失败", zap.String("method", "RenameChatUploadArtifactPath"), zap.Error(err))
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "relativePath": filepath.ToSlash(newRel)})
 }
 
@@ -1590,7 +1594,9 @@ func (h *ChatUploadsHandler) Upload(c *gin.Context) {
 				conversationID = parts[1]
 			}
 		}
-		_ = h.db.UpsertChatUploadArtifact(filepath.ToSlash(rel), conversationID, session.UserID)
+		if err := h.db.UpsertChatUploadArtifact(filepath.ToSlash(rel), conversationID, session.UserID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertChatUploadArtifact"), zap.Error(err))
+		}
 	}
 	if h.audit != nil {
 		h.audit.RecordOK(c, "file", "upload", "上传对话附件", "chat_upload", filepath.ToSlash(rel), map[string]interface{}{

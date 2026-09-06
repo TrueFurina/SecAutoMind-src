@@ -79,8 +79,12 @@ func (h *AgentHandler) prepareMultiAgentSession(req *ChatRequest, c *gin.Context
 		conversationID = conv.ID
 		createdNew = true
 		if hasSession {
-			_ = h.db.SetResourceOwner("conversation", conversationID, session.UserID)
-			_ = h.db.AssignResourceToUser(session.UserID, "conversation", conversationID)
+			if err := h.db.SetResourceOwner("conversation", conversationID, session.UserID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "SetResourceOwner"), zap.Error(err))
+			}
+			if err := h.db.AssignResourceToUser(session.UserID, "conversation", conversationID); err != nil {
+				h.logger.Warn("数据库操作失败", zap.String("method", "AssignResourceToUser"), zap.Error(err))
+			}
 		}
 	} else {
 		if _, err := h.db.GetConversation(conversationID); err != nil {

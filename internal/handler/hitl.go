@@ -695,8 +695,10 @@ func (h *AgentHandler) waitHITLApproval(runCtx context.Context, cancelRun contex
 		})
 		ad := h.auditAgentReview(runCtx, cfg.Mode, toolName, payload)
 		now := time.Now()
-		_, _ = h.db.Exec(`UPDATE hitl_interrupts SET status='decided', decision=?, decision_comment=?, decided_at=?, decided_by='audit_agent' WHERE id=?`,
-			ad.Decision, ad.Comment, now, p.InterruptID)
+		if _, err := h.db.Exec(`UPDATE hitl_interrupts SET status='decided', decision=?, decision_comment=?, decided_at=?, decided_by='audit_agent' WHERE id=?`,
+			ad.Decision, ad.Comment, now, p.InterruptID); err != nil {
+			h.logger.Warn("数据库操作失败", zap.String("method", "Exec"), zap.Error(err))
+		}
 		emitHITL("hitl_audit_agent", "审计 Agent 已裁决", map[string]interface{}{
 			"conversationId": conversationID,
 			"interruptId":    p.InterruptID,
