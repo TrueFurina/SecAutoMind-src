@@ -23,6 +23,7 @@ import (
 	"secautomind-ai/internal/authctx"
 	"secautomind-ai/internal/c2"
 	"secautomind-ai/internal/config"
+	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/database"
 	"secautomind-ai/internal/einoobserve"
 	"secautomind-ai/internal/handler"
@@ -427,6 +428,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	if knowledgeManager != nil {
 		agentHandler.SetKnowledgeManager(knowledgeManager)
 	}
+	// CTF presolve 钩子：在 Agent 推理前先跑确定性预解层（0 token），命中则跳过 Agent。
+	ctfPresolve := ctfplatform.NewPresolver(log.Logger)
+	ctfAnalyzer := ctfplatform.NewTaskAnalyzer()
+	ctfIntegrator := ctfplatform.NewPresolveAgentIntegrator(ctfPresolve, ctfAnalyzer, nil, log.Logger)
+	agentHandler.SetCTFPresolveIntegrator(ctfIntegrator)
 	monitorHandler := handler.NewMonitorHandler(mcpServer, executor, db, log.Logger)
 	monitorHandler.SetAudit(auditSvc)
 	monitorHandler.SetMonitorRetention(monitorRetention)

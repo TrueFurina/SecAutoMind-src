@@ -20,6 +20,7 @@ import (
 	"secautomind-ai/internal/audit"
 	"secautomind-ai/internal/authctx"
 	"secautomind-ai/internal/config"
+	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/database"
 	"secautomind-ai/internal/mcp/builtin"
 	"secautomind-ai/internal/multiagent"
@@ -201,6 +202,12 @@ type AgentHandler struct {
 	hitlDefaultReviewerSaver HitlDefaultReviewerSaver
 	auditLLM                 *openai.Client
 	audit                    *audit.Service
+	ctfPresolveIntegrator    *ctfplatform.PresolveAgentIntegrator
+}
+
+// SetCTFPresolveIntegrator 注入 CTF 确定性预解层集成器。
+func (h *AgentHandler) SetCTFPresolveIntegrator(i *ctfplatform.PresolveAgentIntegrator) {
+	h.ctfPresolveIntegrator = i
 }
 
 // SetAudit wires platform audit logging.
@@ -877,6 +884,18 @@ func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, platform stri
 
 	if _, err = h.db.AddMessage(conversationID, "user", message, nil); err != nil {
 		return "", "", fmt.Errorf("保存用户消息失败: %w", err)
+	}
+
+	// CTF presolve 钩子：在 Agent 推理前，先跑确定性预解层（0 token）。
+	// 命中则直接返回候选 flag，跳过 Agent 编排（省时间/省 token）。
+	if h.ctfPresolveIntegrator != nil {
+		if attempt := h.ctfPresolveIntegrator.TryPresolve(ctx, message, nil); attempt != nil && attempt.SkipAgent {
+			result := ctfplatform.FormatPresolveResult(attempt)
+			if result != "" {
+				h.db.AddMessage(conversationID, "assistant", result, nil)
+				return result, conversationID, nil
+			}
+		}
 	}
 
 	// 与 Eino 流式对话一致：先创建助手消息占位，用 progressCallback 写过程详情（不发送 SSE）
