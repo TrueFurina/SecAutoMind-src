@@ -150,6 +150,22 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "template_injection", Category: CategoryWebS, Priority: 87, Solver: solveWebTemplateInjection})
 	RegisterSolver(SolverEntry{Name: "blockchain_ctf", Category: CategoryMiscS, Priority: 74, Solver: solveBlockchainCTF})
 	RegisterSolver(SolverEntry{Name: "ml_security", Category: CategoryMiscS, Priority: 75, Solver: solveMLSecurity})
+
+	// misc 高级（P7 批次）
+	RegisterSolver(SolverEntry{Name: "brainfuck", Category: CategoryMiscS, Priority: 64, Solver: solveBrainfuck})
+	RegisterSolver(SolverEntry{Name: "ook", Category: CategoryMiscS, Priority: 65, Solver: solveOok})
+	RegisterSolver(SolverEntry{Name: "rail_fence_variant", Category: CategoryCryptoS, Priority: 66, Solver: solveRailFenceVariant})
+	RegisterSolver(SolverEntry{Name: "vigenere_auto_key", Category: CategoryCryptoS, Priority: 67, Solver: solveVigenereAutoKey})
+
+	// crypto 高级（P7 批次）
+	RegisterSolver(SolverEntry{Name: "ecdsa_nonce_reuse", Category: CategoryCryptoS, Priority: 46, Solver: solveECDSANonceReuse})
+	RegisterSolver(SolverEntry{Name: "rsa_broadcast", Category: CategoryCryptoS, Priority: 47, Solver: solveRSABroadcast})
+	RegisterSolver(SolverEntry{Name: "xor_multi_byte", Category: CategoryCryptoS, Priority: 33, Solver: solveXORMultiByte})
+
+	// web 高级（P7 批次）
+	RegisterSolver(SolverEntry{Name: "prototype_pollution", Category: CategoryWebS, Priority: 88, Solver: solvePrototypePollution})
+	RegisterSolver(SolverEntry{Name: "graphql_batch", Category: CategoryWebS, Priority: 89, Solver: solveGraphQLBatch})
+	RegisterSolver(SolverEntry{Name: "http_smuggling", Category: CategoryWebS, Priority: 90, Solver: solveHTTPRequestSmuggling})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -412,4 +428,50 @@ func solveBlockchainCTF(ctx context.Context, text string, attachments map[string
 
 func solveMLSecurity(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryMLSecurity(text, attachments)
+}
+
+// ── P7 批次适配函数 ──────────────────────────────────────
+
+func solveBrainfuck(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBrainfuck(text)
+}
+
+func solveOok(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryOok(text)
+}
+
+func solveRailFenceVariant(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRailFenceVariant(text)
+}
+
+func solveVigenereAutoKey(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryVigenereAutoKey(text)
+}
+
+// ── P7 crypto 适配函数 ──────────────────────────────────
+
+func solveECDSANonceReuse(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryECDSANonceReuse(text, attachments)
+}
+
+func solveRSABroadcast(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRSABroadcastComplete(text, attachments)
+}
+
+func solveXORMultiByte(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryXORMultiByte(text, attachments)
+}
+
+// ── P7 web 高级适配函数 ──────────────────────────────────
+
+func solvePrototypePollution(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPrototypePollution(text, attachments)
+}
+
+func solveGraphQLBatch(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryGraphQLBatch(text, attachments)
+}
+
+func solveHTTPRequestSmuggling(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHTTPRequestSmuggling(text, attachments)
 }

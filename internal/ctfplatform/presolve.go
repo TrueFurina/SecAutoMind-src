@@ -3173,3 +3173,494 @@ func tryMLSecurity(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P7 批次：misc 高级 ──────────────────────────────────
+
+// tryBrainfuck 解释 Brainfuck 代码并提取 flag。
+func tryBrainfuck(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Brainfuck 仅含 8 种指令字符
+	bfRe := regexp.MustCompile(`^[><+\-.,\[\]\s]+$`)
+	if !bfRe.MatchString(clean) || len(clean) < 20 {
+		return nil
+	}
+	// 简易解释器（最多执行 10000 步防死循环）
+	tape := make([]byte, 3000)
+	ptr := 0
+	var output strings.Builder
+	steps := 0
+	code := clean
+	codeIdx := 0
+	bracketMap := buildBracketMap(code)
+
+	for codeIdx < len(code) && steps < 10000 {
+		steps++
+		switch code[codeIdx] {
+		case '>':
+			ptr++
+			if ptr >= len(tape) {
+				ptr = len(tape) - 1
+			}
+		case '<':
+			ptr--
+			if ptr < 0 {
+				ptr = 0
+			}
+		case '+':
+			tape[ptr]++
+		case '-':
+			tape[ptr]--
+		case '.':
+			output.WriteByte(tape[ptr])
+		case '[':
+			if tape[ptr] == 0 {
+				if end, ok := bracketMap[codeIdx]; ok {
+					codeIdx = end
+				}
+			}
+		case ']':
+			if tape[ptr] != 0 {
+				if start, ok := bracketMap[codeIdx]; ok {
+					codeIdx = start
+				}
+			}
+		}
+		codeIdx++
+	}
+	result := output.String()
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 && isPrintableRatio(result) > 0.7 {
+		return []string{"Brainfuck解码: " + result[:minInt(100, len(result))]}
+	}
+	return nil
+}
+
+// buildBracketMap 构建 Brainfuck 括号匹配表。
+func buildBracketMap(code string) map[int]int {
+	stack := []int{}
+	m := make(map[int]int)
+	for i, c := range code {
+		if c == '[' {
+			stack = append(stack, i)
+		} else if c == ']' {
+			if len(stack) > 0 {
+				start := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				m[start] = i
+				m[i] = start
+			}
+		}
+	}
+	return m
+}
+
+// tryOok 检测 Ook! 语言（Brainfuck 的变体，用"Ook."等词）。
+func tryOok(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Ook 特征：连续的 "Ook" 词
+	ookRe := regexp.MustCompile(`(?i)ook[.?!]`)
+	matches := ookRe.FindAllString(clean, -1)
+	if len(matches) < 8 {
+		return nil
+	}
+	// 转换 Ook → Brainfuck
+	bf := ookToBrainfuck(clean)
+	if bf == "" {
+		return nil
+	}
+	return tryBrainfuck(bf)
+}
+
+// ookToBrainfuck 将 Ook! 代码转换为 Brainfuck。
+func ookToBrainfuck(ook string) string {
+	re := regexp.MustCompile(`(?i)(ook)\s*([.?!])`)
+	matches := re.FindAllStringSubmatch(ook, -1)
+	if len(matches) < 2 {
+		return ""
+	}
+	var bf strings.Builder
+	for i := 0; i+1 < len(matches); i += 2 {
+		pair := matches[i][2] + matches[i+1][2]
+		switch pair {
+		case "..":
+			bf.WriteByte('+')
+		case "!!":
+			bf.WriteByte('-')
+		case ".!":
+			bf.WriteByte('>')
+		case "!.":
+			bf.WriteByte('<')
+		case "!?":
+			bf.WriteByte('[')
+		case "?!":
+			bf.WriteByte(']')
+		case "?.":
+			bf.WriteByte('.')
+		case "??":
+			bf.WriteByte(',')
+		}
+	}
+	return bf.String()
+}
+
+// tryRailFenceVariant 栅栏密码变体（W 形 / 倒序 / 不同偏移）。
+func tryRailFenceVariant(text string) []string {
+	clean := strings.TrimSpace(text)
+	alphaRe := regexp.MustCompile(`^[a-zA-Z\s]+$`)
+	if !alphaRe.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	clean = strings.ReplaceAll(clean, " ", "")
+	// 标准栅栏（2-8 栏）
+	for rails := 2; rails <= 8; rails++ {
+		decoded := railFenceDecode(clean, rails)
+		if flags := scanFlags(decoded); len(flags) > 0 {
+			return flags
+		}
+	}
+	// W 形栅栏（从中间开始）
+	for rails := 3; rails <= 6; rails++ {
+		decoded := railFenceDecodeW(clean, rails)
+		if flags := scanFlags(decoded); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}
+
+// railFenceDecodeW W 形栅栏解码（从中间栏开始）。
+func railFenceDecodeW(cipher string, rails int) string {
+	n := len(cipher)
+	if rails <= 1 || rails >= n {
+		return cipher
+	}
+	// 构建 W 形模式
+	rows := make([][]byte, rails)
+	cycle := 2 * (rails - 1)
+	for i := 0; i < n; i++ {
+		pos := i % cycle
+		var row int
+		if pos < rails {
+			row = pos
+		} else {
+			row = cycle - pos
+		}
+		rows[row] = append(rows[row], cipher[i])
+	}
+	// 还原
+	result := make([]byte, n)
+	idx := 0
+	for r := 0; r < rails; r++ {
+		for _, b := range rows[r] {
+			result[idx] = b
+			idx++
+		}
+	}
+	return string(result)
+}
+
+// tryVigenereAutoKey 维吉尼亚自动密钥恢复（利用已知明文前缀恢复密钥）。
+func tryVigenereAutoKey(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 10 {
+		return nil
+	}
+	// 常见明文前缀（flag/Crypto/CTF等）
+	prefixes := []string{"flag{", "FLAG{", "ctf{", "CTF{", "crypto{", "mctf{"}
+	for _, prefix := range prefixes {
+		if len(clean) < len(prefix) {
+			continue
+		}
+		// 从密文和已知明文恢复密钥
+		key := recoverVigenereKey(clean, prefix)
+		if key == "" {
+			continue
+		}
+		// 用恢复的密钥解密全文
+		decoded := vigenereDecode(clean, key)
+		if flags := scanFlags(decoded); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}
+
+// recoverVigenereKey 从已知明文前缀恢复维吉尼亚密钥。
+func recoverVigenereKey(cipher, knownPlain string) string {
+	if len(cipher) < len(knownPlain) {
+		return ""
+	}
+	var key []byte
+	for i := 0; i < len(knownPlain); i++ {
+		c := byte(0)
+		if cipher[i] >= 'a' && cipher[i] <= 'z' {
+			c = cipher[i]
+		} else if cipher[i] >= 'A' && cipher[i] <= 'Z' {
+			c = cipher[i] + 32 // 转小写
+		} else {
+			continue
+		}
+		p := byte(0)
+		if knownPlain[i] >= 'a' && knownPlain[i] <= 'z' {
+			p = knownPlain[i]
+		} else if knownPlain[i] >= 'A' && knownPlain[i] <= 'Z' {
+			p = knownPlain[i] + 32
+		} else {
+			continue
+		}
+		k := (c - p + 26) % 26
+		key = append(key, k+'a')
+	}
+	if len(key) == 0 {
+		return ""
+	}
+	return string(key)
+}
+
+// ── P7 批次：crypto 高级 ──────────────────────────────────
+
+// tryECDSANonceReuse 检测 ECDSA nonce 重用条件（同 nonce + 同私钥 → 私钥泄露）。
+func tryECDSANonceReuse(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ecdsaKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ecdsa", "ECDSA 椭圆曲线数字签名"},
+		{"nonce reuse", "Nonce 重用攻击（同 nonce 不同消息→私钥泄露）"},
+		{"same nonce", "相同 Nonce"},
+		{"repeated nonce", "重复 Nonce"},
+		{"k reuse", "k 值重用"},
+		{"r value", "ECDSA r 值"},
+		{"s value", "ECDSA s 值"},
+		{"signature reuse", "签名重用"},
+		{"secp256k1", "secp256k1 椭圆曲线（比特币）"},
+		{"ecdsa recovery", "ECDSA 公钥恢复"},
+		{"low entropy nonce", "低熵 Nonce（可预测）"},
+		{"biased nonce", "有偏 Nonce"},
+	}
+	for _, kw := range ecdsaKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"ECDSA特征: " + kw.hint}
+		}
+	}
+	// 检测两个相同 r 值的签名（nonce 重用的直接证据）
+	rRe := regexp.MustCompile(`(?i)\br\s*=\s*(\d+)`)
+	rMatches := rRe.FindAllStringSubmatch(fullText, -1)
+	if len(rMatches) >= 2 {
+		r1, ok1 := new(big.Int).SetString(rMatches[0][1], 10)
+		r2, ok2 := new(big.Int).SetString(rMatches[1][1], 10)
+		if ok1 && ok2 && r1.Cmp(r2) == 0 {
+			return []string{"ECDSA Nonce 重用检测：两组签名 r 值相同（r=" + r1.String() + "），可恢复私钥"}
+		}
+	}
+	return nil
+}
+
+// tryRSABroadcastComplete 系统化 RSA 广播攻击（e 组同明文多 n 求解）。
+func tryRSABroadcastComplete(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	// 检测是否存在 e 组 (n, c) 对
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	nRe := regexp.MustCompile(`(?i)n\d*\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)c\d*\s*=\s*(\d+)`)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	if eMatch == nil {
+		return nil
+	}
+	e, ok := new(big.Int).SetString(eMatch[1], 10)
+	if !ok || e.Sign() <= 0 || e.Cmp(big.NewInt(10)) > 0 {
+		return nil
+	}
+	nMatches := nRe.FindAllStringSubmatch(fullText, -1)
+	cMatches := cRe.FindAllStringSubmatch(fullText, -1)
+	eVal := int(e.Int64())
+	if len(nMatches) >= eVal && len(cMatches) >= eVal {
+		return []string{fmt.Sprintf("RSA 广播攻击条件：e=%d, %d 组(n,c)（同明文+多n→CRT+开根）", eVal, len(nMatches))}
+	}
+	return nil
+}
+
+// tryXORMultiByte 多字节 XOR / 重复密钥 XOR 检测。
+func tryXORMultiByte(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	xorKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"multi-byte xor", "多字节 XOR 加密"},
+		{"repeating key xor", "重复密钥 XOR"},
+		{"fixed xor", "固定密钥 XOR"},
+		{"single-byte xor", "单字节 XOR"},
+		{"known plaintext", "已知明文攻击"},
+		{"hamming distance", "汉明距离（密钥长度猜测）"},
+		{"kasiski", "Kasiski 测试（密钥长度）"},
+		{"index of coincidence", "重合指数"},
+		{"ic ", "重合指数"},
+		{"crib dragging", "Crib Dragging 已知明文攻击"},
+		{"xor ", "XOR 运算"},
+	}
+	for _, kw := range xorKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"XOR攻击: " + kw.hint}
+		}
+	}
+	// 检测 hex 串疑似 XOR 密文（重复模式）
+	hexRe := regexp.MustCompile(`[0-9a-fA-F]{16,}`)
+	for _, m := range hexRe.FindAllString(fullText, -1) {
+		data, err := hex.DecodeString(m)
+		if err != nil || len(data) < 8 {
+			continue
+		}
+		// 检测重复 4 字节块（重复密钥特征）
+		blocks := make(map[string]int)
+		for i := 0; i+4 <= len(data); i += 4 {
+			block := string(data[i : i+4])
+			blocks[block]++
+		}
+		for _, count := range blocks {
+			if count >= 3 {
+				return []string{"XOR 重复密钥检测：hex 串中发现 " + fmt.Sprintf("%d", count) + " 个重复 4 字节块"}
+			}
+		}
+	}
+	return nil
+}
+
+// ── P7 批次：web 高级 ──────────────────────────────────
+
+// tryPrototypePollution 检测原型链污染特征（Node.js/JavaScript 对象注入）。
+func tryPrototypePollution(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ppKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"prototype pollution", "原型链污染攻击"},
+		{"__proto__", "__proto__ 原型链注入"},
+		{"constructor.prototype", "constructor.prototype 污染"},
+		{"object.assign", "Object.assign 合并漏洞"},
+		{"deep merge", "深合并漏洞"},
+		{"lodash", "Lodash 深合并漏洞"},
+		{"merge()", "merge 函数漏洞"},
+		{"extend()", "extend 函数漏洞"},
+		{"json.parse", "JSON.parse 与原型链"},
+		{"polluted", "污染检测"},
+		{"gadget chain", "利用链（原型污染→RCE）"},
+		{"code execution", "代码执行（通过原型链）"},
+		{"remote code execution", "远程代码执行"},
+		{"rce", "RCE 漏洞"},
+	}
+	for _, kw := range ppKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"原型链污染: " + kw.hint}
+		}
+	}
+	// 检测 JSON 中的 __proto__ 键
+	if strings.Contains(fullText, "__proto__") || strings.Contains(fullText, "constructor") {
+		if strings.Contains(lower, "pollution") || strings.Contains(lower, "inject") {
+			return []string{"原型链污染: 检测到 __proto__ 注入特征"}
+		}
+	}
+	return nil
+}
+
+// tryGraphQLBatch 检测 GraphQL 批量注入/深度攻击特征。
+func tryGraphQLBatch(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	gqlKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"graphql injection", "GraphQL 注入攻击"},
+		{"graphql batching", "GraphQL 批量查询攻击"},
+		{"query batching", "查询批量发送"},
+		{"aliasing attack", "别名攻击（绕过查询复杂度限制）"},
+		{"nested query", "嵌套查询攻击"},
+		{"circular reference", "循环引用攻击"},
+		{"depth attack", "查询深度攻击"},
+		{"complexity attack", "查询复杂度攻击"},
+		{"field duplication", "字段重复攻击"},
+		{"fragment injection", "Fragment 注入"},
+		{"inline fragment", "内联 Fragment"},
+		{"defer directive", "defer 延迟指令"},
+		{"stream directive", "stream 流式指令"},
+	}
+	for _, kw := range gqlKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"GraphQL攻击: " + kw.hint}
+		}
+	}
+	// 检测 GraphQL 查询中的批量特征
+	if strings.Contains(fullText, "[{") && strings.Contains(fullText, "query") {
+		return []string{"GraphQL 批量查询: 检测到数组格式 GraphQL 请求"}
+	}
+	return nil
+}
+
+// tryHTTPRequestSmuggling 检测 HTTP 请求走私特征。
+func tryHTTPRequestSmuggling(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	smugKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"request smuggling", "HTTP 请求走私"},
+		{"http request smuggling", "HTTP 请求走私攻击"},
+		{"cl.te", "CL.TE 走私（Content-Length vs Transfer-Encoding）"},
+		{"te.cl", "TE.CL 走私"},
+		{"te.te", "TE.TE 走私（Transfer-Encoding 混淆）"},
+		{"transfer-encoding", "Transfer-Encoding 头"},
+		{"content-length", "Content-Length 头"},
+		{"chunked encoding", "分块传输编码"},
+		{"header injection", "HTTP 头注入"},
+		{"crlf injection", "CRLF 注入"},
+		{"host header", "Host 头注入"},
+		{"hop-by-hop", "逐跳头攻击"},
+		{"reverse proxy", "反向代理漏洞"},
+		{"nginx", "Nginx 配置漏洞"},
+		{"apache", "Apache 配置漏洞"},
+		{"cache poisoning", "Web 缓存投毒"},
+		{"web cache deception", "Web 缓存欺骗"},
+		{"response splitting", "HTTP 响应拆分"},
+	}
+	for _, kw := range smugKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"HTTP走私: " + kw.hint}
+		}
+	}
+	// 检测异常 Transfer-Encoding（走私的直接证据）
+	teRe := regexp.MustCompile(`(?i)transfer-encoding\s*:\s*(.+)`)
+	if m := teRe.FindString(fullText); m != "" {
+		val := strings.TrimSpace(strings.SplitN(m, ":", 2)[1])
+		if strings.Contains(strings.ToLower(val), "chunked") && strings.Contains(val, " ") {
+			return []string{"HTTP 走私特征: Transfer-Encoding 值含异常空格（混淆攻击）"}
+		}
+	}
+	return nil
+}
