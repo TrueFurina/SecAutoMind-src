@@ -226,6 +226,21 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "ret2syscall", Category: CategoryPwnS, Priority: 106, Solver: solveRet2Syscall})
 	RegisterSolver(SolverEntry{Name: "fmt_arbitrary_write", Category: CategoryPwnS, Priority: 107, Solver: solveFormatStringArbitraryWrite})
 	RegisterSolver(SolverEntry{Name: "stack_overflow", Category: CategoryPwnS, Priority: 108, Solver: solveStackOverflow})
+
+	// P11 批次：云安全/IoT/移动安全/AI安全/区块链高级/时序攻击/编码变体/新语言逆向/pwn高级
+	RegisterSolver(SolverEntry{Name: "cloud_security", Category: CategoryWebS, Priority: 110, Solver: solveCloudSecurity})
+	RegisterSolver(SolverEntry{Name: "iot_security", Category: CategoryMiscS, Priority: 111, Solver: solveIoTSecurity})
+	RegisterSolver(SolverEntry{Name: "mobile_security", Category: CategoryRevS, Priority: 112, Solver: solveMobileSecurity})
+	RegisterSolver(SolverEntry{Name: "ai_ml_security", Category: CategoryMiscS, Priority: 113, Solver: solveAIMLSecurity})
+	RegisterSolver(SolverEntry{Name: "blockchain_advanced", Category: CategoryMiscS, Priority: 114, Solver: solveBlockchainAdvanced})
+	RegisterSolver(SolverEntry{Name: "timing_attack", Category: CategoryCryptoS, Priority: 57, Solver: solveTimingAttack})
+	RegisterSolver(SolverEntry{Name: "z85", Category: CategoryMiscS, Priority: 88, Solver: solveZ85})
+	RegisterSolver(SolverEntry{Name: "rust_reverse", Category: CategoryRevS, Priority: 105, Solver: solveRustReverse})
+	RegisterSolver(SolverEntry{Name: "swift_reverse", Category: CategoryRevS, Priority: 106, Solver: solveSwiftReverse})
+	RegisterSolver(SolverEntry{Name: "wasm_reverse", Category: CategoryRevS, Priority: 107, Solver: solveWebAssemblyReverse})
+	RegisterSolver(SolverEntry{Name: "kernel_exploit_advanced", Category: CategoryPwnS, Priority: 109, Solver: solveKernelExploitAdvanced})
+	RegisterSolver(SolverEntry{Name: "hypervisor_escape", Category: CategoryPwnS, Priority: 110, Solver: solveHypervisorEscape})
+	RegisterSolver(SolverEntry{Name: "firmware_exploit", Category: CategoryPwnS, Priority: 111, Solver: solveFirmwareExploit})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -622,3 +637,19 @@ func solveRet2csu(ctx context.Context, text string, attachments map[string]strin
 func solveRet2Syscall(ctx context.Context, text string, attachments map[string]string) []string { return tryRet2Syscall(text, attachments) }
 func solveFormatStringArbitraryWrite(ctx context.Context, text string, attachments map[string]string) []string { return tryFormatStringArbitraryWrite(text, attachments) }
 func solveStackOverflow(ctx context.Context, text string, attachments map[string]string) []string { return tryStackOverflow(text, attachments) }
+
+// ── P11 批次适配函数 ──────────────────────────────────────
+
+func solveCloudSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryCloudSecurity(text, attachments) }
+func solveIoTSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryIoTSecurity(text, attachments) }
+func solveMobileSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryMobileSecurity(text, attachments) }
+func solveAIMLSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryAIMLSecurity(text, attachments) }
+func solveBlockchainAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryBlockchainAdvanced(text, attachments) }
+func solveTimingAttack(ctx context.Context, text string, attachments map[string]string) []string { return tryTimingAttack(text, attachments) }
+func solveZ85(ctx context.Context, text string, attachments map[string]string) []string { return tryZ85(text) }
+func solveRustReverse(ctx context.Context, text string, attachments map[string]string) []string { return tryRustReverse(text, attachments) }
+func solveSwiftReverse(ctx context.Context, text string, attachments map[string]string) []string { return trySwiftReverse(text, attachments) }
+func solveWebAssemblyReverse(ctx context.Context, text string, attachments map[string]string) []string { return tryWebAssemblyReverse(text, attachments) }
+func solveKernelExploitAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryKernelExploitAdvanced(text, attachments) }
+func solveHypervisorEscape(ctx context.Context, text string, attachments map[string]string) []string { return tryHypervisorEscape(text, attachments) }
+func solveFirmwareExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryFirmwareExploit(text, attachments) }

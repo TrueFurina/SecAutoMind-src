@@ -5124,3 +5124,408 @@ func tryStackOverflow(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P11 批次：云安全 ──────────────────────────────────────
+
+// tryCloudSecurity 检测云安全误配置/攻击特征。
+func tryCloudSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	cloudKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"aws", "Amazon Web Services"},
+		{"ec2", "EC2 实例"},
+		{"s3 bucket", "S3 存储桶"},
+		{"lambda", "AWS Lambda"},
+		{"iam", "AWS IAM 权限"},
+		{"cloudtrail", "CloudTrail 审计"},
+		{"sts", "AWS STS 临时凭证"},
+		{"access key", "AWS Access Key"},
+		{"secret key", "AWS Secret Key"},
+		{"gcp", "Google Cloud Platform"},
+		{"gcs", "Google Cloud Storage"},
+		{"compute engine", "GCP Compute Engine"},
+		{"service account", "GCP Service Account"},
+		{"azure", "Microsoft Azure"},
+		{"blob storage", "Azure Blob Storage"},
+		{"cosmos db", "Azure Cosmos DB"},
+		{"active directory", "Azure AD"},
+		{"managed identity", "Azure Managed Identity"},
+		{"kubernetes", "Kubernetes 容器编排"},
+		{"docker", "Docker 容器"},
+		{"container escape", "容器逃逸"},
+		{"privilege escalation", "权限提升"},
+		{"misconfiguration", "配置错误"},
+		{"exposed", "暴露/泄露"},
+		{"public access", "公共访问"},
+		{"anonymous", "匿名访问"},
+		{"metadata service", "元数据服务"},
+		{"imds", "实例元数据服务"},
+		{"ssrf to cloud", "SSRF → 云元数据"},
+	}
+	for _, kw := range cloudKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"云安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryIoTSecurity 检测 IoT 安全特征。
+func tryIoTSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	iotKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"iot", "物联网"},
+		{"mqtt", "MQTT 协议"},
+		{"coap", "CoAP 协议"},
+		{"zigbee", "Zigbee 协议"},
+		{"z-wave", "Z-Wave 协议"},
+		{"bluetooth", "蓝牙协议"},
+		{"ble", "低功耗蓝牙"},
+		{"lorawan", "LoRaWAN 协议"},
+		{"embedded", "嵌入式系统"},
+		{"rtos", "实时操作系统"},
+		{"firmware", "固件"},
+		{"embedded linux", "嵌入式 Linux"},
+		{"openwrt", "OpenWrt 路由器"},
+		{"router exploit", "路由器漏洞利用"},
+		{"scada", "SCADA 工控系统"},
+		{"ics", "工业控制系统"},
+		{"plc", "可编程逻辑控制器"},
+		{"modbus", "Modbus 协议"},
+		{"opc", "OPC 协议"},
+		{"smart home", "智能家居"},
+		{"ip camera", "IP 摄像头"},
+		{"default credentials", "默认凭据"},
+		{"hardcoded password", "硬编码密码"},
+	}
+	for _, kw := range iotKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"IoT安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryMobileSecurity 检测移动安全特征（Android/iOS）。
+func tryMobileSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	mobileKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"android", "Android 平台"},
+		{"ios", "iOS 平台"},
+		{"apk", "Android APK"},
+		{"ipa", "iOS IPA"},
+		{"smali", "Smali 反汇编"},
+		{"dalvik", "Dalvik 虚拟机"},
+		{"art", "ART 运行时"},
+		{"dex", "DEX 字节码"},
+		{"apktool", "APKTool"},
+		{"jadx", "JADX 反编译"},
+		{"frida", "Frida 动态插桩"},
+		{"xposed", "Xposed 框架"},
+		{"magisk", "Magisk Root"},
+		{"cydia", "Cydia（越狱）"},
+		{"checkra1n", "checkra1n 越狱"},
+		{"unc0ver", "unc0ver 越狱"},
+		{"ssl pinning", "SSL Pinning"},
+		{"certificate pinning", "证书固定"},
+		{"jailbreak detection", "越狱检测"},
+		{"root detection", "Root 检测"},
+		{"emulator detection", "模拟器检测"},
+		{"deep link", "Deep Link"},
+		{"intent", "Android Intent"},
+		{"content provider", "Content Provider"},
+		{"broadcast receiver", "Broadcast Receiver"},
+		{"webview", "WebView"},
+		{"sqlite", "SQLite 数据库"},
+		{"keychain", "iOS Keychain"},
+		{"shared preferences", "SharedPreferences"},
+	}
+	for _, kw := range mobileKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"移动安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P11 批次：AI/ML安全 + 区块链高级 ──────────────────
+
+// tryAIMLSecurity 检测 AI/ML 安全特征。
+func tryAIMLSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	aiKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"adversarial example", "对抗样本"},
+		{"adversarial attack", "对抗攻击"},
+		{"model inversion", "模型逆向攻击"},
+		{"model stealing", "模型窃取"},
+		{"data poisoning", "数据投毒"},
+		{"prompt injection", "Prompt 注入攻击"},
+		{"jailbreak", "LLM 越狱攻击"},
+		{"prompt leaking", "Prompt 泄露"},
+		{"training data extraction", "训练数据提取"},
+		{"membership inference", "成员推断攻击"},
+		{"differential privacy", "差分隐私"},
+		{"federated learning", "联邦学习"},
+		{"adversarial patch", "对抗补丁"},
+		{"backdoor attack", "后门攻击"},
+		{"model watermark", "模型水印"},
+		{"neural network", "神经网络"},
+		{"machine learning", "机器学习"},
+		{"deep learning", "深度学习"},
+	}
+	for _, kw := range aiKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"AI安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryBlockchainAdvanced 检测区块链安全高级特征。
+func tryBlockchainAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	bcKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"reentrancy", "重入攻击"},
+		{"integer overflow", "整数溢出"},
+		{"flash loan", "闪电贷攻击"},
+		{"frontrunning", "抢跑交易"},
+		{"sandwich attack", "三明治攻击"},
+		{"oracle manipulation", "预言机操纵"},
+		{"governance attack", "治理攻击"},
+		{"rug pull", "Rug Pull"},
+		{"honeypot", "蜜罐合约"},
+		{"abi encoding", "ABI 编码"},
+		{"calldata", "Calldata 注入"},
+		{"delegatecall", "Delegatecall 漏洞"},
+		{"selfdestruct", "Selfdestruct 攻击"},
+		{"tx.origin", "tx.origin 钓鱼"},
+		{"proxy contract", "代理合约"},
+		{"upgradeable", "可升级合约"},
+		{"diamond pattern", "Diamond 模式"},
+		{"erc20 approval", "ERC-20 授权漏洞"},
+		{"permit", "EIP-2612 Permit"},
+		{"mev", "MEV（最大可提取价值）"},
+		{"cross-chain", "跨链安全"},
+		{"bridge", "跨链桥安全"},
+		{"l2 security", "L2 安全"},
+	}
+	for _, kw := range bcKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"区块链高级: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P11 批次：crypto 细节 + 编码变体 ──────────────────
+
+// tryTimingAttack 检测时序攻击/功耗分析特征。
+func tryTimingAttack(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	taKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"timing attack", "时序攻击"},
+		{"timing side channel", "时序侧信道"},
+		{"cache timing", "缓存时序"},
+		{"branch prediction", "分支预测侧信道"},
+		{"speculative execution", "推测执行"},
+		{"spectre", "Spectre 漏洞"},
+		{"meltdown", "Meltdown 漏洞"},
+		{"power analysis", "功耗分析"},
+		{"differential power", "差分功耗分析（DPA）"},
+		{"simple power", "简单功耗分析（SPA）"},
+		{"electromagnetic", "电磁侧信道"},
+		{"acoustic", "声学侧信道"},
+		{"fault injection", "故障注入"},
+		{"rowhammer", "Rowhammer DRAM"},
+		{"cold boot", "冷启动攻击"},
+		{"hardware security", "硬件安全"},
+		{"tpm", "可信平台模块"},
+		{"secure enclave", "安全飞地"},
+		{"sgx", "Intel SGX"},
+		{"trustzone", "ARM TrustZone"},
+	}
+	for _, kw := range taKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"侧信道: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryZ85 检测 Z85 编码。
+func tryZ85(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Z85 字符集：0-9, a-z, A-Z, .-:+=^!/*
+	z85Re := regexp.MustCompile(`^[0-9a-zA-Z.:\-+^!/*()]{8,}$`)
+	if !z85Re.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	// 排除 base64（含+/=）
+	if strings.ContainsAny(clean, "+/=") {
+		return nil
+	}
+	return []string{"Z85 检测: 符合 Z85 编码字符集（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+}
+
+
+// ── P11 批次：reverse 新语言 + pwn 高级（修复版）─────────────────────
+
+// tryRustReverse 检测 Rust 逆向特征。
+func tryRustReverse(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	rk := []struct{ k, h string }{
+		{"rust", "Rust"}, {"cargo", "Cargo"}, {"rustc", "rustc"},
+		{"panic_unwind", "panic"}, {"result<", "Result"}, {"option<", "Option"},
+	}
+	for _, kw := range rk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"Rust: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// trySwiftReverse 检测 Swift 逆向特征。
+func trySwiftReverse(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	sk := []struct{ k, h string }{
+		{"swift", "Swift"}, {"swiftui", "SwiftUI"}, {"uikit", "UIKit"},
+		{"xcode", "Xcode"}, {"cocoapods", "CocoaPods"}, {"protocol", "Swift协议"},
+	}
+	for _, kw := range sk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"Swift: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryWebAssemblyReverse 检测 WebAssembly 逆向特征。
+func tryWebAssemblyReverse(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	wk := []struct{ k, h string }{
+		{"wasm", "WebAssembly"}, {"webassembly", "WebAssembly"}, {"wat", "WAT格式"},
+		{"wasmtime", "Wasmtime"}, {"wasmer", "Wasmer"}, {"emscripten", "Emscripten"},
+	}
+	for _, kw := range wk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"WASM: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryKernelExploitAdvanced 检测内核利用高级特征。
+func tryKernelExploitAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kk := []struct{ k, h string }{
+		{"kernel exploit", "内核漏洞"}, {"privilege escalation", "权限提升"},
+		{"root shell", "Root Shell"}, {"suid", "SUID"}, {"io_uring", "io_uring"},
+		{"userfaultfd", "userfaultfd"}, {"namespace escape", "命名空间逃逸"},
+		{"container escape", "容器逃逸"}, {"cgroup escape", "cgroup逃逸"},
+	}
+	for _, kw := range kk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"内核高级: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryHypervisorEscape 检测虚拟化逃逸特征。
+func tryHypervisorEscape(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	hk := []struct{ k, h string }{
+		{"hypervisor escape", "虚拟机逃逸"}, {"vm escape", "VM逃逸"},
+		{"vmware escape", "VMware逃逸"}, {"virtualbox escape", "VBox逃逸"},
+		{"qemu escape", "QEMU逃逸"}, {"container breakout", "容器突破"},
+		{"sandbox escape", "沙箱逃逸"},
+	}
+	for _, kw := range hk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"虚拟化逃逸: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryFirmwareExploit 检测固件利用特征。
+func tryFirmwareExploit(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	fk := []struct{ k, h string }{
+		{"firmware", "固件"}, {"bios", "BIOS"}, {"uefi", "UEFI"},
+		{"bootkit", "Bootkit"}, {"rootkit", "Rootkit"}, {"secure boot", "安全启动绕过"},
+		{"tpm attack", "TPM攻击"}, {"supply chain", "供应链攻击"}, {"jtag", "JTAG"},
+	}
+	for _, kw := range fk {
+		if strings.Contains(lower, kw.k) {
+			return []string{"固件利用: " + kw.h}
+		}
+	}
+	return nil
+}
