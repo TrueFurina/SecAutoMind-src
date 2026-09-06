@@ -1,0 +1,29 @@
+name: ci
+
+# PR 门禁：每次 PR / push 到 main 自动跑 vet + 测试 + race 检测
+# 对齐 release.yml 的 test-linux 逻辑，但触发范围更广、响应更快
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Install sqlite build deps
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev gcc
+      - name: Vet
+        run: go vet ./...
+      - name: Test with race detector
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
+      - name: Build
+        run: CGO_ENABLED=1 go build -trimpath ./cmd/server
