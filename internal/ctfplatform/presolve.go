@@ -2553,3 +2553,623 @@ func tryMultipartBoundary(text string) []string {
 	}
 	return nil
 }
+
+// ── P5 批次：crypto 精研 ──────────────────────────────────
+func tryCommonModulusComplete(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	nRe := regexp.MustCompile(`(?i)n\s*=\s*(\d+)`)
+	e1Re := regexp.MustCompile(`(?i)e1\s*=\s*(\d+)`)
+	e2Re := regexp.MustCompile(`(?i)e2\s*=\s*(\d+)`)
+	c1Re := regexp.MustCompile(`(?i)c1\s*=\s*(\d+)`)
+	c2Re := regexp.MustCompile(`(?i)c2\s*=\s*(\d+)`)
+
+	nMatch := nRe.FindStringSubmatch(fullText)
+	e1Match := e1Re.FindStringSubmatch(fullText)
+	e2Match := e2Re.FindStringSubmatch(fullText)
+	c1Match := c1Re.FindStringSubmatch(fullText)
+	c2Match := c2Re.FindStringSubmatch(fullText)
+
+	if nMatch == nil || e1Match == nil || e2Match == nil || c1Match == nil || c2Match == nil {
+		return nil
+	}
+	n, _ := new(big.Int).SetString(nMatch[1], 10)
+	e1, _ := new(big.Int).SetString(e1Match[1], 10)
+	e2, _ := new(big.Int).SetString(e2Match[1], 10)
+	c1, _ := new(big.Int).SetString(c1Match[1], 10)
+	c2, _ := new(big.Int).SetString(c2Match[1], 10)
+	if n == nil || e1 == nil || e2 == nil || c1 == nil || c2 == nil {
+		return nil
+	}
+	g, s, t := egcd(e1, e2)
+	if g.Cmp(big.NewInt(1)) != 0 {
+		return nil
+	}
+	// c1^s * c2^t mod n = m
+	c1p := new(big.Int)
+	c2p := new(big.Int)
+	if s.Sign() < 0 {
+		inv := new(big.Int).ModInverse(c1, n)
+		if inv == nil {
+			return nil
+		}
+		c1p.Exp(inv, new(big.Int).Neg(s), n)
+	} else {
+		c1p.Exp(c1, s, n)
+	}
+	if t.Sign() < 0 {
+		inv := new(big.Int).ModInverse(c2, n)
+		if inv == nil {
+			return nil
+		}
+		c2p.Exp(inv, new(big.Int).Neg(t), n)
+	} else {
+		c2p.Exp(c2, t, n)
+	}
+	m := new(big.Int).Mul(c1p, c2p)
+	m.Mod(m, n)
+	mBytes := m.Bytes()
+	if flags := scanFlags(string(mBytes)); len(flags) > 0 {
+		return flags
+	}
+	return []string{"共模攻击解密(hex): " + hex.EncodeToString(mBytes)}
+}
+
+// tryRainbowTable 检测彩虹表/哈希碰撞特征。
+func tryRainbowTable(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	rtKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"rainbow table", "彩虹表：预计算哈希碰撞表"},
+		{"hash collision", "哈希碰撞"},
+		{"preimage", "原像攻击"},
+		{"second preimage", "第二原像攻击"},
+		{"birthday attack", "生日攻击"},
+		{"collision attack", "碰撞攻击"},
+		{"length extension", "长度扩展攻击"},
+		{"hashcat", "Hashcat：GPU 密码破解"},
+		{"john", "John the Ripper：密码破解"},
+		{"crackstation", "CrackStation：在线哈希查询"},
+		{"hashes.com", "Hashes.com：在线哈希解密"},
+		{"rainbowcrack", "RainbowCrack：彩虹表工具"},
+		{"ophcrack", "Ophcrack：Windows 密码破解"},
+		{"samurai", "SAMurai：Windows SAM 哈希破解"},
+	}
+	for _, kw := range rtKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"密码破解: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryEntropyAnalysis 检测熵分析特征（高熵字符串=加密/编码/压缩）。
+func tryEntropyAnalysis(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	entKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"entropy", "熵分析：测量数据随机性"},
+		{"shannon entropy", "香农熵：信息熵计算"},
+		{"high entropy", "高熵数据：可能加密/编码/压缩"},
+		{"low entropy", "低熵数据：可能明文/重复"},
+		{"randomness", "随机性分析"},
+		{"compression", "数据压缩"},
+		{"encryption", "数据加密"},
+		{"encoded data", "编码数据"},
+		{"hex dump", "十六进制转储"},
+		{"binary analysis", "二进制分析"},
+	}
+	for _, kw := range entKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"熵分析: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryAutoEncodingDetect 自动检测编码类型（Base64/Hex/URL/Binary）。
+func tryAutoEncodingDetect(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 8 {
+		return nil
+	}
+	// Base64 检测
+	b64Re := regexp.MustCompile(`^[A-Za-z0-9+/=]{16,}$`)
+	if b64Re.MatchString(clean) {
+		decoded, err := base64.StdEncoding.DecodeString(padBase64(clean))
+		if err == nil && len(decoded) > 0 {
+			if isPrintableRatio(string(decoded)) > 0.8 {
+				return []string{"Base64检测: 解码得到可读文本 -> " + string(decoded)[:minInt(80, len(decoded))]}
+			}
+			return []string{"Base64检测: 解码得到二进制数据（" + fmt.Sprintf("%d", len(decoded)) + " 字节）"}
+		}
+	}
+	// Hex 检测
+	hexRe := regexp.MustCompile(`^[0-9a-fA-F]{8,}$`)
+	if hexRe.MatchString(clean) && len(clean)%2 == 0 {
+		decoded, err := hex.DecodeString(clean)
+		if err == nil && len(decoded) > 0 {
+			if isPrintableRatio(string(decoded)) > 0.8 {
+				return []string{"Hex检测: 解码得到可读文本 -> " + string(decoded)[:minInt(80, len(decoded))]}
+			}
+			return []string{"Hex检测: 解码得到二进制数据（" + fmt.Sprintf("%d", len(decoded)) + " 字节）"}
+		}
+	}
+	// URL 编码检测
+	if strings.Contains(clean, "%") {
+		urlRe := regexp.MustCompile(`(%[0-9a-fA-F]{2}){3,}`)
+		if urlRe.MatchString(clean) {
+			return []string{"URL编码检测: 含连续 URL 编码序列"}
+		}
+	}
+	return nil
+}
+
+// tryGraphQL 检测 GraphQL 注入/内省特征。
+func tryGraphQL(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	gqlKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"graphql", "GraphQL API"},
+		{"__schema", "GraphQL 内省查询（__schema）"},
+		{"__type", "GraphQL 类型内省"},
+		{"query {", "GraphQL 查询"},
+		{"mutation {", "GraphQL 变更"},
+		{"subscription {", "GraphQL 订阅"},
+		{"introspection", "GraphQL 内省攻击"},
+		{"field injection", "GraphQL 字段注入"},
+		{"batch query", "GraphQL 批量查询攻击"},
+		{"depth limit", "GraphQL 深度限制绕过"},
+		{"alias", "GraphQL 别名攻击"},
+	}
+	for _, kw := range gqlKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"GraphQL: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryWebSocket 检测 WebSocket 特征。
+func tryWebSocket(text string) []string {
+	lower := strings.ToLower(text)
+	wsKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"websocket", "WebSocket 协议"},
+		{"wss://", "WebSocket Secure 连接"},
+		{"ws://", "WebSocket 连接"},
+		{"upgrade: websocket", "WebSocket 升级握手"},
+		{"sec-websocket-key", "WebSocket 握手密钥"},
+		{"socket.io", "Socket.IO 实时通信"},
+		{"signalr", "SignalR 实时通信"},
+		{"server-sent events", "SSE 服务器推送"},
+	}
+	for _, kw := range wsKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"WebSocket: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryAPISecurity 检测 API 安全关键词。
+func tryAPISecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	apiKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"api key", "API 密钥"},
+		{"bearer token", "Bearer Token 认证"},
+		{"oauth", "OAuth 认证"},
+		{"rate limit", "API 速率限制"},
+		{"swagger", "Swagger/OpenAPI 文档"},
+		{"openapi", "OpenAPI 规范"},
+		{"endpoint", "API 端点"},
+		{"microservice", "微服务架构"},
+		{"api gateway", "API 网关"},
+	}
+	for _, kw := range apiKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"API安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P5 补全：符号执行/动态分析/固件分析 ──────────────────
+
+// trySymbolicExecution 检测符号执行/形式验证特征。
+func trySymbolicExecution(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	seKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"symbolic execution", "符号执行：探索所有路径"},
+		{"constraint solving", "约束求解"},
+		{"smt solver", "SMT 求解器"},
+		{"z3", "Z3 约束求解器"},
+		{"klee", "KLEE 符号执行引擎"},
+		{"triton", "Triton 符号执行框架"},
+		{"manticore", "Manticore 符号执行"},
+		{"concolic", "Concolic 执行"},
+		{"abstract interpretation", "抽象解释"},
+		{"model checking", "模型检测"},
+		{"formal verification", "形式验证"},
+	}
+	for _, kw := range seKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"符号执行: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryDynamicAnalysis 检测动态分析特征（调试/插桩/沙箱/扫描工具）。
+func tryDynamicAnalysis(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	daKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"dynamic analysis", "动态分析"},
+		{"sandbox", "沙箱分析"},
+		{"cuckoo", "Cuckoo 沙箱"},
+		{"any.run", "ANY.RUN 在线沙箱"},
+		{"hybrid analysis", "Hybrid Analysis"},
+		{"strace", "strace 系统调用追踪"},
+		{"ltrace", "ltrace 库函数追踪"},
+		{"ftrace", "ftrace 内核追踪"},
+		{"instrumentation", "代码插桩"},
+		{"hooking", "函数钩取"},
+		{"api monitor", "API 监控"},
+		{"wireshark", "网络流量捕获"},
+		{"tcpdump", "TCP 流量捕获"},
+		{"fiddler", "HTTP 代理抓包"},
+		{"burp suite", "Burp Suite Web 安全测试"},
+		{"owasp zap", "OWASP ZAP Web 安全扫描"},
+		{"nikto", "Nikto Web 服务器扫描"},
+		{"nmap", "Nmap 网络扫描"},
+		{"masscan", "Masscan 大规模端口扫描"},
+		{"nuclei", "Nuclei 漏洞扫描"},
+	}
+	for _, kw := range daKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"动态分析: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryFirmwareAnalysis 检测固件分析特征。
+func tryFirmwareAnalysis(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	fwKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"firmware", "固件分析"},
+		{"firmware extraction", "固件提取"},
+		{"binwalk", "Binwalk 固件分析工具"},
+		{"squashfs", "SquashFS 文件系统"},
+		{"cramfs", "CramFS 文件系统"},
+		{"uboot", "U-Boot 引导加载程序"},
+		{"openwrt", "OpenWrt 路由器固件"},
+		{"router", "路由器固件"},
+		{"iot", "物联网设备"},
+		{"embedded", "嵌入式系统"},
+		{"rtos", "实时操作系统"},
+		{"arm firmware", "ARM 固件"},
+		{"mips firmware", "MIPS 固件"},
+		{"repack", "固件重打包"},
+		{"emulation", "固件模拟"},
+		{"qemu", "QEMU 模拟器"},
+	}
+	for _, kw := range fwKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"固件分析: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// egcd 扩展欧几里得算法：返回 (g, x, y) 使得 ax + by = g = gcd(a, b)。
+func egcd(a, b *big.Int) (*big.Int, *big.Int, *big.Int) {
+	if b.Sign() == 0 {
+		return new(big.Int).Set(a), big.NewInt(1), big.NewInt(0)
+	}
+	g, x1, y1 := egcd(b, new(big.Int).Mod(a, b))
+	q := new(big.Int).Div(a, b)
+	x := new(big.Int).Sub(x1, new(big.Int).Mul(q, y1))
+	return g, y1, x
+}
+
+// ── P6 批次：密码学高级 + CTF 实战高频 ──────────────────
+
+// tryRSAWiener 检测 RSA Wiener 攻击条件（d 较小时连续分数攻击）。
+func tryRSAWiener(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	nRe := regexp.MustCompile(`(?i)\bn\s*=\s*(\d+)`)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	nMatch := nRe.FindStringSubmatch(fullText)
+	if eMatch == nil || nMatch == nil {
+		return nil
+	}
+	e, okE := new(big.Int).SetString(eMatch[1], 10)
+	n, okN := new(big.Int).SetString(nMatch[1], 10)
+	if !okE || !okN || e.Sign() <= 0 || n.Sign() <= 0 {
+		return nil
+	}
+	// Wiener 攻击条件：e > n 且 d < n^0.25 / 3
+	// 简化判断：e 远大于 n 时 Wiener 攻击有效
+	if e.Cmp(n) > 0 {
+		return []string{fmt.Sprintf("RSA Wiener 攻击：e > n（e=%s...），d 较小可用连续分数攻击还原", e.String()[:minInt(20, len(e.String()))])}
+	}
+	return nil
+}
+
+// tryPohligHellman 检测 Pohlig-Hellman 离散对数攻击条件（群阶可分解为小素数幂）。
+func tryPohligHellman(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	phKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"discrete logarithm", "离散对数问题"},
+		{"discrete log", "离散对数"},
+		{"pohlig", "Pohlig-Hellman 算法"},
+		{"baby-step giant-step", "BSGS 算法"},
+		{"pollard rho", "Pollard Rho 离散对数"},
+		{"index calculus", "Index Calculus 算法"},
+		{"primitive root", "原根"},
+		{"generator", "生成元"},
+		{"modular exponentiation", "模幂运算"},
+		{"diffie-hellman", "Diffie-Hellman 密钥交换"},
+		{"elgamal", "ElGamal 加密"},
+		{"dsa", "数字签名算法（DSA）"},
+		{"ecdsa", "椭圆曲线数字签名（ECDSA）"},
+		{"elliptic curve", "椭圆曲线密码学"},
+		{"point addition", "椭圆曲线点加"},
+		{"scalar multiplication", "椭圆曲线标量乘"},
+	}
+	for _, kw := range phKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"离散对数: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryPaddingOracle 检测 Padding Oracle 攻击特征。
+func tryPaddingOracle(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	poKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"padding oracle", "Padding Oracle 攻击"},
+		{"pkcs7", "PKCS#7 填充"},
+		{"pkcs5", "PKCS#5 填充"},
+		{"cbc mode", "CBC 模式"},
+		{"cbc bit flipping", "CBC 位翻转攻击"},
+		{"iv", "初始化向量（IV）"},
+		{"block cipher mode", "分组密码模式"},
+		{"cipher block chaining", "密码块链接（CBC）"},
+		{"cipher feedback", "密码反馈（CFB）"},
+		{"output feedback", "输出反馈（OFB）"},
+		{"counter mode", "计数器模式（CTR）"},
+		{"galois counter", "GCM 模式"},
+		{"authentication tag", "认证标签（GCM）"},
+		{"nonce", "随机数/Nonce"},
+		{"initialization vector", "初始化向量"},
+	}
+	for _, kw := range poKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"密码模式: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryMiscFrequency 检测频率分析/字符统计特征（替换密码/古典密码）。
+func tryMiscFrequency(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	freqKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"frequency analysis", "频率分析：破解替换密码"},
+		{"substitution cipher", "替换密码"},
+		{"monoalphabetic", "单表替换密码"},
+		{"polyalphabetic", "多表替换密码"},
+		{"playfair", "Playfair 密码"},
+		{"hill cipher", "Hill 密码"},
+		{"atbash", "Atbash 密码"},
+		{"pigpen", "猪圈密码"},
+		{"polybius", "Polybius 方阵"},
+		{"ascii", "ASCII 编码"},
+		{"rot13", "ROT13 编码"},
+		{"rot47", "ROT47 编码"},
+		{"unicode", "Unicode 编码"},
+		{"utf-8", "UTF-8 编码"},
+		{"hex encoding", "十六进制编码"},
+		{"octal", "八进制编码"},
+		{"binary encoding", "二进制编码"},
+		{"decimal encoding", "十进制编码"},
+	}
+	for _, kw := range freqKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"编码/密码: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryWebTemplateInjection 检测模板注入高级特征（SSTI/服务端模板注入）。
+func tryWebTemplateInjection(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	tplKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"template injection", "服务端模板注入（SSTI）"},
+		{"server-side template", "服务端模板"},
+		{"jinja2", "Jinja2 模板引擎"},
+		{"twig", "Twig 模板引擎"},
+		{"freemarker", "FreeMarker 模板引擎"},
+		{"velocity", "Apache Velocity 模板"},
+		{"thymeleaf", "Thymeleaf 模板引擎"},
+		{"mustache", "Mustache 模板引擎"},
+		{"handlebars", "Handlebars 模板引擎"},
+		{"ejs", "EJS 模板引擎"},
+		{"pug", "Pug 模板引擎"},
+		{"erb", "ERB 模板引擎"},
+		{"smarty", "Smarty 模板引擎"},
+		{"blade", "Blade 模板引擎"},
+		{"liquid", "Liquid 模板引擎"},
+		{"sandbox escape", "沙箱逃逸"},
+		{"expression language", "表达式语言注入"},
+		{"ognl", "OGNL 表达式注入"},
+		{"mvel", "MVEL 表达式注入"},
+		{"spel", "Spring 表达式语言（SpEL）"},
+		{"el injection", "表达式语言注入"},
+	}
+	for _, kw := range tplKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"模板注入: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryBlockchainCTF 检测区块链 CTF 特征（以太坊/智能合约）。
+func tryBlockchainCTF(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	bcKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ethereum", "以太坊"},
+		{"solidity", "Solidity 智能合约"},
+		{"smart contract", "智能合约"},
+		{"evm", "以太坊虚拟机（EVM）"},
+		{"metamask", "MetaMask 钱包"},
+		{"web3", "Web3.js 库"},
+		{"ethers", "Ethers.js 库"},
+		{"reentrancy", "重入攻击（智能合约）"},
+		{"integer overflow", "整数溢出（Solidity <0.8）"},
+		{"delegatecall", "Delegatecall 漏洞"},
+		{"selfdestruct", "Selfdestruct 攻击"},
+		{"tx.origin", "tx.origin 钓鱼攻击"},
+		{"flash loan", "闪电贷攻击"},
+		{"frontrunning", "抢跑交易（MEV）"},
+		{"dex", "去中心化交易所（DEX）"},
+		{"erc20", "ERC-20 代币标准"},
+		{"erc721", "ERC-721 NFT 标准"},
+		{"nonce", "交易 Nonce"},
+		{"gas", "Gas 费用"},
+		{"wei", "Wei（以太坊最小单位）"},
+	}
+	for _, kw := range bcKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"区块链CTF: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryMLSecurity 检测机器学习安全特征（对抗样本/模型窃取）。
+func tryMLSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	mlKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"adversarial example", "对抗样本"},
+		{"adversarial attack", "对抗攻击"},
+		{"model inversion", "模型逆向攻击"},
+		{"model stealing", "模型窃取"},
+		{"data poisoning", "数据投毒攻击"},
+		{"prompt injection", "Prompt 注入攻击（LLM）"},
+		{"jailbreak", "越狱攻击（LLM）"},
+		{"prompt leaking", "Prompt 泄露"},
+		{"neural network", "神经网络"},
+		{"machine learning", "机器学习"},
+		{"deep learning", "深度学习"},
+		{"classification", "分类任务"},
+		{"regression", "回归任务"},
+	}
+	for _, kw := range mlKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"AI安全: " + kw.hint}
+		}
+	}
+	return nil
+}

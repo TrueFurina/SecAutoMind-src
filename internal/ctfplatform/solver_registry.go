@@ -136,6 +136,20 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "pwn_libc_fingerprint", Category: CategoryPwnS, Priority: 100, Solver: solvePwnLibcFingerprint})
 	RegisterSolver(SolverEntry{Name: "pwn_exploit_pattern", Category: CategoryPwnS, Priority: 101, Solver: solvePwnExploitPattern})
 	RegisterSolver(SolverEntry{Name: "pwn_advanced", Category: CategoryPwnS, Priority: 102, Solver: solvePwnAdvanced})
+
+	// 符号执行/动态分析/固件分析（P5 补全）
+	RegisterSolver(SolverEntry{Name: "symbolic_execution", Category: CategoryRevS, Priority: 94, Solver: solveSymbolicExecution})
+	RegisterSolver(SolverEntry{Name: "dynamic_analysis", Category: CategoryAll, Priority: 95, Solver: solveDynamicAnalysis})
+	RegisterSolver(SolverEntry{Name: "firmware_analysis", Category: CategoryRevS, Priority: 96, Solver: solveFirmwareAnalysis})
+
+	// 密码学高级 + CTF 实战高频（P6 批次）
+	RegisterSolver(SolverEntry{Name: "rsa_wiener", Category: CategoryCryptoS, Priority: 43, Solver: solveRSAWiener})
+	RegisterSolver(SolverEntry{Name: "pohlig_hellman", Category: CategoryCryptoS, Priority: 44, Solver: solvePohligHellman})
+	RegisterSolver(SolverEntry{Name: "padding_oracle", Category: CategoryCryptoS, Priority: 45, Solver: solvePaddingOracle})
+	RegisterSolver(SolverEntry{Name: "misc_frequency", Category: CategoryMiscS, Priority: 63, Solver: solveMiscFrequency})
+	RegisterSolver(SolverEntry{Name: "template_injection", Category: CategoryWebS, Priority: 87, Solver: solveWebTemplateInjection})
+	RegisterSolver(SolverEntry{Name: "blockchain_ctf", Category: CategoryMiscS, Priority: 74, Solver: solveBlockchainCTF})
+	RegisterSolver(SolverEntry{Name: "ml_security", Category: CategoryMiscS, Priority: 75, Solver: solveMLSecurity})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -354,4 +368,48 @@ func LogRegistryStatus(logger *zap.Logger) {
 		zap.Int("pwn", byCat[CategoryPwnS]),
 		zap.Int("general", byCat[CategoryAll]),
 	)
+}
+
+// ── P5 补全适配函数 ──────────────────────────────────────
+
+func solveSymbolicExecution(ctx context.Context, text string, attachments map[string]string) []string {
+	return trySymbolicExecution(text, attachments)
+}
+
+func solveDynamicAnalysis(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryDynamicAnalysis(text, attachments)
+}
+
+func solveFirmwareAnalysis(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryFirmwareAnalysis(text, attachments)
+}
+
+// ── P6 批次适配函数 ──────────────────────────────────────
+
+func solveRSAWiener(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRSAWiener(text, attachments)
+}
+
+func solvePohligHellman(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPohligHellman(text, attachments)
+}
+
+func solvePaddingOracle(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryPaddingOracle(text, attachments)
+}
+
+func solveMiscFrequency(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryMiscFrequency(text, attachments)
+}
+
+func solveWebTemplateInjection(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryWebTemplateInjection(text, attachments)
+}
+
+func solveBlockchainCTF(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBlockchainCTF(text, attachments)
+}
+
+func solveMLSecurity(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryMLSecurity(text, attachments)
 }
