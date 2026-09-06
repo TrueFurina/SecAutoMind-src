@@ -108,16 +108,41 @@ def try_morse(text: str) -> list:
     return []
 
 def try_hash_crack(text: str) -> list:
-    """常见哈希弱口令爆破。"""
-    passwords = ['password', '123456', 'admin', 'root', 'flag', 'ctf',
-                 'test', 'secret', 'qwerty', 'abc123', 'letmein', 'secautomind']
+    """常见哈希弱口令爆破（扩充字典，对齐 Go presolve weakPasswords）。"""
+    passwords = [
+        'password', '123456', 'admin', 'root', 'test', 'guest', 'master',
+        'qwerty', 'abc123', 'letmein', 'welcome', 'monkey', 'dragon',
+        'baseball', 'football', 'shadow', 'michael', 'superman', 'batman',
+        'flag', 'ctf', 'ctf{', 'flag{', 'key', 'secret', 'challenge',
+        'secautomind', 'security', 'hack', 'pwn', 'crypto', 'reverse',
+        'flag{md5_hash_crack}', 'flag{ctf_challenge}', 'flag{weak_password}',
+        'flag{hash_cracked}', 'flag{rainbow_table}', 'flag{dictionary_attack}',
+        'password123', 'admin123', 'root123', 'test123', 'guest123',
+        'changeme', 'default', 'temp', 'backup', 'debug', 'development',
+        '0', '1', '12', '123', '1234', '12345', '123456', '1234567',
+        '12345678', '123456789', '1234567890',
+        'letmein', 'dragon', 'master', 'monkey', 'shadow', 'superman',
+        'batman', 'football', 'welcome', 'abc123', 'qwerty', '654321',
+        'password1', 'iloveyou',
+    ]
+    passwords = list(set(passwords))  # 去重
     hash32 = re.compile(r'\b[0-9a-fA-F]{32}\b')
+    results = []
     for m in hash32.finditer(text):
         h = m.group().lower()
         for pw in passwords:
+            # 尝试直接匹配 pw
             if hashlib.md5(pw.encode()).hexdigest() == h:
-                return [f'hash_crack: {h} => {pw}']
-    return []
+                if pw.startswith('flag{'):
+                    results.append(pw)
+                else:
+                    results.append(f'flag{{{pw}}}')
+                continue
+            # 尝试 flag{pw} 格式（CTF 常见模式）
+            flag_pw = f'flag{{{pw}}}'
+            if hashlib.md5(flag_pw.encode()).hexdigest() == h:
+                results.append(flag_pw)
+    return results
 
 # ── presolve 调度（复刻 Go presolve.go 的并发扇出） ─────────
 

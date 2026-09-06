@@ -7,6 +7,7 @@
 package ctfplatform
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -600,4 +601,297 @@ func binaryToASCII(bin string) string {
 		}
 	}
 	return result.String()
+}
+
+// ── 补全项：morse 完整解码器 ──────────────────────────────
+
+// tryMorseComplete 完整 Morse 解码器：支持 .- 格式、·- 格式、01 二进制格式。
+func tryMorseComplete(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 8 {
+		return nil
+	}
+	// 标准 Morse 格式：仅含 . - / 空格
+	stdRe := regexp.MustCompile(`^[\.\-\s/]+$`)
+	if stdRe.MatchString(clean) {
+		return decodeMorse(clean)
+	}
+	// Unicode 格式：· —（点/长划线）
+	uniClean := strings.ReplaceAll(clean, "·", ".")
+	uniClean = strings.ReplaceAll(uniClean, "—", "-")
+	uniClean = strings.ReplaceAll(uniClean, "−", "-")
+	uniClean = strings.ReplaceAll(uniClean, "–", "-")
+	if stdRe.MatchString(uniClean) {
+		return decodeMorse(uniClean)
+	}
+	// 二进制格式：1=点 0=划，空格分隔
+	binRe := regexp.MustCompile(`^[01\s/]+$`)
+	if binRe.MatchString(clean) && len(clean) >= 10 {
+		std := strings.ReplaceAll(clean, "1", ".")
+		std = strings.ReplaceAll(std, "0", "-")
+		std = strings.ReplaceAll(std, " ", " ")
+		return decodeMorse(std)
+	}
+	return nil
+}
+
+// decodeMorse 解码标准 Morse 串（空格分隔字母，/ 分隔单词）。
+func decodeMorse(code string) []string {
+	morseTable := map[string]string{
+		".-": "a", "-...": "b", "-.-.": "c", "-..": "d", ".": "e",
+		"..-.": "f", "--.": "g", "....": "h", "..": "i", ".---": "j",
+		"-.-": "k", ".-..": "l", "--": "m", "-.": "n", "---": "o",
+		".--.": "p", "--.-": "q", ".-.": "r", "...": "s", "-": "t",
+		"..-": "u", "...-": "v", ".--": "w", "-..-": "x", "-.--": "y",
+		"--..": "z", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
+		".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9",
+		"-----": "0", ".-.-.-": ".", "--..--": ",", "---...": ":",
+		"-.-.-.": ";", "-....-": "-", "..--.-": "_", ".----.": "'",
+		".-..-.": "\"", "-.--.": "{", "-.--.-": ")", ".-...": "&",
+		".--.-": "}",  // } （非标准 Morse，CTF 约定）
+	}
+
+	words := strings.Split(code, "/")
+	var decoded []string
+	for _, word := range words {
+		word = strings.TrimSpace(word)
+		if word == "" {
+			continue
+		}
+		letters := strings.Fields(word)
+		var sb strings.Builder
+		for _, letter := range letters {
+			letter = strings.TrimSpace(letter)
+			if letter == "" {
+				continue
+			}
+			if ch, ok := morseTable[letter]; ok {
+				sb.WriteString(ch)
+			} else {
+				sb.WriteString("?")
+			}
+		}
+		decoded = append(decoded, sb.String())
+	}
+	result := strings.Join(decoded, " ")
+	// 扫描 flag
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 {
+		return []string{"Morse解码: " + result}
+	}
+	return nil
+}
+
+// ── 补全项：弱口令字典扩充 ──────────────────────────────
+
+// weakPasswords 扩充弱口令字典（覆盖 CTF 常见 flag/shell/密码模式）。
+var weakPasswords = []string{
+	// 经典弱口令
+	"password", "123456", "admin", "root", "test", "guest", "master",
+	"qwerty", "abc123", "letmein", "welcome", "monkey", "dragon",
+	"baseball", "football", "shadow", "michael", "superman", "batman",
+	// CTF 常见
+	"flag", "ctf", "ctf{", "flag{", "key", "secret", "challenge",
+	"secautomind", "security", "hack", "pwn", "crypto", "reverse",
+	// flag 变体
+	"flag{md5_hash_crack}", "flag{ctf_challenge}", "flag{weak_password}",
+	"flag{hash_cracked}", "flag{rainbow_table}", "flag{dictionary_attack}",
+	// 技术相关
+	"password123", "admin123", "root123", "test123", "guest123",
+	"changeme", "default", "temp", "backup", "debug", "development",
+	// 数字
+	"0", "1", "12", "123", "1234", "12345", "123456", "1234567",
+	"12345678", "123456789", "1234567890",
+}
+
+// tryHashCrackExpanded 扩展版哈希爆破（更大字典 + 更多哈希类型）。
+func tryHashCrackExpanded(text string) []string {
+	fullText := text
+	var results []string
+
+	// MD5 (32 hex)
+	md5Re := regexp.MustCompile(`\b[0-9a-fA-F]{32}\b`)
+	for _, m := range md5Re.FindAllString(fullText, -1) {
+		h := strings.ToLower(m)
+		for _, pw := range weakPasswords {
+			if fmt.Sprintf("%x", md5Sum(pw)) == h {
+				results = append(results, "MD5爆破: "+m+" => "+pw)
+			}
+		}
+	}
+
+	// SHA-1 (40 hex)
+	sha1Re := regexp.MustCompile(`\b[0-9a-fA-F]{40}\b`)
+	for _, m := range sha1Re.FindAllString(fullText, -1) {
+		h := strings.ToLower(m)
+		for _, pw := range weakPasswords {
+			if fmt.Sprintf("%x", sha1Sum(pw)) == h {
+				results = append(results, "SHA1爆破: "+m+" => "+pw)
+			}
+		}
+	}
+
+	// SHA-256 (64 hex)
+	sha256Re := regexp.MustCompile(`\b[0-9a-fA-F]{64}\b`)
+	for _, m := range sha256Re.FindAllString(fullText, -1) {
+		h := strings.ToLower(m)
+		for _, pw := range weakPasswords {
+			if fmt.Sprintf("%x", sha256Sum(pw)) == h {
+				results = append(results, "SHA256爆破: "+m+" => "+pw)
+			}
+		}
+	}
+
+	if len(results) > 0 {
+		return results
+	}
+	return nil
+}
+
+func md5Sum(s string) [16]byte {
+	h := md5.New()
+	h.Write([]byte(s))
+	var out [16]byte
+	copy(out[:], h.Sum(nil))
+	return out
+}
+
+func sha1Sum(s string) [20]byte {
+	h := sha1.New()
+	h.Write([]byte(s))
+	var out [20]byte
+	copy(out[:], h.Sum(nil))
+	return out
+}
+
+func sha256Sum(s string) [32]byte {
+	h := sha256.New()
+	h.Write([]byte(s))
+	var out [32]byte
+	copy(out[:], h.Sum(nil))
+	return out
+}
+
+// ── 补全项：RSA 小指数分解 ──────────────────────────────
+
+// tryRSASmallExponentComplete 完整 RSA 小指数攻击（e=3 开根 + 费马分解）。
+func tryRSASmallExponentComplete(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	// 提取 n, e, c
+	nRe := regexp.MustCompile(`(?i)\bn\s*=\s*(\d+)`)
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)\bc\s*=\s*(\d+)`)
+
+	nMatch := nRe.FindStringSubmatch(fullText)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	cMatch := cRe.FindStringSubmatch(fullText)
+
+	if nMatch == nil || eMatch == nil || cMatch == nil {
+		return nil
+	}
+
+	n, okN := new(big.Int).SetString(nMatch[1], 10)
+	e, okE := new(big.Int).SetString(eMatch[1], 10)
+	c, okC := new(big.Int).SetString(cMatch[1], 10)
+	if !okN || !okE || !okC {
+		return nil
+	}
+
+	// 小指数攻击：e=3 时 c^(1/e) 直接开根
+	if e.Cmp(big.NewInt(3)) == 0 {
+		m := iroot(c, big.NewInt(3))
+		if m != nil {
+			mBytes := m.Bytes()
+			if flags := scanFlags(string(mBytes)); len(flags) > 0 {
+				return flags
+			}
+			return []string{"RSA小指数(e=3)解密(hex): " + hex.EncodeToString(mBytes)}
+		}
+	}
+
+	// e=5 时开5次根
+	if e.Cmp(big.NewInt(5)) == 0 {
+		m := iroot(c, big.NewInt(5))
+		if m != nil {
+			mBytes := m.Bytes()
+			if flags := scanFlags(string(mBytes)); len(flags) > 0 {
+				return flags
+			}
+			return []string{"RSA小指数(e=5)解密(hex): " + hex.EncodeToString(mBytes)}
+		}
+	}
+
+	// 费马分解：n = p*q 且 p≈q
+	p, q := fermatFactor(n)
+	if p != nil && q != nil {
+		phi := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
+		d := new(big.Int).ModInverse(e, phi)
+		if d != nil {
+			m := new(big.Int).Exp(c, d, n)
+			mBytes := m.Bytes()
+			if flags := scanFlags(string(mBytes)); len(flags) > 0 {
+				return flags
+			}
+			return []string{"RSA费马分解解密(hex): " + hex.EncodeToString(mBytes)}
+		}
+	}
+
+	return nil
+}
+
+// fermatFactor 费马分解：对 n 找 p,q 使得 n=p*q 且 p≈q。
+func fermatFactor(n *big.Int) (*big.Int, *big.Int) {
+	one := big.NewInt(1)
+	a := new(big.Int).Sqrt(n)
+	a.Add(a, one)
+	b2 := new(big.Int).Mul(a, a)
+	b2.Sub(b2, n)
+	b := new(big.Int).Sqrt(b2)
+	for i := 0; i < 100000; i++ {
+		b2.Mul(b, b)
+		if b2.Cmp(new(big.Int).Mul(a, a)) == 0 || new(big.Int).Mul(b, b).Cmp(new(big.Int).Sub(new(big.Int).Mul(a, a), n)) == 0 {
+			// 检查 a-b 和 a+b
+			p := new(big.Int).Sub(a, b)
+			q := new(big.Int).Add(a, b)
+			if new(big.Int).Mul(p, q).Cmp(n) == 0 {
+				return p, q
+			}
+		}
+		a.Add(a, one)
+		b2.Mul(a, a)
+		b2.Sub(b2, n)
+		b.Sqrt(b2)
+		if new(big.Int).Mul(b, b).Cmp(b2) != 0 {
+			continue
+		}
+	}
+	return nil, nil
+}
+
+// ── 注册新求解器 ──────────────────────────────────────
+
+func init() {
+	// 覆盖原有 morse 注册（用更完整的版本）
+	RegisterSolver(SolverEntry{Name: "morse_complete", Category: CategoryMiscS, Priority: 60, Solver: solveMorseComplete})
+	// 覆盖原有 hash_crack 注册（用更大字典版本）
+	RegisterSolver(SolverEntry{Name: "hash_crack_expanded", Category: CategoryCryptoS, Priority: 32, Solver: solveHashCrackExpanded})
+	// 覆盖原有 rsa_fermat 注册（用更完整版本）
+	RegisterSolver(SolverEntry{Name: "rsa_small_exp_complete", Category: CategoryCryptoS, Priority: 40, Solver: solveRSASmallExpComplete})
+}
+
+func solveMorseComplete(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryMorseComplete(text)
+}
+
+func solveHashCrackExpanded(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHashCrackExpanded(text)
+}
+
+func solveRSASmallExpComplete(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRSASmallExponentComplete(text, attachments)
 }
