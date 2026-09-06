@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
+	"time"
 )
 
 // inlineScriptThresholdBytes 内联脚本参数超过该字节数时，判定为“巨型内联”，
@@ -132,4 +134,64 @@ func writeInlineScriptCache(code string) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+// CleanupInlineScriptCache 清理内联脚本缓存目录中的过期文件。
+// 删除策略：超过 maxAge 的文件删除；文件数超过 maxFiles 时按修改时间删除最旧的。
+// 建议在应用启动时调用一次。
+func CleanupInlineScriptCache(maxAge time.Duration, maxFiles int) {
+	dir, err := inlineScriptCacheDir()
+	if err != nil {
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	// 收集所有 .py 文件
+	type cacheFile struct {
+		name    string
+		modTime time.Time
+	}
+	var files []cacheFile
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".py") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, cacheFile{name: e.Name(), modTime: info.ModTime()})
+	}
+	now := time.Now()
+	deleted := 0
+	// 1. 删除超龄文件
+	for _, f := range files {
+		if now.Sub(f.modTime) > maxAge {
+			_ = os.Remove(filepath.Join(dir, f.name))
+			deleted++
+		}
+	}
+	// 2. 如果文件数仍超限，按修改时间排序删除最旧的
+	if len(files)-deleted > maxFiles {
+		// 重新收集存活文件
+		var alive []cacheFile
+		for _, f := range files {
+			if now.Sub(f.modTime) <= maxAge {
+				alive = append(alive, f)
+			}
+		}
+		// 按修改时间升序（最旧在前）
+		sort.Slice(alive, func(i, j int) bool {
+			return alive[i].modTime.Before(alive[j].modTime)
+		})
+		for i := 0; i < len(alive)-maxFiles; i++ {
+			_ = os.Remove(filepath.Join(dir, alive[i].name))
+			deleted++
+		}
+	}
+	if deleted > 0 {
+		// 静默清理，不影响主流程
+	}
 }

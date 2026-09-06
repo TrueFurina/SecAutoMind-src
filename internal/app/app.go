@@ -133,6 +133,9 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 
 	// 认证管理器（数据库初始化后挂载 RBAC）
 	authManager := security.NewAuthManager(cfg.Auth.SessionDurationHours)
+
+	// 启动时清理内联脚本缓存（超龄+超限）
+	go security.CleanupInlineScriptCache(24*time.Hour, 200)
 	if generatedPassword, err := authManager.AttachRBACStore(db); err != nil {
 		return nil, fmt.Errorf("初始化RBAC失败: %w", err)
 	} else if generatedPassword != "" {
