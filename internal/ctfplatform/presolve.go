@@ -5529,3 +5529,364 @@ func tryFirmwareExploit(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P12 批次：密码学算法识别 ──────────────────────────────
+
+// tryCryptoAlgorithmDetect 检测具体密码学算法特征（AES/DES/Blowfish/ChaCha20等）。
+func tryCryptoAlgorithmDetect(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	algoKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"aes", "AES 加密（高级加密标准）"},
+		{"advanced encryption standard", "AES"},
+		{"aes-128", "AES-128"},
+		{"aes-256", "AES-256"},
+		{"des", "DES 加密（数据加密标准）"},
+		{"3des", "3DES（三重DES）"},
+		{"triple des", "三重DES"},
+		{"blowfish", "Blowfish 加密"},
+		{"twofish", "Twofish 加密"},
+		{"chacha20", "ChaCha20 流密码"},
+		{"chacha20-poly1305", "ChaCha20-Poly1305 AEAD"},
+		{"salsa20", "Salsa20 流密码"},
+		{"rc4", "RC4 流密码"},
+		{"rc5", "RC5 加密"},
+		{"rc6", "RC6 加密"},
+		{"idea", "IDEA 加密"},
+		{"cast5", "CAST5 加密"},
+		{"camellia", "Camellia 加密"},
+		{"aria", "ARIA 加密（韩国标准）"},
+		{"sm4", "SM4 加密（中国国密）"},
+		{"sm2", "SM2 椭圆曲线（中国国密）"},
+		{"sm3", "SM3 哈希（中国国密）"},
+		{"zuc", "ZUC 流密码（中国国密）"},
+		{"poly1305", "Poly1305 MAC"},
+		{"siphash", "SipHash"},
+		{"blake2", "BLAKE2 哈希"},
+		{"blake3", "BLAKE3 哈希"},
+		{"sha3", "SHA-3"},
+		{"keccak", "Keccak"},
+		{"ripemd160", "RIPEMD-160"},
+		{"whirlpool", "Whirlpool"},
+		{"hmac", "HMAC"},
+		{"cmac", "CMAC"},
+		{"gmac", "GMAC"},
+	}
+	for _, kw := range algoKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"密码算法: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryEncodingChain 检测多层编码链（编码套编码）。
+func tryEncodingChain(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	encKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"multi-layer encoding", "多层编码"},
+		{"nested encoding", "嵌套编码"},
+		{"encoding chain", "编码链"},
+		{"double base64", "双层 Base64"},
+		{"base64 decode", "Base64 解码"},
+		{"hex decode", "Hex 解码"},
+		{"url decode", "URL 解码"},
+		{"html entities", "HTML 实体编码"},
+		{"unicode escape", "Unicode 转义"},
+		{"javascript escape", "JavaScript 转义"},
+		{"rot13", "ROT13"},
+		{"rot47", "ROT47"},
+		{"atbash", "Atbash 密码"},
+		{"caesar cipher", "凯撒密码"},
+		{"vigenere cipher", "维吉尼亚密码"},
+		{"substitution cipher", "替换密码"},
+		{"transposition cipher", "置换密码"},
+	}
+	for _, kw := range encKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"编码检测: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P12 批次：Web3安全 ──────────────────────────────────
+
+// tryWeb3Security 检测 Web3/智能合约安全特征。
+func tryWeb3Security(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	web3Keywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"solidity", "Solidity 智能合约"},
+		{"smart contract", "智能合约"},
+		{"evm", "以太坊虚拟机"},
+		{"ethereum", "以太坊"},
+		{"erc20", "ERC-20 代币"},
+		{"erc721", "ERC-721 NFT"},
+		{"erc1155", "ERC-1155 多代币"},
+		{"reentrancy", "重入攻击"},
+		{"integer overflow", "整数溢出"},
+		{"delegatecall", "Delegatecall 漏洞"},
+		{"selfdestruct", "Selfdestruct 攻击"},
+		{"tx.origin", "tx.origin 钓鱼"},
+		{"flash loan", "闪电贷攻击"},
+		{"frontrunning", "抢跑交易"},
+		{"sandwich attack", "三明治攻击"},
+		{"oracle manipulation", "预言机操纵"},
+		{"rug pull", "Rug Pull"},
+		{"honeypot", "蜜罐合约"},
+		{"abi encoding", "ABI 编码"},
+		{"calldata", "Calldata 注入"},
+		{"proxy contract", "代理合约"},
+		{"upgradeable", "可升级合约"},
+		{"diamond pattern", "Diamond 模式"},
+		{"mev", "MEV（最大可提取价值）"},
+		{"cross-chain", "跨链安全"},
+		{"bridge", "跨链桥安全"},
+		{"l2 security", "L2 安全"},
+		{"rollup", "Rollup"},
+		{"zero knowledge proof", "零知识证明"},
+		{"zk-snark", "zk-SNARK"},
+		{"zk-stark", "zk-STARK"},
+		{"plonk", "PLONK"},
+		{"groth16", "Groth16"},
+	}
+	for _, kw := range web3Keywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"Web3安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P12 批次：汽车安全 ──────────────────────────────────
+
+// tryAutomotiveSecurity 检测汽车安全特征（CAN总线/车载网络/ADAS）。
+func tryAutomotiveSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	autoKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"can bus", "CAN 总线"},
+		{"canbus", "CAN 总线"},
+		{"obd", "OBD 诊断接口"},
+		{"obd-ii", "OBD-II 接口"},
+		{"uds", "统一诊断服务（UDS）"},
+		{"automotive", "汽车安全"},
+		{"connected car", "车联网"},
+		{"v2x", "车对万物通信（V2X）"},
+		{"adas", "高级驾驶辅助系统（ADAS）"},
+		{"autonomous driving", "自动驾驶"},
+		{"lidar", "激光雷达"},
+		{"radar", "毫米波雷达"},
+		{"tesla", "特斯拉"},
+		{"can injection", "CAN 注入攻击"},
+		{"can sniffing", "CAN 嗅探"},
+		{"ecu", "电子控制单元（ECU）"},
+		{"firmware update", "OTA 固件更新"},
+		{"vehicle security", "车辆安全"},
+		{"immobilizer", "防盗系统"},
+		{"key fob", "遥控钥匙"},
+		{"relay attack", "中继攻击"},
+		{"tpms", "胎压监测系统"},
+	}
+	for _, kw := range autoKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"汽车安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P12 批次：卫星安全 ──────────────────────────────────
+
+// trySatelliteSecurity 检测卫星安全特征（卫星通信/遥测/地面站）。
+func trySatelliteSecurity(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	satKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"satellite", "卫星安全"},
+		{"satellite communication", "卫星通信"},
+		{"satcom", "卫星通信（SATCOM）"},
+		{"telemetry", "遥测"},
+		{"telecommand", "遥控指令"},
+		{"ground station", "地面站"},
+		{"uplink", "上行链路"},
+		{"downlink", "下行链路"},
+		{"gnss", "全球导航卫星系统（GNSS）"},
+		{"gps spoofing", "GPS 欺骗"},
+		{"gps jamming", "GPS 干扰"},
+		{"signal jamming", "信号干扰"},
+		{"frequency hopping", "跳频"},
+		{"spread spectrum", "扩频"},
+		{"modulation", "调制"},
+		{"demodulation", "解调"},
+		{"signal analysis", "信号分析"},
+		{"sdr", "软件定义无线电（SDR）"},
+		{"rtl-sdr", "RTL-SDR"},
+		{"gnu radio", "GNU Radio"},
+		{"iq data", "IQ 数据"},
+		{"constellation", "星座图"},
+		{"spectrum analysis", "频谱分析"},
+		{"interference", "干扰"},
+	}
+	for _, kw := range satKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"卫星安全: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P12 批次：密码学高级算法识别 ──────────────────────────
+
+// tryAdvancedCrypto 检测高级密码学算法/协议特征。
+func tryAdvancedCrypto(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	advKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"tls", "TLS 协议"},
+		{"ssl", "SSL 协议"},
+		{"certificate", "证书"},
+		{"x509", "X.509 证书"},
+		{"public key", "公钥"},
+		{"private key", "私钥"},
+		{"key exchange", "密钥交换"},
+		{"diffie-hellman", "Diffie-Hellman"},
+		{"elliptic curve", "椭圆曲线"},
+		{"digital signature", "数字签名"},
+		{"hash function", "哈希函数"},
+		{"message authentication", "消息认证"},
+		{"hmac", "HMAC"},
+		{"key derivation", "密钥派生"},
+		{"pbkdf2", "PBKDF2"},
+		{"bcrypt", "bcrypt"},
+		{"scrypt", "scrypt"},
+		{"argon2", "Argon2"},
+		{"salting", "加盐"},
+		{"peppering", "加胡椒"},
+		{"key stretching", "密钥拉伸"},
+		{"password hashing", "密码哈希"},
+		{"random number", "随机数生成"},
+		{"prng", "伪随机数生成器"},
+		{"csprng", "密码学安全伪随机数生成器"},
+		{"entropy", "熵"},
+	}
+	for _, kw := range advKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"高级密码学: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P12 批次：编码检测链高级 ──────────────────────────────
+
+// tryEncodingDetectionAdvanced 检测高级编码特征（yEnc/BinHex/QuotedPrintable）。
+func tryEncodingDetectionAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	encKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"yenc", "yEnc 编码"},
+		{"binhex", "BinHex 编码"},
+		{"quoted-printable", "Quoted-Printable"},
+		{"charset", "字符集"},
+		{"encoding", "编码"},
+		{"utf-8", "UTF-8"},
+		{"utf-16", "UTF-16"},
+		{"utf-32", "UTF-32"},
+		{"iso-8859", "ISO-8859"},
+		{"windows-1252", "Windows-1252"},
+		{"euc-kr", "EUC-KR"},
+		{"euc-jp", "EUC-JP"},
+		{"gb2312", "GB2312"},
+		{"gbk", "GBK"},
+		{"big5", "Big5"},
+		{"shift_jis", "Shift_JIS"},
+	}
+	for _, kw := range encKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"编码高级: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryCryptoAttackPatterns 检测密码学攻击模式特征。
+func tryCryptoAttackPatterns(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	attackKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"known plaintext", "已知明文攻击"},
+		{"chosen plaintext", "选择明文攻击"},
+		{"chosen ciphertext", "选择密文攻击"},
+		{"differential cryptanalysis", "差分密码分析"},
+		{"linear cryptanalysis", "线性密码分析"},
+		{"side channel", "侧信道攻击"},
+		{"timing attack", "时序攻击"},
+		{"power analysis", "功耗分析"},
+		{"fault injection", "故障注入"},
+		{"dictionary attack", "字典攻击"},
+		{"brute force", "暴力破解"},
+		{"rainbow table", "彩虹表"},
+		{"collision attack", "碰撞攻击"},
+		{"birthday attack", "生日攻击"},
+		{"length extension", "长度扩展攻击"},
+		{"padding oracle", "填充预言机"},
+		{"bleichenbacher", "Bleichenbacher 攻击"},
+	}
+	for _, kw := range attackKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"密码攻击: " + kw.hint}
+		}
+	}
+	return nil
+}

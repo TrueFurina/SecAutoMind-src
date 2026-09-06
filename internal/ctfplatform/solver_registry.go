@@ -241,6 +241,16 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "kernel_exploit_advanced", Category: CategoryPwnS, Priority: 109, Solver: solveKernelExploitAdvanced})
 	RegisterSolver(SolverEntry{Name: "hypervisor_escape", Category: CategoryPwnS, Priority: 110, Solver: solveHypervisorEscape})
 	RegisterSolver(SolverEntry{Name: "firmware_exploit", Category: CategoryPwnS, Priority: 111, Solver: solveFirmwareExploit})
+
+	// P12 批次：密码学算法识别/Web3/汽车安全/卫星安全/编码检测链
+	RegisterSolver(SolverEntry{Name: "crypto_algorithm_detect", Category: CategoryCryptoS, Priority: 58, Solver: solveCryptoAlgorithmDetect})
+	RegisterSolver(SolverEntry{Name: "encoding_chain", Category: CategoryMiscS, Priority: 89, Solver: solveEncodingChain})
+	RegisterSolver(SolverEntry{Name: "web3_security", Category: CategoryMiscS, Priority: 115, Solver: solveWeb3Security})
+	RegisterSolver(SolverEntry{Name: "automotive_security", Category: CategoryMiscS, Priority: 116, Solver: solveAutomotiveSecurity})
+	RegisterSolver(SolverEntry{Name: "satellite_security", Category: CategoryMiscS, Priority: 117, Solver: solveSatelliteSecurity})
+	RegisterSolver(SolverEntry{Name: "advanced_crypto", Category: CategoryCryptoS, Priority: 59, Solver: solveAdvancedCrypto})
+	RegisterSolver(SolverEntry{Name: "encoding_advanced", Category: CategoryMiscS, Priority: 90, Solver: solveEncodingDetectionAdvanced})
+	RegisterSolver(SolverEntry{Name: "crypto_attack_patterns", Category: CategoryCryptoS, Priority: 60, Solver: solveCryptoAttackPatterns})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -653,3 +663,14 @@ func solveWebAssemblyReverse(ctx context.Context, text string, attachments map[s
 func solveKernelExploitAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryKernelExploitAdvanced(text, attachments) }
 func solveHypervisorEscape(ctx context.Context, text string, attachments map[string]string) []string { return tryHypervisorEscape(text, attachments) }
 func solveFirmwareExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryFirmwareExploit(text, attachments) }
+
+// ── P12 批次适配函数 ──────────────────────────────────────
+
+func solveCryptoAlgorithmDetect(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoAlgorithmDetect(text, attachments) }
+func solveEncodingChain(ctx context.Context, text string, attachments map[string]string) []string { return tryEncodingChain(text, attachments) }
+func solveWeb3Security(ctx context.Context, text string, attachments map[string]string) []string { return tryWeb3Security(text, attachments) }
+func solveAutomotiveSecurity(ctx context.Context, text string, attachments map[string]string) []string { return tryAutomotiveSecurity(text, attachments) }
+func solveSatelliteSecurity(ctx context.Context, text string, attachments map[string]string) []string { return trySatelliteSecurity(text, attachments) }
+func solveAdvancedCrypto(ctx context.Context, text string, attachments map[string]string) []string { return tryAdvancedCrypto(text, attachments) }
+func solveEncodingDetectionAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryEncodingDetectionAdvanced(text, attachments) }
+func solveCryptoAttackPatterns(ctx context.Context, text string, attachments map[string]string) []string { return tryCryptoAttackPatterns(text, attachments) }
