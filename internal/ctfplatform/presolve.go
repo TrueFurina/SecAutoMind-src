@@ -4555,3 +4555,572 @@ func tryHeapSpray(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P10 批次：crypto ──────────────────────────────────────
+
+// tryHomomorphicEncryption 检测同态加密特征（FHE/PHE/SHE）。
+func tryHomomorphicEncryption(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	heKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"homomorphic encryption", "同态加密"},
+		{"fully homomorphic", "全同态加密（FHE）"},
+		{"partially homomorphic", "部分同态加密（PHE）"},
+		{"somewhat homomorphic", "有限同态加密（SHE）"},
+		{"lattice-based", "格基密码学"},
+		{"ring-lwe", "Ring-LWE 问题"},
+		{"learning with errors", "LWE 问题"},
+		{"brakerski", "Brakerski 方案"},
+		{"gentry", "Gentry 方案"},
+		{"ckks", "CKKS 方案"},
+		{"bfv", "BFV 方案"},
+		{"bgv", "BGV 方案"},
+		{"paillier", "Paillier 加密"},
+		{"elgamal encryption", "ElGamal 加密"},
+		{"rsa encryption", "RSA 加密"},
+		{"elliptic curve", "椭圆曲线加密"},
+		{"zero knowledge", "零知识证明"},
+		{"zk-snark", "zk-SNARK"},
+		{"zk-stark", "zk-STARK"},
+	}
+	for _, kw := range heKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"同态加密: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryEllipticCurvePointOps 检测椭圆曲线点运算特征。
+func tryEllipticCurvePointOps(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ecKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"point addition", "椭圆曲线点加运算"},
+		{"point doubling", "椭圆曲线点倍运算"},
+		{"point multiplication", "椭圆曲线标量乘"},
+		{"scalar multiplication", "标量乘法"},
+		{"generator point", "基点/生成元"},
+		{"infinity point", "无穷远点"},
+		{"weierstrass", "Weierstrass 形式"},
+		{"montgomery form", "Montgomery 形式"},
+		{"edwards curve", "Edwards 曲线"},
+		{"twisted edwards", "Twisted Edwards 曲线"},
+		{"birational equivalence", "双有理等价"},
+		{"order of curve", "曲线阶"},
+		{"cofactor", "辅因子"},
+		{"embedding degree", "嵌入度"},
+		{"mov attack", "MOV 攻击"},
+		{"franklin reiter", "Franklin-Reiter 相关消息攻击"},
+	}
+	for _, kw := range ecKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"椭圆曲线点运算: " + kw.hint}
+		}
+	}
+	// 检测 y² = x³ + ax + b 形式
+	if strings.Contains(fullText, "y^2") && strings.Contains(fullText, "x^3") {
+		return []string{"椭圆曲线: 检测到曲线方程"}
+	}
+	return nil
+}
+
+// tryLatticeKeywords 检测格基密码学关键词。
+func tryLatticeKeywords(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	latKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"lattice reduction", "格基规约"},
+		{"lattice attack", "格基攻击"},
+		{"shortest vector", "最短向量问题（SVP）"},
+		{"closest vector", "最近向量问题（CVP）"},
+		{"basis reduction", "基底规约"},
+		{"hermite normal", "Hermite 标准型"},
+		{"smith normal", "Smith 标准型"},
+		{"determinant", "行列式"},
+		{"gram matrix", "Gram 矩阵"},
+		{"orthogonal", "正交化"},
+		{"q-ary lattice", "q-ary 格"},
+		{"ideal lattice", "理想格"},
+		{"module lattice", "模格"},
+		{"ntru", "NTRU 密码"},
+		{"crystals-kyber", "Crystals-Kyber"},
+		{"crystals-dilithium", "Crystals-Dilithium"},
+		{"falcon", "Falcon 签名"},
+		{"sphincs", "SPHINCS+ 签名"},
+	}
+	for _, kw := range latKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"格基密码: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// ── P10 批次：misc 编码变体 ──────────────────────────────
+
+// tryBase32 检测 Base32 编码。
+func tryBase32(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Base32 字符集：A-Z, 2-7, =
+	b32Re := regexp.MustCompile(`^[A-Z2-7=]{8,}$`)
+	if !b32Re.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	decoded, err := base32Decode(clean)
+	if err != nil || len(decoded) == 0 {
+		return nil
+	}
+	if flags := scanFlags(string(decoded)); len(flags) > 0 {
+		return flags
+	}
+	if isPrintableRatio(string(decoded)) > 0.8 {
+		return []string{"Base32解码: " + string(decoded)[:minInt(80, len(decoded))]}
+	}
+	return nil
+}
+
+func base32Decode(s string) ([]byte, error) {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+	s = strings.TrimRight(s, "=")
+	var result []byte
+	for i := 0; i < len(s); i += 8 {
+		chunk := s[i:minInt(i+8, len(s))]
+		var bits uint64
+		for _, c := range chunk {
+			idx := strings.IndexRune(alphabet, c)
+			if idx < 0 {
+				return nil, fmt.Errorf("invalid char")
+			}
+			bits = bits<<5 | uint64(idx)
+		}
+		for j := 0; j < 5; j++ {
+			byteIdx := (4 - j) * 8
+			if byteIdx < 40 {
+				result = append(result, byte(bits>>byteIdx&0xFF))
+			}
+		}
+	}
+	return result, nil
+}
+
+// tryBase85 检测 Base85/Ascii85 编码。
+func tryBase85(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Base85 标准版（Ascii85）：字符范围 33-117 (! 到 u)
+	// Z85 版：0-9, a-z, A-Z, .-:+=^!/*
+	if len(clean) < 8 {
+		return nil
+	}
+	// Ascii85 检测：<~...~> 包裹
+	if strings.HasPrefix(clean, "<~") && strings.HasSuffix(clean, "~>") {
+		return []string{"Base85/Ascii85 检测: <~...~> 包裹格式"}
+	}
+	// Z85 检测
+	z85Re := regexp.MustCompile(`^[0-9a-zA-Z.:\-+^!/*()]{8,}$`)
+	if z85Re.MatchString(clean) {
+		return []string{"Z85 检测: 符合 Z85 编码字符集（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+	}
+	return nil
+}
+
+// tryBase91 检测 Base91 编码。
+func tryBase91(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Base91 字符集：ASCII 35-126（# 到 ~），不含空格
+	b91Re := regexp.MustCompile(`^[!-~]{8,}$`)
+	if !b91Re.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	// 检测特征：Base91 编码后长度约为原文的 1.23 倍
+	// 如果输入看起来不像 base64（没有+/=），可能是 base91
+	if strings.ContainsAny(clean, "+/=") {
+		return nil // 可能是 base64
+	}
+	return []string{"Base91 检测: 符合 Base91 字符集（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+}
+
+// tryUUencode 检测 UUencode 编码。
+func tryUUencode(text string) []string {
+	clean := strings.TrimSpace(text)
+	// UUencode 特征：每行以长度字符开头（'M' = 45字节/行），行首字符范围 ' ' 到 '`'
+	lines := strings.Split(clean, "\n")
+	if len(lines) < 2 {
+		return nil
+	}
+	uuRe := regexp.MustCompile(`^[\x20-\x60][\x20-\x7E]*$`)
+	validLines := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) > 0 && uuRe.MatchString(trimmed) {
+			validLines++
+		}
+	}
+	if validLines >= 2 && float64(validLines)/float64(len(lines)) > 0.5 {
+		return []string{"UUencode 检测: 符合 UUencode 行格式（" + fmt.Sprintf("%d", validLines) + "/" + fmt.Sprintf("%d", len(lines)) + " 行）"}
+	}
+	return nil
+}
+
+// tryQuotedPrintable 检测 Quoted-Printable 编码。
+func tryQuotedPrintable(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Quoted-Printable 特征：=XX 十六进制转义
+	qpRe := regexp.MustCompile(`=[0-9A-Fa-f]{2}`)
+	matches := qpRe.FindAllString(clean, -1)
+	if len(matches) >= 3 {
+		return []string{"Quoted-Printable 检测: " + fmt.Sprintf("%d", len(matches)) + " 个 =XX 转义序列"}
+	}
+	// 软换行（行尾 =）
+	if strings.HasSuffix(clean, "=") {
+		return []string{"Quoted-Printable 检测: 行尾软换行（= 结尾）"}
+	}
+	return nil
+}
+
+// tryPunycode 检测 Punycode 编码（国际化域名）。
+func tryPunycode(text string) []string {
+	clean := strings.TrimSpace(text)
+	// Punycode 特征：xn-- 前缀
+	if strings.HasPrefix(clean, "xn--") || strings.Contains(clean, ".xn--") {
+		return []string{"Punycode 检测: 国际化域名编码（xn-- 前缀）"}
+	}
+	// 纯 ASCII 字母+数字+连字符
+	punyRe := regexp.MustCompile(`^[a-zA-Z0-9-]{4,}$`)
+	if punyRe.MatchString(clean) && strings.Contains(clean, "-") {
+		return []string{"Punycode 特征: 纯 ASCII+连字符格式（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
+	}
+	return nil
+}
+
+// ── P10 批次：web 高级 ──────────────────────────────────
+
+// trySSRFChain 检测 SSRF 链/高级 SSRF 特征。
+func trySSRFChain(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	ssrfKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ssrf chain", "SSRF 链攻击"},
+		{"server-side request forgery", "服务端请求伪造"},
+		{"dns rebinding", "DNS 重绑定"},
+		{"time-of-check", "TOCTOU 漏洞"},
+		{"url redirect", "URL 重定向"},
+		{"open redirect", "开放重定向"},
+		{"ssrf to rce", "SSRF → RCE 链"},
+		{"cloud metadata", "云元数据服务"},
+		{"169.254.169.254", "AWS/GCP 元数据"},
+		{"metadata.google.internal", "GCP 元数据"},
+		{"100.100.100.200", "阿里云元数据"},
+		{"internal service", "内网服务探测"},
+		{"service discovery", "服务发现"},
+		{"gopher://", "Gopher 协议利用"},
+		{"file://", "FILE 协议读取"},
+		{"dict://", "DICT 协议利用"},
+	}
+	for _, kw := range ssrfKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"SSRF高级: " + kw.hint}
+		}
+	}
+	privateIPRe := regexp.MustCompile(`(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}`)
+	if m := privateIPRe.FindString(fullText); m != "" {
+		return []string{"SSRF目标: " + m}
+	}
+	return nil
+}
+	
+
+// ── P10 补全：heredoc 截断恢复 ──────────────────────────────
+
+// tryDOMXSS 检测 DOM 型 XSS 特征。
+func tryDOMXSS(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	domKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"document.write", "document.write（XSS sink）"},
+		{"innerhtml", "innerHTML（XSS sink）"},
+		{"outerhtml", "outerHTML"},
+		{"eval(", "eval() 执行"},
+		{"settimeout", "setTimeout 字符串执行"},
+		{"setinterval", "setInterval 字符串执行"},
+		{"location.href", "location.href 重定向"},
+		{"location.hash", "location.hash（DOM XSS 源）"},
+		{"location.search", "location.search（DOM XSS 源）"},
+		{"postmessage", "postMessage"},
+		{"dom clobbering", "DOM 碰撞攻击"},
+		{"mutation xss", "Mutation XSS"},
+		{"trusted types", "Trusted Types 防护"},
+	}
+	for _, kw := range domKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"DOM XSS: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryStoredXSS 检测存储型 XSS 特征。
+func tryStoredXSS(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	sxssKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"stored xss", "存储型 XSS"},
+		{"persistent xss", "持久型 XSS"},
+		{"reflected xss", "反射型 XSS"},
+		{"blind xss", "盲 XSS"},
+		{"<script>", "Script 标签注入"},
+		{"javascript:", "JavaScript 协议注入"},
+		{"onerror", "onerror 事件处理器"},
+		{"onload", "onload 事件处理器"},
+		{"csp bypass", "CSP 绕过"},
+		{"content security policy", "内容安全策略"},
+		{"httponly", "HttpOnly Cookie 防护"},
+	}
+	for _, kw := range sxssKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"存储型XSS: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryGoReverseAdvanced 检测 Go 语言逆向高级特征。
+func tryGoReverseAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	goKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"go reverse", "Go 语言逆向"},
+		{"goretk", "goretk（Go 运行时逆向工具）"},
+		{"redress", "redress（Go 二进制分析）"},
+		{"go tool objdump", "Go 反汇编"},
+		{"pclntab", "Go 程序计数器行号表（pclntab）"},
+		{"gopclntab", "gopclntab（Go PC-line table）"},
+		{"runtime.main", "Go runtime 主函数"},
+		{"runtime.goexit", "Go 协程退出"},
+		{"type descriptor", "Go 类型描述符"},
+	}
+	for _, kw := range goKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"Go逆向: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryPythonReverseAdvanced 检测 Python 逆向高级特征。
+func tryPythonReverseAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	pyKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"pyinstaller", "PyInstaller 打包"},
+		{"py2exe", "py2exe 打包"},
+		{"nuitka", "Nuitka 编译"},
+		{"uncompyle6", "uncompyle6 反编译"},
+		{"decompyle3", "decompyle3 反编译"},
+		{"pycdc", "pycdc 反编译"},
+		{"marshal", "marshal 序列化"},
+		{"co_code", "Python 字节码"},
+		{".pyc", "Python 编译文件"},
+	}
+	for _, kw := range pyKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"Python逆向: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryDotNetReverseAdvanced 检测 .NET 逆向高级特征。
+func tryDotNetReverseAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	dotnetKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"csharp", "C# 程序"},
+		{"ilspy", "ILSpy 反编译"},
+		{"dnspy", "dnSpy 调试/反编译"},
+		{"il code", "IL 中间代码"},
+		{"cil", "通用中间语言"},
+		{"ildasm", "ILDASM 反汇编"},
+		{"de4dot", ".NET 混淆器脱壳"},
+		{"assembly", ".NET 程序集"},
+		{"managed code", "托管代码"},
+		{"pinvoke", "P/Invoke 调用"},
+	}
+	for _, kw := range dotnetKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{".NET逆向: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryRet2csu 检测 ret2csu 利用特征。
+func tryRet2csu(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	csuKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ret2csu", "ret2csu 利用"},
+		{"__libc_csu_init", "__libc_csu_init gadget"},
+		{"pop gadget", "POP gadget"},
+		{"ret gadget", "RET gadget"},
+		{"syscall gadget", "syscall gadget"},
+		{"rop chain", "ROP 链"},
+		{"rop gadget", "ROP gadget"},
+	}
+	for _, kw := range csuKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"ret2csu: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryRet2Syscall 检测 ret2syscall 利用特征。
+func tryRet2Syscall(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	sysKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"ret2syscall", "ret2syscall 利用"},
+		{"execve", "execve 系统调用"},
+		{"open", "open 系统调用"},
+		{"read", "read 系统调用"},
+		{"write", "write 系统调用"},
+		{"mmap", "mmap 系统调用"},
+		{"mprotect", "mprotect 系统调用"},
+		{"dup2", "dup2 系统调用"},
+		{"socket", "socket 系统调用"},
+	}
+	for _, kw := range sysKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"ret2syscall: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryFormatStringArbitraryWrite 检测格式化字符串任意写特征。
+func tryFormatStringArbitraryWrite(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	fmtKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"format string arbitrary write", "格式化字符串任意写"},
+		{"%n write", "%n 写入"},
+		{"%hn write", "%hn 写入（两字节）"},
+		{"%hhn write", "%hhn 写入（单字节）"},
+		{"got overwrite", "GOT 表覆写"},
+		{"global offset table", "全局偏移表"},
+		{"format string leak", "格式化字符串泄露"},
+		{"stack leak", "栈泄露"},
+		{"canary leak", "Canary 泄露"},
+		{"libc leak", "libc 泄露"},
+	}
+	for _, kw := range fmtKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"格式化字符串: " + kw.hint}
+		}
+	}
+	return nil
+}
+
+// tryStackOverflow 检测栈溢出漏洞特征。
+func tryStackOverflow(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	soKeywords := []struct {
+		keyword string
+		hint    string
+	}{
+		{"buffer overflow", "缓冲区溢出"},
+		{"stack overflow", "栈溢出"},
+		{"heap overflow", "堆溢出"},
+		{"integer overflow", "整数溢出"},
+		{"off-by-one", "Off-by-one 溢出"},
+		{"strcpy", "strcpy 不安全函数"},
+		{"gets", "gets 不安全函数"},
+		{"sprintf", "sprintf 不安全函数"},
+		{"canary", "栈保护 Canary"},
+		{"nx bit", "NX 位（不可执行栈）"},
+		{"aslr", "ASLR 地址随机化"},
+	}
+	for _, kw := range soKeywords {
+		if strings.Contains(lower, kw.keyword) {
+			return []string{"栈溢出: " + kw.hint}
+		}
+	}
+	return nil
+}

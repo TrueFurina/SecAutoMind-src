@@ -201,6 +201,31 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "decompiler_chain", Category: CategoryRevS, Priority: 101, Solver: solveDecompilerChain})
 	RegisterSolver(SolverEntry{Name: "io_file_exploit", Category: CategoryPwnS, Priority: 103, Solver: solveIOFileExploit})
 	RegisterSolver(SolverEntry{Name: "heap_spray", Category: CategoryPwnS, Priority: 104, Solver: solveHeapSpray})
+
+	// P10 批次：crypto
+	RegisterSolver(SolverEntry{Name: "homomorphic_encryption", Category: CategoryCryptoS, Priority: 54, Solver: solveHomomorphicEncryption})
+	RegisterSolver(SolverEntry{Name: "ec_point_ops", Category: CategoryCryptoS, Priority: 55, Solver: solveECPointOps})
+	RegisterSolver(SolverEntry{Name: "lattice_keywords", Category: CategoryCryptoS, Priority: 56, Solver: solveLatticeKeywords})
+	// P10 批次：misc 编码变体
+	RegisterSolver(SolverEntry{Name: "base32", Category: CategoryMiscS, Priority: 82, Solver: solveBase32})
+	RegisterSolver(SolverEntry{Name: "base85", Category: CategoryMiscS, Priority: 83, Solver: solveBase85})
+	RegisterSolver(SolverEntry{Name: "base91", Category: CategoryMiscS, Priority: 84, Solver: solveBase91})
+	RegisterSolver(SolverEntry{Name: "uuencode", Category: CategoryMiscS, Priority: 85, Solver: solveUUencode})
+	RegisterSolver(SolverEntry{Name: "quoted_printable", Category: CategoryMiscS, Priority: 86, Solver: solveQuotedPrintable})
+	RegisterSolver(SolverEntry{Name: "punycode", Category: CategoryMiscS, Priority: 87, Solver: solvePunycode})
+	// P10 批次：web
+	RegisterSolver(SolverEntry{Name: "ssrf_chain", Category: CategoryWebS, Priority: 97, Solver: solveSSRFChain})
+	RegisterSolver(SolverEntry{Name: "dom_xss", Category: CategoryWebS, Priority: 98, Solver: solveDOMXSS})
+	RegisterSolver(SolverEntry{Name: "stored_xss", Category: CategoryWebS, Priority: 99, Solver: solveStoredXSS})
+	// P10 批次：reverse
+	RegisterSolver(SolverEntry{Name: "go_reverse_advanced", Category: CategoryRevS, Priority: 102, Solver: solveGoReverseAdvanced})
+	RegisterSolver(SolverEntry{Name: "python_reverse", Category: CategoryRevS, Priority: 103, Solver: solvePythonReverseAdvanced})
+	RegisterSolver(SolverEntry{Name: "dotnet_reverse", Category: CategoryRevS, Priority: 104, Solver: solveDotNetReverseAdvanced})
+	// P10 批次：pwn
+	RegisterSolver(SolverEntry{Name: "ret2csu", Category: CategoryPwnS, Priority: 105, Solver: solveRet2csu})
+	RegisterSolver(SolverEntry{Name: "ret2syscall", Category: CategoryPwnS, Priority: 106, Solver: solveRet2Syscall})
+	RegisterSolver(SolverEntry{Name: "fmt_arbitrary_write", Category: CategoryPwnS, Priority: 107, Solver: solveFormatStringArbitraryWrite})
+	RegisterSolver(SolverEntry{Name: "stack_overflow", Category: CategoryPwnS, Priority: 108, Solver: solveStackOverflow})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -570,3 +595,30 @@ func solveObfuscationVariant(ctx context.Context, text string, attachments map[s
 func solveDecompilerChain(ctx context.Context, text string, attachments map[string]string) []string { return tryDecompilerChain(text, attachments) }
 func solveIOFileExploit(ctx context.Context, text string, attachments map[string]string) []string { return tryIOFileExploit(text, attachments) }
 func solveHeapSpray(ctx context.Context, text string, attachments map[string]string) []string { return tryHeapSpray(text, attachments) }
+
+// ── P10 批次适配函数 ──────────────────────────────────────
+
+// crypto
+func solveHomomorphicEncryption(ctx context.Context, text string, attachments map[string]string) []string { return tryHomomorphicEncryption(text, attachments) }
+func solveECPointOps(ctx context.Context, text string, attachments map[string]string) []string { return tryEllipticCurvePointOps(text, attachments) }
+func solveLatticeKeywords(ctx context.Context, text string, attachments map[string]string) []string { return tryLatticeKeywords(text, attachments) }
+// misc 编码变体
+func solveBase32(ctx context.Context, text string, attachments map[string]string) []string { return tryBase32(text) }
+func solveBase85(ctx context.Context, text string, attachments map[string]string) []string { return tryBase85(text) }
+func solveBase91(ctx context.Context, text string, attachments map[string]string) []string { return tryBase91(text) }
+func solveUUencode(ctx context.Context, text string, attachments map[string]string) []string { return tryUUencode(text) }
+func solveQuotedPrintable(ctx context.Context, text string, attachments map[string]string) []string { return tryQuotedPrintable(text) }
+func solvePunycode(ctx context.Context, text string, attachments map[string]string) []string { return tryPunycode(text) }
+// web
+func solveSSRFChain(ctx context.Context, text string, attachments map[string]string) []string { return trySSRFChain(text, attachments) }
+func solveDOMXSS(ctx context.Context, text string, attachments map[string]string) []string { return tryDOMXSS(text, attachments) }
+func solveStoredXSS(ctx context.Context, text string, attachments map[string]string) []string { return tryStoredXSS(text, attachments) }
+// reverse
+func solveGoReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryGoReverseAdvanced(text, attachments) }
+func solvePythonReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryPythonReverseAdvanced(text, attachments) }
+func solveDotNetReverseAdvanced(ctx context.Context, text string, attachments map[string]string) []string { return tryDotNetReverseAdvanced(text, attachments) }
+// pwn
+func solveRet2csu(ctx context.Context, text string, attachments map[string]string) []string { return tryRet2csu(text, attachments) }
+func solveRet2Syscall(ctx context.Context, text string, attachments map[string]string) []string { return tryRet2Syscall(text, attachments) }
+func solveFormatStringArbitraryWrite(ctx context.Context, text string, attachments map[string]string) []string { return tryFormatStringArbitraryWrite(text, attachments) }
+func solveStackOverflow(ctx context.Context, text string, attachments map[string]string) []string { return tryStackOverflow(text, attachments) }
