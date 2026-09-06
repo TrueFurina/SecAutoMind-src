@@ -1,0 +1,108 @@
+{
+  "total": 10,
+  "hit": 7,
+  "miss": 3,
+  "coverage_pct": 70.0,
+  "results": [
+    {
+      "id": "b64_single",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{base64_single_layer}",
+      "sha256_match": true,
+      "expected_skill": "base64_multilayer"
+    },
+    {
+      "id": "b64_multi",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{base64_multilayer_three}",
+      "sha256_match": true,
+      "expected_skill": "base64_multilayer"
+    },
+    {
+      "id": "caesar_3",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_three}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_13",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{rot_thirteen_flag}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_7",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_seven}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "morse_hello",
+      "category": "misc",
+      "sub": "morse",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "morse"
+    },
+    {
+      "id": "xor_single",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_single_byte}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "hash_md5",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "fermat_rsa",
+      "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "rsa_fermat"
+    },
+    {
+      "id": "log_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{log_forensics_exfil}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    }
+  ]
+}

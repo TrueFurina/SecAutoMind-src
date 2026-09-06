@@ -1,118 +1,118 @@
 {
-  "version": "v1",
+  "version": "v2",
   "created": "2026-09-06",
-  "description": "CTF 真题回归集（SHA-256 验证）—— presolve 覆盖率基准",
+  "description": "CTF 回归基准集 v2（含真实密文数据，SHA-256 验证）",
   "total": 10,
   "problems": {
-    "c1_zip_chain": {
-      "id": "c1_zip_chain",
-      "category": "misc",
-      "sub": "zip_chain",
-      "difficulty": "easy",
-      "description": "三层 ZIP 嵌套解压，每层密码在上一层注释中",
-      "flag": "flag{zip_chain_layer3_secret}",
-      "flag_sha256": "4502e88b1931bb4cacf1d33b27352d7583820e3ebe62ec942c8be9bce364eda1",
-      "presolve_skill": "zip_chain",
-      "source": "自研练习题"
-    },
-    "c2_xor_prefix": {
-      "id": "c2_xor_prefix",
-      "category": "crypto",
-      "sub": "xor",
-      "difficulty": "easy",
-      "description": "已知明文前缀的 XOR 加密",
-      "flag": "flag{xor_known_prefix_attack}",
-      "flag_sha256": "1be42fe966a55e4ecd4d79fe12193c8912d9882688822971d9a054e88a54e211",
-      "presolve_skill": "xor_single",
-      "source": "自研练习题"
-    },
-    "c3_rsa_fermat": {
-      "id": "c3_rsa_fermat",
-      "category": "crypto",
-      "sub": "rsa_fermat",
-      "difficulty": "medium",
-      "description": "RSA 模数为相近素数乘积，可用费马分解还原",
-      "flag": "flag{f3rma7}",
-      "flag_sha256": "fa78c428ecc7fafaf096a3117f4bb78f3e99c46efbd8c97201daf946c6494806",
-      "presolve_skill": "rsa_fermat",
-      "source": "自研练习题"
-    },
-    "c4_log_forensics": {
-      "id": "c4_log_forensics",
-      "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "description": "日志文件中提取泄露的 flag（被标记为 data_exfil）",
-      "flag": "flag{log_forensics_exfil_found}",
-      "flag_sha256": "9e1be75988dfd3ca8350db51c02c75f39f81c0161cd6d8c27eebca4108e1e6ca",
-      "presolve_skill": "flag_scan",
-      "source": "自研练习题"
-    },
-    "c5_png_lsb": {
-      "id": "c5_png_lsb",
-      "category": "misc",
-      "sub": "steganography",
-      "difficulty": "medium",
-      "description": "PNG 图片 LSB 隐写术提取隐藏数据",
-      "flag": "flag{png_lsb_stego_hidden}",
-      "flag_sha256": "645c8379ed89f5db73bf48f273c3dee03c9f04cdc8e8ef498de2aa1e8a6e2d0f",
-      "presolve_skill": "lsb_extract",
-      "source": "自研练习题"
-    },
-    "pub_base64_multilayer": {
-      "id": "pub_base64_multilayer",
+    "b64_single": {
+      "id": "b64_single",
       "category": "crypto",
       "sub": "base64",
       "difficulty": "easy",
-      "description": "ZmxhZ3tiYXNlNjRfbXVsdGlsYXllcn0= （一层 base64，flag{base64_multilayer}）",
-      "flag": "flag{base64_multilayer}",
-      "flag_sha256": "dGVzdF9iYXNlNjRfbXVsdGlsYXllcg==",
+      "description": "分析这段编码数据：ZmxhZ3tiYXNlNjRfc2luZ2xlX2xheWVyfQ==",
+      "flag": "flag{base64_single_layer}",
+      "flag_sha256": "8117bd09fe35efa040a4dca729d6e3af95c7e7378538153267cd49d9bf297e55",
       "presolve_skill": "base64_multilayer",
-      "source": "通用题型模板"
+      "source": "自研"
     },
-    "pub_rsa_small_e": {
-      "id": "pub_rsa_small_e",
+    "b64_multi": {
+      "id": "b64_multi",
       "category": "crypto",
-      "sub": "rsa",
-      "difficulty": "medium",
-      "description": "RSA e=3，明文^e < n，直接开立方根",
-      "flag": "flag{rsa_small_e_cubed}",
-      "flag_sha256": "80ff55537b0ce6cd0ce142ae1b6b4fafd78ec0c82c7f32d4b4b1fdf6d9024016",
-      "presolve_skill": "rsa_fermat",
-      "source": "通用题型模板"
+      "sub": "base64",
+      "difficulty": "easy",
+      "description": "解码这段多层编码：V20xNGFGb3pkR2xaV0U1c1RtcFNabUpZVm5Oa1IyeHpXVmhzYkdOc09UQmhTRXBzV2xnd1BRPT0=",
+      "flag": "flag{base64_multilayer_three}",
+      "flag_sha256": "1d283bb254ff75aa5ab325d841a214f7f2991c6bfcfb46912d02a6ad07eedcd6",
+      "presolve_skill": "base64_multilayer",
+      "source": "自研"
     },
-    "pub_caesar_13": {
-      "id": "pub_caesar_13",
+    "caesar_3": {
+      "id": "caesar_3",
       "category": "crypto",
       "sub": "caesar",
       "difficulty": "easy",
-      "description": "ROT13 凯撒移位，明文 the quick brown fox",
-      "flag": "flag{rot_thirteen}",
-      "flag_sha256": "f1c740485ca112a7733e07c5324362487944237540634b49c5d160319d6480da",
+      "description": "这是一段凯撒密码加密后的文本，请解密：iodj{fdhvdu_vkliw_wkuhh}",
+      "flag": "flag{caesar_shift_three}",
+      "flag_sha256": "1e286a91bd9c46ef0eee1756228724f8503175f0cf2fab149253990e7340ac47",
       "presolve_skill": "caesar",
-      "source": "通用题型模板"
+      "source": "自研"
     },
-    "pub_morse_hello": {
-      "id": "pub_morse_hello",
-      "category": "misc",
-      "sub": "morse",
-      "difficulty": "easy",
-      "description": "Morse 编码的 flag",
-      "flag": "flag{morse_hello_world}",
-      "flag_sha256": "be0d688f833d9fa558326c543f168a91fb4d39ccdbc127e2a6bbe95e9af16f36",
-      "presolve_skill": "morse",
-      "source": "通用题型模板"
-    },
-    "pub_caesar_shift7": {
-      "id": "pub_caesar_shift7",
+    "caesar_13": {
+      "id": "caesar_13",
       "category": "crypto",
       "sub": "caesar",
       "difficulty": "easy",
-      "description": "凯撒移位 7 位的密文",
+      "description": "ROT13 加密后的密文：synt{ebg_guvegrra_synt}",
+      "flag": "flag{rot_thirteen_flag}",
+      "flag_sha256": "e637ebd856a5f7c0ca1963f1829a748e1c3c2a2295d547424b5bc8a1d82d49a4",
+      "presolve_skill": "caesar",
+      "source": "自研"
+    },
+    "caesar_7": {
+      "id": "caesar_7",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "description": "密文如下（凯撒加密）：mshn{jhlzhy_zopma_zlclu}",
       "flag": "flag{caesar_shift_seven}",
       "flag_sha256": "e4897fb56d977173744c0284f3a0c0152ab16c43061e99642b0e9431d183a744",
       "presolve_skill": "caesar",
-      "source": "通用题型模板"
+      "source": "自研"
+    },
+    "morse_hello": {
+      "id": "morse_hello",
+      "category": "misc",
+      "sub": "morse",
+      "difficulty": "easy",
+      "description": "这段摩尔斯电码的含义是什么：..-. / .-.. / .- / --. / -.--. / -- / --- / .-. / ... / . / ..--.- / -.-. / --- / -.. / . / ..--.- / .... / . / .-.. / .-.. / --- / .--.-",
+      "flag": "flag{morse_code_hello}",
+      "flag_sha256": "dbf109f6c294cfffb2a33a4a58c18750ea80bbefca4cfe35d4507046a9d85b1d",
+      "presolve_skill": "morse",
+      "source": "自研"
+    },
+    "xor_single": {
+      "id": "xor_single",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "description": "以下 hex 数据是单字节 XOR 加密的结果，请还原明文：242e2325393a2d301d312b2c252e271d203b36273f",
+      "flag": "flag{xor_single_byte}",
+      "flag_sha256": "16d97c4c2eacd5efe753bc9b225cc25c230e7e38ff8571ed51819a707cc5c44f",
+      "presolve_skill": "xor_single",
+      "source": "自研"
+    },
+    "hash_md5": {
+      "id": "hash_md5",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "description": "这是一段 MD5 哈希值，请还原原始字符串：5c55808a3ff1eb689ed2ac1a546cb029",
+      "flag": "flag{md5_hash_crack}",
+      "flag_sha256": "9587878eee2595d928920a1ef454ec3678448c428bf8322ec8d8dcd678d37d4f",
+      "presolve_skill": "hash_crack",
+      "source": "自研"
+    },
+    "fermat_rsa": {
+      "id": "fermat_rsa",
+      "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
+      "description": "RSA 公钥 n=3233, e=17, 密文 c=2790, flag 格式为 flag{...}, 请解密。提示：n 可被费马分解。",
+      "flag": "flag{rsa_fermat_factored}",
+      "flag_sha256": "0a83baaadb70974b15c95aba3fb3ffe3a29f0782cebd8635a2ae0a9d522232a1",
+      "presolve_skill": "rsa_fermat",
+      "source": "自研"
+    },
+    "log_forensics": {
+      "id": "log_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "以下是服务器日志片段，请找出其中隐藏的敏感信息：[INFO] 2026-09-06 12:00:00 normal_request ip=10.0.0.1 [WARN] 2026-09-06 12:01:00 data_exfil detected payload=flag{log_forensics_exfil} [INFO] 2026-09-06 12:02:00 cleanup",
+      "flag": "flag{log_forensics_exfil}",
+      "flag_sha256": "40a696c673778f7d576e025b6c27f4397ffb1ba92c3fc44d60b23ac7a938ccf3",
+      "presolve_skill": "flag_scan",
+      "source": "自研"
     }
   }
 }
