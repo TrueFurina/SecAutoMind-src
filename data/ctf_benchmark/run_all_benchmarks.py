@@ -60,6 +60,20 @@ def run_execution():
         return 8, 0, 8, 0.0, []
 
 
+def run_web():
+    """跑 web 实战基准集（judge_web.py），返回 (total, hit, miss, pct)。"""
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_web.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0 and not r.stdout:
+        print("[WARN] judge_web.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    total = len(json.load(open(os.path.join(HERE, "web_benchmark.json"), encoding="utf-8"))["problems"])
+    hit = out.count("✅ HIT")
+    miss = total - hit
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -70,8 +84,8 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation",
-         "-count=1", "-timeout", "180s"],
+         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget",
+         "-count=1", "-timeout", "300s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
     # 抽取覆盖率行
@@ -86,9 +100,10 @@ def main():
 
     st_total, st_hit, st_miss, st_pct, st_res = run_static()
     ex_total, ex_hit, ex_miss, ex_pct, ex_res = run_execution()
+    wb_total, wb_hit, wb_miss, wb_pct = run_web()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力三基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力四基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -101,19 +116,25 @@ def main():
     print("    能力维度：strings / git历史 / 网页源码审计 / Cookie解码 / 大小端 /")
     print("               pcap HTTP解析 / RSA小指数开根 / 实时SQLi绕过 / 实时SSTI")
     print()
+    print("【3】Web 实战基准集 (web_benchmark.json, 10 类真实 CTF Web 题型靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" % (wb_total, wb_hit, wb_miss, wb_pct))
+    print("    Python judge_web.py == Go TestWebExploitAgainstRange（+生产路径 TestPresolveAutoExploitsWebTarget）")
+    print("    攻破维度：SQLi登录绕过 / SSTI提权 / LFI路径遍历 / SSRF内网端点 /")
+    print("               命令注入RCE / NoSQL运算符注入 / 未授权API / 源码与Cookie泄漏")
+    print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
     real_solver = st_hit - len(flag_scan)
-    print("【诚实化拆解】静态集 17 命中中：")
+    print("【诚实化拆解】静态集 %d 命中中：" % st_hit)
     print("    - 真实求解器命中 (base64/rsa/endian/rail_fence/vigenere/caesar/...) : %d" % real_solver)
     print("    - flag 直接嵌于描述文本的 flag_scan (基准集设计产物, 非真技巧)    : %d" % len(flag_scan))
     print("    剩余 %d 道需真实工具执行/实时靶机/二进制/隐写 —— 属 Agent 执行层能力" % st_miss)
     print()
 
-    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%%（含真实靶机利用）" % (st_pct, ex_pct))
-    print("    执行层是冠军差异点：西湖论剑类关键词求解器天花板即静态集，")
-    print("    SecAutoMind 额外验证了『Agent 能真跑工具+真打靶机』(双语言机验)。")
+    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%%" % (st_pct, ex_pct, wb_pct))
+    print("    执行层与 Web 实战层是冠军差异点：西湖论剑类关键词求解器天花板即静态集，")
+    print("    SecAutoMind 额外验证了『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点』(双语言机验)。")
     print()
 
     if args.go:
@@ -126,7 +147,8 @@ def main():
         "static": {"total": st_total, "hit": st_hit, "miss": st_miss, "coverage_pct": st_pct,
                    "flag_scan_only": len(flag_scan), "real_solver_hit": real_solver},
         "execution": {"total": ex_total, "hit": ex_hit, "miss": ex_miss, "coverage_pct": ex_pct},
-        "note": "静态/执行覆盖率不相加；执行层为冠军差异点；所有命中经 SHA-256 校验。",
+        "web": {"total": wb_total, "hit": wb_hit, "miss": wb_miss, "coverage_pct": wb_pct},
+        "note": "静态/执行/Web 覆盖率不相加；执行层与 Web 实战层为冠军差异点；所有命中经 SHA-256 校验。",
     }
     out_path = os.path.join(HERE, "all_benchmarks_summary.json")
     json.dump(summary, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

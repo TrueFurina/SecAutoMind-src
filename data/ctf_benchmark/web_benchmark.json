@@ -1,0 +1,44 @@
+{
+  "problems": {
+    "src_comment": {
+      "category": "web",
+      "flag_sha256": "edcac73eff8bc44878b222305f90d8c7fc66233b2c84d049237cb26be095aad2"
+    },
+    "src_b64": {
+      "category": "web",
+      "flag_sha256": "1056fb535f0702cef4fd0c6b0ec6f50e290edcffd062d5163195ccec70ad9e18"
+    },
+    "cookie_flag": {
+      "category": "web",
+      "flag_sha256": "494df734ff17ebc3c028444926dfbc90b7da4d5a789dd427571d1156dc08b06b"
+    },
+    "sqli_login": {
+      "category": "web",
+      "flag_sha256": "39e8f11628fa17def4ca3a04d6cf46a115795309b70b6c465165e07263497b6a"
+    },
+    "ssti": {
+      "category": "web",
+      "flag_sha256": "c950b1c6a0d8563d64e072c3b9b989a60a34b890f334a0fca6d17386b67c8b35"
+    },
+    "lfi": {
+      "category": "web",
+      "flag_sha256": "372ea09b90a6038db4b76c963c35f9767f007828cd0b1ed093efffafa71917d0"
+    },
+    "ssrf": {
+      "category": "web",
+      "flag_sha256": "21d250d9fdb0c3647df7d6bc369c3f449f51bdeaa8ea9879994222445267c102"
+    },
+    "api_idor": {
+      "category": "web",
+      "flag_sha256": "fb8b0afca5232ab3819319ddea2255f53f4c96c5238de6354593d101fd40fe3a"
+    },
+    "cmdi": {
+      "category": "web",
+      "flag_sha256": "5a2e34137f1f68580c2c26e419f1a42b4eab3e3a7c88171d39d4cbf17f3f07fe"
+    },
+    "nosql": {
+      "category": "web",
+      "flag_sha256": "bf3f0b16f7ef6de4444a02c7e582d6e634f54e7e0787f8fb5f671736f94b83b2"
+    }
+  }
+}
