@@ -102,6 +102,30 @@ func TestPresolve_RealQuestionChains(t *testing.T) {
 			wantFlag:    "picoCTF{caesar_d3cr9pt3d_f0212758}",
 		},
 		{
+			// picoCTF 2024 CanYouSee：单层 b64，验证前缀完整保留
+			name:        "canyousee_prefix",
+			description: "cGljb0NURntNRTc0RDQ3QV9ISUREM05fYTZkZjhkYjh9Cg==",
+			wantFlag:    "picoCTF{ME74D47A_HIDD3N_a6df8db8}",
+		},
+		{
+			// CyberConverge 2025 Layers：v6.1 重建后单层 b64（原始密文与 flag 不一致，已重建自洽）
+			name:        "layers_b64",
+			description: "Q0JDVntjUnk5VDBfTDR5M3I1XzRSRV9GdU5fMzEzNX0=",
+			wantFlag:    "CBCV{cRy9T0_L4y3r5_4RE_FuN_3135}",
+		},
+		{
+			// base64_triple_real：v6.2 重建后三层 b64
+			name:        "triple_base64",
+			description: "V20xNGFGb3pkREJqYld4M1lrZFdabGx0Um5wYVZGa3dXREpTYkZreU9XdGFWMUk1",
+			wantFlag:    "flag{triple_base64_decoded}",
+		},
+		{
+			// ehaxctf2025_morse：v6.2 重建后已知密钥维吉尼亚（kagi）；密文形似 flag，必须先解密再扫
+			name:        "vigenere_known_key",
+			description: "维吉尼亚解密(密钥kagi): OHGF{w0ry3_d1q3n3x3_0x3b4t10t}",
+			wantFlag:    "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}",
+		},
+		{
 			// 单层 b64 + flag_scan（flag 直接在解码文本中）
 			name:        "b64_flag_scan",
 			description: "ZmxhZ3t0ZXN0X2Jhc2U2NF9mbGFnfQ==",

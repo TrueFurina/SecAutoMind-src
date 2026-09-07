@@ -25,8 +25,34 @@ def scan_flags(text: str) -> list:
             out.append(m.group(0))
     return out
 
+def try_vigenere_known_key(text: str) -> list:
+    """已知密钥维吉尼亚（对齐 Go tryVigenereKnownKey）：提取密钥，对 flag 形态令牌解密。"""
+    keys = re.findall(r'(?i)(?:密钥|密码|key)\s*[:：=]?\s*([a-zA-Z]{2,16})', text)
+    keys = list(dict.fromkeys(k.lower() for k in keys))
+    if not keys:
+        return []
+    toks = re.findall(r'[A-Za-z0-9_]+\{[^}]{4,}\}', text)
+    for tok in toks:
+        for k in keys:
+            dec, ki = [], 0
+            for c in tok:
+                if c.islower():
+                    dec.append(chr((ord(c) - ord('a') - (ord(k[ki % len(k)]) - ord('a'))) % 26 + ord('a'))); ki += 1
+                elif c.isupper():
+                    dec.append(chr((ord(c) - ord('A') - (ord(k[ki % len(k)]) - ord('a'))) % 26 + ord('A'))); ki += 1
+                else:
+                    dec.append(c)
+            flags = scan_flags(''.join(dec))
+            if flags:
+                return flags
+    return []
+
 def hunt(text: str, depth: int = 6) -> list:
-    """递归下钻（对齐 Go huntPresolve）：扫 flag → caesar → b64 令牌解码进下一层。"""
+    """递归下钻（对齐 Go huntPresolve）：已知密钥维吉尼亚优先（密文形似 flag，
+    先扫会误当候选）→ 扫 flag → caesar → b64 令牌解码进下一层。"""
+    flags = try_vigenere_known_key(text)
+    if flags:
+        return flags
     flags = scan_flags(text)
     if flags:
         return flags
@@ -173,7 +199,12 @@ SOLVERS = [
 
 def presolve(description: str) -> tuple:
     """对一道题跑全部确定性求解器，返回 (engine, flag_or_None)。
-    对齐 Go：hunt 递归下钻（b64→b64→caesar 等任意嵌套顺序）。"""
+    对齐 Go：已知密钥维吉尼亚优先 → hunt 递归下钻（b64→b64→caesar 等任意嵌套顺序）。"""
+    # 已知密钥维吉尼亚优先（密文本身形似 flag，先扫会把密文误当候选）
+    flags = try_vigenere_known_key(description)
+    if flags:
+        return 'vigenere_known_key', flags[0]
+
     # 先直接扫 flag
     flags = scan_flags(description)
     if flags:

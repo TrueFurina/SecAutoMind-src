@@ -172,18 +172,44 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		close(chResult)
 	}()
 
-	// 取第一个命中的结果
+	// 收集全部命中，按确定性优先级选择：
+	// base64_multilayer(hunt: 维吉尼亚→扫描→凯撒→b64 递归链) 最高——其内部扫描
+	// 只在维吉尼亚失败后才触发，答案质量高于裸 flag_scan；
+	// flag_scan 排最后（大写品牌兜底误报率最高，如凯撒中间态形似 flag）。
+	priority := map[string]int{
+		"base64_multilayer": 0,
+		"vigenere":          1,
+		"caesar":            2,
+		"morse":             3,
+		"rsa_template":      4,
+		"legendre_phi":      5,
+		"modinv_factor":     6,
+		"hash_crack":        7,
+		"xor_single":        8,
+		"web_source_audit":  9,
+		"zip_fake_enc":      10,
+		"ssti":              11,
+		"flag_scan":         12,
+	}
+	var best *result
 	for r := range chResult {
-		if len(r.flags) > 0 {
-			p.logger.Info("presolve 命中",
-				zap.String("engine", r.engine),
-				zap.Strings("flags", r.flags))
-			return &PresolveResult{
-				Flags:  r.flags,
-				Engine: r.engine,
-				Solved: true,
-				Detail: fmt.Sprintf("[presolve:%s] 命中 %d 个候选", r.engine, len(r.flags)),
-			}
+		if len(r.flags) == 0 {
+			continue
+		}
+		if best == nil || priority[r.engine] < priority[best.engine] {
+			r := r
+			best = &r
+		}
+	}
+	if best != nil {
+		p.logger.Info("presolve 命中",
+			zap.String("engine", best.engine),
+			zap.Strings("flags", best.flags))
+		return &PresolveResult{
+			Flags:  best.flags,
+			Engine: best.engine,
+			Solved: true,
+			Detail: fmt.Sprintf("[presolve:%s] 命中 %d 个候选", best.engine, len(best.flags)),
 		}
 	}
 

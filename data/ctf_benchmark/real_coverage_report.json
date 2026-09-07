@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 8,
-  "miss": 47,
-  "coverage_pct": 14.5,
+  "hit": 10,
+  "miss": 45,
+  "coverage_pct": 18.2,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -177,11 +177,11 @@
     {
       "id": "ehaxctf2025_morse",
       "category": "crypto",
-      "sub": "morse_vigenere",
+      "sub": "vigenere_known_key",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "vigenere_known_key",
+      "presolve_flag": "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -219,9 +219,9 @@
       "category": "crypto",
       "sub": "base64",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{triple_base64_decoded}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {

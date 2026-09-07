@@ -79,9 +79,12 @@ func tryBase64Multilayer(text string) []string {
 	return huntPresolve(text, 6)
 }
 
-// huntPresolve 递归下钻：当前层先扫 flag，再试 caesar，最后对每个
-// base64 令牌解码后进入下一层（depth 限制递归深度防失控）。
+// huntPresolve 递归下钻：已知密钥维吉尼亚优先（密文本身形似 flag，若先扫
+// 会把密文误当候选），再扫 flag、凯撒，最后对每个 base64 令牌解码进入下一层。
 func huntPresolve(text string, depth int) []string {
+	if flags := tryVigenereKnownKey(text); len(flags) > 0 {
+		return flags
+	}
 	if flags := scanFlags(text); len(flags) > 0 {
 		return flags
 	}
@@ -101,6 +104,67 @@ func huntPresolve(text string, depth int) []string {
 		}
 	}
 	return nil
+}
+
+// vigenereKeyRegex 提取描述中显式给出的维吉尼亚密钥（密钥kagi / key: kagi / 密码=xxx）。
+var vigenereKeyRegex = regexp.MustCompile(`(?i)(?:密钥|密码|key)\s*[:：=]?\s*([a-zA-Z]{2,16})`)
+
+// flagTokenRegex 提取 flag 形态令牌（含大写品牌前缀），供维吉尼亚逐 token 解密。
+var flagTokenRegex = regexp.MustCompile(`[A-Za-z0-9_]+\{[^}]{4,}\}`)
+
+// tryVigenereKnownKey 已知密钥维吉尼亚：从文本提取密钥，对每个 flag 形态
+// 令牌解密后扫 flag（只移字母，保大小写，数字/下划线/花括号原样）。
+func tryVigenereKnownKey(text string) []string {
+	keyMatches := vigenereKeyRegex.FindAllStringSubmatch(text, -1)
+	if len(keyMatches) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var keys []string
+	for _, m := range keyMatches {
+		k := strings.ToLower(m[1])
+		if !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	for _, tok := range flagTokenRegex.FindAllString(text, -1) {
+		for _, k := range keys {
+			dec := vigenereShift(tok, k, true)
+			if flags := scanFlags(dec); len(flags) > 0 {
+				return flags
+			}
+		}
+	}
+	return nil
+}
+
+// vigenereShift 维吉尼亚移位：decrypt=false 加密 / true 解密。
+// 密钥仅在字母上循环推进，非字母原样保留。
+func vigenereShift(text, key string, decrypt bool) string {
+	var sb strings.Builder
+	ki := 0
+	for _, r := range text {
+		switch {
+		case r >= 'a' && r <= 'z':
+			shift := rune(key[ki%len(key)] - 'a')
+			ki++
+			if decrypt {
+				shift = -shift
+			}
+			sb.WriteRune('a' + (r-'a'+shift+26)%26)
+		case r >= 'A' && r <= 'Z':
+			shift := rune(key[ki%len(key)] - 'a')
+			ki++
+			if decrypt {
+				shift = -shift
+			}
+			sb.WriteRune('A' + (r-'A'+shift+26)%26)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String()
 }
 
 func padBase64(s string) string {

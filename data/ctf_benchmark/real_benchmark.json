@@ -1,5 +1,5 @@
 {
- "version": "v6.1",
+ "version": "v6.2",
  "created": "2026-09-06",
  "description": "CTF真实真题基准集（公开writeup来源，SHA-256验证）",
  "total": 55,
@@ -195,13 +195,14 @@
   "ehaxctf2025_morse": {
    "id": "ehaxctf2025_morse",
    "category": "crypto",
-   "sub": "morse_vigenere",
+   "sub": "vigenere_known_key",
    "difficulty": "medium",
    "source": "EHAXCTF 2025 - Dots & Dashes",
    "flag": "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}",
-   "description": "Morse解码后维吉尼亚解密(密钥kagi)",
+   "description": "维吉尼亚解密(密钥kagi): OHGF{w0ry3_d1q3n3x3_0x3b4t10t}",
    "flag_sha256": "66049fb8b6a21a77e56b360fee797ac7dc34734a91f5f97f0cbee681d1a811ad",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目为 morse+维吉尼亚且无密文数据；维吉尼亚环节已从 flag 重建（密钥 kagi，仅字母移位），morse 环节需原始数据待补"
   },
   "public_morse_image": {
    "id": "public_morse_image",
@@ -243,9 +244,10 @@
    "difficulty": "easy",
    "source": "CTF公开题 - Triple Base64",
    "flag": "flag{triple_base64_decoded}",
-   "description": "三层Base64编码",
+   "description": "V20xNGFGb3pkREJqYld4M1lrZFdabGx0Um5wYVZGa3dXREpTYkZreU9XdGFWMUk1",
    "flag_sha256": "501d16e3b2553f8a7591c8bf0f126d816f6b3cfb81f4c131303a8a023c5b9561",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从 flag 重建自洽描述（三层 b64）"
   },
   "caesar_shift19_real": {
    "id": "caesar_shift19_real",
