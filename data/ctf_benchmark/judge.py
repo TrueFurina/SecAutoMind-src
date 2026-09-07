@@ -3,10 +3,11 @@
 CTF Benchmark Judge：对回归集跑 presolve 覆盖率分析。
 读 data/ctf_benchmark/benchmark.json → 对每道题跑确定性求解器 → sha256 验证 → 输出覆盖率报告。
 """
-import json, hashlib, re, base64, sys
+import json, hashlib, re, base64, sys, os
 
-BENCH = "data/ctf_benchmark/benchmark.json"
-REPORT = "data/ctf_benchmark/coverage_report.json"
+# 支持环境变量覆盖（真题集用法：BENCH=data/ctf_benchmark/real_benchmark.json REPORT=data/ctf_benchmark/real_coverage_report.json python judge.py）
+BENCH = os.environ.get("BENCH", "data/ctf_benchmark/benchmark.json")
+REPORT = os.environ.get("REPORT", "data/ctf_benchmark/coverage_report.json")
 
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
@@ -14,26 +15,41 @@ def sha256(s: str) -> str:
 # ── 确定性求解器（Go presolve.go 的 Python 镜像） ─────────
 
 def scan_flags(text: str) -> list:
-    """正则扫描 flag{...} / ctf{...} / dasctf{...} 等。"""
-    p = re.compile(r'(?i)(?:flag|ctf|dasctf|key)\s*[=:：]?\s*\{([^}]{4,})\}')
-    return list(set(m.group(0) for m in p.finditer(text)))
+    """正则扫描 flag 候选（完整保留品牌前缀 + 纯大写品牌兜底，对齐 Go scanFlags）。"""
+    p_main = re.compile(r'(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}')
+    p_upper = re.compile(r'\b[A-Z][A-Z0-9]{2,15}\{([^}]{4,})\}')
+    seen, out = set(), []
+    for m in list(p_main.finditer(text)) + list(p_upper.finditer(text)):
+        if m.group(0) not in seen:
+            seen.add(m.group(0))
+            out.append(m.group(0))
+    return out
 
-def try_base64(text: str) -> list:
-    """多层 base64 解码后扫 flag。"""
+def hunt(text: str, depth: int = 6) -> list:
+    """递归下钻（对齐 Go huntPresolve）：扫 flag → caesar → b64 令牌解码进下一层。"""
+    flags = scan_flags(text)
+    if flags:
+        return flags
+    if depth <= 0:
+        return []
+    flags = try_caesar(text)
+    if flags:
+        return flags
     b64_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
     for m in b64_re.finditer(text):
-        cur = m.group(0)
-        for _ in range(5):
-            pad = cur + "=" * ((4 - len(cur) % 4) % 4)
-            try:
-                decoded = base64.b64decode(pad).decode('utf-8', errors='ignore')
-            except Exception:
-                break
-            flags = scan_flags(decoded)
-            if flags:
-                return flags
-            cur = decoded
+        pad = m.group(0) + "=" * ((4 - len(m.group(0)) % 4) % 4)
+        try:
+            decoded = base64.b64decode(pad).decode('utf-8', errors='ignore')
+        except Exception:
+            continue
+        flags = hunt(decoded, depth - 1)
+        if flags:
+            return flags
     return []
+
+def try_base64(text: str) -> list:
+    """base64 令牌递归下钻扫 flag（对齐 Go tryBase64Multilayer）。"""
+    return hunt(text)
 
 def try_caesar(text: str) -> list:
     """凯撒 26 位移爆破。"""
@@ -156,61 +172,41 @@ SOLVERS = [
 ]
 
 def presolve(description: str) -> tuple:
-    """对一道题跑全部确定性求解器，返回 (engine, flag_or_None)。"""
+    """对一道题跑全部确定性求解器，返回 (engine, flag_or_None)。
+    对齐 Go：hunt 递归下钻（b64→b64→caesar 等任意嵌套顺序）。"""
     # 先直接扫 flag
     flags = scan_flags(description)
-    for f in flags:
-        if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
-            return 'flag_scan', f
+    if flags:
+        return 'flag_scan', flags[0]
 
-    # 尝试对整个文本 base64 解码后扫 flag（链式 caesar）
-    b64_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
-    for m in b64_re.finditer(description):
-        cur = m.group(0)
-        for _ in range(5):
-            pad = cur + '=' * ((4 - len(cur) % 4) % 4)
-            try:
-                decoded = base64.b64decode(pad).decode('utf-8', errors='ignore')
-            except:
-                break
-            # 解码后直接扫 flag
-            for f in scan_flags(decoded):
-                if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
-                    return 'base64_multilayer', f
-            # 链式 caesar
-            for shift in range(1, 26):
-                out = []
-                for c in decoded:
-                    if 'a' <= c <= 'z': out.append(chr((ord(c)-ord('a')+shift)%26+ord('a')))
-                    elif 'A' <= c <= 'Z': out.append(chr((ord(c)-ord('A')+shift)%26+ord('A')))
-                    else: out.append(c)
-                for f in scan_flags(''.join(out)):
-                    if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
-                        return 'base64_caesar_chain', f
-            cur = decoded
-            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', decoded):
-                return 'base64_multilayer', decoded
+    # 顶层凯撒优先归因（纯 caesar 文本不再误标 base64_multilayer）
+    flags = try_caesar(description)
+    if flags:
+        return 'caesar', flags[0]
+
+    # 递归下钻（base64 多层/链式 caesar，任意嵌套顺序）
+    flags = hunt(description)
+    if flags:
+        return 'base64_multilayer', flags[0]
 
     # 尝试 hex 解码后扫 flag
     hex_re = re.compile(r'[0-9a-fA-F]{16,}')
     for m in hex_re.finditer(description):
         try:
             decoded = bytes.fromhex(m.group(0)).decode('utf-8', errors='ignore')
-        except:
+        except Exception:
             continue
         for f in scan_flags(decoded):
-            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
-                return 'hex_decode', f
+            return 'hex_decode', f
 
-    # 跑其他求解器
+    # 跑其他求解器（跳过已并入 hunt 的 flag_scan/base64/caesar）
     for name, fn in SOLVERS:
+        if name in ('flag_scan', 'base64_multilayer', 'caesar'):
+            continue
         flags = fn(description)
         for f in flags:
-            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
+            if scan_flags(f):
                 return name, f
-            inner = scan_flags(f)
-            if inner:
-                return name, inner[0]
     return None, None
 
 # ── 主流程 ─────────────────────────────────────────

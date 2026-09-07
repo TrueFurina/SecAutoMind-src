@@ -80,6 +80,56 @@ func TestPresolve_NoHit(t *testing.T) {
 	}
 }
 
+// TestScanFlags_PreservesPrefix 品牌前缀必须完整保留（sha256 校验依赖完整 flag）。
+func TestScanFlags_PreservesPrefix(t *testing.T) {
+	got := scanFlags("token: picoCTF{ME74D47A_HIDD3N_a6df8db8}")
+	if len(got) != 1 || got[0] != "picoCTF{ME74D47A_HIDD3N_a6df8db8}" {
+		t.Errorf("scanFlags 应完整保留 picoCTF 前缀, got %v", got)
+	}
+}
+
+// TestPresolve_RealQuestionChains 用 31 道真题基准集中因链式解码 MISS 的题回归。
+func TestPresolve_RealQuestionChains(t *testing.T) {
+	cases := []struct {
+		name        string
+		description string
+		wantFlag    string
+	}{
+		{
+			// picoCTF 2024 interencdec：b64 → b64 → caesar(19)（三层链式，已验证通过）
+			name:        "interencdec_b64_b64_caesar",
+			description: "YidkM0JxZGtwQlRYdHFhR3g2YUhsZmF6TnFlVGwzWVROclgyMHdNakV5TnpVNGZRPT0nCg==",
+			wantFlag:    "picoCTF{caesar_d3cr9pt3d_f0212758}",
+		},
+		{
+			// 单层 b64 + flag_scan（flag 直接在解码文本中）
+			name:        "b64_flag_scan",
+			description: "ZmxhZ3t0ZXN0X2Jhc2U2NF9mbGFnfQ==",
+			wantFlag:    "flag{test_base64_flag}",
+		},
+	}
+	p := NewPresolver(nil)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ch := &Challenge{Description: c.description}
+			result := p.Presolve(context.Background(), ch, nil)
+			if !result.Solved {
+				t.Fatalf("presolve 应命中 %s", c.wantFlag)
+			}
+			found := false
+			for _, f := range result.Flags {
+				if f == c.wantFlag {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("flags 中无完整 flag %s: %v", c.wantFlag, result.Flags)
+			}
+		})
+	}
+}
+
 // ── analyzer 任务分析单测 ──────────────────────────────
 
 func TestAnalyzer_RSADetection(t *testing.T) {

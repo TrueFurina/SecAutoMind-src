@@ -1,226 +1,558 @@
 {
-  "total": 31,
-  "hit": 6,
-  "mismatch": 0,
-  "miss": 25,
-  "coverage_pct": 19.4,
+  "total": 55,
+  "hit": 8,
+  "miss": 47,
+  "coverage_pct": 14.5,
   "results": [
     {
       "id": "pico2024_interencdec",
       "category": "crypto",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false
+      "sub": "base64_caesar",
+      "difficulty": "easy",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "picoCTF{caesar_d3cr9pt3d_f0212758}",
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_canyousee",
       "category": "misc",
+      "sub": "steganography",
+      "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
       "presolve_flag": "picoCTF{ME74D47A_HIDD3N_a6df8db8}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "sdctf2021_case64ar",
       "category": "crypto",
+      "sub": "base64_caesar",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "cyberconverge2025_layers",
       "category": "crypto",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false
+      "sub": "base64",
+      "difficulty": "easy",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "CBCV{cRy9T0_L4y3r5_4RE_FuN_3135}",
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "wolvctf2024_xor",
       "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "nahamcon2024_rsa",
       "category": "crypto",
+      "sub": "rsa_small_e",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "breizhctf2022_rsa",
       "category": "crypto",
+      "sub": "rsa_small_e",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "crewctf2024_rsa_gcd",
       "category": "crypto",
+      "sub": "rsa_common_factor",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_stringsit",
       "category": "misc",
+      "sub": "strings",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_commitment",
       "category": "misc",
+      "sub": "git",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_cookie",
       "category": "web",
+      "sub": "cookie",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_irishname",
       "category": "web",
+      "sub": "sqli",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_findme",
       "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_ssh",
       "category": "misc",
+      "sub": "ssh",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_gitcred",
       "category": "misc",
+      "sub": "git",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_endian",
       "category": "misc",
+      "sub": "encoding",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "pico2024_minirsa",
       "category": "crypto",
+      "sub": "rsa_small_e",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "ehaxctf2025_morse",
       "category": "crypto",
+      "sub": "morse_vigenere",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "public_morse_image",
       "category": "misc",
+      "sub": "morse",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "crc_forgery_real",
       "category": "crypto",
+      "sub": "crc",
+      "difficulty": "hard",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "rsa_common_real",
       "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "base64_triple_real",
       "category": "crypto",
+      "sub": "base64",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "caesar_shift19_real",
       "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
       "presolve_engine": "caesar",
       "presolve_flag": "picoCTF{caesar_d3cr9pt3d_f0212758}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "xss_cookie_steal",
       "category": "web",
+      "sub": "xss",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "xxe_file_read",
       "category": "web",
+      "sub": "xxe",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "ssti_tpl_inject",
       "category": "web",
+      "sub": "ssti",
+      "difficulty": "medium",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
     },
     {
       "id": "flag_in_html",
       "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{html_comment_flag}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "flag_in_json_api",
       "category": "web",
+      "sub": "api",
+      "difficulty": "easy",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{json_api_secret}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "flag_in_cookie_set",
       "category": "web",
+      "sub": "cookie",
+      "difficulty": "easy",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{cookie_secret_exfil}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "flag_in_log_data",
       "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{log_exfil_data}",
-      "sha256_match": true
+      "sha256_match": true,
+      "expected_skill": "auto"
     },
     {
       "id": "flag_in_pcap",
       "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
-      "sha256_match": false
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_webdecode",
+      "category": "web",
+      "sub": "base64",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_not_my_fault",
+      "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_trickster",
+      "category": "web",
+      "sub": "upload",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_no_sql_injection",
+      "category": "web",
+      "sub": "nosql",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_matchfix",
+      "category": "web",
+      "sub": "sqli",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2024_intro_to_web",
+      "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2025_cookie_monster",
+      "category": "web",
+      "sub": "cookie",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2025_echo_valley",
+      "category": "web",
+      "sub": "ssti",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "pico2025_handoff",
+      "category": "web",
+      "sub": "api",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_sqli_basic",
+      "category": "web",
+      "sub": "sqli",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_xss_basic",
+      "category": "web",
+      "sub": "xss",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_lfi_basic",
+      "category": "web",
+      "sub": "lfi",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_rce_basic",
+      "category": "web",
+      "sub": "rce",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_upload_basic",
+      "category": "web",
+      "sub": "upload",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "buuctf_ssrf_basic",
+      "category": "web",
+      "sub": "ssrf",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "rsa_fermat_small",
+      "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "rsa_common_factor",
+      "category": "crypto",
+      "sub": "rsa",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "aes_ecb_penguin",
+      "category": "crypto",
+      "sub": "aes",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "vigenere_known_key",
+      "category": "crypto",
+      "sub": "vigenere",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "rail_fence_basic",
+      "category": "crypto",
+      "sub": "rail_fence",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "steg_lsb_png",
+      "category": "misc",
+      "sub": "steganography",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "forensics_mem_volatility",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "forensics_pcap_http",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
+    },
+    {
+      "id": "forensics_disk_image",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "medium",
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "auto"
     }
   ]
 }

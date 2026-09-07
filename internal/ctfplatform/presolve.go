@@ -43,12 +43,21 @@ func NewPresolver(logger *zap.Logger) *Presolver {
 	return &Presolver{logger: logger}
 }
 
-// flagRegexPresolve 匹配常见 flag 格式（presolve 包内使用，避免与 poller.go 重复声明）。
-var flagRegexPresolve = regexp.MustCompile(`(?i)(?:flag|ctf|dasctf|key)\s*[=:：]?\s*\{([^}]{4,})\}`)
+// flagRegexPresolve 匹配常见 flag 格式。
+// 模式1: 已知关键词前缀 flag/ctf/key等（不区分大小写）。
+// 模式2（纯大写品牌）由下方 flagRegexUppercase 独立承担：
+// 若并入本 (?i) 正则，(?i) 会污染大写分支（任意大小写 2-8 字母前缀都命中，
+// 凯撒中间态 wpjvJAM{...} 即被误当候选），必须分开编译。
+var flagRegexPresolve = regexp.MustCompile(`(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}`)
 
-// scanFlags 从文本中提取 flag 候选。
+// flagRegexUppercase 兜底匹配纯大写品牌前缀（如 CBCV{...}——不含任何核心
+// 关键词子串，主正则扫不到）。误报由下游 sha256 校验/人工把关。
+var flagRegexUppercase = regexp.MustCompile(`\b[A-Z][A-Z0-9]{2,15}\{([^}]{4,})\}`)
+
+// scanFlags 从文本中提取 flag 候选（完整保留品牌前缀）。
 func scanFlags(text string) []string {
-	matches := flagRegex.FindAllString(text, -1)
+	matches := flagRegexPresolve.FindAllString(text, -1)
+	matches = append(matches, flagRegexUppercase.FindAllString(text, -1)...)
 	seen := make(map[string]bool)
 	var result []string
 	for _, m := range matches {
@@ -60,28 +69,35 @@ func scanFlags(text string) []string {
 	return result
 }
 
-// tryBase64Multilayer 尝试多层 base64 解码，提取 flag。
-func tryBase64Multilayer(text string) []string {
-	// 提取疑似 base64 串（长度≥16，含 base64 字符集）
-	b64Regex := regexp.MustCompile(`[A-Za-z0-9+/=]{16,}`)
-	matches := b64Regex.FindAllString(text, -1)
+// b64TokenRegex 提取疑似 base64 串（长度≥16，含 base64 字符集）。
+var b64TokenRegex = regexp.MustCompile(`[A-Za-z0-9+/=]{16,}`)
 
-	for _, m := range matches {
-		decoded := m
-		for i := 0; i < 5; i++ { // 最多 5 层
-			d, err := base64.StdEncoding.DecodeString(padBase64(decoded))
-			if err != nil {
-				break
-			}
-			decoded = string(d)
-			// 每层解码后：先直接扫 flag
-			if flags := scanFlags(decoded); len(flags) > 0 {
-				return flags
-			}
-			// 链式 caesar 爆破（base64 解码后可能是 caesar 密文）
-			if flags := tryCaesar(decoded); len(flags) > 0 {
-				return flags
-			}
+// tryBase64Multilayer 对文本中每个 base64 令牌递归下钻：
+// 解码 → 扫 flag → caesar 爆破 → 再下钻，任意嵌套顺序（b64→b64→caesar、
+// b64→caesar→b64 等）均可命中。
+func tryBase64Multilayer(text string) []string {
+	return huntPresolve(text, 6)
+}
+
+// huntPresolve 递归下钻：当前层先扫 flag，再试 caesar，最后对每个
+// base64 令牌解码后进入下一层（depth 限制递归深度防失控）。
+func huntPresolve(text string, depth int) []string {
+	if flags := scanFlags(text); len(flags) > 0 {
+		return flags
+	}
+	if depth <= 0 {
+		return nil
+	}
+	if flags := tryCaesar(text); len(flags) > 0 {
+		return flags
+	}
+	for _, m := range b64TokenRegex.FindAllString(text, -1) {
+		d, err := base64.StdEncoding.DecodeString(padBase64(m))
+		if err != nil {
+			continue
+		}
+		if flags := huntPresolve(string(d), depth-1); len(flags) > 0 {
+			return flags
 		}
 	}
 	return nil
@@ -94,21 +110,26 @@ func padBase64(s string) string {
 	return s
 }
 
+// caesarShift 对文本做凯撒移位（保留大小写与非字母字符）。
+func caesarShift(text string, shift int) string {
+	var sb strings.Builder
+	for _, r := range text {
+		switch {
+		case r >= 'a' && r <= 'z':
+			sb.WriteRune('a' + (r-'a'+rune(shift))%26)
+		case r >= 'A' && r <= 'Z':
+			sb.WriteRune('A' + (r-'A'+rune(shift))%26)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String()
+}
+
 // tryCaesar 对文本尝试凯撒移位爆破。
 func tryCaesar(text string) []string {
 	for shift := 1; shift <= 25; shift++ {
-		var sb strings.Builder
-		for _, r := range text {
-			switch {
-			case r >= 'a' && r <= 'z':
-				sb.WriteRune('a' + (r-'a'+rune(shift))%26)
-			case r >= 'A' && r <= 'Z':
-				sb.WriteRune('A' + (r-'A'+rune(shift))%26)
-			default:
-				sb.WriteRune(r)
-			}
-		}
-		decoded := sb.String()
+		decoded := caesarShift(text, shift)
 		if flags := scanFlags(decoded); len(flags) > 0 {
 			return flags
 		}
