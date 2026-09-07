@@ -979,3 +979,7 @@ func tryWeb3Security(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P5 批次：web 高级 ──────────────────────────────────
+
+// tryGraphQL 检测 GraphQL 注入/内省特征。

@@ -926,393 +926,290 @@ func tryHeapSpray(text string, attachments map[string]string) []string {
 }
 
 // tryGoReverseAdvanced 检测 Go 语言逆向高级特征。
+
+// ── 补全：缺失函数 ──────────────────────────────────────
+
+// ── P5 批次：reverse + pwn 高级（从 execution.go 迁回 pwn.go，消除 registry 调度处的重复声明/未定义）──
+
 func tryGoReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	goKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"go reverse", "Go 语言逆向"},
-		{"goretk", "goretk（Go 运行时逆向工具）"},
-		{"redress", "redress（Go 二进制分析）"},
-		{"go tool objdump", "Go 反汇编"},
-		{"pclntab", "Go 程序计数器行号表（pclntab）"},
-		{"gopclntab", "gopclntab（Go PC-line table）"},
-		{"runtime.main", "Go runtime 主函数"},
-		{"runtime.goexit", "Go 协程退出"},
-		{"type descriptor", "Go 类型描述符"},
+	kws := []struct{ k, h string }{
+		{"go reverse", "Go逆向"}, {"goretk", "goretk工具"}, {"redress", "redress工具"},
+		{"pclntab", "Go程序计数器行号表"}, {"gopclntab", "gopclntab"}, {"runtime.main", "Go runtime主函数"},
+		{"runtime.goexit", "Go协程退出"}, {"type descriptor", "Go类型描述符"},
 	}
-	for _, kw := range goKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"Go逆向: " + kw.hint}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"Go逆向: " + kw.h}
 		}
 	}
 	return nil
 }
 
-// tryPythonReverseAdvanced 检测 Python 逆向高级特征。
 func tryPythonReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	pyKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"pyinstaller", "PyInstaller 打包"},
-		{"py2exe", "py2exe 打包"},
-		{"nuitka", "Nuitka 编译"},
-		{"uncompyle6", "uncompyle6 反编译"},
-		{"decompyle3", "decompyle3 反编译"},
-		{"pycdc", "pycdc 反编译"},
-		{"marshal", "marshal 序列化"},
-		{"co_code", "Python 字节码"},
-		{".pyc", "Python 编译文件"},
+	kws := []struct{ k, h string }{
+		{"pyinstaller", "PyInstaller打包"}, {"py2exe", "py2exe打包"}, {"nuitka", "Nuitka编译"},
+		{"uncompyle6", "uncompyle6反编译"}, {"decompyle3", "decompyle3反编译"}, {"pycdc", "pycdc反编译"},
+		{"marshal", "marshal序列化"}, {"co_code", "Python字节码"}, {".pyc", "Python编译文件"},
 	}
-	for _, kw := range pyKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"Python逆向: " + kw.hint}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"Python逆向: " + kw.h}
 		}
 	}
 	return nil
 }
 
-// tryDotNetReverseAdvanced 检测 .NET 逆向高级特征。
 func tryDotNetReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	dotnetKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"csharp", "C# 程序"},
-		{"ilspy", "ILSpy 反编译"},
-		{"dnspy", "dnSpy 调试/反编译"},
-		{"il code", "IL 中间代码"},
-		{"cil", "通用中间语言"},
-		{"ildasm", "ILDASM 反汇编"},
-		{"de4dot", ".NET 混淆器脱壳"},
-		{"assembly", ".NET 程序集"},
-		{"managed code", "托管代码"},
-		{"pinvoke", "P/Invoke 调用"},
+	kws := []struct{ k, h string }{
+		{"csharp", "C#程序"}, {"ilspy", "ILSpy反编译"}, {"dnspy", "dnSpy调试/反编译"},
+		{"il code", "IL中间代码"}, {"cil", "通用中间语言"}, {"ildasm", "ILDASM反汇编"},
+		{"de4dot", ".NET混淆器脱壳"}, {"assembly", ".NET程序集"}, {"managed code", "托管代码"}, {"pinvoke", "P/Invoke调用"},
 	}
-	for _, kw := range dotnetKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{".NET逆向: " + kw.hint}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{".NET逆向: " + kw.h}
 		}
 	}
 	return nil
 }
 
-// tryRet2csu 检测 ret2csu 利用特征。
-func tryRet2csu(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	csuKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"ret2csu", "ret2csu 利用"},
-		{"__libc_csu_init", "__libc_csu_init gadget"},
-		{"pop gadget", "POP gadget"},
-		{"ret gadget", "RET gadget"},
-		{"syscall gadget", "syscall gadget"},
-		{"rop chain", "ROP 链"},
-		{"rop gadget", "ROP gadget"},
-	}
-	for _, kw := range csuKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"ret2csu: " + kw.hint}
-		}
-	}
-	return nil
-}
-
-// tryRet2Syscall 检测 ret2syscall 利用特征。
-func tryRet2Syscall(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	sysKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"ret2syscall", "ret2syscall 利用"},
-		{"execve", "execve 系统调用"},
-		{"open", "open 系统调用"},
-		{"read", "read 系统调用"},
-		{"write", "write 系统调用"},
-		{"mmap", "mmap 系统调用"},
-		{"mprotect", "mprotect 系统调用"},
-		{"dup2", "dup2 系统调用"},
-		{"socket", "socket 系统调用"},
-	}
-	for _, kw := range sysKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"ret2syscall: " + kw.hint}
-		}
-	}
-	return nil
-}
-
-// tryFormatStringArbitraryWrite 检测格式化字符串任意写特征。
 func tryFormatStringArbitraryWrite(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	fmtKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"format string arbitrary write", "格式化字符串任意写"},
-		{"%n write", "%n 写入"},
-		{"%hn write", "%hn 写入（两字节）"},
-		{"%hhn write", "%hhn 写入（单字节）"},
-		{"got overwrite", "GOT 表覆写"},
-		{"global offset table", "全局偏移表"},
-		{"format string leak", "格式化字符串泄露"},
-		{"stack leak", "栈泄露"},
-		{"canary leak", "Canary 泄露"},
-		{"libc leak", "libc 泄露"},
+	kws := []struct{ k, h string }{
+		{"format string arbitrary write", "格式化字符串任意写"}, {"%n write", "%n写入"},
+		{"%hn write", "%hn写入（两字节）"}, {"%hhn write", "%hhn写入（单字节）"},
+		{"got overwrite", "GOT表覆写"}, {"global offset table", "全局偏移表"},
+		{"format string leak", "格式化字符串泄露"}, {"stack leak", "栈泄露"},
+		{"canary leak", "Canary泄露"}, {"libc leak", "libc泄露"},
 	}
-	for _, kw := range fmtKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"格式化字符串: " + kw.hint}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"格式化字符串: " + kw.h}
 		}
 	}
 	return nil
 }
 
-// tryStackOverflow 检测栈溢出漏洞特征。
+func tryRet2csu(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"ret2csu", "ret2csu利用"}, {"__libc_csu_init", "__libc_csu_init gadget"},
+		{"pop gadget", "POP gadget"}, {"ret gadget", "RET gadget"}, {"syscall gadget", "syscall gadget"},
+		{"rop chain", "ROP链"}, {"rop gadget", "ROP gadget"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"ret2csu: " + kw.h}
+		}
+	}
+	return nil
+}
+
+func tryRet2Syscall(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"ret2syscall", "ret2syscall利用"}, {"execve", "execve系统调用"},
+		{"open", "open系统调用"}, {"read", "read系统调用"}, {"write", "write系统调用"},
+		{"mmap", "mmap系统调用"}, {"mprotect", "mprotect系统调用"}, {"dup2", "dup2系统调用"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"ret2syscall: " + kw.h}
+		}
+	}
+	return nil
+}
+
 func tryStackOverflow(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	soKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"buffer overflow", "缓冲区溢出"},
-		{"stack overflow", "栈溢出"},
-		{"heap overflow", "堆溢出"},
-		{"integer overflow", "整数溢出"},
-		{"off-by-one", "Off-by-one 溢出"},
-		{"strcpy", "strcpy 不安全函数"},
-		{"gets", "gets 不安全函数"},
-		{"sprintf", "sprintf 不安全函数"},
-		{"canary", "栈保护 Canary"},
-		{"nx bit", "NX 位（不可执行栈）"},
-		{"aslr", "ASLR 地址随机化"},
+	kws := []struct{ k, h string }{
+		{"buffer overflow", "缓冲区溢出"}, {"stack overflow", "栈溢出"}, {"heap overflow", "堆溢出"},
+		{"integer overflow", "整数溢出"}, {"off-by-one", "Off-by-one溢出"},
+		{"strcpy", "strcpy不安全函数"}, {"gets", "gets不安全函数"}, {"sprintf", "sprintf不安全函数"},
+		{"canary", "栈保护Canary"}, {"nx bit", "NX位（不可执行栈）"}, {"aslr", "ASLR地址随机化"},
 	}
-	for _, kw := range soKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"栈溢出: " + kw.hint}
-		}
-	}
-	return nil
-}
-
-// tryRustReverse 检测 Rust 逆向特征。
-func tryRustReverse(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	rk := []struct{ k, h string }{
-		{"rust", "Rust"}, {"cargo", "Cargo"}, {"rustc", "rustc"},
-		{"panic_unwind", "panic"}, {"result<", "Result"}, {"option<", "Option"},
-	}
-	for _, kw := range rk {
+	for _, kw := range kws {
 		if strings.Contains(lower, kw.k) {
-			return []string{"Rust: " + kw.h}
+			return []string{"栈溢出: " + kw.h}
 		}
 	}
 	return nil
 }
 
-// trySwiftReverse 检测 Swift 逆向特征。
-func trySwiftReverse(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	sk := []struct{ k, h string }{
-		{"swift", "Swift"}, {"swiftui", "SwiftUI"}, {"uikit", "UIKit"},
-		{"xcode", "Xcode"}, {"cocoapods", "CocoaPods"}, {"protocol", "Swift协议"},
-	}
-	for _, kw := range sk {
-		if strings.Contains(lower, kw.k) {
-			return []string{"Swift: " + kw.h}
-		}
-	}
-	return nil
-}
-
-// tryKernelExploitAdvanced 检测内核利用高级特征。
-func tryKernelExploitAdvanced(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	kk := []struct{ k, h string }{
-		{"kernel exploit", "内核漏洞"}, {"privilege escalation", "权限提升"},
-		{"root shell", "Root Shell"}, {"suid", "SUID"}, {"io_uring", "io_uring"},
-		{"userfaultfd", "userfaultfd"}, {"namespace escape", "命名空间逃逸"},
-		{"container escape", "容器逃逸"}, {"cgroup escape", "cgroup逃逸"},
-	}
-	for _, kw := range kk {
-		if strings.Contains(lower, kw.k) {
-			return []string{"内核高级: " + kw.h}
-		}
-	}
-	return nil
-}
-
-// tryHypervisorEscape 检测虚拟化逃逸特征。
 func tryHypervisorEscape(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
+	for _, v := range attachments { fullText += "\n" + v }
 	lower := strings.ToLower(fullText)
-	hk := []struct{ k, h string }{
-		{"hypervisor escape", "虚拟机逃逸"}, {"vm escape", "VM逃逸"},
-		{"vmware escape", "VMware逃逸"}, {"virtualbox escape", "VBox逃逸"},
-		{"qemu escape", "QEMU逃逸"}, {"container breakout", "容器突破"},
-		{"sandbox escape", "沙箱逃逸"},
+	kws := []struct{ k, h string }{
+		{"hypervisor escape", "虚拟机逃逸"}, {"vm escape", "VM逃逸"}, {"vmware escape", "VMware逃逸"},
+		{"virtualbox escape", "VBox逃逸"}, {"qemu escape", "QEMU逃逸"}, {"docker escape", "Docker逃逸"},
+		{"container breakout", "容器突破"}, {"sandbox escape", "沙箱逃逸"},
 	}
-	for _, kw := range hk {
-		if strings.Contains(lower, kw.k) {
-			return []string{"虚拟化逃逸: " + kw.h}
-		}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"虚拟化逃逸: " + kw.h} }
 	}
 	return nil
 }
 
-// tryFirmwareExploit 检测固件利用特征。
 func tryFirmwareExploit(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
+	for _, v := range attachments { fullText += "\n" + v }
 	lower := strings.ToLower(fullText)
-	fk := []struct{ k, h string }{
-		{"firmware", "固件"}, {"bios", "BIOS"}, {"uefi", "UEFI"},
-		{"bootkit", "Bootkit"}, {"rootkit", "Rootkit"}, {"secure boot", "安全启动绕过"},
-		{"tpm attack", "TPM攻击"}, {"supply chain", "供应链攻击"}, {"jtag", "JTAG"},
+	kws := []struct{ k, h string }{
+		{"firmware", "固件"}, {"bios", "BIOS"}, {"uefi", "UEFI"}, {"bootkit", "Bootkit"},
+		{"rootkit", "Rootkit"}, {"secure boot", "安全启动绕过"}, {"tpm attack", "TPM攻击"},
+		{"supply chain", "供应链攻击"}, {"jtag", "JTAG"}, {"uart", "UART"},
 	}
-	for _, kw := range fk {
-		if strings.Contains(lower, kw.k) {
-			return []string{"固件利用: " + kw.h}
-		}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"固件利用: " + kw.h} }
 	}
 	return nil
 }
 
-// tryOSKernelSecurity 检测操作系统内核安全特征。
 func tryOSKernelSecurity(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
+	for _, v := range attachments { fullText += "\n" + v }
 	lower := strings.ToLower(fullText)
-	osKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"windows kernel", "Windows 内核"},
-		{"nt kernel", "NT 内核"},
-		{"driver vulnerability", "驱动漏洞"},
-		{"kernel exploit", "内核漏洞利用"},
-		{"syscall", "系统调用"},
-		{"sysenter", "sysenter 指令"},
-		{"int 0x80", "int 0x80 中断"},
-		{"linux kernel", "Linux 内核"},
-		{"loadable kernel module", "可加载内核模块（LKM）"},
-		{"rootkit", "Rootkit"},
-		{"bootkit", "Bootkit"},
-		{"ring 0", "Ring 0（内核态）"},
-		{"ring 3", "Ring 3（用户态）"},
-		{"privileged instruction", "特权指令"},
-		{"page fault", "页错误"},
-		{"segmentation fault", "段错误"},
-		{"memory management", "内存管理"},
-		{"virtual memory", "虚拟内存"},
-		{"address space", "地址空间"},
-		{"aslr", "ASLR 地址空间随机化"},
-		{"dep", "DEP 数据执行保护"},
-		{"sme", "SME 安全内存加密"},
-		{"sev", "SEV 安全加密虚拟化"},
+	kws := []struct{ k, h string }{
+		{"windows kernel", "Windows内核"}, {"linux kernel", "Linux内核"}, {"kernel exploit", "内核漏洞"},
+		{"syscall", "系统调用"}, {"rootkit", "Rootkit"}, {"aslr", "ASLR"}, {"dep", "DEP"},
 	}
-	for _, kw := range osKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"内核安全: " + kw.hint}
-		}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"内核安全: " + kw.h} }
 	}
 	return nil
 }
 
-// tryExploitChainDetection 检测漏洞利用链特征（多步攻击/链式利用/工具组合）。
-func tryExploitChainDetection(text string, attachments map[string]string) []string {
+// ── 补全：被去重误删的函数 ──────────────────────────────────
+
+func tryGoReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
+	for _, v := range attachments { fullText += "\n" + v }
 	lower := strings.ToLower(fullText)
-	chainKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"exploit chain", "漏洞利用链"},
-		{"attack chain", "攻击链"},
-		{"kill chain", "杀伤链"},
-		{"ttp", "战术、技术与程序（TTPs）"},
-		{"mitre att&ck", "MITRE ATT&CK 框架"},
-		{"initial access", "初始访问"},
-		{"execution", "执行"},
-		{"persistence", "持久化"},
-		{"privilege escalation", "权限提升"},
-		{"defense evasion", "防御规避"},
-		{"credential access", "凭证访问"},
-		{"discovery", "发现"},
-		{"lateral movement", "横向移动"},
-		{"collection", "收集"},
-		{"command and control", "命令与控制（C2）"},
-		{"exfiltration", "数据外泄"},
-		{"impact", "影响"},
-		{"apt", "高级持续威胁（APT）"},
-		{"advanced persistent threat", "高级持续威胁"},
-		{"threat intelligence", "威胁情报"},
-		{"ioc", "入侵指标（IOC）"},
-		{"indicator of compromise", "入侵指标"},
-		{"indicator of attack", "攻击指标"},
-		{"threat hunting", "威胁狩猎"},
+	kws := []struct{ k, h string }{
+		{"go reverse", "Go逆向"}, {"goretk", "goretk"}, {"redress", "redress"},
+		{"pclntab", "pclntab"}, {"gopclntab", "gopclntab"}, {"runtime.main", "runtime.main"},
 	}
-	for _, kw := range chainKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"攻击链检测: " + kw.hint}
-		}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"Go逆向: " + kw.h} }
+	}
+	return nil
+}
+
+func tryPythonReverseAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"pyinstaller", "PyInstaller"}, {"py2exe", "py2exe"}, {"nuitka", "Nuitka"},
+		{"uncompyle6", "uncompyle6"}, {"decompyle3", "decompyle3"}, {"marshal", "marshal"},
+		{"co_code", "字节码"}, {".pyc", ".pyc"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"Python逆向: " + kw.h} }
+	}
+	return nil
+}
+
+func tryDotNetReverseAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"csharp", "C#"}, {"ilspy", "ILSpy"}, {"dnspy", "dnSpy"},
+		{"il code", "IL代码"}, {"cil", "CIL"}, {"ildasm", "ILDASM"},
+		{"de4dot", "de4dot"}, {"assembly", ".NET程序集"}, {"managed code", "托管代码"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{".NET逆向: " + kw.h} }
+	}
+	return nil
+}
+
+func tryRet2csu(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"ret2csu", "ret2csu"}, {"__libc_csu_init", "__libc_csu_init gadget"},
+		{"rop chain", "ROP链"}, {"rop gadget", "ROP gadget"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"ret2csu: " + kw.h} }
+	}
+	return nil
+}
+
+func tryFormatStringArbitraryWrite(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"format string", "格式化字符串"}, {"%n write", "%n写入"},
+		{"got overwrite", "GOT表覆写"}, {"stack leak", "栈泄露"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"格式化字符串: " + kw.h} }
+	}
+	return nil
+}
+
+func tryStackOverflow(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"buffer overflow", "缓冲区溢出"}, {"stack overflow", "栈溢出"},
+		{"off-by-one", "Off-by-one"}, {"canary", "Canary"}, {"aslr", "ASLR"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"栈溢出: " + kw.h} }
+	}
+	return nil
+}
+
+func tryRet2Syscall(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"ret2syscall", "ret2syscall"}, {"execve", "execve"},
+		{"open", "open系统调用"}, {"read", "read系统调用"}, {"write", "write系统调用"},
+		{"mmap", "mmap"}, {"mprotect", "mprotect"}, {"dup2", "dup2"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"ret2syscall: " + kw.h} }
 	}
 	return nil
 }

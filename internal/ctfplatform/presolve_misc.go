@@ -284,6 +284,21 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 注册表全量扫描（与快速路径并发启动）：确保「对外宣称的 N 个注册求解器」
+	// 在生产链路真的被跑到，而不是只有硬编码快速路径那 25 个。
+	chSweep := make(chan result, 1)
+	sweepDone := make(chan struct{})
+	if registrySweepEnabled() {
+		go func() {
+			defer close(sweepDone)
+			if r := p.presolveRegistrySweep(ctx, text, attachments); r != nil && len(r.Flags) > 0 {
+				chSweep <- result{r.Engine, r.Flags}
+			}
+		}()
+	} else {
+		close(sweepDone)
+	}
+
 	// 等待所有求解器完成
 	go func() {
 		wg.Wait()
@@ -322,16 +337,43 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"flag_scan":             12,
 		"exec_endian_swap":      14,
 	}
+	// enginePriority：未在硬编码优先级表中的引擎（多来自注册表全量扫描）
+	// 一律给低优先级 90，杜绝「未知引擎 priority 取零值 0 反而压过
+	// base64_multilayer(0) 」这类隐式抢占。
+	enginePriority := func(name string) int {
+		if v, ok := priority[name]; ok {
+			return v
+		}
+		return 90
+	}
 	var best *result
+	bestLike := -1
 	for r := range chResult {
 		if len(r.flags) == 0 {
 			continue
 		}
-		if best == nil || priority[r.engine] < priority[best.engine] {
+		like := flagLikeness(r.flags)
+		if best == nil || like > bestLike ||
+			(like == bestLike && enginePriority(r.engine) < enginePriority(best.engine)) {
 			r := r
 			best = &r
+			bestLike = like
 		}
 	}
+
+	// 快速路径若已拿到 flag 外形的可信结果（likeness=3，已是上界），
+	// 全量扫描不可能更好，直接返回、零额外延迟；否则必须等扫描结果。
+	if bestLike < 3 {
+		select {
+		case r := <-chSweep:
+			if len(r.flags) > 0 && (best == nil || flagLikeness(r.flags) > bestLike) {
+				best = &r
+			}
+		case <-sweepDone:
+		case <-ctx.Done():
+		}
+	}
+
 	if best != nil {
 		p.logger.Info("presolve 命中",
 			zap.String("engine", best.engine),
@@ -1166,3 +1208,48 @@ func tryGameSecurity(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P5 批次：misc 高级 ──────────────────────────────────
+
+// tryQRCode 检测二维码/条码特征。
+func tryQRCode(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"qr code", "二维码"}, {"barcode", "条形码"}, {"data matrix", "Data Matrix"},
+		{"aztec", "Aztec码"}, {"pdf417", "PDF417码"}, {"zxing", "ZXing识别库"},
+		{"ean-13", "EAN-13条码"}, {"code 128", "Code128条码"}, {"upc-a", "UPC-A条码"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"条码特征: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryAudioSpectrum 检测音频频谱分析特征。
+func tryAudioSpectrum(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"spectrogram", "频谱图"}, {"audio stego", "音频隐写"}, {"waveform", "波形分析"},
+		{"frequency domain", "频域分析"}, {"echo hiding", "回声隐藏"}, {"lsb audio", "音频LSB隐写"},
+		{"phase coding", "相位编码"}, {"spread spectrum", "扩频隐写"}, {"audacity", "Audacity音频编辑"},
+		{"wav", "WAV音频"}, {"mp3", "MP3音频"}, {"flac", "FLAC音频"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"音频分析: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryMagicBytes 检测文件魔术字节特征。

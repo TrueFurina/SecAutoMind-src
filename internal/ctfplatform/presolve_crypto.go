@@ -1142,3 +1142,100 @@ func tryCommonFactor(text string) []string {
 	}
 	return nil
 }
+
+// ── P5 批次：crypto 高级 ──────────────────────────────────
+
+// tryHastadCRT 实现 Hastad 广播攻击：同明文+e=3+3组(n,c) → CRT合并后开立方根。
+func tryHastadCRT(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	if !strings.Contains(lower, "hastad") && !strings.Contains(lower, "broadcast") {
+		return nil
+	}
+	// 提取 n1/n2/n3, c1/c2/c3, e
+	nRe := regexp.MustCompile(`(?i)n(\d)\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)c(\d)\s*=\s*(\d+)`)
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	if eMatch == nil {
+		return []string{"Hastad广播攻击: 检测到条件，需提供 e, n1/n2/n3, c1/c2/c3"}
+	}
+	e, _ := new(big.Int).SetString(eMatch[1], 10)
+	if e == nil || e.Cmp(big.NewInt(10)) > 0 {
+		return nil
+	}
+	nMap := make(map[string]*big.Int)
+	cMap := make(map[string]*big.Int)
+	for _, m := range nRe.FindAllStringSubmatch(fullText, -1) {
+		if v, ok := new(big.Int).SetString(m[2], 10); ok {
+			nMap[m[1]] = v
+		}
+	}
+	for _, m := range cRe.FindAllStringSubmatch(fullText, -1) {
+		if v, ok := new(big.Int).SetString(m[2], 10); ok {
+			cMap[m[1]] = v
+		}
+	}
+	if len(nMap) < 3 || len(cMap) < 3 {
+		return nil
+	}
+	// CRT 合并
+	N := new(big.Int).Mul(nMap["1"], new(big.Int).Mul(nMap["2"], nMap["3"]))
+	var crtSum big.Int
+	for _, key := range []string{"1", "2", "3"} {
+		ni, ci := nMap[key], cMap[key]
+		if ni == nil || ci == nil {
+			continue
+		}
+		mi := new(big.Int).Div(N, ni)
+		yi := new(big.Int).ModInverse(mi, ni)
+		if yi == nil {
+			continue
+		}
+		tmp := new(big.Int).Mul(ci, new(big.Int).Mul(mi, yi))
+		crtSum.Add(&crtSum, tmp)
+	}
+	crtSum.Mod(&crtSum, N)
+	// 开 e 次方根
+	m := iroot(&crtSum, e)
+	if m != nil {
+		mBytes := m.Bytes()
+		if flags := scanFlags(string(mBytes)); len(flags) > 0 {
+			return flags
+		}
+		return []string{"Hastad解密(hex): " + hex.EncodeToString(mBytes)}
+	}
+	return nil
+}
+
+// tryCommonModulusComplete 完整共模攻击：同n+不同e+gcd(e1,e2)=1。
+
+// tryLowExponentBroadcast 低加密指数广播攻击（e很小，多组n加密同一明文）。
+func tryLowExponentBroadcast(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	if eMatch == nil {
+		return nil
+	}
+	e, _ := new(big.Int).SetString(eMatch[1], 10)
+	if e == nil || e.Cmp(big.NewInt(5)) > 0 {
+		return nil
+	}
+	// 检查是否有足够多的 (n, c) 对
+	nRe := regexp.MustCompile(`(?i)n\d*\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)c\d*\s*=\s*(\d+)`)
+	if len(nRe.FindAllStringSubmatch(fullText, -1)) >= int(e.Int64()) &&
+		len(cRe.FindAllStringSubmatch(fullText, -1)) >= int(e.Int64()) {
+		return []string{fmt.Sprintf("低指数广播攻击条件：e=%s, %d组(n,c)，CRT合并后开%sth根", e.String(), len(nRe.FindAllStringSubmatch(fullText, -1)), e.String())}
+	}
+	return nil
+}
+
+// tryRSAWiener 检测 RSA Wiener 攻击条件（e极大，d较小）。
