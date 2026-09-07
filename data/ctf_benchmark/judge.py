@@ -157,13 +157,57 @@ SOLVERS = [
 
 def presolve(description: str) -> tuple:
     """对一道题跑全部确定性求解器，返回 (engine, flag_or_None)。"""
+    # 先直接扫 flag
+    flags = scan_flags(description)
+    for f in flags:
+        if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
+            return 'flag_scan', f
+
+    # 尝试对整个文本 base64 解码后扫 flag（链式 caesar）
+    b64_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
+    for m in b64_re.finditer(description):
+        cur = m.group(0)
+        for _ in range(5):
+            pad = cur + '=' * ((4 - len(cur) % 4) % 4)
+            try:
+                decoded = base64.b64decode(pad).decode('utf-8', errors='ignore')
+            except:
+                break
+            # 解码后直接扫 flag
+            for f in scan_flags(decoded):
+                if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
+                    return 'base64_multilayer', f
+            # 链式 caesar
+            for shift in range(1, 26):
+                out = []
+                for c in decoded:
+                    if 'a' <= c <= 'z': out.append(chr((ord(c)-ord('a')+shift)%26+ord('a')))
+                    elif 'A' <= c <= 'Z': out.append(chr((ord(c)-ord('A')+shift)%26+ord('A')))
+                    else: out.append(c)
+                for f in scan_flags(''.join(out)):
+                    if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
+                        return 'base64_caesar_chain', f
+            cur = decoded
+            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', decoded):
+                return 'base64_multilayer', decoded
+
+    # 尝试 hex 解码后扫 flag
+    hex_re = re.compile(r'[0-9a-fA-F]{16,}')
+    for m in hex_re.finditer(description):
+        try:
+            decoded = bytes.fromhex(m.group(0)).decode('utf-8', errors='ignore')
+        except:
+            continue
+        for f in scan_flags(decoded):
+            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
+                return 'hex_decode', f
+
+    # 跑其他求解器
     for name, fn in SOLVERS:
         flags = fn(description)
         for f in flags:
-            # 验证是 flag 形式（而非"xx解码: ..."）
-            if re.match(r'(?i)(flag|ctf|dasctf)\{', f):
+            if re.match(r'(?i)(flag|ctf|picoCTF|wctf|sdctf|CBCV|NICC|EHAX|BZHCTF|grodno|CYS|ENO)\{', f):
                 return name, f
-            # 非 flag 形式的中间结果（如 Morse 解码文本）继续扫 flag
             inner = scan_flags(f)
             if inner:
                 return name, inner[0]

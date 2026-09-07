@@ -74,7 +74,12 @@ func tryBase64Multilayer(text string) []string {
 				break
 			}
 			decoded = string(d)
+			// 每层解码后：先直接扫 flag
 			if flags := scanFlags(decoded); len(flags) > 0 {
+				return flags
+			}
+			// 链式 caesar 爆破（base64 解码后可能是 caesar 密文）
+			if flags := tryCaesar(decoded); len(flags) > 0 {
 				return flags
 			}
 		}

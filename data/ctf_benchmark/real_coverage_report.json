@@ -8,9 +8,6 @@
     {
       "id": "pico2024_interencdec",
       "category": "crypto",
-      "sub": "base64_caesar",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - interencdec",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -18,9 +15,6 @@
     {
       "id": "pico2024_canyousee",
       "category": "misc",
-      "sub": "steganography",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - CanYouSee",
       "presolve_engine": "base64_multilayer",
       "presolve_flag": "picoCTF{ME74D47A_HIDD3N_a6df8db8}",
       "sha256_match": true
@@ -28,9 +22,6 @@
     {
       "id": "sdctf2021_case64ar",
       "category": "crypto",
-      "sub": "base64_caesar",
-      "difficulty": "easy",
-      "source": "SDCTF 2021 - case64ar",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -38,9 +29,6 @@
     {
       "id": "cyberconverge2025_layers",
       "category": "crypto",
-      "sub": "base64_caesar",
-      "difficulty": "easy",
-      "source": "CyberConverge 2025 - Layers",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -48,9 +36,6 @@
     {
       "id": "wolvctf2024_xor",
       "category": "crypto",
-      "sub": "xor",
-      "difficulty": "easy",
-      "source": "WolvCTF 2024 - Crypto Yors Truly",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -58,9 +43,6 @@
     {
       "id": "nahamcon2024_rsa",
       "category": "crypto",
-      "sub": "rsa_small_e",
-      "difficulty": "medium",
-      "source": "NahamCon CTF 2024 - Magic RSA",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -68,9 +50,6 @@
     {
       "id": "breizhctf2022_rsa",
       "category": "crypto",
-      "sub": "rsa_small_e",
-      "difficulty": "easy",
-      "source": "BreizhCTF 2022 - Very small exponent",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -78,9 +57,6 @@
     {
       "id": "crewctf2024_rsa_gcd",
       "category": "crypto",
-      "sub": "rsa_common_factor",
-      "difficulty": "medium",
-      "source": "CrewCTF 2024 - Read between the lines",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -88,9 +64,6 @@
     {
       "id": "pico2024_stringsit",
       "category": "misc",
-      "sub": "strings",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - strings-it",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -98,9 +71,6 @@
     {
       "id": "pico2024_commitment",
       "category": "misc",
-      "sub": "git",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Commitment",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -108,9 +78,6 @@
     {
       "id": "pico2024_cookie",
       "category": "web",
-      "sub": "cookie",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Cookie Monster",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -118,9 +85,6 @@
     {
       "id": "pico2024_irishname",
       "category": "web",
-      "sub": "sqli",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Irish-Name-Repo",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -128,9 +92,6 @@
     {
       "id": "pico2024_findme",
       "category": "web",
-      "sub": "source_audit",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - findme",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -138,9 +99,6 @@
     {
       "id": "pico2024_ssh",
       "category": "misc",
-      "sub": "ssh",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - SSH EXPLOIT",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -148,9 +106,6 @@
     {
       "id": "pico2024_gitcred",
       "category": "misc",
-      "sub": "git",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Git Credential",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -158,9 +113,6 @@
     {
       "id": "pico2024_endian",
       "category": "misc",
-      "sub": "encoding",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Endianness",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -168,9 +120,6 @@
     {
       "id": "pico2024_minirsa",
       "category": "crypto",
-      "sub": "rsa_small_e",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - Mini RSA",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -178,9 +127,6 @@
     {
       "id": "ehaxctf2025_morse",
       "category": "crypto",
-      "sub": "morse_vigenere",
-      "difficulty": "medium",
-      "source": "EHAXCTF 2025 - Dots & Dashes",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -188,9 +134,6 @@
     {
       "id": "public_morse_image",
       "category": "misc",
-      "sub": "morse",
-      "difficulty": "easy",
-      "source": "SpookyCTF 2024 - whispers-in-morse",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -198,9 +141,6 @@
     {
       "id": "crc_forgery_real",
       "category": "crypto",
-      "sub": "crc",
-      "difficulty": "hard",
-      "source": "CyberNova 2026 - Lazarus Phantom DB",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -208,9 +148,6 @@
     {
       "id": "rsa_common_real",
       "category": "crypto",
-      "sub": "rsa",
-      "difficulty": "medium",
-      "source": "CTF公开题 - RSA Common Modulus",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -218,9 +155,6 @@
     {
       "id": "base64_triple_real",
       "category": "crypto",
-      "sub": "base64",
-      "difficulty": "easy",
-      "source": "CTF公开题 - Triple Base64",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -228,9 +162,6 @@
     {
       "id": "caesar_shift19_real",
       "category": "crypto",
-      "sub": "caesar",
-      "difficulty": "easy",
-      "source": "picoCTF 2024 - interencdec内层",
       "presolve_engine": "caesar",
       "presolve_flag": "picoCTF{caesar_d3cr9pt3d_f0212758}",
       "sha256_match": true
@@ -238,9 +169,6 @@
     {
       "id": "xss_cookie_steal",
       "category": "web",
-      "sub": "xss",
-      "difficulty": "medium",
-      "source": "CISCN 2019 华东北 - Web2",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -248,9 +176,6 @@
     {
       "id": "xxe_file_read",
       "category": "web",
-      "sub": "xxe",
-      "difficulty": "medium",
-      "source": "GHCTF 2025 - Flask XXE",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -258,9 +183,6 @@
     {
       "id": "ssti_tpl_inject",
       "category": "web",
-      "sub": "ssti",
-      "difficulty": "medium",
-      "source": "GHCTF 2025 - SSTI",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
@@ -268,9 +190,6 @@
     {
       "id": "flag_in_html",
       "category": "web",
-      "sub": "source_audit",
-      "difficulty": "easy",
-      "source": "CTF公开题 - HTML注释",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{html_comment_flag}",
       "sha256_match": true
@@ -278,9 +197,6 @@
     {
       "id": "flag_in_json_api",
       "category": "web",
-      "sub": "api",
-      "difficulty": "easy",
-      "source": "CTF公开题 - JSON泄露",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{json_api_secret}",
       "sha256_match": true
@@ -288,9 +204,6 @@
     {
       "id": "flag_in_cookie_set",
       "category": "web",
-      "sub": "cookie",
-      "difficulty": "easy",
-      "source": "CTF公开题 - Set-Cookie",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{cookie_secret_exfil}",
       "sha256_match": true
@@ -298,9 +211,6 @@
     {
       "id": "flag_in_log_data",
       "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "source": "CTF公开题 - 日志取证",
       "presolve_engine": "flag_scan",
       "presolve_flag": "flag{log_exfil_data}",
       "sha256_match": true
@@ -308,9 +218,6 @@
     {
       "id": "flag_in_pcap",
       "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "source": "CTF公开题 - PCAP分析",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false
