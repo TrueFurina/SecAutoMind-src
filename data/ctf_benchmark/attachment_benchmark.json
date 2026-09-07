@@ -1,0 +1,86 @@
+{
+  "version": "attachment-forensics-1.0",
+  "note": "真实二进制取证基准：flag 均经编码/隐藏处理，朴素文本正则在原始字节上扫不到，必须做真实解析（PNG 解码/块解析、pcap 报文解析、ZIP 解压、XOR 已知明文恢复等）。只存 flag 的 SHA-256，不明文落答案。",
+  "problems": {
+    "artifact_png_lsb": {
+      "id": "artifact_png_lsb",
+      "category": "misc",
+      "description": "下载这张 PNG，flag 藏在像素里。提示：LSB 最低有效位隐写。",
+      "attachment": "artifacts/stego_lsb.png",
+      "flag_sha256": "1c6551d5de5a0e66605a626ece85ac41d071368fa6ed0731bc8ef38972235ec9",
+      "presolve_skill": "bin_png_lsb"
+    },
+    "artifact_png_text": {
+      "id": "artifact_png_text",
+      "category": "misc",
+      "description": "这张图片看起来很普通，检查一下元数据。提示：exiftool / PNG 文本块。",
+      "attachment": "artifacts/meta_text.png",
+      "flag_sha256": "8195c85c7771cd3ea60a237eea7c6b4256e50ab5c29ed9552da787027519f864",
+      "presolve_skill": "bin_png_meta"
+    },
+    "artifact_png_tail": {
+      "id": "artifact_png_tail",
+      "category": "misc",
+      "description": "文件尾部好像多出了一截。提示：binwalk / 检查 IEND 之后的数据。",
+      "attachment": "artifacts/tail_data.png",
+      "flag_sha256": "da8c8183dae59082bfe04f74f8466111167e092c28902e6e40e46ead866166e8",
+      "presolve_skill": "bin_png_meta"
+    },
+    "artifact_jpeg_com": {
+      "id": "artifact_jpeg_com",
+      "category": "misc",
+      "description": "一张 JPEG，注释里可能有东西。提示：strings / COM 段。",
+      "attachment": "artifacts/comment.jpg",
+      "flag_sha256": "3d3e9dfb4b88ae2d16ea79900cc991705145323d345fc87c345ce883878dc138",
+      "presolve_skill": "bin_jpeg_meta"
+    },
+    "artifact_pcap_http": {
+      "id": "artifact_pcap_http",
+      "category": "misc",
+      "description": "抓到了一段流量，flag 应该在 HTTP 请求里。提示：tshark / 导出 HTTP 对象。",
+      "attachment": "artifacts/traffic.pcap",
+      "flag_sha256": "ef12d5d3ba32a40b1268dea1346765c85e3341f97185477f4d778a7409dfd9d7",
+      "presolve_skill": "bin_pcap_http"
+    },
+    "artifact_zip_inner": {
+      "id": "artifact_zip_inner",
+      "category": "misc",
+      "description": "一个压缩包，解压看看里面。提示：zip / 注意子目录。",
+      "attachment": "artifacts/bundle.zip",
+      "flag_sha256": "3f7e791e875350027586d2b84774b43123a7202c4c20fba492cbe23ee3fbaf97",
+      "presolve_skill": "bin_zip_inner"
+    },
+    "artifact_carve_zip": {
+      "id": "artifact_carve_zip",
+      "category": "misc",
+      "description": "这个文件里好像还藏着别的文件。提示：binwalk / foremost 提取。",
+      "attachment": "artifacts/carve_blob.bin",
+      "flag_sha256": "a0b813351aac142e1af273346c98db7261594029e3eaa306fabd4f5748d5f816",
+      "presolve_skill": "bin_carve"
+    },
+    "artifact_xor_crib": {
+      "id": "artifact_xor_crib",
+      "category": "crypto",
+      "description": "这段数据被 XOR 加密了，密钥应该是短的。flag 格式已知。",
+      "attachment": "artifacts/xor_blob.bin",
+      "flag_sha256": "0d617a6baaa244912cce6fa618076ae86e4926f3d1326b5d0b368565e667e0b9",
+      "presolve_skill": "bin_xor_crib"
+    },
+    "artifact_b64_binary": {
+      "id": "artifact_b64_binary",
+      "category": "misc",
+      "description": "固件里有一段可疑的长字符串。提示：strings 之后 base64 -d。",
+      "attachment": "artifacts/b64_blob.bin",
+      "flag_sha256": "d450086af106f3373d6aff7cf1fec5fdce507902eb1b23795ab6327540109690",
+      "presolve_skill": "bin_strings"
+    },
+    "artifact_utf16_binary": {
+      "id": "artifact_utf16_binary",
+      "category": "misc",
+      "description": "内存 dump 里的字符串是宽字符。提示：UTF-16。",
+      "attachment": "artifacts/utf16_blob.bin",
+      "flag_sha256": "2c5d8c34860cc59dd2157736968a4083dae96134202731728faef3d884862a8d",
+      "presolve_skill": "bin_strings"
+    }
+  }
+}

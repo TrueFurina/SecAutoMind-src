@@ -71,9 +71,14 @@ var flagShapeRegex = regexp.MustCompile(`[A-Za-z0-9_]{2,20}\{[^}\s]{4,}\}`)
 // 这是修复「注册表首命中缺陷」的关键：像 tryAESECB 那样返回
 // "AES ECB 检测：发现 N 个重复块" 的诊断文本只值 1 分，
 // 真正解出 flag 外形的候选值 3 分，绝不会被诊断文本抢走命中。
-//   - 3：命中 flag 正则（品牌前缀 / 大写前缀 / 通用 前缀{内容} 外形）
-//   - 1：非空但无 flag 外形（视为诊断提示，不当命中）
+//   - 3：命中 flag 正则（品牌前缀 / 大写前缀 / 通用 前缀{内容} 外形）**且**是干净的可打印串
+//   - 1：非空但无 flag 外形（视为诊断提示，不当命中）；或混有不可打印字节的乱码
 //   - 0：空
+//
+// 「可打印」这一条是实测踩坑补上的：把随机二进制当 base64 解开会产出形如
+// kEY{\x00\x1f乱码} 的假 flag，旧版给了 3 分，直接抢占真 flag 的命中
+// （artifact_carve_zip / artifact_xor_crib 就是这么丢的）。真 flag 一定是
+// 可打印 ASCII，含控制字符一律降级。
 func flagLikeness(flags []string) int {
 	best := 0
 	for _, f := range flags {
@@ -85,11 +90,28 @@ func flagLikeness(flags []string) int {
 		if flagRegexPresolve.MatchString(f) || flagRegexUppercase.MatchString(f) || flagShapeRegex.MatchString(f) {
 			score = 3
 		}
+		if score == 3 && !isPrintableFlagCandidate(f) {
+			score = 1
+		}
 		if score > best {
 			best = score
 		}
 	}
 	return best
+}
+
+// isPrintableFlagCandidate 候选必须是干净的可打印 ASCII（长度 1..128，无控制字符）。
+func isPrintableFlagCandidate(s string) bool {
+	if len(s) == 0 || len(s) > 128 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c >= 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // solverRunStats 记录每个注册求解器的**实际执行次数**。

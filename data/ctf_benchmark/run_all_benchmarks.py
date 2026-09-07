@@ -74,6 +74,29 @@ def run_web():
     return total, hit, miss, pct
 
 
+def run_attachment():
+    """跑附件取证基准集（judge_attachment.py），返回 (total, hit, miss, pct)。
+
+    这是「静态集 36 道 MISS」的正面回答：那 36 题的 flag 全在靶机/附件里，
+    纯文本无解。本集测的正是拿到真实附件（PNG/pcap/zip/二进制）后能否真解析。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_attachment.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    out = r.stdout or ""
+    if r.returncode != 0:
+        print("[WARN] judge_attachment.py 运行异常:\n", r.stderr, file=sys.stderr)
+    try:
+        total = len(json.load(open(os.path.join(HERE, "attachment_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("✅")
+    water = out.count("💧")
+    miss = max(0, total - hit)
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct, water
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -84,7 +107,7 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget",
+         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex",
          "-count=1", "-timeout", "300s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -101,9 +124,10 @@ def main():
     st_total, st_hit, st_miss, st_pct, st_res = run_static()
     ex_total, ex_hit, ex_miss, ex_pct, ex_res = run_execution()
     wb_total, wb_hit, wb_miss, wb_pct = run_web()
+    at_total, at_hit, at_miss, at_pct, at_water = run_attachment()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力四基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力五基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -121,6 +145,13 @@ def main():
     print("    Python judge_web.py == Go TestWebExploitAgainstRange（+生产路径 TestPresolveAutoExploitsWebTarget）")
     print("    攻破维度：SQLi登录绕过 / SSTI提权 / LFI路径遍历 / SSRF内网端点 /")
     print("               命令注入RCE / NoSQL运算符注入 / 未授权API / 源码与Cookie泄漏")
+    print("【4】附件取证基准集 (attachment_benchmark.json, 真实二进制/Pcap/ZIP 工件)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%% | 注水题 %d" %
+          (at_total, at_hit, at_miss, at_pct, at_water))
+    print("    Python judge_attachment.py == Go TestAttachmentForensicsBenchmark（生产路径）")
+    print("    解析维度：PNG LSB 位平面 / PNG tEXt 与尾部附加 / JPEG COM 段 /")
+    print("               pcap HTTP 报文（含百分号解码）/ ZIP 内层与嵌套 / 文件雕刻 /")
+    print("               UTF-16 宽字符串 / base64 与 hex 变体 / 重复密钥 XOR 已知明文恢复")
     print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
@@ -132,9 +163,10 @@ def main():
     print("    剩余 %d 道需真实工具执行/实时靶机/二进制/隐写 —— 属 Agent 执行层能力" % st_miss)
     print()
 
-    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%%" % (st_pct, ex_pct, wb_pct))
-    print("    执行层与 Web 实战层是冠军差异点：西湖论剑类关键词求解器天花板即静态集，")
-    print("    SecAutoMind 额外验证了『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点』(双语言机验)。")
+    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%%" %
+          (st_pct, ex_pct, wb_pct, at_pct))
+    print("    执行层、Web 实战层、附件取证层是冠军差异点：西湖论剑类关键词求解器天花板即静态集，")
+    print("    SecAutoMind 额外验证了『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点 + 真解析二进制附件』(双语言机验)。")
     print()
 
     if args.go:
@@ -148,7 +180,10 @@ def main():
                    "flag_scan_only": len(flag_scan), "real_solver_hit": real_solver},
         "execution": {"total": ex_total, "hit": ex_hit, "miss": ex_miss, "coverage_pct": ex_pct},
         "web": {"total": wb_total, "hit": wb_hit, "miss": wb_miss, "coverage_pct": wb_pct},
-        "note": "静态/执行/Web 覆盖率不相加；执行层与 Web 实战层为冠军差异点；所有命中经 SHA-256 校验。",
+        "attachment": {"total": at_total, "hit": at_hit, "miss": at_miss,
+                       "coverage_pct": at_pct, "water_filled": at_water},
+        "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层为冠军差异点；"
+                "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }
     out_path = os.path.join(HERE, "all_benchmarks_summary.json")
     json.dump(summary, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

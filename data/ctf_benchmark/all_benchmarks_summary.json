@@ -19,5 +19,12 @@
     "miss": 0,
     "coverage_pct": 100.0
   },
-  "note": "静态/执行/Web 覆盖率不相加；执行层与 Web 实战层为冠军差异点；所有命中经 SHA-256 校验。"
+  "attachment": {
+    "total": 10,
+    "hit": 10,
+    "miss": 0,
+    "coverage_pct": 100.0,
+    "water_filled": 0
+  },
+  "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层为冠军差异点；所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。"
 }
