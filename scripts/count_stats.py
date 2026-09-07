@@ -32,7 +32,7 @@ EXCLUDE = {".git", ".workbuddy", "node_modules", "vendor", "dist", "build", "ins
 def _sh(cmd):
     try:
         r = subprocess.run(cmd, cwd=ROOT, shell=True, capture_output=True,
-                           text=True, timeout=120)
+                           encoding="utf-8", errors="ignore", timeout=120)
         return r.stdout.strip()
     except Exception:
         return ""
@@ -98,6 +98,26 @@ def go_stats():
     return go_files, test_files, non_test_lines, test_lines
 
 
+def go_packages_count():
+    """统计 go list ./... 中可构建的包数（排除 ? 前缀的非构建项，输出容错解码）。
+
+    旧实现用 Windows-cmd 语法 `go list ./... 2>nul | find /c /v ""` + `text=True`，
+    在 Git Bash 下既失效又会因非 UTF-8 输出崩溃（go_packages 退化为 null）。
+    改为显式 encoding/errors 并自行统计行数，跨 shell 一致。
+    """
+    try:
+        r = subprocess.run("go list ./...", cwd=ROOT, shell=True,
+                           capture_output=True, encoding="utf-8", errors="ignore",
+                           timeout=240)
+        if r.returncode != 0:
+            return None
+        lines = [l.strip() for l in r.stdout.splitlines()
+                 if l.strip() and not l.strip().startswith("?")]
+        return len(lines)
+    except Exception:
+        return None
+
+
 def exe_info():
     exe = os.path.join(ROOT, "secautomind-ai.exe")
     if not os.path.isfile(exe):
@@ -126,7 +146,7 @@ def main():
         "roles_yaml": _count_files("roles", ".yaml"),
         "internal_dirs": len([d for d in os.listdir(os.path.join(ROOT, "internal"))
                               if os.path.isdir(os.path.join(ROOT, "internal", d))]),
-        "go_packages": int(_sh("go list ./... 2>nul | find /c /v \"\"") or 0) or None,
+        "go_packages": go_packages_count(),
         "go_files": go_files,
         "test_files": test_files,
         "non_test_lines": non_test,
