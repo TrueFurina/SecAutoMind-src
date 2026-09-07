@@ -20,6 +20,21 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	for _, v := range attachments {
 		text += "\n" + v
 	}
+
+	// 聊天上传附件激活（Tier 2）：生产 handler 恒传 nil attachments，
+	// 但上传文件的绝对路径已拼在消息文本里（"[用户上传的文件]\n- name: path"）。
+	// 这里读回真实内容，使执行层 exec_* 求解器能吃到底层二进制/文本附件。
+	// 路径受 chat_uploads 白名单约束，越界/过大一律跳过。
+	if loaded := loadChatAttachmentFiles(text, p.logger); len(loaded) > 0 {
+		if attachments == nil {
+			attachments = make(map[string]string, len(loaded))
+		}
+		for k, v := range loaded {
+			attachments[k] = v
+			text += "\n" + v
+		}
+	}
+
 	if strings.TrimSpace(text) == "" {
 		return &PresolveResult{}
 	}
