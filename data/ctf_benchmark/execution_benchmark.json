@@ -1,0 +1,95 @@
+{
+  "version": "execution-v1",
+  "problems": {
+    "exec_strings": {
+      "id": "exec_strings",
+      "category": "misc",
+      "sub": "strings",
+      "difficulty": "easy",
+      "description": "用 strings 从二进制提取隐藏的 flag 字符串",
+      "attachments": {
+        "exec_strings.bin": "exec_strings.bin"
+      },
+      "flag_sha256": "9563247d091166c37ae8051b75ca4e25402e730c49817522172f094a86424538",
+      "presolve_skill": "strings_flag"
+    },
+    "exec_base64_source": {
+      "id": "exec_base64_source",
+      "category": "web",
+      "sub": "source_audit",
+      "difficulty": "easy",
+      "description": "查看网页源码中的隐藏注释，base64 解码得到 flag",
+      "attachments": {
+        "exec_source.html": "exec_source.html"
+      },
+      "flag_sha256": "867508870baa43ce72ddc8f7543d4a29719310cff74bb8a78f843f46eb605d61",
+      "presolve_skill": "web_source_audit"
+    },
+    "exec_cookie": {
+      "id": "exec_cookie",
+      "category": "web",
+      "sub": "cookie",
+      "difficulty": "easy",
+      "description": "浏览器 Cookie 中以 base64 存储了 flag，解码 Cookie 值得到 flag",
+      "attachments": {
+        "exec_cookie.txt": "exec_cookie.txt"
+      },
+      "flag_sha256": "a5678709a4b3f1e3d5e41f050a7b96f98013f97c4225e38788a55874f4f832cb",
+      "presolve_skill": "cookie_decode"
+    },
+    "exec_endian": {
+      "id": "exec_endian",
+      "category": "misc",
+      "sub": "encoding",
+      "difficulty": "easy",
+      "description": "文件以小端序存放了 flag 字节，翻转字节序解码得到 flag",
+      "attachments": {
+        "exec_endian.bin": "exec_endian.bin"
+      },
+      "flag_sha256": "b654076ccd97ff8e5cda53bfc351fe67dc950d0dfa038f8b11bbc4ee4406a489",
+      "presolve_skill": "endian_swap"
+    },
+    "exec_git": {
+      "id": "exec_git",
+      "category": "misc",
+      "sub": "git",
+      "difficulty": "easy",
+      "description": "git 仓库历史提交中曾泄露过密钥，git log -p 可找回 flag",
+      "attachments": {
+        "repo": "exec_git_repo"
+      },
+      "flag_sha256": "2fe91f53d01ac8569c22d725fd11003f9ec059563f8690e7d976b2e344caf878",
+      "presolve_skill": "git_history"
+    },
+    "exec_pcap": {
+      "id": "exec_pcap",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "tshark 提取 HTTP POST 请求体中的 flag",
+      "attachments": {
+        "exec_capture.pcap": "exec_capture.pcap"
+      },
+      "flag_sha256": "b2870ebfcc31a2496abdaea0ab2629b8002e9cd7751658da995edf827dfe4f3f",
+      "presolve_skill": "pcap_http"
+    },
+    "live_sqli": {
+      "category": "web",
+      "sub": "sqli",
+      "difficulty": "easy",
+      "description": "本地漏洞靶机 /login 存在 SQL 注入登录绕过，发送 OR 绕过 payload 提取 flag",
+      "flag_sha256": "e60f857930208ccf3a10c21cc87f494c4d5426905af50eef0b1aa9079cb9c7e4",
+      "presolve_skill": "live_sqli",
+      "live": "vuln_app.py"
+    },
+    "live_ssti": {
+      "category": "web",
+      "sub": "ssti",
+      "difficulty": "easy",
+      "description": "本地漏洞靶机 /ssti 存在服务端模板注入，发送 {{flag()}} payload 触发 flag",
+      "flag_sha256": "f1dcb29e1568362b195adf2d0144a8be39f8d66fd71aea3dfb460c549ded7bd2",
+      "presolve_skill": "live_ssti",
+      "live": "vuln_app.py"
+    }
+  }
+}

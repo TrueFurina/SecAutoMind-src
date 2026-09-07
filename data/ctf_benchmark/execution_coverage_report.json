@@ -1,0 +1,56 @@
+{
+  "total": 8,
+  "hit": 8,
+  "miss": 0,
+  "coverage_pct": 100.0,
+  "results": [
+    {
+      "id": "exec_strings",
+      "skill": "strings_flag",
+      "flag": "flag{str1ngs_r3v34l5_5ecret5}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_base64_source",
+      "skill": "web_source_audit",
+      "flag": "flag{v13w_50urc3_70_f1nd}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_cookie",
+      "skill": "cookie_decode",
+      "flag": "flag{c00k13_c4n_h1d3}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_endian",
+      "skill": "endian_swap",
+      "flag": "flag{3nd14n_sw4p}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_git",
+      "skill": "git_history",
+      "flag": "flag{g1t_h1st0ry_l34ks}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_pcap",
+      "skill": "pcap_http",
+      "flag": "flag{http_p0st_b0dy}",
+      "sha256_match": true
+    },
+    {
+      "id": "live_sqli",
+      "skill": "live_sqli",
+      "flag": "flag{l1v3_sqli_byp4ss_rce_demo}",
+      "sha256_match": true
+    },
+    {
+      "id": "live_ssti",
+      "skill": "live_ssti",
+      "flag": "flag{l1v3_sst1_t3mplat3_1nj3ct10n}",
+      "sha256_match": true
+    }
+  ]
+}

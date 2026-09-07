@@ -1,0 +1,17 @@
+{
+  "static": {
+    "total": 55,
+    "hit": 17,
+    "miss": 38,
+    "coverage_pct": 30.9,
+    "flag_scan_only": 4,
+    "real_solver_hit": 13
+  },
+  "execution": {
+    "total": 8,
+    "hit": 8,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "note": "静态/执行覆盖率不相加；执行层为冠军差异点；所有命中经 SHA-256 校验。"
+}
