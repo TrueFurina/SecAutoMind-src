@@ -47,19 +47,31 @@ func tryExecStringsFlagScan(ctx context.Context, text string, attachments map[st
 }
 
 // tryExecWebSourceAudit 提取源码/附件中的 base64 令牌并解码扫 flag。
+// 多偏移对齐尝试：候选串前部可能吸附 query param 名等非 b64 内容
+// （如 data=<b64> 被整体匹配，解码出垃圾前缀污染 flag）。
+// 收集全部偏移命中返回最短 flag——垃圾前缀必使匹配串更长。
 func tryExecWebSourceAudit(ctx context.Context, text string, attachments map[string]string) []string {
 	full := text
 	for _, v := range attachments {
 		full += "\n" + v
 	}
+	var best []string
 	for _, m := range execB64Re.FindAllString(full, -1) {
-		if decoded, err := base64.StdEncoding.DecodeString(m + strings.Repeat("=", (4-len(m)%4)%4)); err == nil {
-			if f := scanFlags(string(decoded)); len(f) > 0 {
-				return f
+		for off := 0; off < len(m) && off < 8; off++ {
+			seg := m[off:]
+			if strings.Contains(strings.TrimRight(seg, "="), "=") {
+				continue // 中间出现 = 为错位对齐（如 data=<b64> 的 param 名吸附），必产垃圾
+			}
+			if decoded, err := base64.StdEncoding.DecodeString(seg + strings.Repeat("=", (4-len(seg)%4)%4)); err == nil {
+				for _, f := range scanFlags(string(decoded)) {
+					if len(best) == 0 || len(f) > len(best[0]) {
+						best = []string{f}
+					}
+				}
 			}
 		}
 	}
-	return nil
+	return best
 }
 
 // tryExecCookieDecode 解码 Cookie 值中的 base64 flag。
@@ -200,6 +212,49 @@ func bigIthRoot(x *big.Int, e int) *big.Int {
 	return nil
 }
 
+// execMorseTable 国际摩斯电码字母数字表。
+var execMorseTable = map[string]string{
+	".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F",
+	"--.": "G", "....": "H", "..": "I", ".---": "J", "-.-": "K", ".-..": "L",
+	"--": "M", "-.": "N", "---": "O", ".--.": "P", "--.-": "Q", ".-.": "R",
+	"...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X",
+	"-.--": "Y", "--..": "Z",
+	"-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
+	".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9",
+}
+
+var execMorseTokenRe = regexp.MustCompile(`[.\-]+`)
+
+// tryExecMorseDecode 解码 morse 信号工件（等价图片提取后的产物），
+// 按基准集约定组合 flag{解码内容小写} 后扫 flag。
+// 逐行判定：整行去掉空白后必须全为合法 morse token（排除普通句子碎片）。
+func tryExecMorseDecode(ctx context.Context, text string, attachments map[string]string) []string {
+	full := text
+	for _, v := range attachments {
+		full += "\n" + v
+	}
+	for _, line := range strings.Split(full, "\n") {
+		toks := execMorseTokenRe.FindAllString(line, -1)
+		if len(toks) < 4 {
+			continue
+		}
+		compact := strings.NewReplacer(" ", "", "\t", "", "\r", "").Replace(line)
+		if compact != strings.Join(toks, "") {
+			continue // 行内含非 morse 字符（冒号/字母/斜杠等），跳过
+		}
+		var sb strings.Builder
+		for _, tok := range toks {
+			sb.WriteString(execMorseTable[tok])
+		}
+		if s := sb.String(); len(s) >= 4 {
+			if f := scanFlags("flag{" + strings.ToLower(s) + "}"); len(f) > 0 {
+				return f
+			}
+		}
+	}
+	return nil
+}
+
 func init() {
 	RegisterSolver(SolverEntry{Name: "exec_strings", Category: CategoryMiscS, Priority: 124, Solver: tryExecStringsFlagScan})
 	RegisterSolver(SolverEntry{Name: "exec_git_history", Category: CategoryMiscS, Priority: 125, Solver: tryExecGitHistory})
@@ -208,4 +263,5 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "exec_endian_swap", Category: CategoryMiscS, Priority: 128, Solver: tryExecEndianSwap})
 	RegisterSolver(SolverEntry{Name: "exec_pcap_http", Category: CategoryMiscS, Priority: 129, Solver: tryExecPcapHTTP})
 	RegisterSolver(SolverEntry{Name: "exec_rsa_small_e", Category: CategoryCryptoS, Priority: 130, Solver: tryExecRSASmallE})
+	RegisterSolver(SolverEntry{Name: "exec_morse_decode", Category: CategoryMiscS, Priority: 131, Solver: tryExecMorseDecode})
 }

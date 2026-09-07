@@ -49,6 +49,7 @@ func TestExecSolversAgainstBenchmark(t *testing.T) {
 		"cookie_decode":    tryExecCookieDecode,
 		"endian_swap":      tryExecEndianSwap,
 		"pcap_http":        tryExecPcapHTTP,
+		"morse_decode":     tryExecMorseDecode,
 	}
 
 	hits := 0

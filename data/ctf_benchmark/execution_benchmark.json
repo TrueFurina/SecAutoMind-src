@@ -1,5 +1,5 @@
 {
-  "version": "execution-v1",
+  "version": "v2-exec",
   "problems": {
     "exec_strings": {
       "id": "exec_strings",
@@ -90,6 +90,78 @@
       "flag_sha256": "f1dcb29e1568362b195adf2d0144a8be39f8d66fd71aea3dfb460c549ded7bd2",
       "presolve_skill": "live_ssti",
       "live": "vuln_app.py"
+    },
+    "exec_disk_image": {
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "磁盘镜像取证：从丢失分区恢复已删除文件中的 flag（等价 binwalk+strings 做簇 carving）",
+      "attachments": {
+        "disk_image.dd": "disk_image.dd"
+      },
+      "presolve_skill": "strings_flag",
+      "note": "工件为 gen_exec_artifacts_v2.py 生成；等价真题 forensics_disk_image（真题镜像不可分发）",
+      "flag_sha256": "aa3483ce65fc2f3296f938defc9e5b8231007d73e61ed7a5211a0ceb24915333"
+    },
+    "exec_memdump": {
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "内存取证：对内存 dump 做 strings 扫描（等价 volatility strings 插件）找到 flag",
+      "attachments": {
+        "memory_dump.dmp": "memory_dump.dmp"
+      },
+      "presolve_skill": "strings_flag",
+      "note": "工件为生成镜像；等价真题 forensics_mem_volatility（真题 dump 不可分发）",
+      "flag_sha256": "f06d437866fac90d4e2f9b51d25c5be5046ea7789709fff72af4ca035bc35dad"
+    },
+    "exec_git_cred": {
+      "category": "misc",
+      "sub": "git",
+      "difficulty": "medium",
+      "description": "git 历史审计：凭证文件被删除但仍在提交历史中，git log -p 找到泄露的 api_token flag",
+      "attachments": {
+        "repo": "git_cred_repo"
+      },
+      "presolve_skill": "git_history",
+      "note": "等价真题 pico2024_gitcred；嵌套 .git 不入库，由本脚本再生成",
+      "flag_sha256": "ff5ebade0a2a18835d025a26aeeec7de03de4116aeaa324002f8f87cbd457dbb"
+    },
+    "exec_pcap_get": {
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "description": "流量分析：tshark 提取 HTTP GET 请求行中的 token flag（区别于既有 POST body 题）",
+      "attachments": {
+        "pcap_get.pcap": "pcap_get.pcap"
+      },
+      "presolve_skill": "pcap_http",
+      "note": "工件为生成 pcap；等价真题 flag_in_pcap（GET 变体）",
+      "flag_sha256": "f5ec3fc7cc167aa930edbf88507a4b62a628b28345acd76aa9a00f90d1934941"
+    },
+    "exec_morse": {
+      "category": "misc",
+      "sub": "morse",
+      "difficulty": "medium",
+      "description": "摩斯电码：解码信号文本（等价真题从图片提取后的产物），按 flag{解码内容小写} 提交",
+      "attachments": {
+        "morse_signal.txt": "morse_signal.txt"
+      },
+      "presolve_skill": "morse_decode",
+      "note": "工件为 morse 文本（图片提取属视觉层，等价真题 public_morse_image）",
+      "flag_sha256": "561094e6dfd50c2bf69463c67fa2748fb515c6419d645cf242ff968a30b544c0"
+    },
+    "exec_log_forensics": {
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "medium",
+      "description": "日志审计：2000 行访问日志中定位一次异常 /export 请求，query param 为 base64 编码的 flag",
+      "attachments": {
+        "access_log.txt": "access_log.txt"
+      },
+      "presolve_skill": "web_source_audit",
+      "note": "工件为生成日志；web_source_audit 求解器的 b64 扫描覆盖 query param 泄漏",
+      "flag_sha256": "4033f5fbe7f88408ddccdcc0f3d9766ca463512716d0f911eb82cfee4d045beb"
     }
   }
 }

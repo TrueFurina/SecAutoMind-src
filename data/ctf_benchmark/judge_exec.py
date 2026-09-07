@@ -64,15 +64,23 @@ def try_git_log(path: str):
 
 def try_base64_source(path: str):
     text = open(path, encoding="utf-8", errors="ignore").read()
+    best = []
     for m in re.finditer(r'[A-Za-z0-9+/=]{16,}', text):
-        try:
-            dec = base64.b64decode(m.group(0) + "=" * ((4 - len(m.group(0)) % 4) % 4)).decode("utf-8", "ignore")
-        except Exception:
-            continue
-        f = scan_flags(dec)
-        if f:
-            return f
-    return []
+        # 多偏移对齐尝试：候选串前部可能吸附 query param 名等非 b64 内容
+        # （如 data=<b64> 被整体匹配，解码出垃圾前缀污染 flag）。
+        # 收集全部偏移命中返回最短 flag——垃圾前缀必使匹配串更长。
+        for off in range(0, min(8, len(m.group(0)))):
+            seg = m.group(0)[off:]
+            if '=' in seg.rstrip('='):
+                continue  # 中间出现 = 为错位对齐（如 data=<b64> 的 param 名吸附），必产垃圾
+            try:
+                dec = base64.b64decode(seg + "=" * ((4 - len(seg) % 4) % 4)).decode("utf-8", "ignore")
+            except Exception:
+                continue
+            for f in scan_flags(dec):
+                if not best or len(f) > len(best[0]):
+                    best = [f]
+    return best
 
 
 def try_cookie(path: str):
@@ -118,6 +126,36 @@ def try_pcap_http(path: str):
     return scan_flags(text)
 
 
+MORSE_TABLE = {
+    "A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.",
+    "G": "--.", "H": "....", "I": "..", "J": ".---", "K": "-.-", "L": ".-..",
+    "M": "--", "N": "-.", "O": "---", "P": ".--.", "Q": "--.-", "R": ".-.",
+    "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
+    "Y": "-.--", "Z": "--..",
+    "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-",
+    "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
+}
+
+
+def try_morse(path: str):
+    """解码 morse 工件（等价图片提取后产物），按 flag{解码内容小写} 约定组合。
+    逐行判定：整行去掉空白后必须全为合法 morse token（排除普通句子碎片）。"""
+    morse_to_char = {v: k for k, v in MORSE_TABLE.items()}  # MORSE_TABLE 为 char→morse
+    text = open(path, encoding="utf-8", errors="ignore").read()
+    for line in text.splitlines():
+        toks = re.findall(r'[.\-]+', line)
+        if len(toks) < 4:
+            continue
+        if line.replace(' ', '').replace('\t', '') != ''.join(toks):
+            continue  # 行内含非 morse 字符（冒号/字母/斜杠等），跳过
+        dec = "".join(morse_to_char.get(t, "") for t in toks)
+        if len(dec) >= 4:
+            f = scan_flags("flag{" + dec.lower() + "}")
+            if f:
+                return f
+    return []
+
+
 SOLVERS = {
     "strings_flag": try_strings,
     "git_history": try_git_log,
@@ -125,6 +163,7 @@ SOLVERS = {
     "cookie_decode": try_cookie,
     "endian_swap": try_endian,
     "pcap_http": try_pcap_http,
+    "morse_decode": try_morse,
 }
 
 

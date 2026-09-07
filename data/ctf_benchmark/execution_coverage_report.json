@@ -1,6 +1,6 @@
 {
-  "total": 8,
-  "hit": 8,
+  "total": 14,
+  "hit": 14,
   "miss": 0,
   "coverage_pct": 100.0,
   "results": [
@@ -50,6 +50,42 @@
       "id": "live_ssti",
       "skill": "live_ssti",
       "flag": "flag{l1v3_sst1_t3mplat3_1nj3ct10n}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_disk_image",
+      "skill": "strings_flag",
+      "flag": "picoCTF{d1sk_f0r3ns1cs_r0cks}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_memdump",
+      "skill": "strings_flag",
+      "flag": "picoCTF{m3m0ry_dump_v0lat1l1ty}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_git_cred",
+      "skill": "git_history",
+      "flag": "picoCTF{l34k3d_cr3d_in_g1t_h1st}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_pcap_get",
+      "skill": "pcap_http",
+      "flag": "flag{pcap_g3t_l34k_2026}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_morse",
+      "skill": "morse_decode",
+      "flag": "flag{m0rs3c0d3f0r3ns1c5}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_log_forensics",
+      "skill": "web_source_audit",
+      "flag": "picoCTF{l0g_4ud1t_b64_l34k}",
       "sha256_match": true
     }
   ]

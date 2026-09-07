@@ -8,8 +8,8 @@
     "real_solver_hit": 15
   },
   "execution": {
-    "total": 8,
-    "hit": 8,
+    "total": 14,
+    "hit": 14,
     "miss": 0,
     "coverage_pct": 100.0
   },
