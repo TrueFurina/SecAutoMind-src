@@ -273,6 +273,11 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "crypto_protocol", Category: CategoryCryptoS, Priority: 62, Solver: solveCryptoProtocol})
 	RegisterSolver(SolverEntry{Name: "network_forensics", Category: CategoryMiscS, Priority: 94, Solver: solveNetworkForensics})
 	RegisterSolver(SolverEntry{Name: "exploit_chain", Category: CategoryPwnS, Priority: 113, Solver: solveExploitChain})
+
+	// P16 批次：crypto 经典攻击完整版（真解题出 flag）
+	RegisterSolver(SolverEntry{Name: "common_modulus_attack", Category: CategoryCryptoS, Priority: 63, Solver: solveCommonModulusComplete})
+	RegisterSolver(SolverEntry{Name: "hastad_broadcast_attack", Category: CategoryCryptoS, Priority: 64, Solver: solveHastadBroadcastAttack})
+	RegisterSolver(SolverEntry{Name: "rsa_wiener_attack", Category: CategoryCryptoS, Priority: 65, Solver: solveRSAWienerAttack})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -563,6 +568,18 @@ func solveECDSANonceReuse(ctx context.Context, text string, attachments map[stri
 
 func solveRSABroadcast(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryRSABroadcastComplete(text, attachments)
+}
+
+func solveCommonModulusComplete(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryCommonModulusComplete(text, attachments)
+}
+
+func solveHastadBroadcastAttack(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryHastadBroadcastAttack(text, attachments)
+}
+
+func solveRSAWienerAttack(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryRSAWienerAttack(text, attachments)
 }
 
 func solveXORMultiByte(ctx context.Context, text string, attachments map[string]string) []string {

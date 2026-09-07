@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -1239,3 +1240,183 @@ func tryLowExponentBroadcast(text string, attachments map[string]string) []strin
 }
 
 // tryRSAWiener 检测 RSA Wiener 攻击条件（e极大，d较小）。
+
+// ── P6 批次：crypto 经典攻击完整版（真解题出 flag，非检测提示）──────────
+
+// tryHastadBroadcastAttack 完整 Hastad 广播攻击：e 组同明文不同 n（e=3 典型），
+// CRT 合成 m^e mod ∏n_i 后开 e 次根还原明文。
+func tryHastadBroadcastAttack(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	eMatch := eRe.FindStringSubmatch(fullText)
+	if eMatch == nil {
+		return nil
+	}
+	e, ok := new(big.Int).SetString(eMatch[1], 10)
+	if !ok || e.Sign() <= 0 || e.Cmp(big.NewInt(16)) > 0 {
+		return nil
+	}
+	// 收集 n_i 与 c_i（n1/n2/... 与 c1/c2/...，纯 n=/c= 亦兼容）
+	pairRe := regexp.MustCompile(`(?i)\bn(\d*)\s*=\s*(\d+)`)
+	nMap := map[string]*big.Int{}
+	for _, m := range pairRe.FindAllStringSubmatch(fullText, -1) {
+		v, okv := new(big.Int).SetString(m[2], 10)
+		if okv {
+			nMap[m[1]] = v
+		}
+	}
+	cpairRe := regexp.MustCompile(`(?i)\bc(\d*)\s*=\s*(\d+)`)
+	cMap := map[string]*big.Int{}
+	for _, m := range cpairRe.FindAllStringSubmatch(fullText, -1) {
+		v, okv := new(big.Int).SetString(m[2], 10)
+		if okv {
+			cMap[m[1]] = v
+		}
+	}
+	if len(nMap) < int(e.Int64()) || len(cMap) < int(e.Int64()) {
+		return nil
+	}
+	// 按键序取前 e 组（键 "" 优先视为第 1 组，其余数字键升序）
+	nKeys := make([]string, 0, len(nMap))
+	for k := range nMap {
+		nKeys = append(nKeys, k)
+	}
+	sort.Slice(nKeys, func(i, j int) bool {
+		if nKeys[i] == "" {
+			return true
+		}
+		if nKeys[j] == "" {
+			return false
+		}
+		return nKeys[i] < nKeys[j]
+	})
+	cKeys := make([]string, 0, len(cMap))
+	for k := range cMap {
+		cKeys = append(cKeys, k)
+	}
+	sort.Slice(cKeys, func(i, j int) bool {
+		if cKeys[i] == "" {
+			return true
+		}
+		if cKeys[j] == "" {
+			return false
+		}
+		return cKeys[i] < cKeys[j]
+	})
+	ns := make([]*big.Int, 0, e.Int64())
+	cs := make([]*big.Int, 0, e.Int64())
+	for i := 0; i < int(e.Int64()); i++ {
+		ni, okN := nMap[nKeys[i]]
+		ci, okC := cMap[cKeys[i]]
+		if !okN || !okC {
+			return nil
+		}
+		ns = append(ns, ni)
+		cs = append(cs, ci)
+	}
+	// CRT 合成 x ≡ c_i (mod n_i) → x = m^e mod ∏n_i
+	N := big.NewInt(1)
+	for _, ni := range ns {
+		N.Mul(N, ni)
+	}
+	x := new(big.Int)
+	for i := range ns {
+		Ni := new(big.Int).Div(N, ns[i])
+		inv := new(big.Int).ModInverse(Ni, ns[i])
+		if inv == nil {
+			return nil
+		}
+		t := new(big.Int).Mul(cs[i], Ni)
+		t.Mul(t, inv)
+		t.Mod(t, N)
+		x.Add(x, t)
+		x.Mod(x, N)
+	}
+	root := integerNthRoot(x, int(e.Int64()))
+	if root == nil {
+		return nil
+	}
+	if flags := scanFlags(string(root.Bytes())); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}
+
+// integerNthRoot 整数 k 次根（二分），非完全幂返回 nil。
+func integerNthRoot(x *big.Int, k int) *big.Int {
+	if x.Sign() <= 0 || k <= 0 {
+		return nil
+	}
+	lo := big.NewInt(0)
+	hi := new(big.Int).Lsh(big.NewInt(1), uint(x.BitLen()/k+2))
+	one := big.NewInt(1)
+	for lo.Cmp(hi) < 0 {
+		mid := new(big.Int).Add(lo, hi)
+		mid.Div(mid, big.NewInt(2))
+		pow := new(big.Int).Exp(mid, big.NewInt(int64(k)), nil)
+		switch pow.Cmp(x) {
+		case 0:
+			return mid
+		case -1:
+			lo = new(big.Int).Add(mid, one)
+		default:
+			hi = mid
+		}
+	}
+	return nil
+}
+
+// tryRSAWienerAttack 完整 Wiener 攻击：e/n 连分数展开取收敛分数 (k,d)，
+// 逐候选验证 c^d ≡ m (mod n) 还原明文。
+func tryRSAWienerAttack(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
+	nRe := regexp.MustCompile(`(?i)\bn\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)\bc\s*=\s*(\d+)`)
+	eM, nM, cM := eRe.FindStringSubmatch(fullText), nRe.FindStringSubmatch(fullText), cRe.FindStringSubmatch(fullText)
+	if eM == nil || nM == nil || cM == nil {
+		return nil
+	}
+	e, ok1 := new(big.Int).SetString(eM[1], 10)
+	n, ok2 := new(big.Int).SetString(nM[1], 10)
+	c, ok3 := new(big.Int).SetString(cM[1], 10)
+	// 合理性：n 至少 128-bit 才谈得上 Wiener（Sign() 只有 -1/0/1，别用 Sign 判大小！）
+	if !ok1 || !ok2 || !ok3 || e.Sign() <= 0 || n.BitLen() < 128 || c.Sign() < 0 {
+		return nil
+	}
+	// 连分数展开 e/n
+	a := new(big.Int).Set(e)
+	b := new(big.Int).Set(n)
+	h0, h1 := big.NewInt(0), big.NewInt(1) // 分子（k）
+	k0, k1 := big.NewInt(1), big.NewInt(0) // 分母（d）
+	for b.Sign() > 0 {
+		q := new(big.Int).Div(a, b)
+		a, b = b, new(big.Int).Mod(a, b)
+		// 收敛分数递推
+		hNew := new(big.Int).Mul(q, h1)
+		hNew.Add(hNew, h0)
+		kNew := new(big.Int).Mul(q, k1)
+		kNew.Add(kNew, k0)
+		h0, h1 = h1, hNew
+		k0, k1 = k1, kNew
+		if h1.Sign() <= 0 {
+			continue
+		}
+		// 候选 d = k1（分母），直接验证 c^d ≡ m (mod n) 是否还原可读明文
+		d := new(big.Int).Set(k1)
+		if d.Sign() <= 0 {
+			continue
+		}
+		m := new(big.Int).Exp(c, d, n)
+		if flags := scanFlags(string(m.Bytes())); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}

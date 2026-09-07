@@ -1,6 +1,6 @@
 {
-  "total": 14,
-  "hit": 14,
+  "total": 17,
+  "hit": 17,
   "miss": 0,
   "coverage_pct": 100.0,
   "results": [
@@ -86,6 +86,24 @@
       "id": "exec_log_forensics",
       "skill": "web_source_audit",
       "flag": "picoCTF{l0g_4ud1t_b64_l34k}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_common_modulus",
+      "skill": "common_modulus_attack",
+      "flag": "flag{c0mm0n_m0dulus_1s_f4t4l}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_hastad_broadcast",
+      "skill": "hastad_broadcast_attack",
+      "flag": "flag{h4st4d_br04dc4st_cr7}",
+      "sha256_match": true
+    },
+    {
+      "id": "exec_rsa_wiener",
+      "skill": "rsa_wiener_attack",
+      "flag": "flag{w13n3r_c0nt1nu3d_fr4ct10ns}",
       "sha256_match": true
     }
   ]

@@ -156,6 +156,117 @@ def try_morse(path: str):
     return []
 
 
+def _param_search(text: str, pattern: str):
+    return re.search(pattern, text, re.I)
+
+
+def try_common_modulus_attack(path: str):
+    """完整共模攻击：同 n 不同 e（gcd(e1,e2)=1），egcd 合并两密文还原明文。"""
+    text = open(path, encoding="utf-8", errors="ignore").read()
+    m_n = _param_search(text, r'\bn\s*=\s*(\d+)')
+    m_e1 = _param_search(text, r'\be1\s*=\s*(\d+)')
+    m_e2 = _param_search(text, r'\be2\s*=\s*(\d+)')
+    m_c1 = _param_search(text, r'\bc1\s*=\s*(\d+)')
+    m_c2 = _param_search(text, r'\bc2\s*=\s*(\d+)')
+    if not (m_n and m_e1 and m_e2 and m_c1 and m_c2):
+        return []
+    n, e1, e2 = int(m_n.group(1)), int(m_e1.group(1)), int(m_e2.group(1))
+    c1, c2 = int(m_c1.group(1)), int(m_c2.group(1))
+
+    def egcd(a, b):
+        if b == 0:
+            return a, 1, 0
+        g, x, y = egcd(b, a % b)
+        return g, y, x - (a // b) * y
+
+    g, s, t = egcd(e1, e2)
+    if g != 1:
+        return []
+    c1p = pow(c1, s, n) if s >= 0 else pow(pow(c1, -1, n), -s, n)
+    c2p = pow(c2, t, n) if t >= 0 else pow(pow(c2, -1, n), -t, n)
+    m = (c1p * c2p) % n
+    return scan_flags(m.to_bytes((m.bit_length() + 7) // 8, "big").decode("latin1"))
+
+
+def try_hastad_broadcast_attack(path: str):
+    """完整 Hastad 广播攻击：e 组同明文不同 n，CRT 合成后开 e 次根。"""
+    text = open(path, encoding="utf-8", errors="ignore").read()
+    m_e = _param_search(text, r'\be\s*=\s*(\d+)')
+    if not m_e:
+        return []
+    e = int(m_e.group(1))
+    if e <= 0 or e > 16:
+        return []
+    ns, cs = {}, {}
+    for m in re.finditer(r'\bn(\d*)\s*=\s*(\d+)', text, re.I):
+        ns[m.group(1)] = int(m.group(2))
+    for m in re.finditer(r'\bc(\d*)\s*=\s*(\d+)', text, re.I):
+        cs[m.group(1)] = int(m.group(2))
+    keys = sorted(ns.keys())
+    if len(ns) < e or len(cs) < e:
+        return []
+    # 取前 e 组 n 与对应索引的 c
+    n_list, c_list = [], []
+    for i in range(e):
+        key = "" if i == 0 else str(i + 1)
+        if key not in ns or key not in cs:
+            # 兼容纯数字键序
+            if i < len(keys):
+                key = keys[i]
+            else:
+                return []
+        if key not in ns or key not in cs:
+            return []
+        n_list.append(ns[key])
+        c_list.append(cs[key])
+    # CRT
+    N = 1
+    for ni in n_list:
+        N *= ni
+    x = 0
+    for ni, ci in zip(n_list, c_list):
+        Ni = N // ni
+        x += ci * Ni * pow(Ni, -1, ni)
+    x %= N
+    # 整数 e 次根（二分）
+    lo, hi = 0, 1 << (x.bit_length() // e + 2)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if mid ** e < x:
+            lo = mid + 1
+        else:
+            hi = mid
+    if lo ** e != x:
+        return []
+    return scan_flags(lo.to_bytes((lo.bit_length() + 7) // 8, "big").decode("latin1"))
+
+
+def try_rsa_wiener_attack(path: str):
+    """完整 Wiener 攻击：e/n 连分数展开取收敛分数候选 d，验证 c^d ≡ m。"""
+    text = open(path, encoding="utf-8", errors="ignore").read()
+    m_e = _param_search(text, r'\be\s*=\s*(\d+)')
+    m_n = _param_search(text, r'\bn\s*=\s*(\d+)')
+    m_c = _param_search(text, r'\bc\s*=\s*(\d+)')
+    if not (m_e and m_n and m_c):
+        return []
+    e, n, c = int(m_e.group(1)), int(m_n.group(1)), int(m_c.group(1))
+    # 连分数展开 e/n，收敛分数递推 (h=分子k, k=分母d)
+    a, b = e, n
+    h0, h1, k0, k1 = 0, 1, 1, 0
+    while b:
+        q = a // b
+        a, b = b, a - q * b
+        h0, h1 = h1, q * h1 + h0
+        k0, k1 = k1, q * k1 + k0
+        if h1 <= 0 or k1 <= 0:
+            continue
+        m = pow(c, k1, n)
+        f = scan_flags(m.to_bytes((m.bit_length() + 7) // 8, "big").decode("latin1"))
+        if f:
+            return f
+    return []
+
+
 SOLVERS = {
     "strings_flag": try_strings,
     "git_history": try_git_log,
@@ -164,6 +275,9 @@ SOLVERS = {
     "endian_swap": try_endian,
     "pcap_http": try_pcap_http,
     "morse_decode": try_morse,
+    "common_modulus_attack": try_common_modulus_attack,
+    "hastad_broadcast_attack": try_hastad_broadcast_attack,
+    "rsa_wiener_attack": try_rsa_wiener_attack,
 }
 
 

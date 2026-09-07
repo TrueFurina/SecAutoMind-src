@@ -43,13 +43,16 @@ func TestExecSolversAgainstBenchmark(t *testing.T) {
 	execDir := filepath.Join("..", "..", "data", "ctf_benchmark", "execution")
 
 	solverFor := map[string]func(context.Context, string, map[string]string) []string{
-		"strings_flag":     tryExecStringsFlagScan,
-		"git_history":      tryExecGitHistory,
-		"web_source_audit": tryExecWebSourceAudit,
-		"cookie_decode":    tryExecCookieDecode,
-		"endian_swap":      tryExecEndianSwap,
-		"pcap_http":        tryExecPcapHTTP,
-		"morse_decode":     tryExecMorseDecode,
+		"strings_flag":            tryExecStringsFlagScan,
+		"git_history":             tryExecGitHistory,
+		"web_source_audit":        tryExecWebSourceAudit,
+		"cookie_decode":           tryExecCookieDecode,
+		"endian_swap":             tryExecEndianSwap,
+		"pcap_http":               tryExecPcapHTTP,
+		"morse_decode":            tryExecMorseDecode,
+		"common_modulus_attack":   solveCommonModulusComplete,
+		"hastad_broadcast_attack": solveHastadBroadcastAttack,
+		"rsa_wiener_attack":       solveRSAWienerAttack,
 	}
 
 	hits := 0
