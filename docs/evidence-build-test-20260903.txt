@@ -64,3 +64,29 @@ total packages with tests: 26 ok
 # 环境说明：本机 go-install 工具链缺 C 编译器，cmd/mcp-stdio 等含 cgo 依赖的测试包无法在本机重跑
 #   (报 runtime/cgo: cgo.exe exit status 2)。原证据在 go1.25.14 + CGO_ENABLED=1 + gcc16 环境下取得，
 #   对当前代码有效；竞赛部署亦采用该 gcc16 非-PIE 配方 (见上方 Build recipe)。
+
+===== 全量重验 (2026-09-08 05:xx CST) =====
+Go: go version go1.25.0 windows/amd64 (GOTOOLCHAIN=local, CGO_ENABLED=1)
+C 编译器: /d/miniconda3_new/Library/mingw-w64/bin/gcc (conda 自带 mingw-w64，解决此前本机缺 C 编译器导致的 cgo 测试失败)
+Git revision: b64f03d (HEAD, 已推送 origin/main via refs/heads/main:refs/heads/main 规避 refs/tags/main 歧义)
+构建: go build ./... => exit 0
+
+===== go test ./... -count=1 -timeout 300s (含 CGO 包) =====
+FULL_TEST_EXIT=0
+所有含测试包全部 ok，ZERO FAIL：
+  internal/agent agentfinalizer agents app attackchain c2 config ctfplatform
+  database einomcp einoobserve handler hitl knowledge llm mcp monitor
+  multiagent openai project reasoning robot security termout tooloutput
+  vision workflow workflow/package   (cmd/* 为 [no test files])
+
+===== ctfplatform 能力机验 (注册表反注水门禁) =====
+- TestAllRegisteredSolversActuallyExecute: 注册表 151 条目 = 151 唯一名称，151/151 全部真实执行（零重名注水）
+- TestProductionPresolveInvokesRegistrySweep: 151/151
+- TestRegistrySweepDiagnosticOnRealBenchmark: 55 真题 39 道有输出，18 道 SHA-256 校验真命中 (121ms)
+静态基准: 19/55 = 34.5% (Go 生产路径 == Python judge.py 双语言一致)
+执行基准: 14/14 = 100%
+Web 基准: 10/10 = 100% (本地靶场复刻，Tier3 自动利用引擎)
+
+===== 结论 =====
+当前 HEAD (b64f03d) 全库构建 0 错、测试全绿（28 包 ok / 0 FAIL）、ctfplatform 注册表反注水门禁全过。
+能力三基准：静态 34.5% + 执行 100% + Web 100%，均为双语言机验、可复现。
