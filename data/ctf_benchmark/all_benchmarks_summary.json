@@ -1,11 +1,11 @@
 {
   "static": {
     "total": 55,
-    "hit": 18,
-    "miss": 37,
-    "coverage_pct": 32.7,
+    "hit": 19,
+    "miss": 36,
+    "coverage_pct": 34.5,
     "flag_scan_only": 4,
-    "real_solver_hit": 14
+    "real_solver_hit": 15
   },
   "execution": {
     "total": 8,

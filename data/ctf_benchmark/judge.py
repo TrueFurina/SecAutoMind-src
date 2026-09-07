@@ -146,6 +146,9 @@ def hunt(text: str, depth: int = 6) -> list:
     flags = try_caesar(text)
     if flags:
         return flags
+    flags = try_b64_alphabet_caesar(text)
+    if flags:
+        return flags
     b64_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
     for m in b64_re.finditer(text):
         pad = m.group(0) + "=" * ((4 - len(m.group(0)) % 4) % 4)
@@ -179,6 +182,33 @@ def try_caesar(text: str) -> list:
         flags = scan_flags(''.join(out))
         if flags:
             return flags
+    return []
+
+B64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+def try_b64_alphabet_caesar(text: str) -> list:
+    """Case64ar 型（SDCTF 2021 真题实证，对齐 Go tryB64AlphabetCaesar）：
+    对文本中每个 base64 令牌在 b64 字母表内做 1..63 位旋转后再解码扫 flag。
+    该变形先凯撒后解码，先 b64 解码得到的是乱码，普通 b64→caesar 链解不出。"""
+    b64_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
+    for m in b64_re.finditer(text):
+        tok = m.group(0)
+        idxs = [B64_ALPHABET.find(c) for c in tok]
+        if any(i < 0 and c != '=' for i, c in zip(idxs, tok)):
+            continue
+        for shift in range(1, 64):
+            shifted = ''.join(
+                '=' if i < 0 else B64_ALPHABET[(i + shift) % 64]
+                for i in idxs
+            )
+            pad = shifted + "=" * ((4 - len(shifted) % 4) % 4)
+            try:
+                dec = base64.b64decode(pad).decode('utf-8', errors='ignore')
+            except Exception:
+                continue
+            flags = scan_flags(dec)
+            if flags:
+                return flags
     return []
 
 def try_xor_single(text: str) -> list:
@@ -390,6 +420,11 @@ def presolve(description: str) -> tuple:
     flags = hunt(description)
     if flags:
         return 'base64_multilayer', flags[0]
+
+    # Case64ar 型（对齐 Go fanout 优先级 4）
+    flags = try_b64_alphabet_caesar(description)
+    if flags:
+        return 'b64_caesar_alphabet', flags[0]
 
     # 共享素数分解 / 大小端 / 栅栏（对齐 Go fanout 优先级 4）
     flags = try_common_factor(description)

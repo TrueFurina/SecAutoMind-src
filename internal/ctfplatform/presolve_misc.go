@@ -211,6 +211,16 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 11b. Case64ar 型（b64 字母表内凯撒旋转，SDCTF 2021 真题实证）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryB64AlphabetCaesar(text)
+		if len(flags) > 0 {
+			chResult <- result{"b64_caesar_alphabet", flags}
+		}
+	}()
+
 	// 12. 执行层求解器（需真实附件内容；等价 strings/git 历史/网页源码/Cookie/pcap/RSA 小指数）。
 	//     仅当 attachments 含真实文件内容时命中；description-only 基准集（attachments=nil）不触发，
 	//     故 30.9% 确定性覆盖不受影响。大小端翻转优先级最低（避免伪造 flag 串抢占文本求解器）。
@@ -263,6 +273,16 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 			chResult <- result{"exec_endian_swap", flags}
 		}
 	}()
+	// 12. Web 目标自动利用：题目文本里若给出靶机 URL，即对该目标实打实跑
+	//     渗透链（SQLi/SSTI/LFI/SSRF/命令注入/NoSQL/源码与 Cookie 泄漏）。
+	//     这是 Web 类真题唯一的解法路径（flag 只存在于靶机响应里）。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := ExploitURLsInText(ctx, text); len(flags) > 0 {
+			chResult <- result{"web_exploit", flags}
+		}
+	}()
 
 	// 等待所有求解器完成
 	go func() {
@@ -275,29 +295,32 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	// 只在维吉尼亚失败后才触发，答案质量高于裸 flag_scan；
 	// flag_scan 排最后（大写品牌兜底误报率最高，如凯撒中间态形似 flag）。
 	priority := map[string]int{
-		"base64_multilayer": 0,
-		"vigenere":          1,
-		"caesar":            2,
-		"morse":             3,
-		"rsa_template":      4,
-		"rsa_common_factor": 4,
-		"endian":            4,
-		"rail_fence":        4,
-		"legendre_phi":      5,
-		"modinv_factor":     6,
-		"hash_crack":        7,
-		"xor_single":        8,
-		"web_source_audit":  9,
+		// web_exploit 最高：flag 由真实靶机响应返回（真利用），可信度高于任何静态推导
+		"web_exploit":           -1,
+		"base64_multilayer":     0,
+		"vigenere":              1,
+		"caesar":                2,
+		"morse":                 3,
+		"rsa_template":          4,
+		"rsa_common_factor":     4,
+		"endian":                4,
+		"rail_fence":            4,
+		"b64_caesar_alphabet":   4,
+		"legendre_phi":          5,
+		"modinv_factor":         6,
+		"hash_crack":            7,
+		"xor_single":            8,
+		"web_source_audit":      9,
 		"exec_strings":          9,
 		"exec_git_history":      9,
 		"exec_web_source_audit": 9,
 		"exec_cookie_decode":    9,
 		"exec_pcap_http":        9,
 		"exec_rsa_small_e":      4,
-		"zip_fake_enc":      10,
-		"ssti":              11,
-		"flag_scan":         12,
-		"exec_endian_swap":  14,
+		"zip_fake_enc":          10,
+		"ssti":                  11,
+		"flag_scan":             12,
+		"exec_endian_swap":      14,
 	}
 	var best *result
 	for r := range chResult {

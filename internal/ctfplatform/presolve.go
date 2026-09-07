@@ -94,6 +94,9 @@ func huntPresolve(text string, depth int) []string {
 	if flags := tryCaesar(text); len(flags) > 0 {
 		return flags
 	}
+	if flags := tryB64AlphabetCaesar(text); len(flags) > 0 {
+		return flags
+	}
 	for _, m := range b64TokenRegex.FindAllString(text, -1) {
 		d, err := base64.StdEncoding.DecodeString(padBase64(m))
 		if err != nil {
@@ -196,6 +199,61 @@ func tryCaesar(text string) []string {
 		decoded := caesarShift(text, shift)
 		if flags := scanFlags(decoded); len(flags) > 0 {
 			return flags
+		}
+	}
+	return nil
+}
+
+// b64Alphabet 标准 base64 字母表（Case64ar 型旋转的轮转空间）。
+const b64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+// tryB64AlphabetCaesar Case64ar 型（SDCTF 2021 真题实证）：对文本中每个 base64
+// 令牌在 b64 字母表内做 1..63 位旋转后再解码扫 flag。该变形先凯撒后解码，若先
+// b64 解码得到的是乱码——普通 b64→caesar 链解不出，必须旋转字母表本身。
+func tryB64AlphabetCaesar(text string) []string {
+	for _, tok := range b64TokenRegex.FindAllString(text, -1) {
+		if len(tok) < 8 {
+			continue
+		}
+		// 预解析 token 各字符在字母表中的下标（含 +/-/ 之外字符原样保留）
+		type rc struct {
+			r   rune
+			idx int
+		}
+		var parsed []rc
+		ok := true
+		for _, c := range tok {
+			idx := strings.IndexRune(b64Alphabet, c)
+			if idx < 0 {
+				if c == '=' {
+					parsed = append(parsed, rc{c, -1}) // padding 原样
+				} else {
+					ok = false
+					break
+				}
+			} else {
+				parsed = append(parsed, rc{c, idx})
+			}
+		}
+		if !ok {
+			continue
+		}
+		for shift := 1; shift < 64; shift++ {
+			var sb strings.Builder
+			for _, p := range parsed {
+				if p.idx < 0 {
+					sb.WriteRune(p.r)
+				} else {
+					sb.WriteByte(b64Alphabet[(p.idx+shift)%64])
+				}
+			}
+			d, err := base64.StdEncoding.DecodeString(padBase64(sb.String()))
+			if err != nil {
+				continue
+			}
+			if flags := scanFlags(string(d)); len(flags) > 0 {
+				return flags
+			}
 		}
 	}
 	return nil

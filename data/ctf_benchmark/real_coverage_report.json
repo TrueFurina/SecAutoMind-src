@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 18,
-  "miss": 37,
-  "coverage_pct": 32.7,
+  "hit": 19,
+  "miss": 36,
+  "coverage_pct": 34.5,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -29,9 +29,9 @@
       "category": "crypto",
       "sub": "base64_caesar",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "sdctf{OBscUr1ty_a1nt_s3CURITy}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
