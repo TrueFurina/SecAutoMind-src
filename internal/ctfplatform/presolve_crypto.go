@@ -1093,3 +1093,52 @@ func tryCryptoProtocolAnalysis(text string, attachments map[string]string) []str
 	}
 	return nil
 }
+
+// tryCommonFactor 共享素数分解攻击：两个 RSA 模数共享素数 p（gcd(n1,n2)=p）。
+// 文本需含 n1=, n2=（或两组 n=）、e=、c= 参数。分解成功后用 n1 对应私钥解密。
+func tryCommonFactor(text string) []string {
+	nRe := regexp.MustCompile(`(?i)\bn([12]?)\s*=\s*(\d+)`)
+	cRe := regexp.MustCompile(`(?i)\bc([12]?)\s*=\s*(\d+)`)
+	eRe := regexp.MustCompile(`(?i)\be([12]?)\s*=\s*(\d+)`)
+
+	var ns, cs, es []*big.Int
+	for _, m := range nRe.FindAllStringSubmatch(text, -1) {
+		v, ok := new(big.Int).SetString(m[2], 10)
+		if ok && v.Sign() > 0 {
+			ns = append(ns, v)
+		}
+	}
+	for _, m := range cRe.FindAllStringSubmatch(text, -1) {
+		v, ok := new(big.Int).SetString(m[2], 10)
+		if ok && v.Sign() > 0 {
+			cs = append(cs, v)
+		}
+	}
+	for _, m := range eRe.FindAllStringSubmatch(text, -1) {
+		v, ok := new(big.Int).SetString(m[2], 10)
+		if ok && v.Sign() > 0 {
+			es = append(es, v)
+		}
+	}
+	if len(ns) < 2 || len(cs) < 1 || len(es) < 1 {
+		return nil
+	}
+	p := new(big.Int).GCD(nil, nil, ns[0], ns[1])
+	if p.Cmp(big.NewInt(1)) <= 0 || p.Cmp(ns[0]) >= 0 {
+		return nil
+	}
+	q := new(big.Int).Div(ns[0], p)
+	if q.Cmp(p) == 0 {
+		return nil
+	}
+	phi := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
+	d := new(big.Int).ModInverse(es[0], phi)
+	if d == nil {
+		return nil
+	}
+	m := new(big.Int).Exp(cs[0], d, ns[0])
+	if flags := scanFlags(string(m.Bytes())); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}

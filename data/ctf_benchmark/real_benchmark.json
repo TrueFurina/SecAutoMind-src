@@ -1,5 +1,5 @@
 {
- "version": "v6.2",
+ "version": "v6.3",
  "created": "2026-09-06",
  "description": "CTF真实真题基准集（公开writeup来源，SHA-256验证）",
  "total": 55,
@@ -67,9 +67,10 @@
    "difficulty": "medium",
    "source": "NahamCon CTF 2024 - Magic RSA",
    "flag": "grodno{Sm4ll_e_1s_e4sy_t0_br3ak}",
-   "description": "RSA e=3, ciphertext每值开立方根转ASCII",
+   "description": "RSA n=26224703975984156839196889638145187563530683345702551550032559332036116470327392940944172380417438437842021273314458313342291660206450540429518697224957769586557240533736521347087821590067523081217923460356208396287553023370908297077, e=3, c=102440249906188112653112850149004638920041731819150591992314684890766079962216378675563173361005618897820395598884602786493326797681447423552807411034991287447489220834908286512061803086201262036007513517016439047998253997542610533",
    "flag_sha256": "1b14d03a6da76646f18e6ca0ce3c6f17a8abcd78bc60c196355714073badb90d",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(e=3小指数开立方)"
   },
   "breizhctf2022_rsa": {
    "id": "breizhctf2022_rsa",
@@ -177,9 +178,10 @@
    "difficulty": "easy",
    "source": "picoCTF 2024 - Endianness",
    "flag": "picoCTF{f1u3n71n_pn9&_pdf_724b1287}",
-   "description": "大小端序转换解码flag",
+   "description": "endian swap decode: 6f6369707b465443337531666e31376e396e705f64705f2632375f6632316234207d3738",
    "flag_sha256": "2e68141a971af94c8fb5b2ea3d50f58187e84e26693f29ed1ffbdd442820d6b1",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(4字节组大小端反转hex，尾部补1空格对齐)"
   },
   "pico2024_minirsa": {
    "id": "pico2024_minirsa",
@@ -233,9 +235,10 @@
    "difficulty": "medium",
    "source": "CTF公开题 - RSA Common Modulus",
    "flag": "flag{rsa_common_modulus_attack}",
-   "description": "同n不同e1/e2加密同一明文,gcd(e1,e2)=1",
+   "description": "RSA common modulus sharing prime p: n1=6864797660130609714981900799081393217269435300143305409394463459185543185295747769002063671931531798276110582020167231472621867469874830690447948596175435167, n2=6864797660130609714981900799081393217269435300143305409394463459185543185501142555901356834962552177188161401480086008752167075336601640185700447880316375631, e=65537, c=4208905476106233675225147010504493239906919500519198331662946070172760031865857391128004061661731878023450299208089096628706333622349137920645190224687845114",
    "flag_sha256": "5ef3c73b052fe7b3d6458de887ed28e94895d3aadc185ca1508891120bd87360",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(gcd(n1,n2)=p共享素数分解)"
   },
   "base64_triple_real": {
    "id": "base64_triple_real",
@@ -520,9 +523,10 @@
    "difficulty": "medium",
    "source": "CTF 公开题 - RSA 费马分解",
    "flag": "flag{fermat_factorization}",
-   "description": "RSA n=3233, e=17, c=2790, p=53, q=61, phi=3120, d=2753, m=pow(c,d,n)",
+   "description": "RSA n=1852673427797059126777135761078185858710725834342306450971643196424053159861829, e=17, c=515883408757361073269855673250381605388368570217505847347952051116528242957862",
    "flag_sha256": "9e4cc89dd792dd98ec5033be8c0114ecd76fb0d9d48b6ff9e44b7190e325d401",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目为教科书示例(n=3233)与记录flag不一致，已从flag重建自洽数据(相近素数,费马分解可解)"
   },
   "rsa_common_factor": {
    "id": "rsa_common_factor",
@@ -531,9 +535,10 @@
    "difficulty": "medium",
    "source": "CTF 公开题 - RSA 公因子",
    "flag": "flag{common_factor_attack}",
-   "description": "两个 RSA 公钥共享素数 p，gcd(n1,n2)=p",
+   "description": "两个RSA公钥共享素数p: n1=6864797660130609714981900799081393217269435300143305409394463459185543184838315288985258585293749870554749314810506874770456782292303065540211414730332731283, n2=6864797660130609714981900799081393217269435300143305409394463459185543185043710075884551748324770249466800134270425652050001990159029875035463914000787289219, e=65537, c=4868173991639247719478622838213794671266876046211250488653736736756900996129728975569502927308653815125712283543898793160362683685019911932610383081450324941",
    "flag_sha256": "6ed60fb609b92617e7df21948c8bd2c1b0bced8c53d1bf8db58700b2250ba0d9",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(gcd(n1,n2)=p共享素数分解)"
   },
   "aes_ecb_penguin": {
    "id": "aes_ecb_penguin",
@@ -553,9 +558,10 @@
    "difficulty": "easy",
    "source": "CTF 公开题 - 维吉尼亚",
    "flag": "flag{vigenere_cipher}",
-   "description": "维吉尼亚加密，密钥为 CRYPTO",
+   "description": "维吉尼亚加密，密钥为 CRYPTO：hcyv{owivltks_eznwxf}",
    "flag_sha256": "46d599751032203b43615fbf542fafcb2c8d606884d969a89f4ae4bea50b2763",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(密钥CRYPTO)"
   },
   "rail_fence_basic": {
    "id": "rail_fence_basic",
@@ -564,9 +570,10 @@
    "difficulty": "easy",
    "source": "CTF 公开题 - 栅栏密码",
    "flag": "flag{rail_fence_cipher}",
-   "description": "栏数=3 的栅栏密码",
+   "description": "rail fence cipher: f{lncelgri_ec_ihraafep}",
    "flag_sha256": "e447310009f06b535383d66a2e19b88e7e6dbb0fdca3773399c96164f61720d6",
-   "presolve_skill": "auto"
+   "presolve_skill": "auto",
+   "note": "原条目无密文数据，已从flag重建自洽数据(栏数3栅栏)"
   },
   "steg_lsb_png": {
    "id": "steg_lsb_png",

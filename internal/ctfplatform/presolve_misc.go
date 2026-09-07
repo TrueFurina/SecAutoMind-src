@@ -166,6 +166,36 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 9. RSA 共享素数分解（gcd(n1,n2)=p 型）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryCommonFactor(text)
+		if len(flags) > 0 {
+			chResult <- result{"rsa_common_factor", flags}
+		}
+	}()
+
+	// 10. 大小端序转换（hex 组内字节反转）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryEndian(text)
+		if len(flags) > 0 {
+			chResult <- result{"endian", flags}
+		}
+	}()
+
+	// 11. 栅栏密码（栏数 2-8 暴力，整串+逐 token）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryRailFence(text)
+		if len(flags) > 0 {
+			chResult <- result{"rail_fence", flags}
+		}
+	}()
+
 	// 等待所有求解器完成
 	go func() {
 		wg.Wait()
@@ -182,6 +212,9 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"caesar":            2,
 		"morse":             3,
 		"rsa_template":      4,
+		"rsa_common_factor": 4,
+		"endian":            4,
+		"rail_fence":        4,
 		"legendre_phi":      5,
 		"modinv_factor":     6,
 		"hash_crack":        7,

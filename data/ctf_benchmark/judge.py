@@ -16,7 +16,7 @@ def sha256(s: str) -> str:
 
 def scan_flags(text: str) -> list:
     """正则扫描 flag 候选（完整保留品牌前缀 + 纯大写品牌兜底，对齐 Go scanFlags）。"""
-    p_main = re.compile(r'(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}')
+    p_main = re.compile(r'(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key|grodno|nicc|ehax|bzhctf)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}')
     p_upper = re.compile(r'\b[A-Z][A-Z0-9]{2,15}\{([^}]{4,})\}')
     seen, out = set(), []
     for m in list(p_main.finditer(text)) + list(p_upper.finditer(text)):
@@ -27,7 +27,7 @@ def scan_flags(text: str) -> list:
 
 def try_vigenere_known_key(text: str) -> list:
     """已知密钥维吉尼亚（对齐 Go tryVigenereKnownKey）：提取密钥，对 flag 形态令牌解密。"""
-    keys = re.findall(r'(?i)(?:密钥|密码|key)\s*[:：=]?\s*([a-zA-Z]{2,16})', text)
+    keys = re.findall(r'(?i)(?:密钥|密码|key)\s*[为是]?\s*[:：=]?\s*([a-zA-Z]{2,16})', text)
     keys = list(dict.fromkeys(k.lower() for k in keys))
     if not keys:
         return []
@@ -43,6 +43,91 @@ def try_vigenere_known_key(text: str) -> list:
                 else:
                     dec.append(c)
             flags = scan_flags(''.join(dec))
+            if flags:
+                return flags
+    return []
+
+def try_common_factor(text: str) -> list:
+    """共享素数分解（对齐 Go tryCommonFactor）：gcd(n1,n2)=p → 解密。"""
+    ns = [int(m) for m in re.findall(r'(?i)\bn[12]?\s*=\s*(\d+)', text)]
+    cs = [int(m) for m in re.findall(r'(?i)\bc[12]?\s*=\s*(\d+)', text)]
+    es = [int(m) for m in re.findall(r'(?i)\be[12]?\s*=\s*(\d+)', text)]
+    if len(ns) < 2 or not cs or not es:
+        return []
+    import math
+    p = math.gcd(ns[0], ns[1])
+    if p <= 1 or p >= ns[0]:
+        return []
+    q = ns[0] // p
+    if q == p:
+        return []
+    phi = (p-1)*(q-1)
+    if math.gcd(es[0], phi) != 1:
+        return []
+    d = pow(es[0], -1, phi)
+    m = pow(cs[0], d, ns[0])
+    raw = m.to_bytes((m.bit_length()+7)//8, 'big')
+    return scan_flags(raw.decode('utf-8', errors='ignore'))
+
+def try_endian(text: str) -> list:
+    """大小端序转换（对齐 Go tryEndian）：hex 组内字节反转后扫 flag。"""
+    for m in re.findall(r'\b[0-9a-fA-F]{8,}\b', text):
+        if len(m) % 2:
+            continue
+        try:
+            raw = bytes.fromhex(m)
+        except ValueError:
+            continue
+        for size in (2, 4, 8):
+            if len(raw) % size:
+                continue
+            swapped = b''.join(raw[i:i+size][::-1] for i in range(0, len(raw), size))
+            flags = scan_flags(swapped.decode('utf-8', errors='ignore'))
+            if flags:
+                return flags
+    return []
+
+def try_rail_fence(text: str) -> list:
+    """栅栏密码（对齐 Go tryRailFence）：2-8 栏暴力，整串+逐 token。"""
+    def rail_dec(cipher, rails):
+        n = len(cipher)
+        if rails <= 1 or rails >= n:
+            return cipher
+        pattern = []
+        cycle = 2*(rails-1)
+        for i in range(n):
+            pos = i % cycle
+            pattern.append(pos if pos < rails else cycle-pos)
+        rows = ['' for _ in range(rails)]
+        idx = 0
+        counts = [pattern.count(r) for r in range(rails)]
+        parts = {}
+        for r in range(rails):
+            parts[r] = cipher[idx:idx+counts[r]]
+            idx += counts[r]
+        out = []
+        pos_in_row = [0]*rails
+        for r in pattern:
+            out.append(parts[r][pos_in_row[r]])
+            pos_in_row[r] += 1
+        return ''.join(out)
+
+    def printable(t):
+        return all(0x21 <= ord(c) <= 0x7e or c in ' \t\n\r' for c in t)
+
+    clean = text.strip()
+    if len(clean) < 6 or len(clean) > 500 or not printable(clean):
+        return []
+    stripped = clean.replace(' ', '')
+    for rails in range(2, 9):
+        flags = scan_flags(rail_dec(stripped, rails))
+        if flags:
+            return flags
+    for tok in clean.split():
+        if len(tok) < 6 or len(tok) > 500 or not printable(tok):
+            continue
+        for rails in range(2, 9):
+            flags = scan_flags(rail_dec(tok, rails))
             if flags:
                 return flags
     return []
@@ -114,6 +199,46 @@ def try_xor_single(text: str) -> list:
             if flags:
                 return flags
     return []
+
+def try_rsa_small_e(text: str) -> list:
+    """RSA 小指数攻击：从题目文本解析 c（密文）与 e（默认 3），
+    计算精确 e 次根还原明文，对齐 Go tryRSASmallE / solveRSATemplate。
+    仅当描述出现 RSA/small_e/ciphertext 且能解析出大整数 c 时尝试，避免误触发。"""
+    if not re.search(r'rsa|small.?e|ciphertext|共模|模', text, re.I):
+        return []
+    cm = re.search(r'c\s*[=:：]\s*(\d{8,})', text)
+    if not cm:
+        return []
+    c = int(cm.group(1))
+    em = re.search(r'e\s*[=:：]\s*(\d{1,3})', text)
+    e = int(em.group(1)) if em else 3
+
+    def iroot(x, n):
+        if x < 0:
+            return None
+        lo, hi = 0, x
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if mid ** n < x:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo if lo ** n == x else None
+
+    for ee in (e, 3, 5, 7):
+        m = iroot(c, ee)
+        if m is None:
+            continue
+        for end in ('big', 'little'):
+            try:
+                b = m.to_bytes((m.bit_length() + 7) // 8, end)
+            except Exception:
+                continue
+            flags = scan_flags(b.decode('latin1', 'ignore'))
+            if flags:
+                return flags
+    return []
+
 
 def try_morse(text: str) -> list:
     """Morse 解码。"""
@@ -220,6 +345,17 @@ def presolve(description: str) -> tuple:
     if flags:
         return 'base64_multilayer', flags[0]
 
+    # 共享素数分解 / 大小端 / 栅栏（对齐 Go fanout 优先级 4）
+    flags = try_common_factor(description)
+    if flags:
+        return 'rsa_common_factor', flags[0]
+    flags = try_endian(description)
+    if flags:
+        return 'endian', flags[0]
+    flags = try_rail_fence(description)
+    if flags:
+        return 'rail_fence', flags[0]
+
     # 尝试 hex 解码后扫 flag
     hex_re = re.compile(r'[0-9a-fA-F]{16,}')
     for m in hex_re.finditer(description):
@@ -238,6 +374,11 @@ def presolve(description: str) -> tuple:
         for f in flags:
             if scan_flags(f):
                 return name, f
+
+    # RSA 小指数攻击（末尾兜底，breizhctf2022_rsa 等带 c 的题目）
+    rsa_flags = try_rsa_small_e(description)
+    if rsa_flags:
+        return 'rsa_small_e', rsa_flags[0]
     return None, None
 
 # ── 主流程 ─────────────────────────────────────────

@@ -342,3 +342,33 @@ func tryBase62(text string) []string {
 	}
 	return []string{"Base62 检测: 纯字母数字编码（" + fmt.Sprintf("%d", len(clean)) + " 字符）"}
 }
+
+// tryEndian 大小端序转换：对文本中的 hex 串按 2/4/8 字节组做组内字节反转，
+// 解码后扫 flag（典型题：小端 hex dump 的 flag 需按字反转）。
+func tryEndian(text string) []string {
+	hexRe := regexp.MustCompile(`\b[0-9a-fA-F]{8,}\b`)
+	for _, m := range hexRe.FindAllString(text, -1) {
+		if len(m)%2 != 0 {
+			continue
+		}
+		raw, err := hex.DecodeString(m)
+		if err != nil {
+			continue
+		}
+		for _, size := range []int{2, 4, 8} {
+			if len(raw)%size != 0 {
+				continue
+			}
+			swapped := make([]byte, len(raw))
+			for i := 0; i < len(raw); i += size {
+				for j := 0; j < size; j++ {
+					swapped[i+j] = raw[i+size-1-j]
+				}
+			}
+			if flags := scanFlags(string(swapped)); len(flags) > 0 {
+				return flags
+			}
+		}
+	}
+	return nil
+}

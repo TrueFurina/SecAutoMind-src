@@ -129,9 +129,10 @@ func tryRailFence(text string) []string {
 	if len(clean) < 6 || len(clean) > 500 {
 		return nil
 	}
-	// 仅对字母文本尝试
-	alphaRe := regexp.MustCompile(`^[a-zA-Z\s]+$`)
-	if !alphaRe.MatchString(clean) {
+	// 对可打印 ASCII 文本尝试（flag 形态明文栅栏编码后密文含 { } 等符号，
+	// 旧版仅认纯字母导致永远解不出——放宽为可打印字符，误报由下游 scanFlags 把关）。
+	printableRe := regexp.MustCompile(`^[\x21-\x7e\s]+$`)
+	if !printableRe.MatchString(clean) {
 		return nil
 	}
 	clean = strings.ReplaceAll(clean, " ", "")
@@ -139,6 +140,19 @@ func tryRailFence(text string) []string {
 		decoded := railFenceDecode(clean, rails)
 		if flags := scanFlags(decoded); len(flags) > 0 {
 			return flags
+		}
+	}
+	// 整串未命中时逐 token 尝试（真实描述常含散文前缀，如 "rail fence cipher: XXXX"；
+	// 注意用去空格前的原文分词）
+	for _, tok := range strings.Fields(strings.TrimSpace(text)) {
+		if len(tok) < 6 || len(tok) > 500 || !printableRe.MatchString(tok) {
+			continue
+		}
+		for rails := 2; rails <= 8; rails++ {
+			decoded := railFenceDecode(tok, rails)
+			if flags := scanFlags(decoded); len(flags) > 0 {
+				return flags
+			}
 		}
 	}
 	return nil

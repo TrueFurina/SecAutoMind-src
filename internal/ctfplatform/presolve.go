@@ -48,7 +48,7 @@ func NewPresolver(logger *zap.Logger) *Presolver {
 // 模式2（纯大写品牌）由下方 flagRegexUppercase 独立承担：
 // 若并入本 (?i) 正则，(?i) 会污染大写分支（任意大小写 2-8 字母前缀都命中，
 // 凯撒中间态 wpjvJAM{...} 即被误当候选），必须分开编译。
-var flagRegexPresolve = regexp.MustCompile(`(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}`)
+var flagRegexPresolve = regexp.MustCompile(`(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|key|grodno|nicc|ehax|bzhctf)[a-zA-Z0-9_]*\s*[=:：]?\s*\{([^}]{4,})\}`)
 
 // flagRegexUppercase 兜底匹配纯大写品牌前缀（如 CBCV{...}——不含任何核心
 // 关键词子串，主正则扫不到）。误报由下游 sha256 校验/人工把关。
@@ -107,7 +107,7 @@ func huntPresolve(text string, depth int) []string {
 }
 
 // vigenereKeyRegex 提取描述中显式给出的维吉尼亚密钥（密钥kagi / key: kagi / 密码=xxx）。
-var vigenereKeyRegex = regexp.MustCompile(`(?i)(?:密钥|密码|key)\s*[:：=]?\s*([a-zA-Z]{2,16})`)
+var vigenereKeyRegex = regexp.MustCompile(`(?i)(?:密钥|密码|key)\s*[为是]?\s*[:：=]?\s*([a-zA-Z]{2,16})`)
 
 // flagTokenRegex 提取 flag 形态令牌（含大写品牌前缀），供维吉尼亚逐 token 解密。
 var flagTokenRegex = regexp.MustCompile(`[A-Za-z0-9_]+\{[^}]{4,}\}`)

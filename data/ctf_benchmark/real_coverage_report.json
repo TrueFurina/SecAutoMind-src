@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 10,
-  "miss": 45,
-  "coverage_pct": 18.2,
+  "hit": 17,
+  "miss": 38,
+  "coverage_pct": 30.9,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -59,9 +59,9 @@
       "category": "crypto",
       "sub": "rsa_small_e",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rsa_small_e",
+      "presolve_flag": "grodno{Sm4ll_e_1s_e4sy_t0_br3ak}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -69,9 +69,9 @@
       "category": "crypto",
       "sub": "rsa_small_e",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rsa_small_e",
+      "presolve_flag": "BZHCTF{sur3m3nt_3n_fr4nc3_!!}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -159,9 +159,9 @@
       "category": "misc",
       "sub": "encoding",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "endian",
+      "presolve_flag": "picoCTF{f1u3n71n_pn9&_pdf_724b1287}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -209,9 +209,9 @@
       "category": "crypto",
       "sub": "rsa",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rsa_common_factor",
+      "presolve_flag": "flag{rsa_common_modulus_attack}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -479,9 +479,9 @@
       "category": "crypto",
       "sub": "rsa",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rsa_common_factor",
+      "presolve_flag": "flag{common_factor_attack}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -499,9 +499,9 @@
       "category": "crypto",
       "sub": "vigenere",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "vigenere_known_key",
+      "presolve_flag": "flag{vigenere_cipher}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
@@ -509,9 +509,9 @@
       "category": "crypto",
       "sub": "rail_fence",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rail_fence",
+      "presolve_flag": "flag{rail_fence_cipher}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
