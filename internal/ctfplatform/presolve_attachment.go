@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"go.uber.org/zap"
@@ -114,13 +115,21 @@ func resolveUnderRoot(raw, rootAbs string) string {
 		}
 		abs = a
 	}
-	abs, err := filepath.EvalSymlinks(abs)
-	if err != nil {
-		// 文件可能刚写入尚未可解析；退回 Clean 结果并继续做前缀校验
-		abs = filepath.Clean(abs)
+	// symlink 解析失败（Windows 非常规路径/虚拟路径等）不致命：保留 Clean 结果
+	// 继续做前缀校验。⚠️ 不能写 `abs, err := EvalSymlinks(abs)`——失败时返回的
+	// 空串会覆盖 abs，导致 Clean("")=="." 被前缀校验拒绝、附件全部丢失。
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil && resolved != "" {
+		abs = resolved
 	}
 	rootClean := filepath.Clean(rootAbs)
-	if abs != rootClean && !strings.HasPrefix(abs, rootClean+string(os.PathSeparator)) && !strings.HasPrefix(abs, rootClean+"/") {
+	// Windows 文件系统大小写不敏感（Getwd 与实际存储盘符/目录大小写可能不一致，
+	// 如 e: vs E:），前缀校验必须大小写折叠；Linux/macOS 保持精确比较。
+	caseFold := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+	absCmp, rootCmp := abs, rootClean
+	if caseFold {
+		absCmp, rootCmp = strings.ToLower(abs), strings.ToLower(rootClean)
+	}
+	if absCmp != rootCmp && !strings.HasPrefix(absCmp, rootCmp+string(os.PathSeparator)) && !strings.HasPrefix(absCmp, rootCmp+"/") {
 		return ""
 	}
 	// 额外确认不是目录（EvalSymlinks 失败时 Stat 已在调用方做）
