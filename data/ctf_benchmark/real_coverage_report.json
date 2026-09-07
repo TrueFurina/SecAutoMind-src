@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 17,
-  "miss": 38,
-  "coverage_pct": 30.9,
+  "hit": 18,
+  "miss": 37,
+  "coverage_pct": 32.7,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -469,9 +469,9 @@
       "category": "crypto",
       "sub": "rsa",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "rsa_fermat",
+      "presolve_flag": "flag{fermat_factorization}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {

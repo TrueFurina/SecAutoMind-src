@@ -3,7 +3,7 @@
 CTF Benchmark Judge：对回归集跑 presolve 覆盖率分析。
 读 data/ctf_benchmark/benchmark.json → 对每道题跑确定性求解器 → sha256 验证 → 输出覆盖率报告。
 """
-import json, hashlib, re, base64, sys, os
+import json, hashlib, re, base64, sys, os, math
 
 # 支持环境变量覆盖（真题集用法：BENCH=data/ctf_benchmark/real_benchmark.json REPORT=data/ctf_benchmark/real_coverage_report.json python judge.py）
 BENCH = os.environ.get("BENCH", "data/ctf_benchmark/benchmark.json")
@@ -240,6 +240,52 @@ def try_rsa_small_e(text: str) -> list:
     return []
 
 
+def try_rsa_fermat(text: str) -> list:
+    """RSA 费马分解攻击：对齐 Go tryFermatFactor。
+    当 n 为相近素数乘积时，a=ceil(sqrt(n)) 起迭代 a^2-n 为完全平方数即分解成功，
+    再 RSA 解密 c^d mod n 扫 flag。用于 rsa_fermat_small 等题。"""
+    nm = re.search(r'n\s*[=:：]\s*(\d{8,})', text)
+    em = re.search(r'e\s*[=:：]\s*(\d{1,3})', text)
+    cm = re.search(r'c\s*[=:：]\s*(\d{8,})', text)
+    if not (nm and em and cm):
+        return []
+    n, e, c = int(nm.group(1)), int(em.group(1)), int(cm.group(1))
+    if n < 4 or e < 2 or c < 2:
+        return []
+
+    def isqrt(x):
+        return math.isqrt(x)
+
+    def egcd(a, b):
+        if b == 0:
+            return a, 1, 0
+        g, x1, y1 = egcd(b, a % b)
+        return g, y1, x1 - (a // b) * y1
+
+    a = isqrt(n)
+    if a * a < n:
+        a += 1
+    limit = a + 100000
+    while a <= limit:
+        a2 = a * a
+        b2 = a2 - n
+        if b2 >= 0:
+            b = isqrt(b2)
+            if b * b == b2:
+                p, q = a - b, a + b
+                if p > 0 and q > 0 and p * q == n:
+                    phi = (p - 1) * (q - 1)
+                    g, d, _ = egcd(e, phi)
+                    if g == 1 and d < 0:
+                        d += phi
+                    if g == 1 and d > 0:
+                        m = pow(c, d, n)
+                        mb = m.to_bytes((m.bit_length() + 7) // 8, 'big')
+                        return scan_flags(mb.decode('latin1', 'ignore'))
+        a += 1
+    return []
+
+
 def try_morse(text: str) -> list:
     """Morse 解码。"""
     table = {
@@ -375,6 +421,10 @@ def presolve(description: str) -> tuple:
             if scan_flags(f):
                 return name, f
 
+    # RSA 费马分解（对齐 Go tryFermatFactor，先于小指数兜底）
+    fermat_flags = try_rsa_fermat(description)
+    if fermat_flags:
+        return 'rsa_fermat', fermat_flags[0]
     # RSA 小指数攻击（末尾兜底，breizhctf2022_rsa 等带 c 的题目）
     rsa_flags = try_rsa_small_e(description)
     if rsa_flags:

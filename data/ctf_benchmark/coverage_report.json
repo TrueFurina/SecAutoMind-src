@@ -1,558 +1,728 @@
 {
-  "total": 55,
-  "hit": 17,
-  "miss": 38,
-  "coverage_pct": 30.9,
+  "total": 72,
+  "hit": 70,
+  "miss": 2,
+  "coverage_pct": 97.2,
   "results": [
     {
-      "id": "pico2024_interencdec",
-      "category": "crypto",
-      "sub": "base64_caesar",
-      "difficulty": "easy",
-      "presolve_engine": "base64_multilayer",
-      "presolve_flag": "picoCTF{caesar_d3cr9pt3d_f0212758}",
-      "sha256_match": true,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_canyousee",
-      "category": "misc",
-      "sub": "steganography",
-      "difficulty": "easy",
-      "presolve_engine": "base64_multilayer",
-      "presolve_flag": "picoCTF{ME74D47A_HIDD3N_a6df8db8}",
-      "sha256_match": true,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "sdctf2021_case64ar",
-      "category": "crypto",
-      "sub": "base64_caesar",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "cyberconverge2025_layers",
+      "id": "b64_single",
       "category": "crypto",
       "sub": "base64",
       "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "CBCV{cRy9T0_L4y3r5_4RE_FuN_3135}",
+      "presolve_flag": "flag{base64_single_layer}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "base64_multilayer"
     },
     {
-      "id": "wolvctf2024_xor",
+      "id": "b64_multi",
       "category": "crypto",
-      "sub": "xor",
+      "sub": "base64",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "nahamcon2024_rsa",
-      "category": "crypto",
-      "sub": "rsa_small_e",
-      "difficulty": "medium",
-      "presolve_engine": "rsa_small_e",
-      "presolve_flag": "grodno{Sm4ll_e_1s_e4sy_t0_br3ak}",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{base64_multilayer_three}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "base64_multilayer"
     },
     {
-      "id": "breizhctf2022_rsa",
+      "id": "caesar_3",
       "category": "crypto",
-      "sub": "rsa_small_e",
+      "sub": "caesar",
       "difficulty": "easy",
-      "presolve_engine": "rsa_small_e",
-      "presolve_flag": "BZHCTF{sur3m3nt_3n_fr4nc3_!!}",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_three}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "caesar"
     },
     {
-      "id": "crewctf2024_rsa_gcd",
+      "id": "caesar_13",
       "category": "crypto",
-      "sub": "rsa_common_factor",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_stringsit",
-      "category": "misc",
-      "sub": "strings",
+      "sub": "caesar",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_commitment",
-      "category": "misc",
-      "sub": "git",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_cookie",
-      "category": "web",
-      "sub": "cookie",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_irishname",
-      "category": "web",
-      "sub": "sqli",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_findme",
-      "category": "web",
-      "sub": "source_audit",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_ssh",
-      "category": "misc",
-      "sub": "ssh",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_gitcred",
-      "category": "misc",
-      "sub": "git",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_endian",
-      "category": "misc",
-      "sub": "encoding",
-      "difficulty": "easy",
-      "presolve_engine": "endian",
-      "presolve_flag": "picoCTF{f1u3n71n_pn9&_pdf_724b1287}",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{rot_thirteen_flag}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "caesar"
     },
     {
-      "id": "pico2024_minirsa",
+      "id": "caesar_7",
       "category": "crypto",
-      "sub": "rsa_small_e",
+      "sub": "caesar",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "ehaxctf2025_morse",
-      "category": "crypto",
-      "sub": "vigenere_known_key",
-      "difficulty": "medium",
-      "presolve_engine": "vigenere_known_key",
-      "presolve_flag": "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_seven}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "caesar"
     },
     {
-      "id": "public_morse_image",
+      "id": "morse_hello",
       "category": "misc",
       "sub": "morse",
       "difficulty": "easy",
       "presolve_engine": null,
       "presolve_flag": null,
       "sha256_match": false,
-      "expected_skill": "auto"
+      "expected_skill": "morse"
     },
     {
-      "id": "crc_forgery_real",
+      "id": "xor_single",
       "category": "crypto",
-      "sub": "crc",
-      "difficulty": "hard",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_single_byte}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
     },
     {
-      "id": "rsa_common_real",
+      "id": "hash_md5",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{md5_hash_crack}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "fermat_rsa",
       "category": "crypto",
       "sub": "rsa",
       "difficulty": "medium",
-      "presolve_engine": "rsa_common_factor",
-      "presolve_flag": "flag{rsa_common_modulus_attack}",
-      "sha256_match": true,
-      "expected_skill": "auto"
+      "presolve_engine": null,
+      "presolve_flag": null,
+      "sha256_match": false,
+      "expected_skill": "rsa_fermat"
     },
     {
-      "id": "base64_triple_real",
+      "id": "log_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{log_forensics_exfil}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "b64_double",
       "category": "crypto",
       "sub": "base64",
       "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{triple_base64_decoded}",
+      "presolve_flag": "flag{double_base64_layer}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "base64_multilayer"
     },
     {
-      "id": "caesar_shift19_real",
+      "id": "caesar_5",
       "category": "crypto",
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "picoCTF{caesar_d3cr9pt3d_f0212758}",
+      "presolve_flag": "flag{caesar_five_shift}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "caesar"
     },
     {
-      "id": "xss_cookie_steal",
-      "category": "web",
-      "sub": "xss",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "id": "caesar_19",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{nineteen_shift}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
     },
     {
-      "id": "xxe_file_read",
-      "category": "web",
-      "sub": "xxe",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "id": "xor_55",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_55}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
     },
     {
-      "id": "ssti_tpl_inject",
-      "category": "web",
-      "sub": "ssti",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "id": "xor_ff",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_ff_invert}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
     },
     {
-      "id": "flag_in_html",
+      "id": "net_forensics",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "easy",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{network_packet_found}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "html_comment",
       "category": "web",
       "sub": "source_audit",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{html_comment_flag}",
+      "presolve_flag": "flag{html_comment_exfil}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "flag_in_json_api",
+      "id": "json_leak",
       "category": "web",
-      "sub": "api",
+      "sub": "api_security",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{json_api_secret}",
+      "presolve_flag": "flag{json_api_leak}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "flag_in_cookie_set",
+      "id": "hash_md5_ctf",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{ctf_challenge}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "cookie_leak",
       "category": "web",
-      "sub": "cookie",
+      "sub": "web_security",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{cookie_secret_exfil}",
+      "presolve_flag": "flag{cookie_session_hijack}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "flag_in_log_data",
-      "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{log_exfil_data}",
-      "sha256_match": true,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "flag_in_pcap",
-      "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2024_webdecode",
-      "category": "web",
+      "id": "b64_4layer",
+      "category": "crypto",
       "sub": "base64",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "difficulty": "medium",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{base64_4layers}",
+      "sha256_match": true,
+      "expected_skill": "base64_multilayer"
     },
     {
-      "id": "pico2024_not_my_fault",
-      "category": "web",
-      "sub": "source_audit",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "id": "b64_5layer",
+      "category": "crypto",
+      "sub": "base64",
+      "difficulty": "medium",
+      "presolve_engine": "base64_multilayer",
+      "presolve_flag": "flag{base64_5layers}",
+      "sha256_match": true,
+      "expected_skill": "base64_multilayer"
     },
     {
-      "id": "pico2024_trickster",
-      "category": "web",
-      "sub": "upload",
+      "id": "caesar_1",
+      "category": "crypto",
+      "sub": "caesar",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_1}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
     },
     {
-      "id": "pico2024_no_sql_injection",
-      "category": "web",
-      "sub": "nosql",
+      "id": "caesar_2",
+      "category": "crypto",
+      "sub": "caesar",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_2}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
     },
     {
-      "id": "pico2024_matchfix",
+      "id": "caesar_4",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_4}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_6",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_6}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_8",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_8}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_9",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_9}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_10",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_10}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_11",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_11}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_12",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_12}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_14",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_14}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_15",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_15}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_16",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_16}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_17",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_17}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_18",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_18}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_20",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_20}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_21",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_21}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_22",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_22}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_23",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_23}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_24",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_24}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "caesar_25",
+      "category": "crypto",
+      "sub": "caesar",
+      "difficulty": "easy",
+      "presolve_engine": "caesar",
+      "presolve_flag": "flag{caesar_shift_25}",
+      "sha256_match": true,
+      "expected_skill": "caesar"
+    },
+    {
+      "id": "xor_01",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_01}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_10",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_10}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_33",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_33}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_77",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_77}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_aa",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_aa}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "xor_cc",
+      "category": "crypto",
+      "sub": "xor",
+      "difficulty": "easy",
+      "presolve_engine": "xor_single",
+      "presolve_flag": "flag{xor_key_cc}",
+      "sha256_match": true,
+      "expected_skill": "xor_single"
+    },
+    {
+      "id": "hash_letmein",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{letmein}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_dragon",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{dragon}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_master",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{master}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_monkey",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{monkey}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_shadow",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{shadow}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_superman",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{superman}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_batman",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{batman}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_football",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{football}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_welcome",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{welcome}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_abc123",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{abc123}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_qwerty",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{qwerty}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_654321",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{654321}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_password1",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{password1}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "hash_iloveyou",
+      "category": "crypto",
+      "sub": "hash",
+      "difficulty": "easy",
+      "presolve_engine": "hash_crack",
+      "presolve_flag": "flag{iloveyou}",
+      "sha256_match": true,
+      "expected_skill": "hash_crack"
+    },
+    {
+      "id": "web_sqli",
       "category": "web",
       "sub": "sqli",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{sqli_union_select}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "pico2024_intro_to_web",
-      "category": "web",
-      "sub": "source_audit",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2025_cookie_monster",
-      "category": "web",
-      "sub": "cookie",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2025_echo_valley",
-      "category": "web",
-      "sub": "ssti",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "pico2025_handoff",
-      "category": "web",
-      "sub": "api",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "buuctf_sqli_basic",
-      "category": "web",
-      "sub": "sqli",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "buuctf_xss_basic",
+      "id": "web_xss",
       "category": "web",
       "sub": "xss",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{reflected_xss}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "buuctf_lfi_basic",
+      "id": "web_lfi",
       "category": "web",
       "sub": "lfi",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{path_traversal}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "buuctf_rce_basic",
+      "id": "web_rce",
       "category": "web",
       "sub": "rce",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{command_injection}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "buuctf_upload_basic",
+      "id": "web_idor",
       "category": "web",
-      "sub": "upload",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "sub": "idor",
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{idor_access}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "buuctf_ssrf_basic",
+      "id": "web_csrf",
+      "category": "web",
+      "sub": "csrf",
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{csrf_attack}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "web_ssrf",
       "category": "web",
       "sub": "ssrf",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "rsa_fermat_small",
-      "category": "crypto",
-      "sub": "rsa",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "rsa_common_factor",
-      "category": "crypto",
-      "sub": "rsa",
-      "difficulty": "medium",
-      "presolve_engine": "rsa_common_factor",
-      "presolve_flag": "flag{common_factor_attack}",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{ssrf_metadata}",
       "sha256_match": true,
-      "expected_skill": "auto"
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "aes_ecb_penguin",
-      "category": "crypto",
-      "sub": "aes",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "vigenere_known_key",
-      "category": "crypto",
-      "sub": "vigenere",
-      "difficulty": "easy",
-      "presolve_engine": "vigenere_known_key",
-      "presolve_flag": "flag{vigenere_cipher}",
-      "sha256_match": true,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "rail_fence_basic",
-      "category": "crypto",
-      "sub": "rail_fence",
-      "difficulty": "easy",
-      "presolve_engine": "rail_fence",
-      "presolve_flag": "flag{rail_fence_cipher}",
-      "sha256_match": true,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "steg_lsb_png",
-      "category": "misc",
-      "sub": "steganography",
-      "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "forensics_mem_volatility",
+      "id": "forensic_1",
       "category": "misc",
       "sub": "forensics",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{memory_forensics}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     },
     {
-      "id": "forensics_pcap_http",
-      "category": "misc",
-      "sub": "forensics",
-      "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
-    },
-    {
-      "id": "forensics_disk_image",
+      "id": "forensic_2",
       "category": "misc",
       "sub": "forensics",
       "difficulty": "medium",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
-      "expected_skill": "auto"
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{pcap_http_leak}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
+    },
+    {
+      "id": "forensic_3",
+      "category": "misc",
+      "sub": "forensics",
+      "difficulty": "medium",
+      "presolve_engine": "flag_scan",
+      "presolve_flag": "flag{log_backdoor_found}",
+      "sha256_match": true,
+      "expected_skill": "flag_scan"
     }
   ]
 }
