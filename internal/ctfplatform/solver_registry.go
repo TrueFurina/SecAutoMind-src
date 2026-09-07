@@ -417,7 +417,7 @@ func solveSSTI(ctx context.Context, text string, attachments map[string]string) 
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
-	return trySSTI(fullText)
+	return trySSTI(fullText, nil)
 }
 
 func solveSQLi(ctx context.Context, text string, attachments map[string]string) []string {

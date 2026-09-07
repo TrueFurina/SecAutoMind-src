@@ -658,29 +658,7 @@ func tryWebSourceAudit(text string, attachments map[string]string) []string {
 	return nil
 }
 
-// trySSTI 检测模板注入特征。
-func trySSTI(text string) []string {
-	sstiPatterns := []struct {
-		pattern string
-		proof   string
-	}{
-		{`(?i)\{\{.*?\}\}`, "Jinja2/Twig"},
-		{`(?i)\$\{.*?\}`, "FreeMarker/OGNL"},
-		{`7\*7\s*=\s*49`, "SSTI算术验证"},
-		{`3\*3\s*=\s*9`, "SSTI算术验证"},
-	}
-	for _, p := range sstiPatterns {
-		re := regexp.MustCompile(p.pattern)
-		if m := re.FindString(text); m != "" {
-			limit := 40
-			if len(m) < limit {
-				limit = len(m)
-			}
-			return []string{"SSTI: " + m[:limit] + " (" + p.proof + ")"}
-		}
-	}
-	return nil
-}
+// trySSTI 检测模板注入特征（旧版单参数已删除，保留新版双参数版本 trySSTI(text, attachments)）。
 
 // minInt 返回两个整数中较小的一个（Go 1.21 前兼容）。
 func minInt(a, b int) int {
@@ -1043,3 +1021,129 @@ func solveHashCrackExpanded(ctx context.Context, text string, attachments map[st
 func solveRSASmallExpComplete(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryRSASmallExponentComplete(text, attachments)
 }
+
+// ── 最终批次：crypto 高级 ──────────────────────────────────
+
+// tryHastadBroadcast 检测 Hastad 广播攻击条件（同明文+小e+多组n）。
+
+// tryHomomorphicEncryption 检测同态加密特征。
+
+// tryLatticeKeywords 检测格基密码学关键词。
+
+// tryAESECB 检测 AES ECB 模式特征。
+
+// ── 最终批次：misc 高级 ──────────────────────────────────
+
+// tryStegoAdvanced 检测高级隐写特征（图片/音频/文档隐写）。
+func tryStegoAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{k,h string}{
+		{"steganography","隐写术"},{"lsb stego","LSB隐写"},{"stegsolve","StegSolve工具"},{"zsteg","zsteg工具"},
+		{"stegseek","StegSeek工具"},{"steghide","StegHide工具"},{"exiftool","ExifTool元数据"},{"binwalk","Binwalk固件分析"},
+		{"foremost","Foremost文件恢复"},{"strings","strings命令"},{"hexdump","hexdump"},{"photorec","PhotoRec恢复"},
+		{"spectrogram","频谱图"},{"audio stego","音频隐写"},{"whitespace","空白字符隐写"},{"snow","SNOW隐写"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"隐写取证: " + kw.h} }
+	}
+	return nil
+}
+
+// tryForensicsAdvanced 检测高级取证特征（内存/磁盘/网络取证）。
+func tryForensicsAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{k,h string}{
+		{"memory forensics","内存取证"},{"volatility","Volatility内存分析"},{"disk forensics","磁盘取证"},
+		{"autopsy","Autopsy取证工具"},{"sleuth kit","Sleuth Kit取证"},{"ftk","FTK取证工具"},{"encase","EnCase取证"},
+		{"pcap analysis","PCAP分析"},{"wireshark","Wireshark抓包"},{"tshark","tshark命令行分析"},{"zeek","Zeek网络安全监控"},
+		{"network forensics","网络取证"},{"timeline analysis","时间线分析"},{"artifact analysis","工件分析"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"取证高级: " + kw.h} }
+	}
+	return nil
+}
+
+// ── 最终批次：web 高级 ──────────────────────────────────
+
+// trySSTI 检测 SSTI 模板注入特征。
+func trySSTI(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{k,h string}{
+		{"server-side template injection","SSTI服务端模板注入"},{"template injection","模板注入"},
+		{"jinja2","Jinja2模板"},{"twig","Twig模板"},{"freemarker","FreeMarker模板"},{"velocity","Velocity模板"},
+		{"thymeleaf","Thymeleaf模板"},{"erb","ERB模板"},{"smarty","Smarty模板"},{"blade","Blade模板"},
+		{"sandbox escape","沙箱逃逸"},{"expression language","表达式语言注入"},{"ognl","OGNL注入"},{"spel","SpEL注入"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"SSTI: " + kw.h} }
+	}
+	return nil
+}
+
+// tryXXE 检测 XXE XML外部实体注入特征。
+
+// tryDeserialization 检测反序列化漏洞特征。
+
+// ── 最终批次：reverse 高级 ──────────────────────────────
+
+// tryObfuscationAdvanced 检测高级混淆特征（OLLVM/虚拟机壳/DEX混淆）。
+func tryObfuscationAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{k,h string}{
+		{"ollvm","OLLVM混淆编译器"},{"control flow flattening","控制流平坦化"},{"opaque predicate","不透明谓词"},
+		{"virtual machine","虚拟机保护"},{"code virtualization","代码虚拟化"},{"vmprotect","VMProtect虚拟化"},
+		{"themida","Themida加壳"},{"upx","UPX加壳"},{"proguard","ProGuard Android混淆"},{"dexguard","DexGuard"},
+		{"anti-debug","反调试"},{"anti-vm","反虚拟机检测"},{"anti-sandbox","反沙箱检测"},{"ptrace","ptrace自检"},
+		{"isdebuggerpresent","IsDebuggerPresent"},{"timing check","时间检测"},{"cpuid","CPUID指令"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"混淆/反调试: " + kw.h} }
+	}
+	return nil
+}
+
+// tryFirmwareExploit 检测固件利用特征。
+
+// ── 最终批次：pwn 高级 ──────────────────────────────────
+
+// tryIOFileExploit 检测 IO_FILE/FSOP 利用特征。
+
+// tryKernelExploit 检测内核利用高级特征。
+func tryKernelExploit(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"kernel exploit", "内核漏洞利用"}, {"privilege escalation", "权限提升"}, {"root shell", "Root Shell"},
+		{"suid", "SUID利用"}, {"io_uring", "io_uring"}, {"userfaultfd", "userfaultfd"}, {"namespace escape", "命名空间逃逸"},
+		{"container escape", "容器逃逸"}, {"cgroup escape", "cgroup逃逸"}, {"selinux bypass", "SELinux绕过"},
+		{"hypervisor escape", "虚拟机逃逸"}, {"vm escape", "VM逃逸"}, {"docker escape", "Docker逃逸"}, {"sandbox escape", "沙箱逃逸"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) {
+			return []string{"内核/虚拟化: " + kw.h}
+		}
+	}
+	return nil
+}
+
+// tryHeapSpray 检测堆喷射/格式化字符串漏洞特征。

@@ -145,7 +145,7 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		flags := trySSTI(text)
+		flags := trySSTI(text, nil)
 		if len(flags) > 0 {
 			chResult <- result{"ssti", flags}
 		}
