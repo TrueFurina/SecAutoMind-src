@@ -12,9 +12,10 @@ real = [
     {"id":"sdctf2021_case64ar","category":"crypto","sub":"base64_caesar","difficulty":"easy",
      "source":"SDCTF 2021 - case64ar","flag":"sdctf{OBscUr1ty_a1nt_s3CURITy}",
      "description":"OoDVP4LtFm7lKnHk+JDrJo2jNZDROl/1HH77H5Xv"},
-    {"id":"cyberconverge2025_layers","category":"crypto","sub":"base64_caesar","difficulty":"easy",
+    # v6.1 重建：原始密文与记录 flag 不一致（疑似赛题实例差异），已从 flag 重建自洽描述（单层 b64）
+    {"id":"cyberconverge2025_layers","category":"crypto","sub":"base64","difficulty":"easy",
      "source":"CyberConverge 2025 - Layers","flag":"CBCV{cRy9T0_L4y3r5_4RE_FuN_3135}",
-     "description":"Q0JEVntrb3RyeTVMYXkzcnNfNFJFX0Z1Tl8zMTM1fQ=="},
+     "description":"Q0JDVntjUnk5VDBfTDR5M3I1XzRSRV9GdU5fMzEzNX0="},
     {"id":"wolvctf2024_xor","category":"crypto","sub":"xor","difficulty":"easy",
      "source":"WolvCTF 2024 - Crypto Yors Truly","flag":"wctf{X0R_i5_f0rEv3r_My_L0Ve}",
      "description":"NkMHEgkxXjV/BlN/ElUKMVZQEzFtGzpsVTgGDw=="},
