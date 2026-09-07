@@ -972,6 +972,14 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 
 		// 在goroutine中等待shell进程，避免僵尸进程
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					e.logger.Error("后台命令goroutine panic恢复",
+						zap.String("command", command),
+						zap.Any("panic", r),
+					)
+				}
+			}()
 			if err := pidCmd.Wait(); err != nil {
 				e.logger.Debug("后台命令shell进程执行完成",
 					zap.String("command", command),
