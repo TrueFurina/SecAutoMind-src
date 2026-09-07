@@ -196,6 +196,59 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 12. 执行层求解器（需真实附件内容；等价 strings/git 历史/网页源码/Cookie/pcap/RSA 小指数）。
+	//     仅当 attachments 含真实文件内容时命中；description-only 基准集（attachments=nil）不触发，
+	//     故 30.9% 确定性覆盖不受影响。大小端翻转优先级最低（避免伪造 flag 串抢占文本求解器）。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecStringsFlagScan(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_strings", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecGitHistory(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_git_history", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecWebSourceAudit(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_web_source_audit", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecCookieDecode(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_cookie_decode", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecPcapHTTP(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_pcap_http", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecRSASmallE(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_rsa_small_e", flags}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryExecEndianSwap(ctx, text, attachments); len(flags) > 0 {
+			chResult <- result{"exec_endian_swap", flags}
+		}
+	}()
+
 	// 等待所有求解器完成
 	go func() {
 		wg.Wait()
@@ -220,9 +273,16 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"hash_crack":        7,
 		"xor_single":        8,
 		"web_source_audit":  9,
+		"exec_strings":          9,
+		"exec_git_history":      9,
+		"exec_web_source_audit": 9,
+		"exec_cookie_decode":    9,
+		"exec_pcap_http":        9,
+		"exec_rsa_small_e":      4,
 		"zip_fake_enc":      10,
 		"ssti":              11,
 		"flag_scan":         12,
+		"exec_endian_swap":  14,
 	}
 	var best *result
 	for r := range chResult {
