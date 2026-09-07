@@ -2,6 +2,7 @@ package ctfplatform
 
 import (
 	"context"
+	"fmt"
 	"crypto/sha256"
 	"encoding/hex"
 	"sort"
@@ -20,12 +21,25 @@ func TestAllRegisteredSolversActuallyExecute(t *testing.T) {
 		t.Fatal("注册表为空")
 	}
 	enabled := 0
+	seen := make(map[string]int, len(solvers))
 	for _, s := range solvers {
 		if s.Enabled {
 			enabled++
 		}
+		seen[s.Name]++
 	}
-	t.Logf("注册表求解器总数=%d，Enabled=%d", len(solvers), enabled)
+	// 诚实披露：重名重复注册会让「N 个求解器」的口径虚高，必须单独报出来。
+	var dup []string
+	for name, n := range seen {
+		if n > 1 {
+			dup = append(dup, fmt.Sprintf("%s×%d", name, n))
+		}
+	}
+	sort.Strings(dup)
+	t.Logf("注册表条目总数=%d，唯一名称=%d，Enabled=%d", len(solvers), len(seen), enabled)
+	if len(dup) > 0 {
+		t.Logf("⚠️ 重名重复注册（口径虚高，需去重）: %v", dup)
+	}
 
 	pr := NewPresolver(nil)
 	ch := &Challenge{
