@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	blindTimeSecret = "t1m3b1"                       // 时间盲注还原目标（6 字符）
-	blindOOBSecret  = "flag{o0b_3xfil_7k}"           // OOB 外带还原目标（flag）
+	blindTimeSecret = "t1m3b1"             // 时间盲注还原目标（6 字符）
+	blindOOBSecret  = "flag{o0b_3xfil_7k}" // OOB 外带还原目标（flag）
 	blindCharset    = "abcdefghijklmnopqrstuvwxyz0123456789_"
 )
 

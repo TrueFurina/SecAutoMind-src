@@ -43,3 +43,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc
       - name: Capability regression gate
         run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s
+
+  # 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度。
+  # 防止「求解器注水 / 能力回退 / 口径塌缩」回归，每次 PR/push 自动拦。
+  # 纯 Python（基准套件本体为标准库，仅 padding-oracle judge 需 pycryptodome）；
+  # Go 侧权威机验由上方 capability-gate 覆盖，本 job 不重复跑 Go。
+  evidence-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
+        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Regenerate dual-language benchmark summary
+        run: python data/ctf_benchmark/run_all_benchmarks.py
+      - name: Evidence / caliber consistency gate
+        run: python scripts/verify_evidence.py
