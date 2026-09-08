@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "sqli_union": {
+      "flag_sha256": "d6c1f0e9c542a4652ac25e1dcf1cb8aef9055accf84f4955dafb798bfc95182b",
+      "description": "SQL 注入：GET /sqli_union/news?id=1 的 id 参数直接拼入 SQL。flag 存在 secret 表的 flag 字段（先 UNION 探列数，再查 sqlite_master 或直接取）。"
+    },
+    "sqli_error": {
+      "flag_sha256": "4796b35b4d544e1e379c6f729ffc70d072428bea5f8c91540f543ea076aa3ece",
+      "description": "SQL 注入：GET /sqli_error/search?q=web 的 q 参数单引号拼接。flag 存在 secret 表。可闭合引号后用 || 拼接子查询回显。"
+    },
+    "sqli_blind": {
+      "flag_sha256": "64b0a052045ab9d55508b8a9788b4b9fc62fb13ea2828ac252d59388716696de",
+      "description": "SQL 注入：GET /sqli_blind/check?user=admin 的 user 参数拼接，页面仅返回 user exists / no such user（布尔盲注）。flag 在 secret 表。"
+    }
+  }
+}

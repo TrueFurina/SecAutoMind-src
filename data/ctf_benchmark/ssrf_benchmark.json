@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "ssrf_redis": {
+      "flag_sha256": "aef6af23f83345d9d1f4ba161167d1b62b3908044de06fb5b3d561a6a6f29087",
+      "description": "SSRF：靶机 /ssrf_redis/fetch?url= 存在服务端请求伪造，可发起任意协议请求。内网 6379 段 Redis(127.0.0.1:6399) 未授权访问，flag 存在键 backup:flag。"
+    },
+    "ssrf_cloud": {
+      "flag_sha256": "f44df6ac7f75e9b30bd5900b00132ce5a75382401f5546e1ba147b9801d7ec42",
+      "description": "SSRF：靶机 /ssrf_cloud/fetch?url= 可访问云元数据服务 169.254.169.254。先取 IAM 角色列表，再取 security-credentials/imds-role 的凭证。"
+    },
+    "ssrf_internal": {
+      "flag_sha256": "6b7eceef91e03b9d8a50bb40be3c359060f33fcf3ec7bbfd6effdc3d9c5f2294",
+      "description": "SSRF：靶机 /ssrf_internal/fetch?url= 可访问内网。内网 6401 端口存在仅监听回环的 admin 服务 /internal/flag。"
+    }
+  }
+}

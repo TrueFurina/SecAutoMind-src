@@ -218,6 +218,66 @@ def run_graphql():
     return total, hit
 
 
+def run_ssrf():
+    """跑 SSRF 利用靶场（judge_ssrf.py），返回 (total, hit)。
+
+    三个场景：gopher RESP 管道打内网未授权 Redis / 云元数据两跳凭证 /
+    内网回环 admin 服务（需 SSRF 通道注入内网凭证头）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_ssrf.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_ssrf.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "ssrf_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("SHA-256 校验通过")
+    return total, hit
+
+
+def run_sqli():
+    """跑 SQL 注入深度靶场（judge_sqli.py），返回 (total, hit)。
+
+    三个场景：UNION 列探测+sqlite_master 枚举提取 / 引号闭合+拼接子查询回显 /
+    布尔盲注（长度二分+逐字符二分，真 sqlite3）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_sqli.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_sqli.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "sqli_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("SHA-256 校验通过")
+    return total, hit
+
+
+def run_ssti():
+    """跑 SSTI 深度靶场（judge_ssti.py），返回 (total, hit)。
+
+    三个场景：Jinja {{ }} 环境逃逸读 env / str.format 全局可达 /
+    黑名单剥 {{ 后 Twig {% %} 定界绕过。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_ssti.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_ssti.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "ssti_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("SHA-256 校验通过")
+    return total, hit
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -228,8 +288,8 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered",
-         "-count=1", "-timeout", "300s"],
+         "-run", "TestRealBenchmark_ShippedPresolve|TestSSRFAttackAgainstRange|TestSSRFAttackViaProductionText|TestSSRFSolverRegistered|TestSQLiAttackAgainstRange|TestSQLiAttackViaProductionText|TestSQLiSolverRegistered|TestSSTIAttackAgainstRange|TestSSTIAttackViaProductionText|TestSSTISolverRegistered|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered",
+         "-count=1", "-timeout", "900s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
     # 抽取覆盖率行
@@ -252,9 +312,12 @@ def main():
     xe_total, xe_hit = run_xxe()
     up_total, up_hit = run_upload()
     gq_total, gq_hit = run_graphql()
+    sr_total, sr_hit = run_ssrf()
+    sq_total, sq_hit = run_sqli()
+    si_total, si_hit = run_ssti()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力十基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力十三基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -328,6 +391,32 @@ def main():
     print("    攻破维度：内省泄露隐藏字段 / IDOR 遍历管理员敏感字段 /")
     print("               隐藏调试 mutation（服务端按命令真实读取靶机文件）")
     print()
+    print("【11】SSRF 利用 (ssrf_benchmark.json, gopher Redis / 云元数据 / 回环服务靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (sr_total, sr_hit, sr_total - sr_hit,
+           (100.0 * sr_hit / sr_total) if sr_total else 0.0))
+    print("    Python judge_ssrf.py == Go TestSSRFAttackAgainstRange（+生产入口 3/3）")
+    print("    攻破维度：gopher:// 管道化 RESP 打内网未授权 Redis（KEYS 枚举→GET 取 flag）/")
+    print("               云 IMDS 两跳（角色列表→security-credentials 凭证 Token）/")
+    print("               内网回环 admin 服务（仅 SSRF 通道持有内网凭证头，直连 403）")
+    print()
+    print("【12】SQL 注入深度 (sqli_benchmark.json, 真 sqlite3 三族注入靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (sq_total, sq_hit, sq_total - sq_hit,
+           (100.0 * sq_hit / sq_total) if sq_total else 0.0))
+    print("    Python judge_sqli.py == Go TestSQLiAttackAgainstRange（+生产入口 3/3）")
+    print("    攻破维度：UNION 列探测+sqlite_master 枚举+逐表提取 /")
+    print("               引号闭合+|| 拼接子查询回显 / 布尔盲注（长度二分+逐字符 unicode 二分）")
+    print()
+    print("【13】SSTI 深度 (ssti_benchmark.json, 三类模板求值逃逸靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (si_total, si_hit, si_total - si_hit,
+           (100.0 * si_hit / si_total) if si_total else 0.0))
+    print("    Python judge_ssti.py == Go TestSSTIAttackAgainstRange（+生产入口 3/3）")
+    print("    攻破维度：Jinja {{ }} 真求值环境逃逸读环境变量 /")
+    print("               str.format 格式串注入读靶机全局常量 /")
+    print("               黑名单剥 {{ }} 后 Twig {% %} 定界绕过")
+    print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
@@ -339,15 +428,18 @@ def main():
     print()
 
     print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
-          "+ JWT %d/%d + 反序列化 %d/%d + XXE %d/%d + 上传RCE %d/%d + GraphQL %d/%d" %
+          "+ JWT %d/%d + 反序列化 %d/%d + XXE %d/%d + 上传RCE %d/%d + GraphQL %d/%d"
+          " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d" %
           (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total, de_hit, de_total,
-           xe_hit, xe_total, up_hit, up_total, gq_hit, gq_total))
+           xe_hit, xe_total, up_hit, up_total, gq_hit, gq_total,
+           sr_hit, sr_total, sq_hit, sq_total, si_hit, si_total))
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
-    print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL 九大利用层是冠军差异点：")
+    print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL、SSRF、SQLi、SSTI 十二大利用层是冠军差异点：")
     print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
     print("    『真跑工具 + 真打靶机 + 真攻 Web + 真解析二进制 + 读题定向渗透 + 真绕过 JWT")
-    print("     + 真反序列化 RCE + 真 XXE（含 Blind OOB）+ 真上传 RCE + 真 GraphQL 利用』(双语言机验)。")
+    print("     + 真反序列化 RCE + 真 XXE（含 Blind OOB）+ 真上传 RCE + 真 GraphQL 利用"
+          " + 真 SSRF 链（gopher Redis/云凭证/内网服务）+ 真 SQLi 三族提取 + 真 SSTI 三态逃逸』(双语言机验)。")
     print()
 
     if args.go:
@@ -375,6 +467,12 @@ def main():
                    "coverage_pct": (100.0 * up_hit / up_total) if up_total else 0.0},
         "graphql": {"total": gq_total, "hit": gq_hit, "miss": gq_total - gq_hit,
                     "coverage_pct": (100.0 * gq_hit / gq_total) if gq_total else 0.0},
+        "ssrf": {"total": sr_total, "hit": sr_hit, "miss": sr_total - sr_hit,
+                 "coverage_pct": (100.0 * sr_hit / sr_total) if sr_total else 0.0},
+        "sqli_deep": {"total": sq_total, "hit": sq_hit, "miss": sq_total - sq_hit,
+                      "coverage_pct": (100.0 * sq_hit / sq_total) if sq_total else 0.0},
+        "ssti_deep": {"total": si_total, "hit": si_hit, "miss": si_total - si_hit,
+                      "coverage_pct": (100.0 * si_hit / si_total) if si_total else 0.0},
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }

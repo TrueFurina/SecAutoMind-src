@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "ssti_expr": {
+      "flag_sha256": "d3409e33d4e4e44ae21397210b1ec797a7678c2175bca169e91dcc471e98f564",
+      "description": "SSTI：GET /ssti_expr/hello?name=World 会把 name 当 Jinja 模板渲染（{{ }} 定界）。flag 存在环境变量 SSTI_EXPR_FLAG。"
+    },
+    "ssti_format": {
+      "flag_sha256": "ca32e44c9a2c5a42fc4a005ad0976d6e49f6e5d6ebde390c1c9b2388b81a5f91",
+      "description": "SSTI：GET /ssti_format/greet?who=World 的 who 是 str.format 的格式串本身。flag 是靶机源码里的 SECRET 常量，可经 globals() 可达。"
+    },
+    "ssti_filtered": {
+      "flag_sha256": "53a91a7020a57b9986c003ecfdda0434f3ffd38aa9dde22d15749491d7eaeb53",
+      "description": "SSTI：GET /ssti_filtered/hello?name=... 是模板注入点，但黑名单过滤了 {{ 和 }}。引擎另支持 Twig 风格 {% %} 定界。flag 存在环境变量 SSTI_FILT_FLAG。"
+    }
+  }
+}
