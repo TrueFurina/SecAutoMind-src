@@ -52,6 +52,8 @@ var flagRegexPresolve = regexp.MustCompile(`(?i)[a-zA-Z0-9_]*(?:flag|ctf|dasctf|
 
 // flagRegexUppercase 兜底匹配纯大写品牌前缀（如 CBCV{...}——不含任何核心
 // 关键词子串，主正则扫不到）。误报由下游 sha256 校验/人工把关。
+// flagRegexUppercase 兜底匹配纯大写品牌前缀（如 CBCV{...}——不含任何核心
+// 关键词子串，主正则扫不到）。误报由下游 sha256 校验/人工把关。
 var flagRegexUppercase = regexp.MustCompile(`\b[A-Z][A-Z0-9]{2,15}\{([^}]{4,})\}`)
 
 // scanFlags 从文本中提取 flag 候选（完整保留品牌前缀）。
@@ -774,7 +776,7 @@ func decodeMorse(code string) []string {
 		"-----": "0", ".-.-.-": ".", "--..--": ",", "---...": ":",
 		"-.-.-.": ";", "-....-": "-", "..--.-": "_", ".----.": "'",
 		".-..-.": "\"", "-.--.": "{", "-.--.-": ")", ".-...": "&",
-		".--.-": "}",  // } （非标准 Morse，CTF 约定）
+		".--.-": "}", // } （非标准 Morse，CTF 约定）
 	}
 
 	words := strings.Split(code, "/")
@@ -1041,14 +1043,16 @@ func tryStegoAdvanced(text string, attachments map[string]string) []string {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	kws := []struct{k,h string}{
-		{"steganography","隐写术"},{"lsb stego","LSB隐写"},{"stegsolve","StegSolve工具"},{"zsteg","zsteg工具"},
-		{"stegseek","StegSeek工具"},{"steghide","StegHide工具"},{"exiftool","ExifTool元数据"},{"binwalk","Binwalk固件分析"},
-		{"foremost","Foremost文件恢复"},{"strings","strings命令"},{"hexdump","hexdump"},{"photorec","PhotoRec恢复"},
-		{"spectrogram","频谱图"},{"audio stego","音频隐写"},{"whitespace","空白字符隐写"},{"snow","SNOW隐写"},
+	kws := []struct{ k, h string }{
+		{"steganography", "隐写术"}, {"lsb stego", "LSB隐写"}, {"stegsolve", "StegSolve工具"}, {"zsteg", "zsteg工具"},
+		{"stegseek", "StegSeek工具"}, {"steghide", "StegHide工具"}, {"exiftool", "ExifTool元数据"}, {"binwalk", "Binwalk固件分析"},
+		{"foremost", "Foremost文件恢复"}, {"strings", "strings命令"}, {"hexdump", "hexdump"}, {"photorec", "PhotoRec恢复"},
+		{"spectrogram", "频谱图"}, {"audio stego", "音频隐写"}, {"whitespace", "空白字符隐写"}, {"snow", "SNOW隐写"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"隐写取证: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"隐写取证: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -1060,14 +1064,16 @@ func tryForensicsAdvanced(text string, attachments map[string]string) []string {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	kws := []struct{k,h string}{
-		{"memory forensics","内存取证"},{"volatility","Volatility内存分析"},{"disk forensics","磁盘取证"},
-		{"autopsy","Autopsy取证工具"},{"sleuth kit","Sleuth Kit取证"},{"ftk","FTK取证工具"},{"encase","EnCase取证"},
-		{"pcap analysis","PCAP分析"},{"wireshark","Wireshark抓包"},{"tshark","tshark命令行分析"},{"zeek","Zeek网络安全监控"},
-		{"network forensics","网络取证"},{"timeline analysis","时间线分析"},{"artifact analysis","工件分析"},
+	kws := []struct{ k, h string }{
+		{"memory forensics", "内存取证"}, {"volatility", "Volatility内存分析"}, {"disk forensics", "磁盘取证"},
+		{"autopsy", "Autopsy取证工具"}, {"sleuth kit", "Sleuth Kit取证"}, {"ftk", "FTK取证工具"}, {"encase", "EnCase取证"},
+		{"pcap analysis", "PCAP分析"}, {"wireshark", "Wireshark抓包"}, {"tshark", "tshark命令行分析"}, {"zeek", "Zeek网络安全监控"},
+		{"network forensics", "网络取证"}, {"timeline analysis", "时间线分析"}, {"artifact analysis", "工件分析"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"取证高级: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"取证高级: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -1081,14 +1087,16 @@ func trySSTI(text string, attachments map[string]string) []string {
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	kws := []struct{k,h string}{
-		{"server-side template injection","SSTI服务端模板注入"},{"template injection","模板注入"},
-		{"jinja2","Jinja2模板"},{"twig","Twig模板"},{"freemarker","FreeMarker模板"},{"velocity","Velocity模板"},
-		{"thymeleaf","Thymeleaf模板"},{"erb","ERB模板"},{"smarty","Smarty模板"},{"blade","Blade模板"},
-		{"sandbox escape","沙箱逃逸"},{"expression language","表达式语言注入"},{"ognl","OGNL注入"},{"spel","SpEL注入"},
+	kws := []struct{ k, h string }{
+		{"server-side template injection", "SSTI服务端模板注入"}, {"template injection", "模板注入"},
+		{"jinja2", "Jinja2模板"}, {"twig", "Twig模板"}, {"freemarker", "FreeMarker模板"}, {"velocity", "Velocity模板"},
+		{"thymeleaf", "Thymeleaf模板"}, {"erb", "ERB模板"}, {"smarty", "Smarty模板"}, {"blade", "Blade模板"},
+		{"sandbox escape", "沙箱逃逸"}, {"expression language", "表达式语言注入"}, {"ognl", "OGNL注入"}, {"spel", "SpEL注入"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"SSTI: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"SSTI: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -1106,15 +1114,17 @@ func tryObfuscationAdvanced(text string, attachments map[string]string) []string
 		fullText += "\n" + v
 	}
 	lower := strings.ToLower(fullText)
-	kws := []struct{k,h string}{
-		{"ollvm","OLLVM混淆编译器"},{"control flow flattening","控制流平坦化"},{"opaque predicate","不透明谓词"},
-		{"virtual machine","虚拟机保护"},{"code virtualization","代码虚拟化"},{"vmprotect","VMProtect虚拟化"},
-		{"themida","Themida加壳"},{"upx","UPX加壳"},{"proguard","ProGuard Android混淆"},{"dexguard","DexGuard"},
-		{"anti-debug","反调试"},{"anti-vm","反虚拟机检测"},{"anti-sandbox","反沙箱检测"},{"ptrace","ptrace自检"},
-		{"isdebuggerpresent","IsDebuggerPresent"},{"timing check","时间检测"},{"cpuid","CPUID指令"},
+	kws := []struct{ k, h string }{
+		{"ollvm", "OLLVM混淆编译器"}, {"control flow flattening", "控制流平坦化"}, {"opaque predicate", "不透明谓词"},
+		{"virtual machine", "虚拟机保护"}, {"code virtualization", "代码虚拟化"}, {"vmprotect", "VMProtect虚拟化"},
+		{"themida", "Themida加壳"}, {"upx", "UPX加壳"}, {"proguard", "ProGuard Android混淆"}, {"dexguard", "DexGuard"},
+		{"anti-debug", "反调试"}, {"anti-vm", "反虚拟机检测"}, {"anti-sandbox", "反沙箱检测"}, {"ptrace", "ptrace自检"},
+		{"isdebuggerpresent", "IsDebuggerPresent"}, {"timing check", "时间检测"}, {"cpuid", "CPUID指令"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"混淆/反调试: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"混淆/反调试: " + kw.h}
+		}
 	}
 	return nil
 }

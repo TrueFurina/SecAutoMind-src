@@ -112,7 +112,7 @@ func buildTestPcap(payloadFlag string) []byte {
 	pkt = append(pkt, []byte("POST /login HTTP/1.1\r\nContent-Length: 24\r\n\r\n"+payloadFlag)...)
 
 	ph := make([]byte, 16)
-	binary.LittleEndian.PutUint32(ph[8:12], uint32(len(pkt))) // incl_len
+	binary.LittleEndian.PutUint32(ph[8:12], uint32(len(pkt)))  // incl_len
 	binary.LittleEndian.PutUint32(ph[12:16], uint32(len(pkt))) // orig_len
 	out = append(out, ph...)
 	out = append(out, pkt...)

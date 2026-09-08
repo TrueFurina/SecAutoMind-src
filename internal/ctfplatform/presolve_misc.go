@@ -1253,3 +1253,7 @@ func tryAudioSpectrum(text string, attachments map[string]string) []string {
 }
 
 // tryMagicBytes 检测文件魔术字节特征。
+
+// ── P6 批次：misc 深水区 ──────────────────────────────────
+
+// tryDNACoding 检测 DNA 编码特征（A/T/C/G 四字母编码）。

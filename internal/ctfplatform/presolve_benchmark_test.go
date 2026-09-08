@@ -26,11 +26,11 @@ import (
 )
 
 type realBenchProblem struct {
-	ID           string `json:"id"`
-	Category     string `json:"category"`
-	Sub          string `json:"sub"`
-	Description  string `json:"description"`
-	FlagSHA256   string `json:"flag_sha256"`
+	ID            string `json:"id"`
+	Category      string `json:"category"`
+	Sub           string `json:"sub"`
+	Description   string `json:"description"`
+	FlagSHA256    string `json:"flag_sha256"`
 	PresolveSkill string `json:"presolve_skill"`
 }
 

@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	execB64Re = regexp.MustCompile(`[A-Za-z0-9+/=]{16,}`)
+	execB64Re    = regexp.MustCompile(`[A-Za-z0-9+/=]{16,}`)
 	execCookieRe = regexp.MustCompile(`(?i)(?:session|cookie|token)=([A-Za-z0-9+/=]+)`)
-	execCRe    = regexp.MustCompile(`c\s*[=:：]\s*(\d{8,})`)
-	execERe    = regexp.MustCompile(`e\s*[=:：]\s*(\d{1,3})`)
+	execCRe      = regexp.MustCompile(`c\s*[=:：]\s*(\d{8,})`)
+	execERe      = regexp.MustCompile(`e\s*[=:：]\s*(\d{1,3})`)
 )
 
 // tryExecStringsFlagScan 等价 strings + flag 扫描（二进制以 latin1 字节保留）。
@@ -266,20 +266,23 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "exec_morse_decode", Category: CategoryMiscS, Priority: 131, Solver: tryExecMorseDecode})
 }
 
-
 // ── P5 补全：缺失函数（被去重脚本误删）──────────────────────────
 
 // tryRustReverse 检测 Rust 逆向特征。
 func tryRustReverse(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"rust", "Rust语言"}, {"cargo", "Cargo包管理"}, {"rustc", "rustc编译器"},
 		{"panic_unwind", "panic处理"}, {"result<", "Result类型"}, {"option<", "Option类型"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Rust逆向: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Rust逆向: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -287,14 +290,18 @@ func tryRustReverse(text string, attachments map[string]string) []string {
 // trySwiftReverse 检测 Swift 逆向特征。
 func trySwiftReverse(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"swift", "Swift语言"}, {"swiftui", "SwiftUI"}, {"uikit", "UIKit"},
 		{"xcode", "Xcode"}, {"cocoapods", "CocoaPods"}, {"protocol", "Swift协议"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Swift逆向: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Swift逆向: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -302,7 +309,9 @@ func trySwiftReverse(text string, attachments map[string]string) []string {
 // tryKernelExploitAdvanced 检测内核利用高级特征。
 func tryKernelExploitAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"kernel exploit", "内核漏洞"}, {"privilege escalation", "权限提升"},
@@ -310,7 +319,9 @@ func tryKernelExploitAdvanced(text string, attachments map[string]string) []stri
 		{"namespace escape", "命名空间逃逸"}, {"container escape", "容器逃逸"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"内核高级: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"内核高级: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -318,7 +329,9 @@ func tryKernelExploitAdvanced(text string, attachments map[string]string) []stri
 // tryExploitChainDetection 检测攻击链特征（MITRE ATT&CK等）。
 func tryExploitChainDetection(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"exploit chain", "漏洞利用链"}, {"attack chain", "攻击链"}, {"kill chain", "杀伤链"},
@@ -328,7 +341,13 @@ func tryExploitChainDetection(text string, attachments map[string]string) []stri
 		{"data exfiltration", "数据外泄"}, {"apt", "高级持续威胁"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"攻击链: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"攻击链: " + kw.h}
+		}
 	}
 	return nil
 }
+
+// ── P6 批次：reverse 深水区 ──────────────────────────────────
+
+// tryObfuscationAdvanced 检测高级混淆特征（OLLVM/虚拟机壳/DEX混淆）。

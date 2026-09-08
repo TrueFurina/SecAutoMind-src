@@ -1420,3 +1420,46 @@ func tryRSAWienerAttack(text string, attachments map[string]string) []string {
 	}
 	return nil
 }
+
+// ── P6 批次：crypto 深水区 ──────────────────────────────────
+
+// tryEllipticCurvePointOps 检测椭圆曲线点运算特征。
+
+// trySideChannel 检测侧信道攻击特征。
+func trySideChannel(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"timing attack", "时序攻击"}, {"cache timing", "缓存时序"}, {"power analysis", "功耗分析"},
+		{"differential power", "差分功耗DPA"}, {"simple power", "简单功耗SPA"},
+		{"electromagnetic", "电磁侧信道"}, {"acoustic", "声学侧信道"}, {"fault injection", "故障注入"},
+		{"rowhammer", "Rowhammer"}, {"cold boot", "冷启动"}, {"spectre", "Spectre"},
+		{"meltdown", "Meltdown"}, {"branch prediction", "分支预测"},
+		{"speculative execution", "推测执行"}, {"cache attack", "缓存攻击"},
+		{"tpm", "可信平台模块"}, {"sgx", "Intel SGX"}, {"trustzone", "ARM TrustZone"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"侧信道: " + kw.h} }
+	}
+	return nil
+}
+
+// tryLatticeAdvanced 检测格基密码学高级特征。
+func tryLatticeAdvanced(text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments { fullText += "\n" + v }
+	lower := strings.ToLower(fullText)
+	kws := []struct{ k, h string }{
+		{"lattice reduction", "格基规约"}, {"shortest vector", "最短向量SVP"}, {"closest vector", "最近向量CVP"},
+		{"hermite normal", "Hermite标准型"}, {"smith normal", "Smith标准型"},
+		{"ntru", "NTRU"}, {"crystals-kyber", "Crystals-Kyber"}, {"crystals-dilithium", "Crystals-Dilithium"},
+		{"falcon", "Falcon签名"}, {"sphincs", "SPHINCS+"}, {"basis reduction", "基底规约"},
+		{"gram matrix", "Gram矩阵"}, {"orthogonal", "正交化"}, {"q-ary lattice", "q-ary格"},
+		{"ideal lattice", "理想格"}, {"module lattice", "模格"},
+	}
+	for _, kw := range kws {
+		if strings.Contains(lower, kw.k) { return []string{"格基密码: " + kw.h} }
+	}
+	return nil
+}

@@ -2,9 +2,9 @@ package ctfplatform
 
 import (
 	"context"
-	"fmt"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
