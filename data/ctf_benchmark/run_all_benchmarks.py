@@ -138,6 +138,26 @@ def run_jwt():
     return total, hit
 
 
+def run_deser():
+    """跑反序列化利用靶场（judge_deser.py），返回 (total, hit)。
+
+    三个场景：Python pickle 真 loads RCE / PHP 对象注入（POST 表单）/
+    PHP 对象注入（Cookie 通道）。flag 只在真正反序列化成功并读到文件时返回。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_deser.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_deser.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "deser_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("SHA-256 校验通过")
+    return total, hit
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -148,7 +168,7 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered",
+         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered",
          "-count=1", "-timeout", "300s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -168,9 +188,10 @@ def main():
     at_total, at_hit, at_miss, at_pct, at_water = run_attachment()
     wh_total, wh_a, wh_b = run_web_hints()
     jt_total, jt_hit = run_jwt()
+    de_total, de_hit = run_deser()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力六基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力七基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -211,6 +232,15 @@ def main():
     print("    攻破维度：HS256 弱密钥爆破重签 / alg=none 无签名伪造 /")
     print("               RS256→HS256 公钥混淆（取回 /public.pem 当 HMAC 密钥重签）")
     print()
+    print("【7】反序列化利用 (deser_benchmark.json, 真 pickle.loads / PHP 对象注入靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (de_total, de_hit, de_total - de_hit,
+           (100.0 * de_hit / de_total) if de_total else 0.0))
+    print("    Python judge_deser.py == Go TestDeserAttackAgainstRange（+生产入口 3/3）")
+    print("    攻破维度：Python pickle 反序列化 RCE（eval/open/popen 三通道）/")
+    print("               PHP 对象注入读文件（4 危险类 + protected/private 属性写法）/")
+    print("               多传输通道（POST 原始字节 / POST 表单 / Cookie session）")
+    print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
@@ -222,13 +252,14 @@ def main():
     print()
 
     print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
-          "+ JWT 认证绕过 %d/%d" %
-          (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total))
+          "+ JWT 认证绕过 %d/%d + 反序列化利用 %d/%d" %
+          (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total, de_hit, de_total))
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
-    print("    执行层、Web 实战层、附件取证层、题目感知层、JWT 认证绕过层是冠军差异点：")
+    print("    执行层、Web 实战层、附件取证层、题目感知层、JWT 认证绕过层、反序列化利用层是冠军差异点：")
     print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
-    print("    『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点 + 真解析二进制附件 + 读题定向渗透 + 真绕过 JWT 鉴权』(双语言机验)。")
+    print("    『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点 + 真解析二进制附件 + 读题定向渗透")
+    print("     + 真绕过 JWT 鉴权 + 真反序列化 RCE』(双语言机验)。")
     print()
 
     if args.go:
@@ -248,6 +279,8 @@ def main():
                       "delta": wh_b - wh_a},
         "jwt": {"total": jt_total, "hit": jt_hit, "miss": jt_total - jt_hit,
                 "coverage_pct": (100.0 * jt_hit / jt_total) if jt_total else 0.0},
+        "deser": {"total": de_total, "hit": de_hit, "miss": de_total - de_hit,
+                  "coverage_pct": (100.0 * de_hit / de_total) if de_total else 0.0},
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }

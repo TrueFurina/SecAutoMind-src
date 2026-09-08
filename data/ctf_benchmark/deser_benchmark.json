@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "deser_pickle": {
+      "flag_sha256": "8759f22d876c6ceed7f1c471d59db26e0111121d5a6178b1761639f796f264be",
+      "description": "目标提供 Python pickle 反序列化接口：POST /unpickle，请求体直接提交 pickle 序列化字节流，服务端 pickle.loads 后把结果回显。flag 位于服务端当前工作目录的 flag.txt。"
+    },
+    "deser_php": {
+      "flag_sha256": "a23aa70b30329d8c75707a2a33422dad3b315f140916dc5af30e888070727baf",
+      "description": "目标 PHP 站点 POST /unserialize 接收 data 参数（PHP 序列化字符串），存在对象注入：FlagReader 类被反序列化时 __toString 会读取 path 属性指向的文件。flag 文件为 flag.txt。"
+    },
+    "deser_php_cookie": {
+      "flag_sha256": "f7e66ef13ca222c3c7351f814cf189b9ea79177c5303d009c9453c3a58c119be",
+      "description": "目标 GET /profile 从 Cookie 的 session 字段读取 PHP 序列化字符串并反序列化，LogViewer 类反序列化时读取 file 属性指向的文件。flag 文件为 flag.txt。"
+    }
+  }
+}
