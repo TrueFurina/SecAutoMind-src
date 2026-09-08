@@ -882,3 +882,17 @@ func solveNetworkForensics(ctx context.Context, text string, attachments map[str
 func solveExploitChain(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryExploitChainDetection(text, attachments)
 }
+
+// ── P1 真解题求解器适配函数 ──────────────────────────────────
+
+func solveVigenereDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryVigenereDecode(text) }
+func solveAtbashDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryAtbashDecode(text) }
+func solveROT13(ctx context.Context, text string, attachments map[string]string) []string { return tryROT13(text) }
+func solveHexDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryHexDecode(text) }
+func solveURLDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryURLDecode(text) }
+func solveBinaryDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryBinaryDecode(text) }
+func solveOctalDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryOctalDecode(text) }
+func solveDecimalDecode(ctx context.Context, text string, attachments map[string]string) []string { return tryDecimalDecode(text) }
+func solveReverseText(ctx context.Context, text string, attachments map[string]string) []string { return tryReverseText(text) }
+func solvePigLatin(ctx context.Context, text string, attachments map[string]string) []string { return tryPigLatin(text) }
+func solveBase64URLSafe(ctx context.Context, text string, attachments map[string]string) []string { return tryBase64URLSafe(text) }

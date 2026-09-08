@@ -3,6 +3,7 @@
 package ctfplatform
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -1460,6 +1461,310 @@ func tryLatticeAdvanced(text string, attachments map[string]string) []string {
 	}
 	for _, kw := range kws {
 		if strings.Contains(lower, kw.k) { return []string{"格基密码: " + kw.h} }
+	}
+	return nil
+}
+
+// ── 真解题求解器扩展（有实际算法实现，能从密文解出明文）──────────
+
+// tryVigenereDecode 维吉尼亚解码（爆破密钥长度 + 频率分析）。
+func tryVigenereDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 10 || len(clean) > 500 {
+		return nil
+	}
+	// 只对纯字母文本尝试
+	alphaRe := regexp.MustCompile(`^[a-zA-Z\s]+$`)
+	if !alphaRe.MatchString(clean) {
+		return nil
+	}
+	clean = strings.ReplaceAll(clean, " ", "")
+	// 尝试密钥长度 2-10
+	for keyLen := 2; keyLen <= 10; keyLen++ {
+		key := guessVigenereKey(clean, keyLen)
+		if key == "" {
+			continue
+		}
+		decoded := vigenereDecode(clean, key)
+		if flags := scanFlags(decoded); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}
+
+// guessVigenereKey 通过重合指数猜测维吉尼亚密钥。
+
+// vigenereDecode 用已知密钥解密维吉尼亚密码。
+
+// tryAtbashDecode Atbash 密码解码（a↔z, b↔y, ...）。
+func tryAtbashDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 6 {
+		return nil
+	}
+	var sb strings.Builder
+	for _, c := range clean {
+		switch {
+		case c >= 'a' && c <= 'z':
+			sb.WriteRune('z' - (c - 'a'))
+		case c >= 'A' && c <= 'Z':
+			sb.WriteRune('Z' - (c - 'A'))
+		default:
+			sb.WriteRune(c)
+		}
+	}
+	decoded := sb.String()
+	if flags := scanFlags(decoded); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}
+
+// tryROT13 ROT13 解码。
+func tryROT13(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 6 {
+		return nil
+	}
+	var sb strings.Builder
+	for _, c := range clean {
+		switch {
+		case c >= 'a' && c <= 'z':
+			sb.WriteRune((c-'a'+13)%26 + 'a')
+		case c >= 'A' && c <= 'Z':
+			sb.WriteRune((c-'A'+13)%26 + 'A')
+		default:
+			sb.WriteRune(c)
+		}
+	}
+	decoded := sb.String()
+	if flags := scanFlags(decoded); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}
+
+// tryHexDecode Hex 解码后扫 flag。
+func tryHexDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	hexRe := regexp.MustCompile(`^[0-9a-fA-F]+$`)
+	if !hexRe.MatchString(clean) || len(clean) < 8 || len(clean)%2 != 0 {
+		return nil
+	}
+	decoded, err := hex.DecodeString(clean)
+	if err != nil {
+		return nil
+	}
+	result := string(decoded)
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if isPrintableRatio(result) > 0.8 && len(result) > 3 {
+		return []string{"Hex解码: " + result[:minInt(80, len(result))]}
+	}
+	return nil
+}
+
+// tryURLDecode URL 解码后扫 flag。
+func tryURLDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	urlRe := regexp.MustCompile(`(%[0-9a-fA-F]{2})+`)
+	if !urlRe.MatchString(clean) {
+		return nil
+	}
+	decoded := clean
+	// 多轮解码（最多 3 层）
+	for i := 0; i < 3; i++ {
+		newDecoded := urlDecodeOnce(decoded)
+		if newDecoded == decoded {
+			break
+		}
+		decoded = newDecoded
+		if flags := scanFlags(decoded); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}
+
+func urlDecodeOnce(s string) string {
+	var sb strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '%' && i+2 < len(s) {
+			val, err := hex.DecodeString(s[i+1 : i+3])
+			if err == nil {
+				sb.WriteByte(val[0])
+				i += 2
+				continue
+			}
+		}
+		sb.WriteByte(s[i])
+	}
+	return sb.String()
+}
+
+// tryBinaryDecode 二进制字符串解码（01串转 ASCII）。
+func tryBinaryDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	// 二进制字符串：仅含 0 和 1，长度为 8 的倍数
+	binRe := regexp.MustCompile(`^[01\s]+$`)
+	if !binRe.MatchString(clean) {
+		return nil
+	}
+	clean = strings.ReplaceAll(clean, " ", "")
+	if len(clean) < 16 || len(clean)%8 != 0 {
+		return nil
+	}
+	var sb strings.Builder
+	for i := 0; i+7 < len(clean); i += 8 {
+		val := 0
+		for j := 0; j < 8; j++ {
+			if clean[i+j] == '1' {
+				val |= 1 << (7 - j)
+			}
+		}
+		if val >= 32 && val < 127 {
+			sb.WriteByte(byte(val))
+		}
+	}
+	result := sb.String()
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
+		return []string{"二进制解码: " + result}
+	}
+	return nil
+}
+
+// tryOctalDecode 八进制解码。
+func tryOctalDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	octRe := regexp.MustCompile(`^[0-7\s]+$`)
+	if !octRe.MatchString(clean) || len(clean) < 6 {
+		return nil
+	}
+	parts := strings.Fields(clean)
+	if len(parts) < 3 {
+		return nil
+	}
+	var sb strings.Builder
+	for _, p := range parts {
+		val := 0
+		for _, c := range p {
+			val = val*8 + int(c-'0')
+		}
+		if val >= 32 && val < 127 {
+			sb.WriteByte(byte(val))
+		}
+	}
+	result := sb.String()
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
+		return []string{"八进制解码: " + result}
+	}
+	return nil
+}
+
+// tryDecimalDecode 十进制 ASCII 解码（空格分隔的十进制数转字符）。
+func tryDecimalDecode(text string) []string {
+	clean := strings.TrimSpace(text)
+	decRe := regexp.MustCompile(`^[\d\s]+$`)
+	if !decRe.MatchString(clean) || len(clean) < 6 {
+		return nil
+	}
+	parts := strings.Fields(clean)
+	if len(parts) < 3 {
+		return nil
+	}
+	var sb strings.Builder
+	for _, p := range parts {
+		val := 0
+		for _, c := range p {
+			val = val*10 + int(c-'0')
+		}
+		if val >= 32 && val < 127 {
+			sb.WriteByte(byte(val))
+		}
+	}
+	result := sb.String()
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
+		return []string{"十进制解码: " + result}
+	}
+	return nil
+}
+
+// tryReverseText 文本反转解码。
+func tryReverseText(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 6 {
+		return nil
+	}
+	runes := []rune(clean)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	decoded := string(runes)
+	if flags := scanFlags(decoded); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}
+
+// tryPigLatin Pig Latin 解码（ay 后缀移除）。
+func tryPigLatin(text string) []string {
+	clean := strings.TrimSpace(text)
+	if len(clean) < 6 {
+		return nil
+	}
+	// 简单 Pig Latin：单词以 ay 结尾，去掉 ay 后把首字母移到末尾
+	words := strings.Fields(clean)
+	var decoded []string
+	for _, w := range words {
+		lower := strings.ToLower(w)
+		if strings.HasSuffix(lower, "ay") && len(lower) > 3 {
+			core := lower[:len(lower)-2]
+			decoded = append(decoded, core[1:]+string(core[0]))
+		} else {
+			decoded = append(decoded, w)
+		}
+	}
+	result := strings.Join(decoded, " ")
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	return nil
+}
+
+// tryBase64URLSafe URL-safe Base64 解码（- 和 _ 替代 + 和 /）。
+func tryBase64URLSafe(text string) []string {
+	clean := strings.TrimSpace(text)
+	// URL-safe Base64：含 - 和 _，不含 + 和 /
+	b64urlRe := regexp.MustCompile(`^[A-Za-z0-9\-_=]{8,}$`)
+	if !b64urlRe.MatchString(clean) || len(clean) < 8 {
+		return nil
+	}
+	if strings.ContainsAny(clean, "+/") {
+		return nil // 标准 Base64，不处理
+	}
+	std := strings.ReplaceAll(clean, "-", "+")
+	std = strings.ReplaceAll(std, "_", "/")
+	decoded, err := base64.StdEncoding.DecodeString(padBase64(std))
+	if err != nil || len(decoded) == 0 {
+		return nil
+	}
+	result := string(decoded)
+	if flags := scanFlags(result); len(flags) > 0 {
+		return flags
+	}
+	if isPrintableRatio(result) > 0.8 && len(result) > 3 {
+		return []string{"Base64URL解码: " + result[:minInt(80, len(result))]}
 	}
 	return nil
 }
