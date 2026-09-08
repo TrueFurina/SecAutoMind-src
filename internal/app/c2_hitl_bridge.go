@@ -99,15 +99,22 @@ func (b *C2HITLBridge) RequestApproval(ctx context.Context, req c2.HITLApprovalR
 	for {
 		select {
 		case <-ctx.Done():
-			_, _ = b.db.Exec(`UPDATE hitl_interrupts SET status='cancelled', decision='reject',
+			// 审批结果必须真实落库才可信：落库失败不再静默吞掉，改为 fail-closed 上报。
+			if _, err := b.db.Exec(`UPDATE hitl_interrupts SET status='cancelled', decision='reject',
 				decision_comment='context cancelled', decided_at=? WHERE id=? AND status='pending'`,
-				time.Now(), interruptID)
+				time.Now(), interruptID); err != nil {
+				b.logger.Error("C2 HITL: 取消审批落库失败", zap.Error(err), zap.String("interrupt_id", interruptID))
+				return fmt.Errorf("C2 HITL 取消审批落库失败: %w", err)
+			}
 			return ctx.Err()
 
 		case <-deadline:
-			_, _ = b.db.Exec(`UPDATE hitl_interrupts SET status='timeout', decision='reject',
+			if _, err := b.db.Exec(`UPDATE hitl_interrupts SET status='timeout', decision='reject',
 				decision_comment='C2 HITL timeout auto-reject for safety', decided_at=? WHERE id=? AND status='pending'`,
-				time.Now(), interruptID)
+				time.Now(), interruptID); err != nil {
+				b.logger.Error("C2 HITL: 超时拒绝落库失败，已 fail-closed 拒绝执行", zap.Error(err), zap.String("interrupt_id", interruptID))
+				return fmt.Errorf("C2 HITL 审批超时且落库失败（已拒绝执行）: %w", err)
+			}
 			b.logger.Warn("C2 HITL: 审批超时，安全起见拒绝执行", zap.String("interrupt_id", interruptID))
 			return fmt.Errorf("C2 HITL 审批超时，危险任务已被自动拒绝")
 

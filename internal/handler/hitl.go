@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -600,17 +601,28 @@ func (m *HITLManager) waitDecision(ctx context.Context, p *pendingInterrupt, tim
 		if p.Mode != "review_edit" && len(d.EditedArguments) > 0 {
 			d.EditedArguments = nil
 		}
-		_, _ = m.db.Exec(`UPDATE hitl_interrupts SET status='decided', decision=?, decision_comment=?, decided_at=?, decided_by='human' WHERE id=?`,
-			d.Decision, d.Comment, time.Now(), p.InterruptID)
+		// 审批决策必须真实落库才能放行：落库失败一律 fail-closed（拒绝放行），
+		// 否则会出现「UI 显示已批准、审计表无记录」的假成功，导致人工拦截无法自证。
+		if _, err := m.db.Exec(`UPDATE hitl_interrupts SET status='decided', decision=?, decision_comment=?, decided_at=?, decided_by='human' WHERE id=?`,
+			d.Decision, d.Comment, time.Now(), p.InterruptID); err != nil {
+			m.logger.Error("HITL 审批决策落库失败，已 fail-closed 拒绝放行", zap.Error(err), zap.String("interrupt_id", p.InterruptID))
+			return hitlDecision{}, fmt.Errorf("HITL 审批决策落库失败（已拒绝放行）: %w", err)
+		}
 		return d, nil
 	case <-timeoutCh:
 		comment := "HITL timeout auto-reject for safety"
-		_, _ = m.db.Exec(`UPDATE hitl_interrupts SET status='timeout', decision='reject', decision_comment=?, decided_at=?, decided_by='system' WHERE id=?`,
-			comment, time.Now(), p.InterruptID)
+		if _, err := m.db.Exec(`UPDATE hitl_interrupts SET status='timeout', decision='reject', decision_comment=?, decided_at=?, decided_by='system' WHERE id=?`,
+			comment, time.Now(), p.InterruptID); err != nil {
+			m.logger.Error("HITL 超时拒绝决策落库失败，已 fail-closed 拒绝放行", zap.Error(err), zap.String("interrupt_id", p.InterruptID))
+			return hitlDecision{}, fmt.Errorf("HITL 超时拒绝决策落库失败（已拒绝放行）: %w", err)
+		}
 		return hitlDecision{Decision: "reject", Comment: comment}, nil
 	case <-ctx.Done():
-		_, _ = m.db.Exec(`UPDATE hitl_interrupts SET status='cancelled', decision='reject', decision_comment='task cancelled', decided_at=?, decided_by='system' WHERE id=?`,
-			time.Now(), p.InterruptID)
+		if _, err := m.db.Exec(`UPDATE hitl_interrupts SET status='cancelled', decision='reject', decision_comment='task cancelled', decided_at=?, decided_by='system' WHERE id=?`,
+			time.Now(), p.InterruptID); err != nil {
+			m.logger.Error("HITL 取消决策落库失败，已 fail-closed 报告错误", zap.Error(err), zap.String("interrupt_id", p.InterruptID))
+			return hitlDecision{}, fmt.Errorf("HITL 取消决策落库失败: %w", err)
+		}
 		return hitlDecision{Decision: "reject", Comment: "task cancelled"}, ctx.Err()
 	}
 }
