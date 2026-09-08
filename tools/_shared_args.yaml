@@ -1,0 +1,23 @@
+# tools/_shared_args.yaml
+# 共享参数定义，由 YAML 工具通过 anchor 引用，消除 81 处重复
+# 用法：在各工具文件中 YAML anchor 引用，或由构建脚本自动注入
+
+shared_args:
+  additional_args:
+    name: "additional_args"
+    type: "string"
+    description: "额外参数，按空格追加到命令末尾。"
+    required: false
+
+  target:
+    name: "target"
+    type: "string"
+    description: "目标地址（IP/域名/URL）"
+    required: true
+
+  output_format:
+    name: "output_format"
+    type: "string"
+    description: "输出格式"
+    required: false
+    default: "text"

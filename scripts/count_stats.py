@@ -118,6 +118,31 @@ def go_packages_count():
         return None
 
 
+def builtin_tools_count():
+    """统计 Go 内置 MCP 工具数（internal/mcp/builtin/constants.go 的 GetAllBuiltinTools 列表项）。
+
+    与 tools/*.yaml 是两类不同来源，不重叠：
+      - tools_yaml    = tools/ 目录下的 YAML 安全工具声明
+      - builtin_tools = Go 代码注册的内置 MCP 工具（资产/知识库/webshell/批量任务/C2 等）
+      - runtime_tools = 二者之和 = 运行时可用工具总数
+
+    2026-09-08 修正：官网曾写 "140 运行时工具"，既非 90 也非 90+52=142，属三不管数字。
+    现改为由本脚本产出 runtime_tools，杜绝手写漂移。
+    """
+    p = os.path.join(ROOT, "internal", "mcp", "builtin", "constants.go")
+    if not os.path.isfile(p):
+        return 0
+    with open(p, "r", encoding="utf-8", errors="ignore") as fh:
+        src = fh.read()
+    m = re.search(r"func\s+GetAllBuiltinTools\s*\(\s*\)\s*\[\]\s*string\s*\{(.*?)\n\}",
+                  src, re.S)
+    if not m:
+        return 0
+    items = [l.strip() for l in m.group(1).splitlines()
+             if re.match(r"^Tool[A-Za-z0-9_]+,\s*$", l.strip())]
+    return len(items)
+
+
 def exe_info():
     exe = os.path.join(ROOT, "secautomind-ai.exe")
     if not os.path.isfile(exe):
@@ -138,9 +163,13 @@ def main():
     go_files, test_files, non_test, test = go_stats()
     solvers = _regex_count("internal/ctfplatform", r"RegisterSolver\(SolverEntry\{")
     im_adapters = _regex_count("internal/robot", r"^func Start[A-Za-z]*\(")
+    tools_yaml = _count_files("tools", ".yaml")
+    builtin_tools = builtin_tools_count()
     data = {
         "head": _sh("git rev-parse --short HEAD") or "unknown",
-        "tools_yaml": _count_files("tools", ".yaml"),
+        "tools_yaml": tools_yaml,
+        "builtin_tools": builtin_tools,
+        "runtime_tools": tools_yaml + builtin_tools,
         "agents_md": _count_files("agents", ".md"),
         "skills": _count_recursive("skills", "SKILL.md"),
         "roles_yaml": _count_files("roles", ".yaml"),
@@ -166,6 +195,9 @@ def main():
     print("SecAutoMind 权威计数口径（单一真值源）  HEAD=%s" % data["head"])
     print("=" * 62)
     print("  工具 YAML            %d" % data["tools_yaml"])
+    print("  内置 MCP 工具        %d" % data["builtin_tools"])
+    print("  运行时工具合计       %d  (= YAML %d + 内置 %d)"
+          % (data["runtime_tools"], data["tools_yaml"], data["builtin_tools"]))
     print("  Agent (agents/*.md)  %d" % data["agents_md"])
     print("  技能包 (SKILL.md)    %d" % data["skills"])
     print("  RBAC 角色            %d" % data["roles_yaml"])
