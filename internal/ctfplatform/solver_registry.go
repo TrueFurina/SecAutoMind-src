@@ -166,6 +166,7 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "prototype_pollution", Category: CategoryWebS, Priority: 88, Solver: solvePrototypePollution})
 	RegisterSolver(SolverEntry{Name: "graphql_batch", Category: CategoryWebS, Priority: 89, Solver: solveGraphQLBatch})
 	RegisterSolver(SolverEntry{Name: "http_smuggling", Category: CategoryWebS, Priority: 90, Solver: solveHTTPRequestSmuggling})
+	RegisterSolver(SolverEntry{Name: "web_blind_oob", Category: CategoryWebS, Priority: 91, Solver: solveBlindOOB})
 
 	// P8 批次：crypto 深水区
 	RegisterSolver(SolverEntry{Name: "elliptic_curve", Category: CategoryCryptoS, Priority: 48, Solver: solveEllipticCurve})
@@ -590,6 +591,10 @@ func solveXORMultiByte(ctx context.Context, text string, attachments map[string]
 
 func solvePrototypePollution(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryPrototypePollution(text, attachments)
+}
+
+func solveBlindOOB(ctx context.Context, text string, attachments map[string]string) []string {
+	return tryBlindOOB(ctx, text, attachments)
 }
 
 func solveGraphQLBatch(ctx context.Context, text string, attachments map[string]string) []string {

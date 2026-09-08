@@ -80,5 +80,23 @@
     "miss": 0,
     "coverage_pct": 100.0
   },
+  "ecdsa_nonce_reuse": {
+    "total": 1,
+    "hit": 1,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "padding_oracle": {
+    "total": 1,
+    "hit": 1,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "blind_oob": {
+    "total": 2,
+    "hit": 2,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
   "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。"
 }

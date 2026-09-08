@@ -278,6 +278,72 @@ def run_ssti():
     return total, hit
 
 
+def run_ecdsa():
+    """跑 ECDSA nonce 复用攻击基准（judge_ecdsa.py），返回 (total, hit)。
+
+    两组签名共享同一 nonce k（r 相同）→ 公式离线还原私钥 d：
+        k = (z1 - z2) * (s1 - s2)^-1 mod n
+        d = (s1*k - z1) * r^-1        mod n
+    纯大数运算，Python judge_ecdsa.py 与 Go TestECDSANonceReuseAgainstBenchmark 双语言镜像。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_ecdsa.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_ecdsa.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "ecdsa_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("HIT")
+    return total, hit
+
+
+def run_padding_oracle():
+    """跑 CBC Padding Oracle 攻击基准（judge_padding_oracle.py），返回 (total, hit)。
+
+    真实 CBC PKCS#7 padding oracle 攻击：仅用 oracle(ct)->bool 的布尔返回，
+    逐字节还原明文（无需密钥）。Python judge_padding_oracle.py 与 Go
+    TestPaddingOracleAgainstBenchmark 双语言镜像，SHA-256 比对。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_padding_oracle.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_padding_oracle.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "padding_oracle_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("HIT")
+    return total, hit
+
+
+def run_blind_oob():
+    """跑 Web 盲打 / 带外回连（OOB）外带基准（judge_blind_oob.py），返回 (total, hit)。
+
+    两种无回显数据渗出通道：
+      1. 时间盲注（Time-based Blind）：仅依响应耗时差异还原密钥，无需任何回显。
+      2. 带外回连（Out-of-Band Exfil）：靶机把密钥异步回连到攻击方内置监听器取回。
+    Python judge_blind_oob.py（纯标准库自建靶机+监听器）与 Go
+    TestBlindOOBTimeBased / TestBlindOOBOOB 双语言镜像，SHA-256 比对。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_blind_oob.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_blind_oob.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "blind_oob_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("HIT")
+    return total, hit
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -288,7 +354,7 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestSSRFAttackAgainstRange|TestSSRFAttackViaProductionText|TestSSRFSolverRegistered|TestSQLiAttackAgainstRange|TestSQLiAttackViaProductionText|TestSQLiSolverRegistered|TestSSTIAttackAgainstRange|TestSSTIAttackViaProductionText|TestSSTISolverRegistered|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered",
+         "-run", "TestRealBenchmark_ShippedPresolve|TestSSRFAttackAgainstRange|TestSSRFAttackViaProductionText|TestSSRFSolverRegistered|TestSQLiAttackAgainstRange|TestSQLiAttackViaProductionText|TestSQLiSolverRegistered|TestSSTIAttackAgainstRange|TestSSTIAttackViaProductionText|TestSSTISolverRegistered|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered|TestECDSANonceReuseAgainstBenchmark|TestECDSANonceReuseSelfConsistent|TestECDSANonceReuseSolverRegistered|TestPaddingOracleSelfConsistent|TestPaddingOracleAgainstBenchmark|TestPaddingOracleSolverRegistered",
          "-count=1", "-timeout", "900s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -315,9 +381,12 @@ def main():
     sr_total, sr_hit = run_ssrf()
     sq_total, sq_hit = run_sqli()
     si_total, si_hit = run_ssti()
+    ec_total, ec_hit = run_ecdsa()
+    po_total, po_hit = run_padding_oracle()
+    bo_total, bo_hit = run_blind_oob()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力十三基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力十六基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -417,6 +486,31 @@ def main():
     print("               str.format 格式串注入读靶机全局常量 /")
     print("               黑名单剥 {{ }} 后 Twig {% %} 定界绕过")
     print()
+    print("【14】ECDSA nonce 复用 (ecdsa_benchmark.json, 离线确定性恢复私钥)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (ec_total, ec_hit, ec_total - ec_hit,
+           (100.0 * ec_hit / ec_total) if ec_total else 0.0))
+    print("    Python judge_ecdsa.py == Go TestECDSANonceReuseAgainstBenchmark（双语言离线镜像）")
+    print("    攻破维度：同 nonce 两签名(r 相同) → k=(z1-z2)/(s1-s2) → d=(s1*k-z1)/r mod n，")
+    print("              离线还原私钥 d，flag=flag{<hex(d)>}（纯大数运算，无在线 oracle）")
+    print()
+    print("【15】CBC Padding Oracle (padding_oracle_benchmark.json, 真实逐字节恢复明文)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (po_total, po_hit, po_total - po_hit,
+           (100.0 * po_hit / po_total) if po_total else 0.0))
+    print("    Python judge_padding_oracle.py == Go TestPaddingOracleAgainstBenchmark（双语言镜像）")
+    print("    攻破维度：仅用 oracle(ct)->bool 判定 PKCS#7 是否合法，逐字节逼出中间状态 → 还原明文，")
+    print("              无需密钥（经典 Vaudenay CBC padding oracle，离线确定性双语言机验）")
+    print()
+
+    print("【16】Web 盲打 / 带外回连 OOB 外带 (blind_oob_benchmark.json, 无回显数据渗出通道)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (bo_total, bo_hit, bo_total - bo_hit,
+           (100.0 * bo_hit / bo_total) if bo_total else 0.0))
+    print("    Python judge_blind_oob.py == Go TestBlindOOBTimeBased / TestBlindOOBOOB（双语言镜像）")
+    print("    攻破维度：时间盲注（仅依响应耗时差异逐字符还原密钥，无需任何回显）/")
+    print("              带外回连 OOB（靶机把密钥异步回连到攻击方内置监听器取回，flag 不在响应里）")
+    print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
@@ -429,10 +523,11 @@ def main():
 
     print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
           "+ JWT %d/%d + 反序列化 %d/%d + XXE %d/%d + 上传RCE %d/%d + GraphQL %d/%d"
-          " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d" %
+          " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d + ECDSA %d/%d + PaddingOracle %d/%d + BlindOOB %d/%d" %
           (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total, de_hit, de_total,
            xe_hit, xe_total, up_hit, up_total, gq_hit, gq_total,
-           sr_hit, sr_total, sq_hit, sq_total, si_hit, si_total))
+           sr_hit, sr_total, sq_hit, sq_total, si_hit, si_total, ec_hit, ec_total,
+           po_hit, po_total, bo_hit, bo_total))
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
     print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL、SSRF、SQLi、SSTI 十二大利用层是冠军差异点：")
@@ -473,6 +568,12 @@ def main():
                       "coverage_pct": (100.0 * sq_hit / sq_total) if sq_total else 0.0},
         "ssti_deep": {"total": si_total, "hit": si_hit, "miss": si_total - si_hit,
                       "coverage_pct": (100.0 * si_hit / si_total) if si_total else 0.0},
+        "ecdsa_nonce_reuse": {"total": ec_total, "hit": ec_hit, "miss": ec_total - ec_hit,
+                              "coverage_pct": (100.0 * ec_hit / ec_total) if ec_total else 0.0},
+        "padding_oracle": {"total": po_total, "hit": po_hit, "miss": po_total - po_hit,
+                           "coverage_pct": (100.0 * po_hit / po_total) if po_total else 0.0},
+        "blind_oob": {"total": bo_total, "hit": bo_hit, "miss": bo_total - bo_hit,
+                      "coverage_pct": (100.0 * bo_hit / bo_total) if bo_total else 0.0},
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }

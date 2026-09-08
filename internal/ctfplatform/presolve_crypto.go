@@ -387,81 +387,75 @@ func tryPohligHellman(text string, attachments map[string]string) []string {
 	return nil
 }
 
-// tryPaddingOracle 检测 Padding Oracle 攻击特征。
-func tryPaddingOracle(text string, attachments map[string]string) []string {
-	fullText := text
-	for _, v := range attachments {
-		fullText += "\n" + v
-	}
-	lower := strings.ToLower(fullText)
-	poKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"padding oracle", "Padding Oracle 攻击"},
-		{"pkcs7", "PKCS#7 填充"},
-		{"pkcs5", "PKCS#5 填充"},
-		{"cbc mode", "CBC 模式"},
-		{"cbc bit flipping", "CBC 位翻转攻击"},
-		{"iv", "初始化向量（IV）"},
-		{"block cipher mode", "分组密码模式"},
-		{"cipher block chaining", "密码块链接（CBC）"},
-		{"cipher feedback", "密码反馈（CFB）"},
-		{"output feedback", "输出反馈（OFB）"},
-		{"counter mode", "计数器模式（CTR）"},
-		{"galois counter", "GCM 模式"},
-		{"authentication tag", "认证标签（GCM）"},
-		{"nonce", "随机数/Nonce"},
-		{"initialization vector", "初始化向量"},
-	}
-	for _, kw := range poKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"密码模式: " + kw.hint}
-		}
-	}
-	return nil
-}
-
-// tryECDSANonceReuse 检测 ECDSA nonce 重用条件（同 nonce + 同私钥 → 私钥泄露）。
+// tryECDSANonceReuse 真实攻击：ECDSA nonce 重用恢复私钥。
+//
+// 给定两组共享同一 nonce k 的签名 (r, s1, z1) 与 (r, s2, z2)（r 相同 = nonce 复用铁证）：
+//
+//	k  = (z1 - z2) * (s1 - s2)^-1 mod n
+//	d  = (s1*k - z1) * r^-1        mod n
+//
+// 从题目描述/附件解析 r, s1, s2, z1, z2, n（n 为曲线阶）。解出私钥 d 后产出 flag 候选。
+// 纯大数运算，确定性、可双语言机验，不依赖在线 oracle。
 func tryECDSANonceReuse(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
-	lower := strings.ToLower(fullText)
-	ecdsaKeywords := []struct {
-		keyword string
-		hint    string
-	}{
-		{"ecdsa", "ECDSA 椭圆曲线数字签名"},
-		{"nonce reuse", "Nonce 重用攻击（同 nonce 不同消息→私钥泄露）"},
-		{"same nonce", "相同 Nonce"},
-		{"repeated nonce", "重复 Nonce"},
-		{"k reuse", "k 值重用"},
-		{"r value", "ECDSA r 值"},
-		{"s value", "ECDSA s 值"},
-		{"signature reuse", "签名重用"},
-		{"secp256k1", "secp256k1 椭圆曲线（比特币）"},
-		{"ecdsa recovery", "ECDSA 公钥恢复"},
-		{"low entropy nonce", "低熵 Nonce（可预测）"},
-		{"biased nonce", "有偏 Nonce"},
+	parseBI := func(pat string) *big.Int {
+		m := regexp.MustCompile(pat).FindStringSubmatch(fullText)
+		if m == nil {
+			return nil
+		}
+		b, ok := new(big.Int).SetString(m[1], 10)
+		if !ok {
+			return nil
+		}
+		return b
 	}
-	for _, kw := range ecdsaKeywords {
-		if strings.Contains(lower, kw.keyword) {
-			return []string{"ECDSA特征: " + kw.hint}
+	r := parseBI(`(?i)\br\s*=\s*(\d+)`)
+	n := parseBI(`(?i)\bn\s*=\s*(\d+)`)
+	s1 := parseBI(`(?i)\bs1\s*=\s*(\d+)`)
+	s2 := parseBI(`(?i)\bs2\s*=\s*(\d+)`)
+	z1 := parseBI(`(?i)\bz1\s*=\s*(\d+)`)
+	z2 := parseBI(`(?i)\bz2\s*=\s*(\d+)`)
+	if r == nil || n == nil || s1 == nil || s2 == nil || z1 == nil || z2 == nil {
+		return nil
+	}
+	if r.Sign() == 0 || n.Sign() <= 0 || s1.Cmp(s2) == 0 {
+		return nil
+	}
+	// k = (z1 - z2) * (s1 - s2)^-1 mod n
+	zdiff := new(big.Int).Sub(z1, z2)
+	zdiff.Mod(zdiff, n)
+	sdiff := new(big.Int).Sub(s1, s2)
+	sdiff.Mod(sdiff, n)
+	k := new(big.Int).ModInverse(sdiff, n)
+	if k == nil {
+		return nil
+	}
+	k.Mul(zdiff, k)
+	k.Mod(k, n)
+	// d = (s1*k - z1) * r^-1 mod n
+	rInv := new(big.Int).ModInverse(r, n)
+	if rInv == nil {
+		return nil
+	}
+	d := new(big.Int).Mul(s1, k)
+	d.Sub(d, z1)
+	d.Mod(d, n)
+	d.Mul(d, rInv)
+	d.Mod(d, n)
+	if d.Sign() == 0 {
+		return nil
+	}
+	dHex := fmt.Sprintf("%x", d)
+	cands := []string{"flag{" + dHex + "}", "CTF{" + dHex + "}", string(d.Bytes()), d.Text(10)}
+	for _, c := range cands {
+		if flags := scanFlags(c); len(flags) > 0 {
+			return flags
 		}
 	}
-	// 检测两个相同 r 值的签名（nonce 重用的直接证据）
-	rRe := regexp.MustCompile(`(?i)\br\s*=\s*(\d+)`)
-	rMatches := rRe.FindAllStringSubmatch(fullText, -1)
-	if len(rMatches) >= 2 {
-		r1, ok1 := new(big.Int).SetString(rMatches[0][1], 10)
-		r2, ok2 := new(big.Int).SetString(rMatches[1][1], 10)
-		if ok1 && ok2 && r1.Cmp(r2) == 0 {
-			return []string{"ECDSA Nonce 重用检测：两组签名 r 值相同（r=" + r1.String() + "），可恢复私钥"}
-		}
-	}
-	return nil
+	return []string{"ECDSA私钥(hex): " + dHex}
 }
 
 // tryRSABroadcastComplete 系统化 RSA 广播攻击（e 组同明文多 n 求解）。

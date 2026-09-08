@@ -29,3 +29,17 @@ jobs:
         run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
       - name: Build
         run: CGO_ENABLED=1 go build -trimpath ./cmd/server
+
+  # 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证。
+  # 防止「求解器注水 / 误报 / 注册表死代码」回归，每次 PR/push 自动拦。
+  capability-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
+        run: sudo apt-get update && sudo apt-get install -y gcc
+      - name: Capability regression gate
+        run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s

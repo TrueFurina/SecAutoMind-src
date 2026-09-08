@@ -1,0 +1,9 @@
+{
+  "problems": {
+    "cbc_padding_oracle_basic": {
+      "description": "CBC Padding Oracle attack. An oracle tells whether the CBC padding of a decrypted ciphertext is valid (PKCS#7).\naes_key     = 2b7e151628aed2a6abf7158809cf4f3c\nciphertext  = 000102030405060708090a0b0c0d0e0f5407a0d10a23fd6de8b47f45b10f2cad61cdde480d56a71f399f5607befc50b9138c3c1f98debde4f3b7867266a732db900cd9f6e0e4b927bb8521a2eeb46b91b592aad77e3504a0ee8316b5ffd4b9bcf3e630f99e6160f2791d412c260ae1eff09cddf7989a458ebb8443e69e5cd25550645acfc4e34ef0ba6736031dd5ec5eb3a68d1fe5c9a0fb4e757be240c7c1ee\nRecover the plaintext; the flag is hidden inside it.",
+      "flag_sha256": "817b2b921415c3965fafa4a7cd68732eef13a976424b67993a26a3fe1f1c0119",
+      "note": "CBC PKCS#7 padding oracle: recover plaintext byte-by-byte using only oracle's padding-validity bool (no key)."
+    }
+  }
+}

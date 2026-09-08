@@ -1,0 +1,12 @@
+{
+  "problems": {
+    "time_blind_basic": {
+      "flag_sha256": "a5938b6723088fc544136e05c468b035aeac6df3f50a7e7047f4207b047b822c",
+      "note": "时间盲注逐字符还原（仅依响应耗时差异，无响应回显）"
+    },
+    "oob_exfil_basic": {
+      "flag_sha256": "296f47ea854adbc65a6d008ddbef74256f11fdf0c0d87a9ebb173010bd320be3",
+      "note": "OOB 外带还原（靶机把密钥回连到内置监听器，攻击方从回调捕获）"
+    }
+  }
+}
