@@ -1,0 +1,21 @@
+{
+  "benchmark": "graphql",
+  "version": 1,
+  "problems": {
+    "gql_introspection": {
+      "flag_sha256": "a9ba2fdaadfecbe19535cfa076571171947dba31a5fe7e846702283373f8ec34",
+      "category": "web/graphql",
+      "description": "站点在 /graphql 提供 GraphQL 接口（POST JSON {query}）。内省未关闭。文档只写了 user(id) 查询，但 schema 里还藏着别的字段。flag 即隐藏字段的返回值。"
+    },
+    "gql_idor": {
+      "flag_sha256": "203903721a4aa883180fe1ffc0a72ce88dddfc0775217f75af2a98a9b6b220af",
+      "category": "web/graphql",
+      "description": "站点在 /graphql 提供 GraphQL 接口（POST JSON {query}）。user(id:\"1\") { name role notes } 返回当前用户；管理员账号 id 是 2。flag 在管理员的 notes 字段里。"
+    },
+    "gql_mutation": {
+      "flag_sha256": "688eac4e47e55e92bbb1b94f74481499e658e85af4a71ac8bbcae7bc55ab2ca7",
+      "category": "web/graphql",
+      "description": "站点在 /graphql 提供 GraphQL 接口（POST JSON {query}）。官方文档只有查询，但生产环境忘了下线调试 mutation（可以对靶机文件执行 cat）。flag 在靶机工作目录 flag.txt。"
+    }
+  }
+}
