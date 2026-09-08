@@ -28,7 +28,7 @@ import (
 
 // 工具名（确定性求解器命名空间 ctf_*，避免与 90 个 YAML 工具冲突）
 const (
-	toolCTFFlagScan        = "ctf_flag_scan"
+	toolCTFFlagScan         = "ctf_flag_scan"
 	toolCTFBase64AutoDecode = "ctf_base64_auto_decode"
 	toolCTFCaesarBruteforce = "ctf_caesar_bruteforce"
 	toolCTFXORSingleByte    = "ctf_xor_single_byte"
@@ -172,7 +172,7 @@ func RegisterCTFSolvers(server *Server) {
 		if !ok {
 			return textToolResult("内置词表未命中（可尝试 wordlist 工具或在线破解）", false), nil
 		}
-		return textToolResult("[presolve:hash_crack] 命中 " + algo + " => 明文: " + plain, false), nil
+		return textToolResult("[presolve:hash_crack] 命中 "+algo+" => 明文: "+plain, false), nil
 	})
 
 	// 6) RSA 费马分解：n 为相近素数乘积（crypto 经典题）
@@ -183,8 +183,8 @@ func RegisterCTFSolvers(server *Server) {
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"n": map[string]interface{}{"type": "string", "description": "模数 n（十进制）"},
-				"e": map[string]interface{}{"type": "string", "description": "公钥指数 e（十进制，默认 65537）"},
+				"n":      map[string]interface{}{"type": "string", "description": "模数 n（十进制）"},
+				"e":      map[string]interface{}{"type": "string", "description": "公钥指数 e（十进制，默认 65537）"},
 				"cipher": map[string]interface{}{"type": "string", "description": "密文（十六进制，可空）"},
 			},
 			"required": []string{"n"},
@@ -198,13 +198,13 @@ func RegisterCTFSolvers(server *Server) {
 		if eStr == "" {
 			eStr = "65537"
 		}
-			cipherHex := strings.TrimSpace(stringArg(args, "cipher"))
-			out, err := fermatAttack(nStr, eStr, cipherHex)
-			if err != nil {
-				return textToolResult("[presolve:rsa_fermat] "+err.Error(), false), nil
-			}
-			return textToolResult("[presolve:rsa_fermat] "+out, false), nil
-		})
+		cipherHex := strings.TrimSpace(stringArg(args, "cipher"))
+		out, err := fermatAttack(nStr, eStr, cipherHex)
+		if err != nil {
+			return textToolResult("[presolve:rsa_fermat] "+err.Error(), false), nil
+		}
+		return textToolResult("[presolve:rsa_fermat] "+out, false), nil
+	})
 
 	// 7) RSA 共模攻击：同一明文同一模数 n、两组 (e1,c1) 且 gcd(e1,e2)=1
 	server.RegisterTool(Tool{
@@ -233,7 +233,7 @@ func RegisterCTFSolvers(server *Server) {
 		}
 		out, err := commonModulusAttack(nStr, e1Str, c1Hex, e2Str, c2Hex)
 		if err != nil {
-			return textToolResult("[presolve:rsa_common_modulus] " + err.Error(), false), nil
+			return textToolResult("[presolve:rsa_common_modulus] "+err.Error(), false), nil
 		}
 		return textToolResult("[presolve:rsa_common_modulus] "+out, false), nil
 	})

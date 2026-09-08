@@ -3,8 +3,6 @@ package app
 import (
 	"embed"
 	"io/fs"
-
-
 )
 
 // go:embed 前端资源（模板 + 静态），使 exe 在任意目录双击即用，

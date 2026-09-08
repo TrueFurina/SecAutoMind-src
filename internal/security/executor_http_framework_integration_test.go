@@ -83,11 +83,11 @@ func TestExecutor_HttpFrameworkTest_Integration(t *testing.T) {
 
 	ctx := context.Background()
 	result, err := executor.ExecuteTool(ctx, "http-framework-test", map[string]interface{}{
-		"url":                 "http://127.0.0.1:18086/",
-		"method":              "GET",
-		"response_max_lines":  3,
-		"response_max_bytes":  600,
-		"show_summary":        false,
+		"url":                "http://127.0.0.1:18086/",
+		"method":             "GET",
+		"response_max_lines": 3,
+		"response_max_bytes": 600,
+		"show_summary":       false,
 	})
 	if err != nil {
 		t.Fatalf("ExecuteTool 返回错误: %v", err)

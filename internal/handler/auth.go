@@ -24,8 +24,8 @@ type loginRateLimiter struct {
 }
 
 type loginAttempt struct {
-	failures  int
-	lockedAt  time.Time
+	failures int
+	lockedAt time.Time
 }
 
 func newLoginRateLimiter() *loginRateLimiter {
@@ -132,8 +132,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// 限流检查：5 次失败后锁定 5 分钟
 	if locked, remaining := h.loginLimiter.Check(username); locked {
 		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error":   "登录失败次数过多，账号已临时锁定",
-			"locked":  true,
+			"error":           "登录失败次数过多，账号已临时锁定",
+			"locked":          true,
 			"retry_after_sec": remaining,
 		})
 		return

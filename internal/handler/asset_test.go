@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"secautomind-ai/internal/database"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"secautomind-ai/internal/database"
 )
 
 func TestAssetListPaginatesWithinProject(t *testing.T) {

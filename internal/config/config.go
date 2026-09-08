@@ -1,8 +1,8 @@
 package config
 
 import (
-	_ "embed"
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

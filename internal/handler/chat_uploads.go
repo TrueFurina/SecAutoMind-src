@@ -38,10 +38,10 @@ const (
 	chatUploadSourceConversation = "conversation_artifact"
 	maxChatUploadEditBytes       = 2 * 1024 * 1024 // 文本编辑上限
 	// zip 自动解包安全上限（防 zip 炸弹 / 资源耗尽）
-	maxZipExtractEntries     = 500              // 条目数上限
-	maxZipExtractTotalBytes  = 200 << 20        // 解压总体积上限 200MB
-	maxZipExtractFileBytes   = 50 << 20         // 单文件解压体积上限 50MB
-	zipExtractedDirSuffix    = "_extracted"     // 解包目录后缀
+	maxZipExtractEntries    = 500          // 条目数上限
+	maxZipExtractTotalBytes = 200 << 20    // 解压总体积上限 200MB
+	maxZipExtractFileBytes  = 50 << 20     // 单文件解压体积上限 50MB
+	zipExtractedDirSuffix   = "_extracted" // 解包目录后缀
 )
 
 // ChatUploadsHandler 对话中上传附件（chat_uploads 目录）的管理 API

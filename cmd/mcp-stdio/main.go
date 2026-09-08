@@ -1,13 +1,13 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
 	"secautomind-ai/internal/config"
 	"secautomind-ai/internal/logger"
 	"secautomind-ai/internal/mcp"
 	"secautomind-ai/internal/security"
-	"flag"
-	"fmt"
-	"os"
 
 	"go.uber.org/zap"
 )

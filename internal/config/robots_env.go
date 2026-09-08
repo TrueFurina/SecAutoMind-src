@@ -18,7 +18,7 @@ type robotEnvOverride struct {
 // 避免真实密钥落盘/误提交。
 var robotEnvOverrides = map[string][]robotEnvOverride{
 	"dingtalk": {
-		{"DING_APP_KEY", func(r *RobotsConfig, v string) { r.Dingtalk.ClientID = v }}, // 钉钉 ClientID
+		{"DING_APP_KEY", func(r *RobotsConfig, v string) { r.Dingtalk.ClientID = v }},        // 钉钉 ClientID
 		{"DING_APP_SECRET", func(r *RobotsConfig, v string) { r.Dingtalk.ClientSecret = v }}, // 钉钉 ClientSecret
 		{"DINGTALK_CLIENT_ID", func(r *RobotsConfig, v string) { r.Dingtalk.ClientID = v }},
 		{"DINGTALK_CLIENT_SECRET", func(r *RobotsConfig, v string) { r.Dingtalk.ClientSecret = v }},

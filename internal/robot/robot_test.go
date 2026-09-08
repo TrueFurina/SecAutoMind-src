@@ -73,4 +73,3 @@ func TestStartDing_MissingCredentials(t *testing.T) {
 	StartDing(context.Background(), cfg, nil, zap.NewNop())
 	// 不 panic 即通过（ClientID/ClientSecret 为空会直接 return）
 }
-

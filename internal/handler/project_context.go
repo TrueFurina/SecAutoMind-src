@@ -3,8 +3,8 @@ package handler
 import (
 	"strings"
 
-	"secautomind-ai/internal/project"
 	"go.uber.org/zap"
+	"secautomind-ai/internal/project"
 )
 
 // agentSessionContextBlock 注入会话工作目录与项目黑板（用于 system prompt 追加块）。

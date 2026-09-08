@@ -3,8 +3,8 @@ package handler
 import (
 	"testing"
 
-	"secautomind-ai/internal/config"
 	"gopkg.in/yaml.v3"
+	"secautomind-ai/internal/config"
 )
 
 func TestUpdateMultiAgentConfigWritesEinoModelResilience(t *testing.T) {

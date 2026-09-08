@@ -2,14 +2,14 @@ package handler
 
 import (
 	"bytes"
-	"secautomind-ai/internal/audit"
-	"secautomind-ai/internal/config"
-	"secautomind-ai/internal/database"
-	"secautomind-ai/internal/security"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"secautomind-ai/internal/audit"
+	"secautomind-ai/internal/config"
+	"secautomind-ai/internal/database"
+	"secautomind-ai/internal/security"
 	"testing"
 
 	"github.com/gin-gonic/gin"

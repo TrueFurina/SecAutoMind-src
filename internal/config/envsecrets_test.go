@@ -168,7 +168,7 @@ func TestAutoFailoverChannelIDs(t *testing.T) {
 	cfg := &Config{}
 	cfg.AI.DefaultChannel = "qwen-max"
 	cfg.AI.Channels = map[string]AIChannelConfig{
-		"qwen-max":  {APIKey: "sk-xxxxxxx", BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen3-max"},
+		"qwen-max": {APIKey: "sk-xxxxxxx", BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1", Model: "qwen3-max"},
 		"deepseek": {APIKey: "", BaseURL: "https://api.deepseek.com/v1", Model: "deepseek-chat"},
 		"openai":   {APIKey: "sk-openai-real-1122334455", BaseURL: "https://api.openai.com/v1", Model: "gpt-4o-mini"},
 		"dead":     {APIKey: "sk-xxxxxxx", BaseURL: "https://dead.example/v1", Model: "x"},

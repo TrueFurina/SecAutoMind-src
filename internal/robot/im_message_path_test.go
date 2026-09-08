@@ -124,8 +124,8 @@ func TestHandleLarkMessage_TextFullPath(t *testing.T) {
 // fakeQQAPI 嵌入接口仅覆写消息发送，其余方法不触达。
 type fakeQQAPI struct {
 	openapi.OpenAPI
-	mu       sync.Mutex
-	c2cSent  []string
+	mu        sync.Mutex
+	c2cSent   []string
 	groupSent []string
 }
 

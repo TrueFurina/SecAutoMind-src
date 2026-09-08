@@ -821,7 +821,9 @@ func tryObfuscationVariant(text string, attachments map[string]string) []string 
 
 func tryDecompilerChain(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"ida pro", "IDA Pro"}, {"ghidra", "Ghidra"}, {"binary ninja", "Binary Ninja"},
@@ -829,14 +831,18 @@ func tryDecompilerChain(text string, attachments map[string]string) []string {
 		{"capstone", "Capstone"}, {"frida", "Frida"}, {"gdb", "GDB"}, {"x64dbg", "x64dbg"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"逆向工具链: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"逆向工具链: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryIOFileExploit(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"io_file", "IO_FILE"}, {"_io_list_all", "_IO_list_all"}, {"fsop", "FSOP"},
@@ -844,14 +850,18 @@ func tryIOFileExploit(text string, attachments map[string]string) []string {
 		{"got overwrite", "GOT表覆写"}, {"ret2dlresolve", "ret2dlresolve"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"IO_FILE/FSOP: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"IO_FILE/FSOP: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryHeapSpray(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"heap spray", "堆喷射"}, {"format string", "格式化字符串"},
@@ -859,98 +869,128 @@ func tryHeapSpray(text string, attachments map[string]string) []string {
 		{"one gadget", "one_gadget"}, {"ret2libc", "ret2libc"}, {"rop chain", "ROP链"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Pwn: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Pwn: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryGoReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"go reverse", "Go逆向"}, {"goretk", "goretk"}, {"pclntab", "pclntab"}, {"runtime.main", "runtime.main"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Go逆向: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Go逆向: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryPythonReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"pyinstaller", "PyInstaller"}, {"uncompyle6", "uncompyle6"}, {"marshal", "marshal"}, {".pyc", ".pyc"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Python逆向: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Python逆向: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryDotNetReverseAdvanced(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"csharp", "C#"}, {"ilspy", "ILSpy"}, {"dnspy", "dnSpy"}, {"de4dot", "de4dot"}, {"assembly", ".NET程序集"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{".NET逆向: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{".NET逆向: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryRet2csu(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"ret2csu", "ret2csu"}, {"__libc_csu_init", "csu gadget"}, {"rop chain", "ROP链"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"ret2csu: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"ret2csu: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryRet2Syscall(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"ret2syscall", "ret2syscall"}, {"execve", "execve"}, {"open", "open"}, {"mmap", "mmap"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"ret2syscall: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"ret2syscall: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryFormatStringArbitraryWrite(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"format string", "格式化字符串"}, {"%n write", "%n写入"}, {"got overwrite", "GOT表覆写"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"格式化字符串: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"格式化字符串: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryStackOverflow(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"buffer overflow", "缓冲区溢出"}, {"stack overflow", "栈溢出"}, {"off-by-one", "Off-by-one"}, {"canary", "Canary"}, {"aslr", "ASLR"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"栈溢出: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"栈溢出: " + kw.h}
+		}
 	}
 	return nil
 }
@@ -959,21 +999,27 @@ func tryStackOverflow(text string, attachments map[string]string) []string {
 
 func tryWebAssemblyReverse(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"wasm", "WebAssembly"}, {"webassembly", "WebAssembly"}, {"wat", "WAT格式"},
 		{"wasmtime", "Wasmtime"}, {"wasmer", "Wasmer"}, {"emscripten", "Emscripten"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"WebAssembly: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"WebAssembly: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryHypervisorEscape(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"hypervisor escape", "虚拟机逃逸"}, {"vm escape", "VM逃逸"}, {"vmware escape", "VMware逃逸"},
@@ -981,14 +1027,18 @@ func tryHypervisorEscape(text string, attachments map[string]string) []string {
 		{"container breakout", "容器突破"}, {"sandbox escape", "沙箱逃逸"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"虚拟化逃逸: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"虚拟化逃逸: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryFirmwareExploit(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"firmware", "固件"}, {"bios", "BIOS"}, {"uefi", "UEFI"}, {"bootkit", "Bootkit"},
@@ -996,14 +1046,18 @@ func tryFirmwareExploit(text string, attachments map[string]string) []string {
 		{"jtag", "JTAG"}, {"uart", "UART"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"固件利用: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"固件利用: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryWeb3Security(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"web3", "Web3"}, {"ethereum", "以太坊"}, {"solidity", "Solidity"}, {"smart contract", "智能合约"},
@@ -1012,21 +1066,27 @@ func tryWeb3Security(text string, attachments map[string]string) []string {
 		{"rug pull", "Rug Pull"}, {"erc20", "ERC-20"}, {"erc721", "ERC-721"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"Web3安全: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"Web3安全: " + kw.h}
+		}
 	}
 	return nil
 }
 
 func tryOSKernelSecurity(text string, attachments map[string]string) []string {
 	fullText := text
-	for _, v := range attachments { fullText += "\n" + v }
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
 	lower := strings.ToLower(fullText)
 	kws := []struct{ k, h string }{
 		{"windows kernel", "Windows内核"}, {"linux kernel", "Linux内核"}, {"kernel exploit", "内核漏洞"},
 		{"syscall", "系统调用"}, {"rootkit", "Rootkit"}, {"aslr", "ASLR"}, {"dep", "DEP"},
 	}
 	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) { return []string{"内核安全: " + kw.h} }
+		if strings.Contains(lower, kw.k) {
+			return []string{"内核安全: " + kw.h}
+		}
 	}
 	return nil
 }
