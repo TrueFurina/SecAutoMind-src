@@ -411,19 +411,19 @@ footer(s, 12)
 s = add_slide()
 bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'VERIFICATION', ACCENT)
-text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('实测验证：编译零错误 · 核心测试全绿 · 系统实启动', {'size': 30, 'bold': True})])
+text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('实测验证：工程全绿 + CTF 能力基准双语言机验', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.8), Inches(11.6), Inches(0.5),
-     [('（2026-09-01 实测：Go 1.25.0 + mingw-w64 环境，全部为磁盘实测数据）', {'size': 13, 'color': MUTED})])
-stats = [('0', '编译错误（123,149 行）', ACCENT), ('28/28', '测试包通过', ACCENT2), ('200', '系统启动 HTTP 响应', WARN), ('242', '测试文件', ACCENT)]
+     [('（2026-09-08 实测：Go 1.25.0，全部为磁盘实测数据，每个数字均有脚本 + JSON 证据可复跑）', {'size': 13, 'color': MUTED})])
+stats = [('0', '编译错误（125,388 行）', ACCENT), ('163', '确定性求解器', ACCENT), ('34.5%', '静态 55 真题命中（19 题）', ACCENT2), ('100%', '执行基准 17/17 · Web 10/10', WARN)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.4), Inches(2.75), v, lb, color=c)
 rows = [
     ('go build ./...', '全量编译零错误（退出码 0 / 0 输出）', ACCENT),
     ('go test ./...', '核心包全绿：multiagent 15.6s · database 5.4s · attackchain 4.5s', ACCENT),
-    ('系统启动', 'go run --http 启动成功，GET / → 200，8080 端口 LISTENING', ACCENT2),
-    ('API 可达', '/api/auth/login 可达（参数校验生效），鉴权中间件在路径上', ACCENT2),
-    ('代码卫生', '0 panic · 0 处 TODO · 242 测试文件 · 32 个 internal 包', ACCENT),
-    ('安全基线', 'CORS 白名单 · SQL 参数化 · 7 个配置占位符 · HITL 审批桥', WARN),
+    ('系统启动', 'go run --http 启动成功，GET / → 200，8080 LISTENING，登录 API 可达', ACCENT2),
+    ('CTF 静态基准', '55 道真题 19 命中 = 34.5%（TestRealBenchmark_ShippedPresolve == Python judge.py）', ACCENT),
+    ('CTF 执行基准', '执行 17/17=100%（取证/密码攻击）· Web 靶场 10/10 · JWT 绕过 3/3 · 附件取证 10/10', ACCENT2),
+    ('工程卫生', '0 panic · 0 处 TODO · 247 测试文件 · 32 个 internal 包 · CORS/参数化/审计脱敏', WARN),
 ]
 for i, (t, body, ac) in enumerate(rows):
     y = Inches(3.8 + i * 0.55)
@@ -443,10 +443,10 @@ bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'SCORING', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('与评分标准逐项对照', {'size': 30, 'bold': True})])
 crit = [
-    ('自主决策能力', '三层编排 · 事实黑板 · 环境自适应 · 模型韧性', '★★★★★'),
-    ('智能体通用性', '90 工具 · 18 Agent · 23 技能包 · MCP 生态', '★★★★★'),
+    ('自主决策能力', '三层编排 · 事实黑板 · 执行基准 17/17=100% · Web 靶场 10/10', '★★★★★'),
+    ('智能体通用性', '90 工具 · 18 Agent · 23 技能包 · 163 求解器 · MCP 生态', '★★★★★'),
     ('可控性与安全', 'HITL 审批 · 工具白名单 · 审计复核 · 全链路证据', '★★★★★'),
-    ('工程完整度', '123,149 行 Go · 242 测试 · 0 panic · 系统实启动', '★★★★☆'),
+    ('工程完整度', '125,388 行 Go · 247 测试 · 0 panic · 静态真题 34.5% 双语言机验', '★★★★★'),
     ('合规与部署', '国内模型接入 · 云上一键部署 · 审计留痕', '★★★★☆'),
     ('创新性', '三模式编排选型 · 事实黑板 · C2-HITL 桥接', '★★★★★'),
 ]
@@ -525,7 +525,7 @@ text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('总结与展望', 
 summary = [
     ('做了什么', '3 层编排 × 90 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
     ('技术创新', '按复杂度自动选型的三模式编排 · 事实黑板上下文共享 · C2-HITL 审批桥 · 离线自主决策'),
-    ('工程证明', '123,149 行 Go · 242 测试文件 · 0 panic · 32 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
+    ('工程证明', '125,388 行 Go · 247 测试 · 0 panic · 32 包分层 · CTF 能力基准：静态 34.5% / 执行 100% / Web 100%（双语言机验）'),
     ('未来展望', '接入更多国内模型 · 扩工具生态（社区 YAML）· 多靶场联动 · 智能体自学习（攻击链记忆）'),
 ]
 for i, (t, body) in enumerate(summary):
