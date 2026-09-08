@@ -74,12 +74,30 @@ func bfxDedup(in []string) []string {
 func bfxScanRaw(data []byte) []string {
 	var out []string
 	for _, m := range flagRegexPresolve.FindAll(data, -1) {
-		out = append(out, string(m))
+		if s := string(m); bfxCandidateClean(s) {
+			out = append(out, s)
+		}
 	}
 	for _, m := range flagRegexUppercase.FindAll(data, -1) {
-		out = append(out, string(m))
+		if s := string(m); bfxCandidateClean(s) {
+			out = append(out, s)
+		}
 	}
 	return bfxDedup(out)
+}
+
+// bfxCandidateClean 判断一个 flag 候选是否「干净」：不含任何控制字符
+// （含 NUL/换行/TAB/DEL 及 0x80+ 非 ASCII）。随机解码字节抽出的
+// 大写串{二进制} 外形必含控制字节，由此被丢弃，杜绝把噪声当 flag。
+// 真 flag（flag{...} / FLAG{...} / picoCTF{...}）内容全程可打印，不受影响。
+func bfxCandidateClean(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c == 0x7f || c >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 // bfxPrintableRuns 提取连续可打印串（长度≥minLen），模拟 strings 命令。
