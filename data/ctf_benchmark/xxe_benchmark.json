@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "xxe_reflected": {
+      "flag_sha256": "0e29f81c31242c2c60d1342650c235b44298f7237475bdb03a4b60311aaeea80",
+      "description": "目标提供 XML 解析接口：POST /parse，请求体为 XML 文档，服务端解析后回显文本内容。解析器支持 DTD 实体声明。flag 文件为 flag.txt。"
+    },
+    "xxe_xinclude": {
+      "flag_sha256": "19bc609c8b144ffd99665f72e4863ff304270eaa827c4e4ff90423a18dd21525",
+      "description": "目标提供 XML 导入接口：POST /api/xml，请求体为 XML 文档。解析器支持 XInclude（xi:include href= parse=text）。flag 文件为 flag.txt。"
+    },
+    "xxe_oob": {
+      "flag_sha256": "7fcc9a48cd49a0f329aba608cdbfecc92736aca2a67f0ae918f93b14cb89d409",
+      "description": "目标提供 XML 批量导入接口：POST /import，请求体为 XML 文档，响应只有 ok 不回显内容。解析器支持 DTD 参数实体与外部实体引用（会主动请求 SYSTEM 指向的 URL）。靶机自身提供 /oob 探针端点与 /oob-log 查询端点。flag 文件为 flag.txt。"
+    }
+  }
+}
