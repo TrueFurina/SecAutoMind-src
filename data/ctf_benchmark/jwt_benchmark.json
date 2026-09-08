@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "jwt_weak": {
+      "flag_sha256": "ad0f244983532e7778f8e5db127a55c98d30e683a756e0cd6862e6f191557d3d",
+      "description": "JWT 鉴权绕过：POST /jwt_weak/api/login 用 user=guest 登录拿到 JWT，访问 /jwt_weak/api/flag 需要 role=admin。服务端用 HS256 且密钥是常见弱口令。"
+    },
+    "jwt_none": {
+      "flag_sha256": "2fef9bed5e5c2aeaf9de482f16f0ae1d933b77618a57f8b32ef4ebdc5fde5ee5",
+      "description": "JWT 鉴权绕过：POST /jwt_none/api/login 用 user=guest 登录拿到 JWT，访问 /jwt_none/api/flag 需要 role=admin。注意服务端对 alg=none 的处理。"
+    },
+    "jwt_rs256": {
+      "flag_sha256": "d3c813cde6a9afb3cd59a9a2b85b4d6e2c49524bc06916479f7afd34884d82db",
+      "description": "JWT 鉴权绕过：POST /jwt_rs256/api/login 用 user=guest 登录拿到 JWT，公钥在 /jwt_rs256/public.pem，访问 /jwt_rs256/api/flag 需要 role=admin。"
+    }
+  }
+}

@@ -118,6 +118,26 @@ def run_web_hints():
     return total, a_hit, b_hit
 
 
+def run_jwt():
+    """跑 JWT 认证绕过靶场（judge_jwt.py），返回 (total, hit)。
+
+    三个场景：HS256 弱密钥爆破重签 / alg=none 无签名伪造 / RS256→HS256 公钥混淆。
+    flag 只有在真正绕过鉴权（拿到 admin 声明且签名通过）时才由靶场返回。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_jwt.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_jwt.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "jwt_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = sum(1 for line in out.splitlines() if line.strip().endswith("HIT") or " HIT " in line)
+    return total, hit
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -128,7 +148,7 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline",
+         "-run", "TestRealBenchmark_ShippedPresolve|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered",
          "-count=1", "-timeout", "300s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -147,6 +167,7 @@ def main():
     wb_total, wb_hit, wb_miss, wb_pct = run_web()
     at_total, at_hit, at_miss, at_pct, at_water = run_attachment()
     wh_total, wh_a, wh_b = run_web_hints()
+    jt_total, jt_hit = run_jwt()
 
     print("=" * 64)
     print("  SecAutoMind 夺旗能力六基准集 · 统一机验汇总")
@@ -182,6 +203,14 @@ def main():
     print("    能力维度：从 description 提取端点/参数名/载荷/漏洞类型 → 定向投递；")
     print("               首页链接抓取补全未知端点；真实靶机端点不叫 /ssti//cmd 也能打中")
     print()
+    print("【6】JWT 认证绕过 (jwt_benchmark.json, 三类真实 JWT 考点靶场)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (jt_total, jt_hit, jt_total - jt_hit,
+           (100.0 * jt_hit / jt_total) if jt_total else 0.0))
+    print("    Python judge_jwt.py == Go TestJWTAttackAgainstRange（+生产入口 3/3）")
+    print("    攻破维度：HS256 弱密钥爆破重签 / alg=none 无签名伪造 /")
+    print("               RS256→HS256 公钥混淆（取回 /public.pem 当 HMAC 密钥重签）")
+    print()
 
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
@@ -192,12 +221,14 @@ def main():
     print("    剩余 %d 道需真实工具执行/实时靶机/二进制/隐写 —— 属 Agent 执行层能力" % st_miss)
     print()
 
-    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%%" %
-          (st_pct, ex_pct, wb_pct, at_pct))
+    print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
+          "+ JWT 认证绕过 %d/%d" %
+          (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total))
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
-    print("    执行层、Web 实战层、附件取证层、题目感知层是冠军差异点：西湖论剑类关键词求解器天花板即静态集，")
-    print("    SecAutoMind 额外验证了『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点 + 真解析二进制附件 + 读题定向渗透』(双语言机验)。")
+    print("    执行层、Web 实战层、附件取证层、题目感知层、JWT 认证绕过层是冠军差异点：")
+    print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
+    print("    『Agent 能真跑工具 + 真打靶机 + 真攻 Web 站点 + 真解析二进制附件 + 读题定向渗透 + 真绕过 JWT 鉴权』(双语言机验)。")
     print()
 
     if args.go:
@@ -215,6 +246,8 @@ def main():
                        "coverage_pct": at_pct, "water_filled": at_water},
         "web_hints": {"total": wh_total, "group_a_no_hint": wh_a, "group_b_with_hint": wh_b,
                       "delta": wh_b - wh_a},
+        "jwt": {"total": jt_total, "hit": jt_hit, "miss": jt_total - jt_hit,
+                "coverage_pct": (100.0 * jt_hit / jt_total) if jt_total else 0.0},
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }
