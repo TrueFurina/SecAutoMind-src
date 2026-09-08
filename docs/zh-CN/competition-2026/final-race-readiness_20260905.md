@@ -64,7 +64,11 @@ bash scripts/verify_gateway.sh --base-url <网关>/v1 --api-key <Key>      # 期
 bash scripts/experiments/gw_probe.sh --message "输出OK"                   # 期望 finalized=True
 
 # 3. 密钥零残留（打包前必跑）
-grep -rIl --exclude-dir=.git --exclude-dir=node_modules -E "sk-[A-Za-z0-9]{16,}|Bearer [A-Za-z0-9]{16,}" docs/ PPT/ 2>/dev/null || echo "CLEAN"
+# ⚠️ 2026-09-08 修正：旧的 grep -E "sk-[A-Za-z0-9]{16,}" 匹配不到 sk-ws-H.xxx
+#    （第 4 位是连字符即断匹配），一把真实存活的 key 正是从这个洞漏过去；
+#    且旧命令只扫 docs/ PPT/，完全漏掉 config.yaml（被 gitignore 但会进交付包）。
+#    现统一改用 scripts/secret_guard.py：全仓扫描 + 自动区分占位符/测试夹具/CTF flag + 输出打码。
+python scripts/secret_guard.py          # 期望 [PASS]；exit 1 表示发现真实凭证，禁止打包
 ```
 
 | 勾 | 项 | 依据 |

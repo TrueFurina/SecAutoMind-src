@@ -414,7 +414,7 @@ tag(s, Inches(0.7), Inches(0.6), 'VERIFICATION', ACCENT)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('实测验证：工程全绿 + CTF 能力基准双语言机验', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.8), Inches(11.6), Inches(0.5),
      [('（2026-09-08 实测：Go 1.25.0，全部为磁盘实测数据，每个数字均有脚本 + JSON 证据可复跑）', {'size': 13, 'color': MUTED})])
-stats = [('0', '编译错误（125,388 行）', ACCENT), ('163', '确定性求解器', ACCENT), ('34.5%', '静态 55 真题命中（19 题）', ACCENT2), ('100%', '执行基准 17/17 · Web 10/10', WARN)]
+stats = [('0', '编译错误（122,549 行）', ACCENT), ('170', '确定性求解器', ACCENT), ('34.5%', '静态 55 真题命中（19 题）', ACCENT2), ('100%', '执行基准 17/17 · Web 10/10', WARN)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.4), Inches(2.75), v, lb, color=c)
 rows = [
@@ -444,7 +444,7 @@ tag(s, Inches(0.7), Inches(0.6), 'SCORING', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('与评分标准逐项对照', {'size': 30, 'bold': True})])
 crit = [
     ('自主决策能力', '三层编排 · 事实黑板 · 执行基准 17/17=100% · Web 靶场 10/10', '★★★★★'),
-    ('智能体通用性', '90 工具 · 18 Agent · 23 技能包 · 163 求解器 · MCP 生态', '★★★★★'),
+    ('智能体通用性', '143 运行时工具 · 18 Agent · 23 技能包 · 170 求解器 · MCP 生态', '★★★★★'),
     ('可控性与安全', 'HITL 审批 · 工具白名单 · 审计复核 · 全链路证据', '★★★★★'),
     ('工程完整度', '125,388 行 Go · 247 测试 · 0 panic · 静态真题 34.5% 双语言机验', '★★★★★'),
     ('合规与部署', '国内模型接入 · 云上一键部署 · 审计留痕', '★★★★☆'),
