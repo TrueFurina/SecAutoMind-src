@@ -1,3 +1,4 @@
+<!-- CALIBER-SNAPSHOT: 历史档案，数字锚定当时的基线，不代表现行口径。现行口径一律以 scripts/count_stats.py --json 为准。 -->
 # SecAutoMind 冠军能力证据包（机器可复现）
 
 > 生成时间：2026-09-08 · 证据提交：`8849412` · 单一真值源：`python scripts/count_stats.py --json`（严禁手写数字）
