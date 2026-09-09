@@ -61,3 +61,30 @@ jobs:
         run: python data/ctf_benchmark/run_all_benchmarks.py
       - name: Evidence / caliber consistency gate
         run: python scripts/verify_evidence.py
+
+  # 密钥门禁：防止真实凭证被提交进仓库。
+  # 历史教训：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`
+  #（第 4 位是连字符即断匹配），一把真 key 从洞里漏过而门禁报 CLEAN。
+  # 失效的门禁比没有门禁更危险 —— 它会持续给出假的安全感。
+  secret-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Secret guard (real credentials block, placeholders allowed)
+        run: python scripts/secret_guard.py
+
+  # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
+  # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
+  # 写死的数字在提交完成的下一秒就可能过期，靠人肉同步永远追不上。
+  caliber-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Material numbers vs single source of truth
+        run: python scripts/check_material_numbers.py

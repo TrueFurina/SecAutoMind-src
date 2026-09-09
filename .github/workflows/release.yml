@@ -32,8 +32,22 @@ jobs:
       - name: Test with race detector
         run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
 
+  # 打包前密钥门禁（P0）：所有 build job 的前置。
+  # 为什么必须有：交付包会带上被 .gitignore 排除、但仍躺在磁盘上的 config.yaml，
+  # 里面可能含真实 API key。仓库干净 ≠ 交付包干净 —— 门禁必须扫**磁盘真实文件**。
+  # 旧流程缺失此步，等于那把锁没装在门上。
+  secret-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Secret guard (block packaging if real credentials found)
+        run: python scripts/secret_guard.py
+
   build-linux:
-    needs: [test-linux]
+    needs: [test-linux, secret-gate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,6 +73,7 @@ jobs:
             gh release create "$tag" secautomind-ai-linux-amd64 --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI build"
 
   build-macos:
+    needs: [test-linux, secret-gate]
     runs-on: macos-latest
     strategy:
       matrix:
@@ -81,7 +96,7 @@ jobs:
             gh release create "$tag" secautomind-ai-macos-${{ matrix.arch }} --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI build"
 
   build-windows:
-    needs: [test-linux]
+    needs: [test-linux, secret-gate]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
