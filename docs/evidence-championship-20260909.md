@@ -1,6 +1,6 @@
 # SecAutoMind 冠军能力证据包 · 全量质检版（机器可复现）
 
-> 生成时间：2026-09-09 · 质检基线 HEAD：`7a604e2` · 单一真值源：`python scripts/count_stats.py --json`（严禁手写数字）
+> 生成时间：2026-09-09 · 质检基线 HEAD：`7a604e2` · 复验当前 HEAD：`6251ca8` · 单一真值源：`python scripts/count_stats.py --json`（严禁手写数字）
 > 本文件所有数字均来自脚本实跑 / 测试实跑，附复现命令与门禁矩阵（§3）。
 >
 > ⚠️ **口径锚定声明**：下文**规模数字（§1）已刷新至当前 HEAD `6251ca8`**（689 文件 / **257** 测试 / 170 求解器）；
@@ -89,7 +89,7 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 
 | # | 门禁 | 命令 | 结果 |
 |---|---|---|---|
-| 1 | 单一真值源 | `python scripts/count_stats.py --json` | ✅ HEAD=7a604e2 solvers=170 go_files=689 total_lines=155831 runtime_tools=143 |
+| 1 | 单一真值源 | `python scripts/count_stats.py --json` | ✅ HEAD=6251ca8 solvers=170 go_files=689 total_lines=155831 runtime_tools=143 |
 | 2 | 整库构建+全测 | `go test ./...`（CGO_ENABLED=1） | ✅ RC=0，28 包 |
 | 3 | 十六基准集 | `python data/ctf_benchmark/run_all_benchmarks.py` | ✅ 全绿，落 `all_benchmarks_summary.json` |
 | 4 | 证据/口径门禁 | `python scripts/verify_evidence.py` | ✅ PASS |
@@ -157,3 +157,22 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 | 🟢 已闭环 | 构建/全测/十六基准/证据门禁/capability-gate/gofmt 全绿 | ✅ |
 | 🟢 已闭环 | openapi_paths.go 5208 行外置 embed + evidence-gate 入 CI | ✅（32f983f） |
 | 🟢 已闭环 | P0-2/P0-3 真实攻击求解器（PaddingOracle/BlindOOB/ECDSA） | ✅（823a244/32f983f） |
+
+---
+
+## 7. 独立二次复验（Gu · 2026-09-09 全量质检）
+
+本轮由 Gu 在主线上对全部 8 道门禁做**独立重跑**，结论与本文 §0–§3 完全一致，确认文档非注水、可复现：
+
+| 门禁 | 独立重跑结果（HEAD 6251ca8） |
+|---|---|
+| count_stats 单一真值源 | ✅ go_files=689 / test_files=257 / total_lines=155831 / solvers=170 / runtime_tools=143（连续三跑稳定） |
+| `go test ./...`（CGO_ENABLED=1，整库 28 包） | ✅ RC=0，全部 `ok`，0 FAIL / 0 panic（3m14s） |
+| 十六基准集 `run_all_benchmarks.py` | ✅ 静态34.5% + 执行100% + Web100% + 附件100% + 十一利用层 + ECDSA/PaddingOracle/BlindOOB 全绿 |
+| `verify_evidence.py` 证据/口径门禁 | ✅ PASS（count_stats 健康 + 十一利用层 hit==total + 反注水 water_filled==0） |
+| gofmt 仓库真实状态（排除 `.workbuddy/gopath`） | ✅ 0 未格式化 |
+| `secret_guard.py` 密钥门禁 | ❌ rc=1（config.yaml L137 ws key / L614 飞书 app_secret）—— **唯一红灯，打包阻断项** |
+
+**勘误**：原文 §3 门禁 #1 的 HEAD 标签曾误写为 `7a604e2`，已更正为当前 HEAD `6251ca8`（§1 规模数字本即以 6251ca8 为准，本次仅对齐标签，数字无变化）。`gofmt -l .` 早期报 6182 行为 `.workbuddy/gopath/pkg/mod` 依赖缓存误扫，仓库真值排除后 = 0。
+
+**结论**：除 `secret_guard`（打包前必须剔除两把真 key / 改 env 注入）外，全量质检全绿；冠军能力证据链自洽、双语言机验、SHA-256 逐题校验、零注水。
