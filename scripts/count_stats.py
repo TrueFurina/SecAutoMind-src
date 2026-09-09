@@ -98,23 +98,70 @@ def go_stats():
     return go_files, test_files, non_test_lines, test_lines
 
 
+def test_packages_count():
+    """统计**含至少一个 *_test.go 的包目录数**（磁盘统计，秒级、确定、不依赖跑测试）。
+
+    为什么不用 `go test ./...` 数 ok 行：那要跑几分钟，且受磁盘/超时影响会漏数（本机已发生过
+    C 盘满导致 10 包假 FAIL）。磁盘统计与 go test 的 ok 数一致（实测 28），但可复现得多。
+    """
+    pkgs = set()
+    for base in ("internal", "cmd", "pkg", "test", "tests"):
+        root = os.path.join(ROOT, base)
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames
+                           if d not in {".git", "node_modules", "testdata"}]
+            if any(f.endswith("_test.go") for f in filenames):
+                pkgs.add(os.path.relpath(dirpath, ROOT).replace("\\", "/"))
+    return len(pkgs)
+
+
+def _find_go():
+    """定位 go 可执行文件。
+
+    不能直接写 "go" 依赖 PATH —— 本仓库的 Go 装在 .workbuddy/toolchain/ 下，
+    PATH 里通常没有。旧实现因此**静默返回 null**，下游（门禁/材料）全部静默跳过该字段，
+    这正是本项目明令禁止的「取不到真值就悄悄放过」失效模式（实测 go_packages 恒为 null）。
+    """
+    import shutil
+    local = [os.path.join(ROOT, ".workbuddy", "toolchain", "go", "bin", "go.exe"),
+             os.path.join(ROOT, ".workbuddy", "toolchain", "go", "bin", "go")]
+    for p in local:
+        if os.path.isfile(p):
+            return p
+    return shutil.which("go")
+
+
 def go_packages_count():
     """统计 go list ./... 中可构建的包数（排除 ? 前缀的非构建项，输出容错解码）。
 
     旧实现用 Windows-cmd 语法 `go list ./... 2>nul | find /c /v ""` + `text=True`，
     在 Git Bash 下既失效又会因非 UTF-8 输出崩溃（go_packages 退化为 null）。
     改为显式 encoding/errors 并自行统计行数，跨 shell 一致。
+
+    2026-09-09 再修：即便上面都对了，仍然恒返回 null —— 根因是 shell 里没有 go（PATH 未含
+    工具链目录），异常被 `except: return None` 吞掉。现在显式定位 go，
+    且**取不到就在 stderr 报警**，不再假装这个字段不存在。
     """
+    go = _find_go()
+    if not go:
+        print("[WARN] 未找到 go 可执行文件，go_packages 无法统计（该字段将为 null，"
+              "依赖它的口径检查会失败而非静默通过）", file=sys.stderr)
+        return None
     try:
-        r = subprocess.run("go list ./...", cwd=ROOT, shell=True,
+        r = subprocess.run([go, "list", "./..."], cwd=ROOT, shell=False,
                            capture_output=True, encoding="utf-8", errors="ignore",
                            timeout=240)
         if r.returncode != 0:
+            print("[WARN] `go list ./...` 失败（rc=%d）：%s"
+                  % (r.returncode, (r.stderr or "").strip()[:200]), file=sys.stderr)
             return None
         lines = [l.strip() for l in r.stdout.splitlines()
                  if l.strip() and not l.strip().startswith("?")]
         return len(lines)
-    except Exception:
+    except Exception as e:
+        print("[WARN] go_packages 统计异常：%s" % e, file=sys.stderr)
         return None
 
 
@@ -176,6 +223,9 @@ def main():
         "internal_dirs": len([d for d in os.listdir(os.path.join(ROOT, "internal"))
                               if os.path.isdir(os.path.join(ROOT, "internal", d))]),
         "go_packages": go_packages_count(),
+        # 有测试的包数 != 总包数。材料里「N 包测试全绿」指的是前者（实测 28），
+        # 而 go list ./... 是后者（41）。两者混用是历史漂移的又一来源，必须分开。
+        "test_packages": test_packages_count(),
         "go_files": go_files,
         "test_files": test_files,
         "non_test_lines": non_test,
