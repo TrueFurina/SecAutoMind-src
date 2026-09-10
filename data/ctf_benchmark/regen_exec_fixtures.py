@@ -8,10 +8,16 @@ TestExecSolversAgainstBenchmark（Go）与 judge_exec.py（Python）会因缺少
 
 本脚本只调用生成器的 git 仓库构建函数，不重写 execution_benchmark.json，
 以保留 live_sqli / live_ssti 等手工题与 v1/v2/v3 已提交的工件。
+
+⚠️ 安全约束：gen_git_cred_repo(path) 内部会 shutil.rmtree(path) 后重建，
+因此 path 必须是 execution/ 下的**子目录**（git_cred_repo），绝不能传 EXEC_DIR 本身
+——传 EXEC_DIR 会连已提交的 13 个附件一并删除，导致基准集 0/15。
 """
+import os
+
 import gen_exec_artifacts as g1
 import gen_exec_artifacts_v2 as g2
 
 g1.gen_git()
-g2.gen_git_cred_repo(g2.EXEC_DIR)
+g2.gen_git_cred_repo(os.path.join(g2.EXEC_DIR, "git_cred_repo"))
 print("regenerated execution git fixtures: exec_git_repo, git_cred_repo")
