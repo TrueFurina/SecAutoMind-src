@@ -4,7 +4,7 @@
 > 本文件所有数字均来自脚本实跑 / 测试实跑，附复现命令与门禁矩阵（§3）。
 >
 > ⚠️ **口径锚定声明**：下文**规模数字（§1）已刷新至当前 HEAD `6b0028f`**（697 文件 / **261** 测试 / 174 求解器）；
-> **基准结论（§2 十六基准集）仍锚定质检基线 `7a604e2`**——两者差异仅为 `7aa21c5` 新增 1 个 HITL 回归测试文件，不影响任何基准结果。
+> **基准结论（§2 二十基准集）仍锚定质检基线 `7a604e2`**——两者差异仅为 `7aa21c5` 新增 1 个 HITL 回归测试文件，不影响任何基准结果。
 > **不等于任何旧文档**。引用前请先跑 `python scripts/count_stats.py --json` 取最新真值（口径随求解器扩量持续推进）。
 > 与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移——**以本文件活值为准**，漂移说明见 §5。
 
@@ -13,8 +13,8 @@
 | 维度 | 结果 | 验证方式 |
 |---|---|---|
 | 整库构建 + 全测 | ✅ GREEN | `go test ./...` exit 0（28 包 / 0 FAIL / 0 panic） |
-| 十六基准集 · 双语言机验 | ✅ 全绿 | `run_all_benchmarks.py` 静态34.5% + 执行100% + Web100% + 附件100% + 十五类利用层（SSRF 基准待补） + ECDSA/PaddingOracle/BlindOOB |
-| 证据/口径一致性门禁 | ✅ PASS | `verify_evidence.py`：count_stats 健康 + 十五类利用层 hit==total + 反注水 water_filled==0 |
+| 二十基准集 · 双语言机验 | ✅ 全绿 | `run_all_benchmarks.py` 静态34.5% + 执行100% + Web100% + 附件100% + **十六类利用层**（含 **SSRF 3/3**） + ECDSA/PaddingOracle/BlindOOB |
+| 证据/口径一致性门禁 | ✅ PASS | `verify_evidence.py`：count_stats 健康 + 十六类利用层 hit==total + 反注水 water_filled==0 |
 | 反注水门禁 | ✅ 174/174 | `TestAllRegisteredSolversActuallyExecute`（全部注册求解器生产实跑） |
 | capability-gate 逻辑 | ✅ GREEN | 反注水 + ECDSA + PaddingOracle + BlindOOB + 三反误报，RC=0（4.9s） |
 | capability-gate `-race` | ⚠️ 本地链接失败 | 仅本机 MinGW 缺 `WaitOnAddress` 符号；CI（Linux runner）正常——**环境限制，非代码问题** |
@@ -50,13 +50,13 @@
 
 ---
 
-## 2. 十六基准集 · 双语言交叉验证
+## 2. 二十基准集 · 双语言交叉验证
 
 汇总由 `data/ctf_benchmark/run_all_benchmarks.py` 生成（Python 镜像 + Go 测试互相印证，每题 SHA-256 校验），结论行：
 
 ```
 静态确定性 34.5% + 执行确定性 100.0% + Web 实战 100.0% + 附件取证 100.0%
-+ JWT 3/3 + 反序列化 3/3 + XXE 3/3 + 上传RCE 3/3 + GraphQL 3/3 + **SSRF 0/3（基准题未覆盖，gopher Redis/云 IMDS/回环服务链能力已实现、待补基准题）**
++ JWT 3/3 + 反序列化 3/3 + XXE 3/3 + 上传RCE 3/3 + GraphQL 3/3 + **SSRF 3/3（gopher Redis / 云 IMDS / 回环 admin 服务三场景靶场，本轮补齐）**
 + SQLi深度 3/3 + SSTI深度 3/3 + ECDSA 1/1 + PaddingOracle 1/1 + BlindOOB 2/2
 + HashExt 2/2 + GCMNR 2/2 + MT19937 2/2 + LFSR 2/2（P17–P20 新增加密攻击层，双语言机验）
 Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
@@ -85,7 +85,11 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 - **MT19937 状态恢复** 2/2（泄露 624 输出 untemper 反解状态 + twist 预测第 625 输出）：Go `TestMT19937*` ↔ Python `judge_mt19937.py`
 - **LFSR 流预测** 2/2（观察 ≥2L 输出比特 → Berlekamp–Massey 恢复最小连接多项式 → 逐位预测）：Go `TestLFSR*` ↔ Python `judge_lfsr.py`
 
-### 2.5 反注水门禁（冠军诚信底座）
+### 2.5 SSRF 利用层（gopher Redis / 云 IMDS / 回环服务靶场）
+- **SSRF 3/3（2026-09-10 补齐）**：三场景真实利用 —— ① gopher:// 管道化 RESP 打内网未授权 Redis（`KEYS *` 枚举 → 逐键 `GET`）；② 云 IMDS 两跳取 IAM 角色凭证（`/latest/meta-data/iam/security-credentials/` → 角色 → 凭证 Token 内嵌 flag）；③ 仅回环监听的内网 admin 服务（`X-Internal-Token` 由靶机代理注入，直连 403 防绕过）。Go `TestSSRFAttackAgainstRange` + `TestSSRFAttackViaProductionText` ↔ Python `judge_ssrf.py`，flag 均 SHA-256 校验。
+- **端口避让加固（消除偶发失效）**：根因实测——靶场内网端口（默认 6399/6401）一旦被残留进程/并发占用，靶场起不来、judge 只打印「靶场未就绪」而 runner 仍从 json 读到 total=3 → **静默退化为 0/3**。已修：靶场端口遇占用自动避让到空闲端口并落盘 `ssrf_runtime_<base>.json`，Python judge 与 Go 测试均读取实际端口；并以「占住 6399+6401」实验验证仍 **3/3**。
+
+### 2.6 反注水门禁（冠军诚信底座）
 - `TestAllRegisteredSolversActuallyExecute` → PASS：**174** 个注册求解器全部「生产实跑」通过，零注水。
 
 ---
@@ -96,7 +100,7 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 |---|---|---|---|
 | 1 | 单一真值源（快照） | `python scripts/count_stats.py --json` | ✅ HEAD=76f4e69 solvers=174 go_files=697 total_lines=157241 runtime_tools=143 |
 | 2 | 整库构建+全测 | `go test ./...`（CGO_ENABLED=1） | ✅ RC=0，28 包 |
-| 3 | 十六基准集 | `python data/ctf_benchmark/run_all_benchmarks.py` | ✅ 全绿，落 `all_benchmarks_summary.json` |
+| 3 | 二十基准集 | `python data/ctf_benchmark/run_all_benchmarks.py` | ✅ 全绿，落 `all_benchmarks_summary.json` |
 | 4 | 证据/口径门禁 | `python scripts/verify_evidence.py` | ✅ PASS |
 | 5 | capability-gate 逻辑 | `go test ./internal/ctfplatform/ -run '…'` | ✅ RC=0（4.9s） |
 | 6 | capability-gate `-race` | 同上 + `-race` | ⚠️ 本机 MinGW 链接失败（环境限制，CI Linux 绿） |
@@ -121,7 +125,7 @@ PY="C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
 # 2. 整库构建 + 全测
 GOTOOLCHAIN=local GOPROXY=off CGO_ENABLED=1 .workbuddy/toolchain/go/bin/go.exe test ./... 2>&1 | grep -vE "^ok|no test files"; echo "TEST_EXIT=${PIPESTATUS[0]}"
 
-# 3. 十六基准集双语言机验
+# 3. 二十基准集双语言机验
 ( cd data/ctf_benchmark && "$PY" run_all_benchmarks.py )
 
 # 4. 证据/口径一致性门禁
@@ -159,7 +163,7 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 | 优先级 | 项 | 状态 |
 |---|---|---|
 | 🔴 P0 打包阻断 | `config.yaml` 两把真 key 轮换/剔除/改 env 注入，secret_guard 至 PASS | ❌ 待处理（用户此前拍板「轮换不用管」，但打包前必须剔除） |
-| 🟢 已闭环 | 构建/全测/十六基准/证据门禁/capability-gate/gofmt 全绿 | ✅ |
+| 🟢 已闭环 | 构建/全测/二十基准/证据门禁/capability-gate/gofmt 全绿 | ✅ |
 | 🟢 已闭环 | openapi_paths.go 5208 行外置 embed + evidence-gate 入 CI | ✅（32f983f） |
 | 🟢 已闭环 | P0-2/P0-3 真实攻击求解器（PaddingOracle/BlindOOB/ECDSA） | ✅（823a244/32f983f） |
 
@@ -173,8 +177,8 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 |---|---|
 | count_stats 单一真值源 | ✅ go_files=689 / test_files=257 / total_lines=155831 / solvers=170 / runtime_tools=143（连续三跑稳定） |
 | `go test ./...`（CGO_ENABLED=1，整库 28 包） | ✅ RC=0，全部 `ok`，0 FAIL / 0 panic（3m14s） |
-| 十六基准集 `run_all_benchmarks.py` | ✅ 静态34.5% + 执行100% + Web100% + 附件100% + 十五类利用层（SSRF 基准待补）全绿 |
-| `verify_evidence.py` 证据/口径门禁 | ✅ PASS（count_stats 健康 + 十五类利用层 hit==total + 反注水 water_filled==0） |
+| 二十基准集 `run_all_benchmarks.py` | ✅ 静态34.5% + 执行100% + Web100% + 附件100% + 十六类利用层（含 SSRF 3/3）全绿 |
+| `verify_evidence.py` 证据/口径门禁 | ✅ PASS（count_stats 健康 + 十六类利用层 hit==total + 反注水 water_filled==0） |
 | gofmt 仓库真实状态（排除 `.workbuddy/gopath`） | ✅ 0 未格式化 |
 | `secret_guard.py` 密钥门禁 | ❌ rc=1（config.yaml L137 ws key / L614 飞书 app_secret）—— **唯一红灯，打包阻断项** |
 

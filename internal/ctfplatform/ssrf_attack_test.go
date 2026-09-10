@@ -5,6 +5,7 @@ package ctfplatform
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,47 @@ import (
 	"testing"
 	"time"
 )
+
+// ssrfRuntimePorts 靶场落盘的实际端口（靶场遇端口占用自动避让时非默认值）。
+type ssrfRuntimePorts struct {
+	BasePort     int `json:"base_port"`
+	RedisPort    int `json:"redis_port"`
+	InternalPort int `json:"internal_port"`
+}
+
+// loadSSRFRuntime 读靶场运行时端口；文件缺失/损坏时回退默认端口。
+func loadSSRFRuntime(t *testing.T, basePort int) ssrfRuntimePorts {
+	t.Helper()
+	def := ssrfRuntimePorts{BasePort: basePort, RedisPort: 6399, InternalPort: 6401}
+	doc, err := os.ReadFile(filepath.Join("..", "..", "data", "ctf_benchmark",
+		fmt.Sprintf("ssrf_runtime_%d.json", basePort)))
+	if err != nil {
+		return def
+	}
+	var rt ssrfRuntimePorts
+	if err := json.Unmarshal(doc, &rt); err != nil {
+		return def
+	}
+	if rt.RedisPort == 0 {
+		rt.RedisPort = def.RedisPort
+	}
+	if rt.InternalPort == 0 {
+		rt.InternalPort = def.InternalPort
+	}
+	return rt
+}
+
+// applyTo 把运行时端口注入 hints（使 Redis / 回环候选覆盖实际端口）。
+func (rt ssrfRuntimePorts) applyTo(hints *WebHints) {
+	hints.Types = append(hints.Types,
+		fmt.Sprintf("%d 端口", rt.RedisPort),
+		fmt.Sprintf("%d 端口", rt.InternalPort))
+}
+
+// hintText 运行时端口线索文本（供生产入口测试拼接）。
+func (rt ssrfRuntimePorts) hintText() string {
+	return fmt.Sprintf("内网 %d 端口 内网 %d 端口", rt.RedisPort, rt.InternalPort)
+}
 
 func startSSRFRange(t *testing.T, port int) (cleanup func()) {
 	t.Helper()
@@ -24,6 +66,9 @@ func startSSRFRange(t *testing.T, port int) (cleanup func()) {
 		t.Fatal(err)
 	}
 	rang := filepath.Join(root, "data", "ctf_benchmark", "live_target", "ssrf_range.py")
+	// 清掉上一次的运行时端口文件，避免读到过期端口
+	_ = os.Remove(filepath.Join(root, "data", "ctf_benchmark",
+		fmt.Sprintf("ssrf_runtime_%d.json", port)))
 	cmd := exec.Command(py, rang, strconv.Itoa(port))
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动靶场失败: %v", err)
@@ -74,10 +119,13 @@ func TestSSRFAttackAgainstRange(t *testing.T) {
 	cleanup := startSSRFRange(t, port)
 	defer cleanup()
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	rt := loadSSRFRuntime(t, port)
 
 	hit := 0
 	for scene := range bench.Problems {
 		hints := ParseWebHints(bench.Problems[scene].Description)
+		ssrfInjectPorts(&hints, bench.Problems[scene].Description)
+		rt.applyTo(&hints)
 		found := AttackSSRF(context.Background(), base, hints)
 		for _, f := range found {
 			if uploadFlagSHA(f) == bench.Problems[scene].FlagSHA256 {
@@ -117,11 +165,12 @@ func TestSSRFAttackViaProductionText(t *testing.T) {
 	cleanup := startSSRFRange(t, port)
 	defer cleanup()
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	rt := loadSSRFRuntime(t, port)
 
 	hit := 0
 	for scene := range bench.Problems {
 		found := ssrfAttackFromText(context.Background(),
-			bench.Problems[scene].Description+" 靶机: "+base)
+			bench.Problems[scene].Description+" 靶机: "+base+" "+rt.hintText())
 		if shaIn(found, bench.Problems[scene].FlagSHA256) {
 			hit++
 			t.Logf("✅ 生产入口 %s 命中", scene)

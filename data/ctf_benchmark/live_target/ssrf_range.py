@@ -17,6 +17,7 @@ flag 只有通过靶机 /fetch?url= 代理打内网才返回（攻击者无法�
 
 import hashlib
 import json
+import os
 import socket
 import socketserver
 import sys
@@ -28,9 +29,55 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 18120
-REDIS_PORT = 6399
-INTERNAL_PORT = 6401
+# 内网服务端口：默认 6399/6401，可经环境变量覆盖；被占用时自动避让到空闲端口
+# （防 CI / 并发复跑时残留进程占用导致靶场起不来 → judge 静默退化为 0/3）。
+REDIS_PORT = int(os.environ.get("SSRF_REDIS_PORT", "6399"))
+INTERNAL_PORT = int(os.environ.get("SSRF_INTERNAL_PORT", "6401"))
 INTERNAL_TOKEN = "ssrf-proxy"
+
+
+def _port_available(port):
+    """探测 127.0.0.1:port 是否可绑定。"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def _ephemeral_port():
+    """取一个当前空闲的临时端口。"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+
+def resolve_ports():
+    """resolve 内网端口：优先默认/环境值，被占用则避让，并把实际端口落盘供 judge/Go 读取。"""
+    global REDIS_PORT, INTERNAL_PORT
+    if not _port_available(REDIS_PORT):
+        REDIS_PORT = _ephemeral_port()
+    if not _port_available(INTERNAL_PORT):
+        INTERNAL_PORT = _ephemeral_port()
+    write_runtime()
+
+
+def write_runtime():
+    """把实际端口写入 data/ctf_benchmark/ssrf_runtime_<base>.json（临时产物，不入库）。"""
+    path = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..",
+        "ssrf_runtime_%d.json" % PORT))
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"base_port": PORT, "redis_port": REDIS_PORT,
+                       "internal_port": INTERNAL_PORT}, f)
+    except OSError:
+        pass
 
 # ── 场景定义：(flag, 考点说明) ──
 SCENES = {
@@ -282,7 +329,7 @@ class Range(BaseHTTPRequestHandler):
 
         if path == "/" or path == "/index.html":
             links = "".join(
-                f'<li><a href="/{s}/fetch?url=http://127.0.0.1:6399/">{s}</a> — {d}</li>'
+                f'<li><a href="/{s}/fetch?url=http://127.0.0.1:{REDIS_PORT}/">{s}</a> — {d}</li>'
                 for s, (_, d) in SCENES.items())
             return self._send(200, f"<html><body><h1>SSRF Range</h1><ul>{links}</ul></body></html>",
                               "text/html; charset=utf-8")
@@ -316,6 +363,7 @@ def main():
                               "description": v[1]} for k, v in SCENES.items()}},
             indent=2, ensure_ascii=False))
         sys.exit(0)
+    resolve_ports()
     start_redis()
     start_internal()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Range)

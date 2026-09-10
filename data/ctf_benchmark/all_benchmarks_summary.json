@@ -64,9 +64,9 @@
   },
   "ssrf": {
     "total": 3,
-    "hit": 0,
-    "miss": 3,
-    "coverage_pct": 0.0
+    "hit": 3,
+    "miss": 0,
+    "coverage_pct": 100.0
   },
   "sqli_deep": {
     "total": 3,
