@@ -191,7 +191,7 @@ def builtin_tools_count():
 
 
 def _exe_vcs(path):
-    """从 Go 二进制内嵌 build info 提取 vcs.revision / vcs.time。
+    r"""从 Go 二进制内嵌 build info 提取 vcs.revision / vcs.time。
 
     不依赖外部 `go` 命令：旧实现是 `go version -m ... | findstr /R "^\smod\s"`，
     这是 Windows CMD 专用语法，在 bash 下静默取空——交付 exe 的关键版本信息

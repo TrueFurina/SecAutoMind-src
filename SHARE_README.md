@@ -1,7 +1,7 @@
 # SecAutoMind — 快速运行指南
 
 > **SecAutoMind** 是一个**多智能体驱动的靶场自主攻防推演平台**，面向授权靶场与教学场景。
-> 集成 90 个 YAML 工具配方（覆盖 100+ 底层安全工具），支持人机协同审计、自动化报告生成。
+> 集成 91 个 YAML 工具配方（覆盖 100+ 底层安全工具），支持人机协同审计、自动化报告生成。
 
 本目录是**已编译、可直接运行**的分发包。接收方按以下步骤即可启动。
 
@@ -77,7 +77,7 @@ start.bat
 
 ```
 SecAutoMind/
-├── secautomind-ai.exe        # 主服务 (~154MB Go 编译产物, v1.7.25)
+├── secautomind-ai.exe        # 主服务 (~85 MiB Go 编译产物, v1.7.25)
 ├── config.yaml               # 主配置
 ├── config.example.yaml       # 配置模板 (config.yaml 缺失时会自动拷贝)
 ├── start.bat                 # 启动脚本
@@ -143,12 +143,38 @@ A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉�
 
 ## 8. 许可与免责
 
-- **License**: Apache License 2.0（见 `LICENSE`）
+- **版权**: 本项目为原创作品，未附带开源许可证文件；未经作者书面许可不得再分发。
 - **安全免责**: 本平台**仅用于已授权靶场**。在未授权系统上使用需自行承担法律责任。
 - **完整免责声明**: 见 `SECURITY.md`
 
 ---
 
+## 9. 能力机验（可复现证据）
+
+本包内含**可独立机验的测试资产** `data/ctf_benchmark/`（约 1.3 MB），不是宣传口径，而是可跑的判定器：
+
+```bat
+REM 0. 依赖：Python 3.10+
+REM 1. 先重建两个「可再生的嵌套 git 工件」（依设计不入包）
+python data\ctf_benchmark\regen_exec_fixtures.py
+
+REM 2. 跑全量基准（Python 侧判定），或单独跑某一类
+python data\ctf_benchmark\run_all_benchmarks.py
+python data\ctf_benchmark\judge_exec.py      REM 执行类：真实执行提取 flag 后 SHA-256 对齐
+python data\ctf_benchmark\judge_ssrf.py      REM SSRF 类：起本地靶场 + gopher/IMDS/回环三场景
+```
+
+覆盖：静态题面命中 · 真实执行提取 · Web/附件/协议利用（JWT、反序列化、XXE、上传 RCE、
+GraphQL、SSRF、SQLi/SSTI 深挖、Padding Oracle、ECDSA nonce 复用、盲 OOB、长度扩展、
+GCM nonce 复用、MT19937、LFSR 等），结果写入 `data/ctf_benchmark/all_benchmarks_summary.json`。
+判定器与用例均可审阅，**数字可自行复算**。
+
+> 说明：`data/` 下的运行数据（会话库、上传件、初始密码文件）**不在本包内**，包内 `config.yaml`
+> 为纯环境变量占位版本，不含任何真实凭证。
+
+---
+
 **版本**: v1.7.25
-**构建时间**: 2026-09-03（已含引导密码落盘与 shell 流式执行修复）
-**分发包制作**: 2026-09-03
+**构建时间**: 2026-09-08（exe 内嵌 commit b4f458d；该二进制为冻结交付版本，源码仍持续更新）
+**分发包制作**: 2026-09-11
+
