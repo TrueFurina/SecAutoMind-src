@@ -12,13 +12,13 @@
 
 SecAutoMind is a multi-agent autonomous cybersecurity platform built with Go and large language models. It coordinates a layered agent stack (planning / execution / audit / review) through a shared fact blackboard, enabling end-to-end security operations — from target reconnaissance to vulnerability discovery to post-exploitation — with a single natural language intent.
 
-The platform ships with **90 YAML-defined security tool recipes** and **50+ built-in tools** (MCP protocol), supports human-in-the-loop approval for sensitive operations, and produces audit-trail-backed reports. It runs fully offline on a single machine — no cluster or cloud account required.
+The platform ships with **91 YAML-defined security tool recipes** and **50+ built-in tools** (MCP protocol), supports human-in-the-loop approval for sensitive operations, and produces audit-trail-backed reports. It runs fully offline on a single machine — no cluster or cloud account required.
 
 ## Key Features
 
 - **4-agent orchestration** — planning, execution, audit, and review agents collaborate through a shared fact blackboard with three selectable modes (Deep / Plan-Execute / Supervisor).
 - **Autonomous decision making** — the orchestrator identifies the target environment, plans multi-step attack chains, and adapts to findings in real time.
-- **90+ runtime tools** — 90 YAML-defined security tool recipes (recon, web, cloud, binary analysis, forensics, post-exploitation) + 50+ built-in/MCP tools.
+- **90+ runtime tools** — 91 YAML-defined security tool recipes (recon, web, cloud, binary analysis, forensics, post-exploitation) + 50+ built-in/MCP tools.
 - **Human-in-the-loop safety** — sensitive operations (command execution, privilege escalation, data deletion) require explicit user approval with countdown timer and reject path.
 - **8-channel IM integration** — DingTalk / Feishu / WeCom / Telegram / Slack / Discord / QQ / WeChat (optional, off by default, long-connection mode for DingTalk & Feishu — no public callback needed).
 - **Lightweight deployment** — single binary (Go, no external dependencies), first-run wizard for admin password, works on Windows / Linux / macOS.
@@ -92,7 +92,7 @@ SecAutoMind/
 ├── cmd/server/          # Web service entry point
 ├── internal/            # Agent / MCP / routing / database / security
 ├── web/static/          # Frontend assets (embedded in binary)
-├── tools/               # 90 YAML tool recipes
+├── tools/               # 91 YAML tool recipes
 ├── agents/              # 18 agent role definitions
 ├── skills/              # Agent skills
 ├── roles/               # 13 RBAC role definitions

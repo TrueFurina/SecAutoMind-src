@@ -3,7 +3,7 @@
 深色科技风（赛博蓝青）：#0a1128 底 / #00ff9d 青绿强调 / #00b3ff 蓝
 16:9（13.333 x 7.5 inch），18 页：
 1 封面 → 2 目录 → 3 赛题理解 → 4 总体方案 → 5 系统架构 → 6 三层编排
-→ 7 通用性(90工具/18Agent) → 8 人机协同(HITL/审计) → 9 离线自主
+→ 7 通用性(91工具/18Agent) → 8 人机协同(HITL/审计) → 9 离线自主
 → 10-12 三大创新点 → 13 实测验证数据 → 14 评分标准对照 → 15 部署
 → 16 应用场景 → 17 总结展望 → 18 封底
 """
@@ -150,7 +150,7 @@ text(s, Inches(0.7), Inches(2.7), Inches(11), Inches(0.6),
      [('自主决策 · 多智能体协同 · 全链路攻防推演平台', {'size': 22, 'color': ACCENT})])
 text(s, Inches(0.7), Inches(3.5), Inches(11), Inches(1.2),
      [('面向赛题 XH-202609「基于大模型的自主决策通用网络安全智能体」', {'size': 16, 'color': MUTED, 'ls': 1.4}),
-      ('以 3 层编排 × 90 工具 × 18 Agent 打造可离线运行的 AI 安全作战指挥舱', {'size': 16, 'color': MUTED, 'ls': 1.4})])
+      ('以 3 层编排 × 91 工具 × 18 Agent 打造可离线运行的 AI 安全作战指挥舱', {'size': 16, 'color': MUTED, 'ls': 1.4})])
 rect(s, Inches(0.7), Inches(5.3), Inches(12), Inches(0.015), fill=LINE)
 text(s, Inches(0.7), Inches(5.55), Inches(11), Inches(0.5),
      [('2026 年全国大学生信息安全作品赛 · 挑战杯赛道', {'size': 15, 'color': INK, 'bold': True})])
@@ -168,7 +168,7 @@ text(s, Inches(0.7), Inches(1.0), Inches(5), Inches(0.8), [('目录', {'size': 4
 toc = [
     ('01', '赛题理解', 'XH-202609 要一个怎样的智能体'),
     ('02', '总体方案', '一句话讲清我们在做什么'),
-    ('03', '系统架构与核心能力', '分层架构 · 三层编排 · 90 工具 · 18 Agent'),
+    ('03', '系统架构与核心能力', '分层架构 · 三层编排 · 91 工具 · 18 Agent'),
     ('04', '三大技术创新点', '自主决策 · 通用性 · 人机协同审计'),
     ('05', '实测验证', '编译零错误 · 核心测试全绿 · 系统实启动'),
     ('06', '评分对照与部署', '逐项对照评分标准 · 云上一键跑起来'),
@@ -287,12 +287,12 @@ text(s, Inches(0.7), Inches(6.5), Inches(11.6), Inches(0.5),
 footer(s, 6)
 
 # ══════════════════════════════════════════════════════════
-# P7 通用性：90 工具 18 Agent
+# P7 通用性：91 工具 18 Agent
 # ══════════════════════════════════════════════════════════
 s = add_slide()
 bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'GENERALITY', ACCENT2)
-text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('通用性：90 工具 × 18 Agent × 全链路覆盖', {'size': 30, 'bold': True})])
+text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('通用性：91 工具 × 18 Agent × 全链路覆盖', {'size': 30, 'bold': True})])
 stats = [('90', 'YAML 工具配方', ACCENT), ('18', '角色化 Agent', ACCENT2), ('23', '技能包', WARN), ('3', '编排模式', ACCENT)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.0), Inches(2.75), v, lb, color=c)
@@ -383,7 +383,7 @@ footer(s, 10)
 s = add_slide()
 bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'INNOVATION 02', ACCENT2)
-text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('创新点二：90 工具 × 18 Agent 的「全链路通用对抗」', {'size': 30, 'bold': True})])
+text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('创新点二：91 工具 × 18 Agent 的「全链路通用对抗」', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.9), Inches(11.6), Inches(0.9),
      [('安全工具碎片化是行业痛点——Nmap 在命令行、Burp 在 GUI、脚本各写各的。', {'size': 15, 'color': MUTED, 'ls': 1.4}),
       ('我们统一为 90 个 YAML 工具配方 + MCP 协议，Agent 可编排调用、上下文共享。', {'size': 15, 'color': MUTED, 'ls': 1.4})])
@@ -434,7 +434,7 @@ rows = [
     ('go test ./...', '核心包全绿：multiagent 15.6s · database 5.4s · attackchain 4.5s', ACCENT),
     ('系统启动', 'go run --http 启动成功，GET / → 200，8080 端口 LISTENING', ACCENT2),
     ('API 可达', '/api/auth/login 可达（参数校验生效），鉴权中间件在路径上', ACCENT2),
-    ('代码卫生', '0 panic · 0 处 TODO · 237 测试文件 · 32 个 internal 包', ACCENT),
+    ('代码卫生', '0 panic · 0 处 TODO · 261 测试文件 · 32 个 internal 包', ACCENT),
     ('安全基线', 'CORS 白名单 · SQL 参数化 · 7 个配置占位符 · HITL 审批桥', WARN),
 ]
 for i, (t, body, ac) in enumerate(rows):
@@ -456,7 +456,7 @@ tag(s, Inches(0.7), Inches(0.6), 'SCORING', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('与评分标准逐项对照', {'size': 30, 'bold': True})])
 crit = [
     ('自主决策能力', '三层编排 · 事实黑板 · 环境自适应 · 模型韧性', '★★★★★'),
-    ('智能体通用性', '90 工具 · 18 Agent · 23 技能包 · MCP 生态', '★★★★★'),
+    ('智能体通用性', '91 工具 · 18 Agent · 23 技能包 · MCP 生态', '★★★★★'),
     ('可控性与安全', 'HITL 审批 · 工具白名单 · 审计复核 · 全链路证据', '★★★★★'),
     ('工程完整度', '122,131 行 Go · 237 测试 · 0 panic · 系统实启动', '★★★★☆'),
     ('合规与部署', '国内模型接入 · 云上一键部署 · 审计留痕', '★★★★☆'),
@@ -535,9 +535,9 @@ bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'SUMMARY', ACCENT)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('总结与展望', {'size': 30, 'bold': True})])
 summary = [
-    ('做了什么', '3 层编排 × 90 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
+    ('做了什么', '3 层编排 × 91 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
     ('技术创新', '按复杂度自动选型的三模式编排 · 事实黑板上下文共享 · C2-HITL 审批桥 · 离线自主决策'),
-    ('工程证明', '122,131 行 Go · 237 测试文件 · 0 panic · 32 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
+    ('工程证明', '123,438 行 Go · 261 测试文件 · 0 panic · 32 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
     ('未来展望', '接入更多国内模型 · 扩工具生态（社区 YAML）· 多靶场联动 · 智能体自学习（攻击链记忆）'),
 ]
 for i, (t, body) in enumerate(summary):

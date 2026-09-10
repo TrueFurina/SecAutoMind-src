@@ -40,7 +40,7 @@
 | 05 | SecAutoMind 总体方案：一句话讲清我们在做什么 | content | hero | peak | 非对称双栏（左架构右定位） | cover_hero.png + SVG 架构 | anchor | 160字/图1+SVG1/留白30% | 禁止小架构图；禁止 50:50 等分 | 一句话定位 + 分层架构图 + 三大核心能力 |
 | 06 | 02 · 核心能力与技术架构 | section | transition | transition | 全屏视觉+骑线文字 | SVG 数据流 | atmosphere | 25字/留白45% | 禁止正文段落；禁止章节号过小 | 第二章扉页 |
 | 07 | 自主决策：三层多智能体编排 | content | supporting | valley | 左标题+右内容 | SVG 编排流程 | evidence | 200字/图1/留白25% | 禁止 N 卡横排；禁止流程线性堆叠 | Deep / Plan-Execute / Supervisor 三种编排 + 事实黑板 |
-| 08 | 通用性：90 个工具 · 18 个角色化 Agent · 全链路覆盖 | content | supporting | valley | 巨型数字+洞察 | — | anchor | 120字/留白30% | 禁止把数字装进小卡片；禁止 L3 角标顶替 | 巨型数字 90 / 18 / 13 / 27 + 场景映射 |
+| 08 | 通用性：91 个工具 · 18 个角色化 Agent · 全链路覆盖 | content | supporting | valley | 巨型数字+洞察 | — | anchor | 120字/留白30% | 禁止把数字装进小卡片；禁止 L3 角标顶替 | 巨型数字 90 / 18 / 13 / 27 + 场景映射 |
 | 09 | 人机协同：敏感操作 HITL 与可审计轨迹 | content | supporting | valley | 非对称双栏 | SVG HITL 流程 | evidence | 180字/图1/留白25% | 禁止纯文字罗列；禁止流程图过小 | HITL 审批 + 审计日志 + 报告生成 |
 | 10 | 03 · 技术创新点 | section | transition | transition | 全屏视觉+骑线文字 | SVG 护盾节点 | atmosphere | 25字/留白45% | 禁止正文段落；禁止章节号过小 | 第三章扉页 |
 | 11 | 技术创新凝练：我们到底“新”在哪里？ | content | hero | peak | 非对称双栏（左表右洞察） | SVG 创新矩阵 | anchor | 220字/图1/留白28% | 禁止表格缩在角落；禁止无对比基线 | 4 项创新 + 与常规 Agent 对比 + 价值判断 |
