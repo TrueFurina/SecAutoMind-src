@@ -42,7 +42,7 @@ jobs:
       - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
         run: sudo apt-get update && sudo apt-get install -y gcc
       - name: Capability regression gate
-        run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s
+        run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestHashLengthExtension|TestGCMNonceReuse|TestMT19937UntemperIsInverse|TestMT19937PredictNext|TestMT19937SolverParses|TestMT19937SolverRegistered|TestMT19937NoFalsePositive|TestMT19937InsufficientOutputs|TestMT19937RecoverSha256Consistency|TestLFSRBerlekampMasseyBasic|TestLFSRPredictDegree32|TestLFSRSolverParses|TestLFSRSolverRegistered|TestLFSRNoFalsePositive|TestLFSRShortLeakNoPredict|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s
 
   # 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度。
   # 防止「求解器注水 / 能力回退 / 口径塌缩」回归，每次 PR/push 自动拦。

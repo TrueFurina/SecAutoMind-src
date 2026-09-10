@@ -279,6 +279,18 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "common_modulus_attack", Category: CategoryCryptoS, Priority: 63, Solver: solveCommonModulusComplete})
 	RegisterSolver(SolverEntry{Name: "hastad_broadcast_attack", Category: CategoryCryptoS, Priority: 64, Solver: solveHastadBroadcastAttack})
 	RegisterSolver(SolverEntry{Name: "rsa_wiener_attack", Category: CategoryCryptoS, Priority: 65, Solver: solveRSAWienerAttack})
+
+	// P17 批次：真实长度扩展攻击（Merkle–Damgård，MD5/SHA1，双语言机验）
+	RegisterSolver(SolverEntry{Name: "hash_length_extension", Category: CategoryCryptoS, Priority: 66, Solver: solveHashLengthExtension})
+
+	// P18 批次：AES-GCM nonce 复用 keystream 复原（双语言机验）
+	RegisterSolver(SolverEntry{Name: "gcm_nonce_reuse", Category: CategoryCryptoS, Priority: 67, Solver: solveGCMNonceReuse})
+
+	// P19 批次：MT19937 状态恢复（泄露 624 个连续输出 → 预测下一个，双语言机验）
+	RegisterSolver(SolverEntry{Name: "mt19937_recover", Category: CategoryCryptoS, Priority: 68, Solver: solveMT19937})
+
+	// P20 批次：LFSR 流预测（Berlekamp–Massey 恢复线性递推，双语言机验）
+	RegisterSolver(SolverEntry{Name: "lfsr_predict", Category: CategoryCryptoS, Priority: 69, Solver: solveLFSRPredict})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────

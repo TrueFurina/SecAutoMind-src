@@ -1,9 +1,9 @@
 # SecAutoMind 冠军能力证据包 · 全量质检版（机器可复现）
 
-> 生成时间：2026-09-09 · 质检基线 HEAD：`7a604e2` · 复验当前 HEAD：`6251ca8` · 单一真值源：`python scripts/count_stats.py --json`（严禁手写数字）
+> 生成时间：2026-09-09（§1 刷新于 2026-09-10）· 质检基线 HEAD：`7a604e2` · 复验当前 HEAD：`6b0028f`（含 P17–P20 求解器批次）· 单一真值源：`python scripts/count_stats.py --json`（严禁手写数字）
 > 本文件所有数字均来自脚本实跑 / 测试实跑，附复现命令与门禁矩阵（§3）。
 >
-> ⚠️ **口径锚定声明**：下文**规模数字（§1）已刷新至当前 HEAD `6251ca8`**（689 文件 / **257** 测试 / 170 求解器）；
+> ⚠️ **口径锚定声明**：下文**规模数字（§1）已刷新至当前 HEAD `6b0028f`**（697 文件 / **261** 测试 / 174 求解器）；
 > **基准结论（§2 十六基准集）仍锚定质检基线 `7a604e2`**——两者差异仅为 `7aa21c5` 新增 1 个 HITL 回归测试文件，不影响任何基准结果。
 > **不等于任何旧文档**。引用前请先跑 `python scripts/count_stats.py --json` 取最新真值（口径随求解器扩量持续推进）。
 > 与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移——**以本文件活值为准**，漂移说明见 §5。
@@ -15,7 +15,7 @@
 | 整库构建 + 全测 | ✅ GREEN | `go test ./...` exit 0（28 包 / 0 FAIL / 0 panic） |
 | 十六基准集 · 双语言机验 | ✅ 全绿 | `run_all_benchmarks.py` 静态34.5% + 执行100% + Web100% + 附件100% + 十一大利用层 + ECDSA/PaddingOracle/BlindOOB |
 | 证据/口径一致性门禁 | ✅ PASS | `verify_evidence.py`：count_stats 健康 + 十一利用层 hit==total + 反注水 water_filled==0 |
-| 反注水门禁 | ✅ 170/170 | `TestAllRegisteredSolversActuallyExecute`（全部注册求解器生产实跑） |
+| 反注水门禁 | ✅ 174/174 | `TestAllRegisteredSolversActuallyExecute`（全部注册求解器生产实跑） |
 | capability-gate 逻辑 | ✅ GREEN | 反注水 + ECDSA + PaddingOracle + BlindOOB + 三反误报，RC=0（4.9s） |
 | capability-gate `-race` | ⚠️ 本地链接失败 | 仅本机 MinGW 缺 `WaitOnAddress` 符号；CI（Linux runner）正常——**环境限制，非代码问题** |
 | 仓库 gofmt 真实状态 | ✅ 0 未格式化 | 仓库内 .go 全绿（此前 6182 行是 `.workbuddy/gopath` 依赖缓存误扫） |
@@ -28,16 +28,16 @@
 
 ---
 
-## 1. 代码规模（count_stats.py 权威输出，HEAD `6251ca8`）
+## 1. 代码规模（count_stats.py 权威输出，HEAD `6b0028f` + P17–P20 求解器批次）
 
 | 指标 | 数值 |
 |---|---|
-| Go 文件 | 689 |
-| 测试文件 | 257 |
-| 非测试行 | 122,601 |
-| 测试行 | 33,230 |
-| 总行数 | 155,831 |
-| CTF 求解器（真实注册 `RegisterSolver(SolverEntry{`） | 170 |
+| Go 文件 | 697 |
+| 测试文件 | 261 |
+| 非测试行 | 123,402 |
+| 测试行 | 33,839 |
+| 总行数 | 157,241 |
+| CTF 求解器（真实注册 `RegisterSolver(SolverEntry{`） | 174 |
 | 工具 YAML / 内置 MCP 工具 / 运行时工具合计 | 91 / 52 / **143** |
 | IM 适配器（`func Start*`） | 7 |
 | Agent(md) / 技能(SKILL.md) / RBAC 角色 | 18 / 23 / 13 |
@@ -89,7 +89,7 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 
 | # | 门禁 | 命令 | 结果 |
 |---|---|---|---|
-| 1 | 单一真值源 | `python scripts/count_stats.py --json` | ✅ HEAD=6251ca8 solvers=170 go_files=689 total_lines=155831 runtime_tools=143 |
+| 1 | 单一真值源（快照） | `python scripts/count_stats.py --json` | ✅ HEAD=6251ca8 solvers=170 go_files=689 total_lines=155831 runtime_tools=143 |
 | 2 | 整库构建+全测 | `go test ./...`（CGO_ENABLED=1） | ✅ RC=0，28 包 |
 | 3 | 十六基准集 | `python data/ctf_benchmark/run_all_benchmarks.py` | ✅ 全绿，落 `all_benchmarks_summary.json` |
 | 4 | 证据/口径门禁 | `python scripts/verify_evidence.py` | ✅ PASS |
@@ -140,7 +140,7 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 
 1. **数字单一真值**：所有规模数字来自 `count_stats.py --json`，禁止手写/凭记忆；与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移，本文件以 HEAD `7a604e2` 活值为准。
 2. **双语言机验**：每个基准 Python 侧 + Go 侧各自独立实现，结果互相印证，任一侧漂移立即暴露；命中均经 flag 的 SHA-256 比对，杜绝「关键词猜中」。
-3. **零注水**：`RegisterSolver(SolverEntry{` 真实调用数 = 实际执行数（170/170）。
+3. **零注水**：`RegisterSolver(SolverEntry{` 真实调用数 = 实际执行数（174/174，含 P17–P20 求解器批次）。
 4. **工作树状态**：质检时工作树干净（并行会话在途改动已合入 `7a604e2`），全量质检跑的是已提交完整状态，无 WIP 干扰。
 5. **静态 34.5% 为天花板**：36 道 MISS 为纯文字 stub，由执行/Web 层覆盖，勿再静态破解。
 6. **唯一红灯 = 密钥门禁**（§3 #8）：`config.yaml` 两把真 key（L137 的 ws 通道 key `sk-ws-…obrA`、L614 的飞书 `app_secret 6jRyD3…pTra`）。该文件被 `.gitignore` 排除不进 GitHub，但会进交付 zip。打包前必须：①到对应平台 revoke/轮换；②改为环境变量注入（本项目 env 优先级高于 yaml）；③重跑 `secret_guard.py` 至 PASS。**此阻塞项不修复不得打包交付**。
