@@ -19,10 +19,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       # 注意：本项目 SQLite 驱动为纯 Go 的 github.com/glebarez/go-sqlite（无 cgo 依赖），
       # 不需要系统 libsqlite3-dev。下方 gcc 仅为 `go test -race` 的 race 运行时（C 实现）所必需。
       - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
         run: sudo apt-get update && sudo apt-get install -y gcc
+      # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
+      # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
+      # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。
+      - name: Regenerate execution fixtures (nested .git repos not committed by design)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Vet
         run: go vet ./...
       - name: Test with race detector
@@ -57,6 +65,10 @@ jobs:
           python-version: "3.12"
       - name: Install benchmark deps (pycryptodome for padding-oracle judge)
         run: python -m pip install --upgrade pip && pip install pycryptodome
+      # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，依设计不入库，
+      # 重新生成后 judge_exec.py 的 execution 块才能 15/15（否则静默 13/15 漏检）。
+      - name: Regenerate execution fixtures (nested .git repos not committed by design)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Regenerate dual-language benchmark summary
         run: python data/ctf_benchmark/run_all_benchmarks.py
       - name: Evidence / caliber consistency gate
