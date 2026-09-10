@@ -59,7 +59,7 @@
 - 产出：决策链回放样例 + 一页《可解释性设计说明》（事实黑板数据流图文字版），答辩直接可讲
 
 ### T3 【P0】实战赛备战（终审 60% 权重，西湖论剑经验移植）
-- 工具覆盖审计：90 工具对 CTF/misc/crypto/reverse/web 的缺口清单（binwalk/foremost/angr/gdb/hashcat 已有；缺 zip 套娃链、RSA 常见套路、LSB 隐写等配方）
+- 工具覆盖审计：143 运行时工具对 CTF/misc/crypto/reverse/web 的缺口清单（binwalk/foremost/angr/gdb/hashcat 已有；缺 zip 套娃链、RSA 常见套路、LSB 隐写等配方）
 - **从西湖论剑 CTF-Agent 移植解题知识**：把 zip_chain_decode / rsa_fermat_factor / stego_lsb 等验证过的解题法，改写成 SecAutoMind 的技能包（skills/）+ YAML 工具配方（不抄代码，移植方法论），每包附自测用例
 - Agent 解题演练：构造 3-5 道本地小题（zip 套娃/简单密码学/日志分析），端到端跑通"自然语言任务→自主解题→flag 输出→审计留证"，记录成功率与失败模式
 - 网关合规包：`config.gateway-example.yaml`（base_url 指向安恒网关的 OpenAI 兼容预留 + 注释说明报备所需字段）+ 本地 mock 网关连通实测；文档明确"预留接入"口径，不宣称已集成
