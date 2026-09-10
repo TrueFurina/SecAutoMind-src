@@ -14,6 +14,7 @@
     2) 打包为 tar.gz
     3) 解包复核三条硬红线：
        - 包内不得出现 data/ · logs/ · .env · *.db · chat_uploads/ 等运行数据
+         （例外：data/ctf_benchmark/ 属可机验的**测试资产**而非运行数据，默认纳入）
        - 包内 config.yaml 必须与 config.share.yaml 逐字节一致（即确认顶替生效）
        - 对 staging 跑 secret_guard.py → 必须 PASS(rc=0)
     4) 任一红线失败 → 删除成品包并 rc=1（宁可不出包，不可出事）
@@ -60,6 +61,16 @@ EXCLUDE_DIRS = {
 }
 EXCLUDE_DIR_PREFIXES = ("tmp_recon_",)
 
+# ── 例外：被上面目录规则命中、但属「测试资产」而非「运行数据」的路径 ──────
+# data/ 整棵剪掉的初衷是剔除运行数据（conversations.db / 上传件 / 初始密码文件）。
+# data/ctf_benchmark/ 是本项目可独立机验的测试资产（冠军差异点「双语言机验基准集」，
+# 约 1.3MB、无大二进制），属**证据**而非运行数据，故默认纳入；--no-benchmark 可关闭。
+INCLUDE_PATH_EXCEPTIONS = ["data/ctf_benchmark"]
+
+# 可再生的嵌套 .git 工件：依项目自身设计（regen_exec_fixtures.py）
+# 「嵌套 .git 不入库，由该脚本再生成」，故不入包；包内已含该再生成脚本。
+NESTED_GIT_FIXTURE_DIRS = {"exec_git_repo", "git_cred_repo"}
+
 # ── 排除：文件名模式 ──────────────────────────────────────────────
 EXCLUDE_FILE_PATTERNS = [
     "config.yaml", "config.local.yaml", "config.yaml.backup", "config.yaml.bak_*",
@@ -77,6 +88,15 @@ FORBIDDEN_IN_PACKAGE = [
     "data/", "logs/", "chat_uploads/", "tmp/", "tmp_recon_",
     ".env", "config.yaml.backup", ".workbuddy/", ".git/",
 ]
+
+
+def _in_include_exception(rel):
+    """rel 处于某例外路径之下，或是该例外的祖先目录（需继续下钻才到得了）。"""
+    r = rel.replace("\\", "/")
+    for exc in INCLUDE_PATH_EXCEPTIONS:
+        if r == exc or r.startswith(exc + "/") or exc.startswith(r + "/"):
+            return True
+    return False
 
 
 def is_excluded_dir(rel):
@@ -126,6 +146,31 @@ def build_staging(staging):
                 continue
             included.append(child)
 
+    # 例外路径：主 walk 把 data/ 整棵剪掉，这里把「测试资产」（机验基准集）单独补进包。
+    # 与主 walk 分离实现，确保除例外目录外 data/ 下任何文件都不会被顺带带出。
+    for exc in INCLUDE_PATH_EXCEPTIONS:
+        exc_abs = os.path.join(ROOT, exc.replace("/", os.sep))
+        if not os.path.isdir(exc_abs):
+            print("  [WARN] 例外路径不存在，跳过：%s" % exc)
+            continue
+        for dirpath, dirnames, filenames in os.walk(exc_abs):
+            rel_dir = os.path.relpath(dirpath, ROOT).replace("\\", "/")
+            dirnames[:] = [d for d in dirnames
+                           if d not in NESTED_GIT_FIXTURE_DIRS and d != "__pycache__"]
+            for fn in filenames:
+                if fn.endswith((".pyc", ".pyo")) or fn == ".env" or fn.startswith(".env."):
+                    continue
+                rel = "%s/%s" % (rel_dir, fn)
+                src = os.path.join(dirpath, fn)
+                dst = os.path.join(staging, rel.replace("/", os.sep))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                try:
+                    shutil.copy2(src, dst)
+                except OSError as e:
+                    print("  [WARN] 复制失败，跳过：%s (%s)" % (rel, e))
+                    continue
+                included.append(rel)
+
     # 用干净配置顶替 config.yaml（接收方开箱即用；纯 ${ENV} 占位，无真 key）
     if os.path.exists(CLEAN_CONFIG):
         shutil.copy2(CLEAN_CONFIG, os.path.join(staging, "config.yaml"))
@@ -168,7 +213,10 @@ def verify(package, staging):
     # 红线 1：运行数据 / 密钥文件不得入包
     for rel in rels:
         low = rel.lower()
-        for bad in FORBIDDEN_IN_PACKAGE:
+        # 例外路径（如 data/ctf_benchmark）豁免「data/ 禁区」，其它禁区仍然生效
+        bads = ([b for b in FORBIDDEN_IN_PACKAGE if b != "data/"]
+                if _in_include_exception(rel) else FORBIDDEN_IN_PACKAGE)
+        for bad in bads:
             if low.startswith(bad) or low == bad.rstrip("/"):
                 issues.append("禁区文件入包：%s" % rel)
                 break
@@ -207,8 +255,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None, help="成品包路径（默认 dist/SecAutoMind-<ver>-share.tar.gz）")
     ap.add_argument("--list-only", action="store_true", help="只预览，不打包")
+    ap.add_argument("--no-benchmark", action="store_true",
+                    help="不纳入 data/ctf_benchmark 机验基准集（默认纳入）")
     # 注：staging 一律保留（本环境批量删除会被安全策略拦截），故不提供清理开关。
     args = ap.parse_args()
+
+    if args.no_benchmark:
+        INCLUDE_PATH_EXCEPTIONS.clear()
 
     ver = read_version()
     default_out = os.path.join(ROOT, "dist", "SecAutoMind-%s-share.tar.gz" % ver)
@@ -238,6 +291,8 @@ def main():
     if args.list_only:
         top = sorted({p.split("/")[0] for p in included})
         print("  顶层条目：%s" % ", ".join(top))
+        if INCLUDE_PATH_EXCEPTIONS:
+            print("  例外纳入：%s（机验基准集）" % ", ".join(INCLUDE_PATH_EXCEPTIONS))
         print("  （--list-only 预览结束，未打包）")
         return 0
 
