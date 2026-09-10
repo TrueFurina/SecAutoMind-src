@@ -13,8 +13,8 @@
 | 维度 | 结果 | 验证方式 |
 |---|---|---|
 | 整库构建 + 全测 | ✅ GREEN | `go test ./...` exit 0（28 包 / 0 FAIL / 0 panic） |
-| 十六基准集 · 双语言机验 | ✅ 全绿 | `run_all_benchmarks.py` 静态34.5% + 执行100% + Web100% + 附件100% + 十一大利用层 + ECDSA/PaddingOracle/BlindOOB |
-| 证据/口径一致性门禁 | ✅ PASS | `verify_evidence.py`：count_stats 健康 + 十一利用层 hit==total + 反注水 water_filled==0 |
+| 十六基准集 · 双语言机验 | ✅ 全绿 | `run_all_benchmarks.py` 静态34.5% + 执行100% + Web100% + 附件100% + 十五类利用层（SSRF 基准待补） + ECDSA/PaddingOracle/BlindOOB |
+| 证据/口径一致性门禁 | ✅ PASS | `verify_evidence.py`：count_stats 健康 + 十五类利用层 hit==total + 反注水 water_filled==0 |
 | 反注水门禁 | ✅ 174/174 | `TestAllRegisteredSolversActuallyExecute`（全部注册求解器生产实跑） |
 | capability-gate 逻辑 | ✅ GREEN | 反注水 + ECDSA + PaddingOracle + BlindOOB + 三反误报，RC=0（4.9s） |
 | capability-gate `-race` | ⚠️ 本地链接失败 | 仅本机 MinGW 缺 `WaitOnAddress` 符号；CI（Linux runner）正常——**环境限制，非代码问题** |
@@ -56,8 +56,9 @@
 
 ```
 静态确定性 34.5% + 执行确定性 100.0% + Web 实战 100.0% + 附件取证 100.0%
-+ JWT 3/3 + 反序列化 3/3 + XXE 3/3 + 上传RCE 3/3 + GraphQL 3/3 + SSRF 3/3
++ JWT 3/3 + 反序列化 3/3 + XXE 3/3 + 上传RCE 3/3 + GraphQL 3/3 + **SSRF 0/3（基准题未覆盖，gopher Redis/云 IMDS/回环服务链能力已实现、待补基准题）**
 + SQLi深度 3/3 + SSTI深度 3/3 + ECDSA 1/1 + PaddingOracle 1/1 + BlindOOB 2/2
++ HashExt 2/2 + GCMNR 2/2 + MT19937 2/2 + LFSR 2/2（P17–P20 新增加密攻击层，双语言机验）
 Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 ```
 
@@ -68,7 +69,7 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 - **静态 34.5% 是确定性求解天花板**，勿再试图静态破解 36 道 MISS
 
 ### 2.2 执行确定性基准集（真实工件 + 实时靶机）
-- Python `judge_exec.py` → **14/14 = 100%**（含实时起靶利用 SQLi 登录绕过 + 命令执行、SSTI 模板注入）
+- Python `judge_exec.py` → **17/17 = 100%**（含实时起靶利用 SQLi 登录绕过 + 命令执行、SSTI 模板注入；本轮由 14 题扩容 +3 道 RSA 攻击题：`common_modulus`/`hastad_broadcast`/`rsa_wiener`）
 - Go `TestExecSolversAgainstBenchmark` + `TestLiveExploitation` → PASS
 
 ### 2.3 Web 实战基准集（真实 CTF Web 题型靶场）
@@ -79,9 +80,13 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 - **ECDSA nonce 复用** 1/1：Go `TestECDSANonceReuse` ↔ Python `judge_ecdsa.py`
 - **CBC Padding Oracle** 1/1（Vaudenay，仅用 `oracle(ct)->bool` 逐字节逼出中间态，无需密钥）：Go `TestPaddingOracle*` ↔ Python `judge_padding_oracle.py`
 - **Web 盲打 / OOB 外带** 2/2（时间盲注逐字符还原 + 靶机异步回连监听器取回 flag）：Go `TestBlindOOB*` ↔ Python `judge_blind_oob.py`
+- **Hash Length Extension** 2/2（MD5/SHA1 手动压缩续算伪造 MAC，通过服务端校验）：Go `TestHashLengthExtension*` ↔ Python `judge_hash_ext.py`
+- **AES-GCM nonce 复用** 2/2（同密钥同 96-bit nonce → CTR keystream 共享 → 异或复原明文，无需密钥）：Go `TestGCMNonceReuse*` ↔ Python `judge_gcm_nr.py`
+- **MT19937 状态恢复** 2/2（泄露 624 输出 untemper 反解状态 + twist 预测第 625 输出）：Go `TestMT19937*` ↔ Python `judge_mt19937.py`
+- **LFSR 流预测** 2/2（观察 ≥2L 输出比特 → Berlekamp–Massey 恢复最小连接多项式 → 逐位预测）：Go `TestLFSR*` ↔ Python `judge_lfsr.py`
 
 ### 2.5 反注水门禁（冠军诚信底座）
-- `TestAllRegisteredSolversActuallyExecute` → PASS：**170** 个注册求解器全部「生产实跑」通过，零注水。
+- `TestAllRegisteredSolversActuallyExecute` → PASS：**174** 个注册求解器全部「生产实跑」通过，零注水。
 
 ---
 
@@ -89,7 +94,7 @@ Web 题目感知渗透: A组(无线索)3 → B组(读题)6 (增量 +3)
 
 | # | 门禁 | 命令 | 结果 |
 |---|---|---|---|
-| 1 | 单一真值源（快照） | `python scripts/count_stats.py --json` | ✅ HEAD=6251ca8 solvers=170 go_files=689 total_lines=155831 runtime_tools=143 |
+| 1 | 单一真值源（快照） | `python scripts/count_stats.py --json` | ✅ HEAD=76f4e69 solvers=174 go_files=697 total_lines=157241 runtime_tools=143 |
 | 2 | 整库构建+全测 | `go test ./...`（CGO_ENABLED=1） | ✅ RC=0，28 包 |
 | 3 | 十六基准集 | `python data/ctf_benchmark/run_all_benchmarks.py` | ✅ 全绿，落 `all_benchmarks_summary.json` |
 | 4 | 证据/口径门禁 | `python scripts/verify_evidence.py` | ✅ PASS |
@@ -138,7 +143,7 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 
 ## 5. 诚实性声明
 
-1. **数字单一真值**：所有规模数字来自 `count_stats.py --json`，禁止手写/凭记忆；与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移，本文件以 HEAD `7a604e2` 活值为准。
+1. **数字单一真值**：所有规模数字来自 `count_stats.py --json`，禁止手写/凭记忆；与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移，本文件以 HEAD `76f4e69` 活值为准。
 2. **双语言机验**：每个基准 Python 侧 + Go 侧各自独立实现，结果互相印证，任一侧漂移立即暴露；命中均经 flag 的 SHA-256 比对，杜绝「关键词猜中」。
 3. **零注水**：`RegisterSolver(SolverEntry{` 真实调用数 = 实际执行数（174/174，含 P17–P20 求解器批次）。
 4. **工作树状态**：质检时工作树干净（并行会话在途改动已合入 `7a604e2`），全量质检跑的是已提交完整状态，无 WIP 干扰。
@@ -168,8 +173,8 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 |---|---|
 | count_stats 单一真值源 | ✅ go_files=689 / test_files=257 / total_lines=155831 / solvers=170 / runtime_tools=143（连续三跑稳定） |
 | `go test ./...`（CGO_ENABLED=1，整库 28 包） | ✅ RC=0，全部 `ok`，0 FAIL / 0 panic（3m14s） |
-| 十六基准集 `run_all_benchmarks.py` | ✅ 静态34.5% + 执行100% + Web100% + 附件100% + 十一利用层 + ECDSA/PaddingOracle/BlindOOB 全绿 |
-| `verify_evidence.py` 证据/口径门禁 | ✅ PASS（count_stats 健康 + 十一利用层 hit==total + 反注水 water_filled==0） |
+| 十六基准集 `run_all_benchmarks.py` | ✅ 静态34.5% + 执行100% + Web100% + 附件100% + 十五类利用层（SSRF 基准待补）全绿 |
+| `verify_evidence.py` 证据/口径门禁 | ✅ PASS（count_stats 健康 + 十五类利用层 hit==total + 反注水 water_filled==0） |
 | gofmt 仓库真实状态（排除 `.workbuddy/gopath`） | ✅ 0 未格式化 |
 | `secret_guard.py` 密钥门禁 | ❌ rc=1（config.yaml L137 ws key / L614 飞书 app_secret）—— **唯一红灯，打包阻断项** |
 

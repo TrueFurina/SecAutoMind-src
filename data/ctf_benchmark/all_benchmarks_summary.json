@@ -64,9 +64,9 @@
   },
   "ssrf": {
     "total": 3,
-    "hit": 3,
-    "miss": 0,
-    "coverage_pct": 100.0
+    "hit": 0,
+    "miss": 3,
+    "coverage_pct": 0.0
   },
   "sqli_deep": {
     "total": 3,
@@ -99,6 +99,24 @@
     "coverage_pct": 100.0
   },
   "hash_ext": {
+    "total": 2,
+    "hit": 2,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "gcm_nonce_reuse": {
+    "total": 2,
+    "hit": 2,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "mt19937_recover": {
+    "total": 2,
+    "hit": 2,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "lfsr_predict": {
     "total": 2,
     "hit": 2,
     "miss": 0,
