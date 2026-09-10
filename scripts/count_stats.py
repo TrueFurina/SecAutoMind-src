@@ -190,6 +190,34 @@ def builtin_tools_count():
     return len(items)
 
 
+def _exe_vcs(path):
+    """从 Go 二进制内嵌 build info 提取 vcs.revision / vcs.time。
+
+    不依赖外部 `go` 命令：旧实现是 `go version -m ... | findstr /R "^\smod\s"`，
+    这是 Windows CMD 专用语法，在 bash 下静默取空——交付 exe 的关键版本信息
+    （评审最看重的「这个二进制对应哪个 commit」）就在报告里丢了一整个版本。
+    """
+    try:
+        with open(path, "rb") as fh:
+            blob = fh.read()
+    except OSError:
+        return "", ""
+
+    def grab(key):
+        idx = blob.find(key.encode())
+        if idx < 0:
+            return ""
+        out = []
+        for b in blob[idx + len(key):idx + len(key) + 64]:
+            if b in (0x09, 0x0a, 0x0d, 0x00):  # \t \n \r NUL 即终止
+                break
+            if 32 <= b < 127:
+                out.append(chr(b))
+        return "".join(out)
+
+    return grab("vcs.revision="), grab("vcs.time=")
+
+
 def exe_info():
     exe = os.path.join(ROOT, "secautomind-ai.exe")
     if not os.path.isfile(exe):
@@ -198,11 +226,14 @@ def exe_info():
     with open(exe, "rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
+    rev, tm = _exe_vcs(exe)
     return {
         "present": True,
         "md5": h.hexdigest(),
         "size_mib": round(os.path.getsize(exe) / 1048576, 1),
-        "mod_version": _sh("go version -m secautomind-ai.exe | findstr /R \"^\\smod\\s\"") or "",
+        "vcs_revision": rev,
+        "vcs_time": tm,
+        "mod_version": ("vcs %s @ %s" % (rev[:12], tm)) if rev else "",
     }
 
 
@@ -263,7 +294,10 @@ def main():
     print("  IM 适配器 (func Start*)%d" % data["im_adapters"])
     if e["present"]:
         print("  交付 exe             md5=%s (%s MiB)" % (e["md5"], e["size_mib"]))
-        if e["mod_version"]:
+        if e.get("vcs_revision"):
+            print("                       内嵌 vcs.revision=%s (vcs.time=%s)"
+                  % (e["vcs_revision"][:12], e.get("vcs_time", "")))
+        elif e["mod_version"]:
             print("                       %s" % e["mod_version"])
     else:
         print("  交付 exe             (未找到 secautomind-ai.exe)")
