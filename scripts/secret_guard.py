@@ -64,7 +64,11 @@ PATTERNS = [
     ("GitHub Token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{16,}\b")),
     ("Slack Token", re.compile(r"\bxox[baprs]-[A-Za-z0-9\-]{10,}")),
     ("PEM 私钥", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("飞书 app_secret", re.compile(r"app_secret\s*[:=]\s*['\"]?([A-Za-z0-9]{24,})['\"]?")),
+    # ⚠️ 2026-09-13：阈值由 {24,} 放宽到 {8,}。原阈值让"8 字符 + 省略号"的真 app_secret
+    #    打码片段（6jRyD35H...）完全逃逸。纯数字由 is_placeholder 兜住，不会误报。
+    #    负向断言 (?!\.\w) 排除 JS 取值写法（`app_secret: document.getElementById(...)` 
+    #    曾被捕获成 `document` 造成误报），但保留省略号（`....` 的次字符不是 \w）。
+    ("飞书 app_secret", re.compile(r"app_secret\s*[:=]\s*['\"]?([A-Za-z0-9]{8,})(?!\.\w)")),
     ("Bearer 长令牌", re.compile(r"\bBearer\s+([A-Za-z0-9._\-]{24,})")),
 ]
 
@@ -78,20 +82,78 @@ SUSPECT_PATH = re.compile(
 # CTF 真题语料里的 flag 常常长得像凭证（如 picoCTF{@sk_th3_...}），统一判为占位
 FLAG_LIKE = re.compile(r"picoCTF\{|flag\{|CTF\{|DASCTF\{", re.I)
 
-# 门禁自身的测试夹具：secret_guard_test.py 必须内嵌「形似真凭证」的样本才能验证检出能力，
-# 否则门禁会把自己写成的数据报成 BLOCK（自指死锁）。
-# ⚠️ 安全约束：这里只豁免**精确文件名**，绝不用模糊前缀，避免有人把真密钥塞进同名文件绕过门禁；
-#    且这些样本是公开的测试向量（sk-ws-H.PMPEYIE... 等），不是本项目使用的真实凭证。
+# ⚠️ 2026-09-13 事故复盘：曾把整个 scripts/secret_guard_test.py 设为豁免，理由是
+#    "测试夹具必须内嵌形似真凭证的样本"。结果该文件里真的被写进了**两枚本项目真凭证**
+#    （千问 sk-ws- 前 56 字符、飞书 app_secret 完整 32 字符），豁免让门禁一路报 CLEAN。
+#    教训：**豁免会腐化**——被豁免的文件没人再看。
+#    现行规则：
+#      (1) 测试夹具一律使用构造假值（不含真凭证任何片段）；
+#      (2) SELF_EXEMPT 仅表示"该文件的命中不计违规"，但**不阻断真 key 指纹反查**（见下）；
+#      (3) 指纹反查是本门禁最强的防线：直接比对"是否包含本项目正在使用的真 key 片段"，
+#          与正则形态无关，带省略号打码、Base64、换行拆分都逃不掉。
 SELF_EXEMPT = {"scripts/secret_guard_test.py"}
 
-# 占位符 / 示例 / 测试假值特征（命中即判为安全）
-PLACEHOLDER = re.compile(
-    r"xxxx|XXXX|\bxxx\b|\.\.\.|\$\{|YOUR_|your_|REPLACE|replace_me|CHANGE_ME|"
+# 真 key 指纹：从 config.yaml / 环境变量读取本项目实际在用的凭证，取前 N 字符当指纹。
+# 命中即 BLOCK，且**不受** placeholder / SELF_EXEMPT / SUSPECT_PATH 任何豁免影响。
+FINGERPRINT_LEN = 12
+FINGERPRINT_SOURCES = ("api_key", "app_secret")
+
+
+def load_real_fingerprints(root=None):
+    """收集"本项目真凭证"的前缀指纹。读不到来源时返回空集（并提示）。"""
+    root = root or ROOT
+    vals = []
+    cfg = os.path.join(root, "config.yaml")
+    if os.path.isfile(cfg):
+        try:
+            with open(cfg, "r", encoding="utf-8", errors="ignore") as fh:
+                for line in fh:
+                    m = re.match(r"^\s*(api_key|app_secret)\s*:\s*(\S+)", line)
+                    if not m:
+                        continue
+                    v = m.group(2).strip().strip('"').strip("'")
+                    if v.startswith("${") or v.startswith("#") or len(v) < 20:
+                        continue
+                    vals.append(v)
+        except Exception:
+            pass
+    # 环境变量兜底（env 优先级高于 yaml 是本项目约定）
+    for env in ("DASHSCOPE_API_KEY", "ARK_API_KEY", "DEEPSEEK_API_KEY", "OPENAI_API_KEY"):
+        v = os.environ.get(env, "").strip()
+        if len(v) >= 20:
+            vals.append(v)
+    fps = set()
+    for v in vals:
+        fps.add(v[:FINGERPRINT_LEN])
+    return fps
+
+
+def fingerprint_hit(text, fps):
+    """返回 text 中命中的指纹（已打码），无命中返回 None。"""
+    if not fps:
+        return None
+    for fp in fps:
+        if fp in text:
+            return mask(fp)
+    return None
+
+
+STRONG_PLACEHOLDER = re.compile(
+    r"xxxx|XXXX|\bxxx\b|\$\{|YOUR_|your_|REPLACE|replace_me|CHANGE_ME|"
     r"placeholder|PLACEHOLDER|example|EXAMPLE|EXAMPLE\.COM|dummy|DUMMY|"
     r"fake|FAKE|invalid|INVALID|test-key|testkey|<[^>]*>|\[.*填写.*\]|"
     r"待填|占位|示例|请填写|你的",
     re.I,
 )
+
+# 省略号截断标记
+ELLIPSIS = re.compile(r"\.\.\.")
+
+# 凭证前缀：形似真凭证的头部（用于判定"带省略号的截断串"是否该放行）
+CRED_PREFIX = re.compile(r"^(?:sk[-_]|gh[pousr]_|xox[baprs]-|AKIA|ASIA)\S*$")
+
+# 兼容旧名（外部/测试若有引用）
+PLACEHOLDER = STRONG_PLACEHOLDER
 
 
 def mask(s):
@@ -103,12 +165,34 @@ def mask(s):
 
 
 def is_placeholder(value):
-    return bool(PLACEHOLDER.search(value)) or bool(FLAG_LIKE.search(value))
+    """判定是否为占位符/示例（True = 安全，不计违规）。
+
+    ⚠️ 2026-09-13 修正（真实泄露事故）：
+        旧版把 `...` 当作**无条件**占位特征，于是
+        `<真 key 前 29 字符，此处已脱敏>`（documented 于 docs/质检报告_20260908 事故）
+        被判为占位符放行 → 该片段随交付包发给了评委，门禁却报 CLEAN。
+        打码串恰恰是「真 key 曾被写进文件」的证据，必须默认报警而非放行。
+        新规则：带省略号时，**只有**核心不像凭证（或太短）才豁免。
+    """
+    if FLAG_LIKE.search(value):
+        return True
+    if STRONG_PLACEHOLDER.search(value):
+        return True
+    if value.isdigit():
+        return True
+    if ELLIPSIS.search(value):
+        core = value.rstrip(".")
+        if CRED_PREFIX.match(core) and len(core) >= 12:
+            return False
+        return True
+    return False
 
 
-def scan_dir(root):
+def scan_dir(root, fps=None):
     findings = []
     scanned = 0
+    if fps is None:
+        fps = load_real_fingerprints(root)
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames
                        if d not in SKIP_DIRS and not d.startswith(".") or d == "."]
@@ -130,6 +214,20 @@ def scan_dir(root):
             scanned += 1
             for lineno, line in enumerate(lines, 1):
                 rel = os.path.relpath(path, root).replace("\\", "/")
+                # ① 真 key 指纹反查（最高优先级）：只要出现本项目在用的凭证片段就报警，
+                #    与正则形态无关，**不受** placeholder / SELF_EXEMPT / SUSPECT_PATH 影响。
+                fp = fingerprint_hit(line, fps)
+                if fp:
+                    findings.append({
+                        "file": rel,
+                        "line": lineno,
+                        "kind": "真 key 指纹命中",
+                        "masked": fp,
+                        "placeholder": False,
+                        "suspect": False,
+                        "forced": True,
+                    })
+                # ② 形态匹配
                 # flag 特征必须看整行：PATTERNS 只截取 `sk_th3...` 片段，
                 # 其外的 `picoCTF{` 前缀不在片段内，只看片段会漏判（2026-09-09 实测修复）。
                 line_is_flag = bool(FLAG_LIKE.search(line))
@@ -147,6 +245,7 @@ def scan_dir(root):
                             "masked": mask(raw),
                             "placeholder": ph,
                             "suspect": suspect,
+                            "forced": False,
                         })
     return scanned, findings
 
@@ -157,14 +256,20 @@ def main():
         root = os.path.abspath(sys.argv[sys.argv.index("--dir") + 1])
     scanned, findings = scan_dir(root)
 
-    real = [f for f in findings if not f["placeholder"] and not f["suspect"]]
-    suspect = [f for f in findings if f["suspect"]]
-    placeholder = [f for f in findings if f["placeholder"]]
+    real = [f for f in findings
+            if f.get("forced") or (not f["placeholder"] and not f["suspect"])]
+    suspect = [f for f in findings if f["suspect"] and not f.get("forced")]
+    placeholder = [f for f in findings
+                   if f["placeholder"] and not f.get("forced")]
+    forced = [f for f in findings if f.get("forced")]
+    fps = load_real_fingerprints(root)
 
     if "--json" in sys.argv:
         print(json.dumps({
             "scanned_files": scanned,
+            "fingerprints_loaded": len(fps),
             "real_findings": real,
+            "forced_findings": forced,
             "suspect_findings": suspect,
             "placeholder_findings": len(placeholder),
             "verdict": "BLOCK" if real else "PASS",
@@ -175,6 +280,8 @@ def main():
     print("SecAutoMind 密钥门禁 · 扫描根目录 %s" % root)
     print("=" * 66)
     print("  已扫描文本文件   %d" % scanned)
+    print("  真 key 指纹库     %d 条%s" % (
+        len(fps), "" if fps else "（⚠️ 未加载到真 key：config.yaml 缺失且无相关 env，指纹反查未生效）"))
     print("  占位符/示例命中  %d（判定安全，不计违规）" % len(placeholder))
     print("  可疑命中         %d（测试夹具/CTF 语料，不阻塞但请人工确认）" % len(suspect))
     print("  真实凭证命中     %d" % len(real))
@@ -182,13 +289,18 @@ def main():
     if real:
         print("  [BLOCK] 发现真实凭证，禁止打包交付：\n")
         for f in real:
-            print("    %s:%d" % (f["file"], f["line"]))
+            mark = " 🔴指纹" if f.get("forced") else ""
+            print("    %s:%d%s" % (f["file"], f["line"], mark))
             print("      类型: %s" % f["kind"])
             print("      值(已打码): %s" % f["masked"])
         print("\n  处理顺序：")
         print("    1) 到对应平台【轮换/revoke】该凭证（泄露过的 key 不可继续使用）")
         print("    2) 改为环境变量注入（本项目 env 优先级高于 yaml）")
         print("    3) 重跑本脚本直到 PASS，再打包")
+        if forced:
+            print("\n  ⚠️ 上述带 🔴指纹 的命中 = 文档/代码里出现了**本项目正在用的真 key 片段**。")
+            print("     这不是'打码示例'，而是真凭证泄露：即使只泄露前 12 字符也应视为已泄露，")
+            print("     必须轮换该 key，并把片段替换为完全脱敏的文本（如 `<redacted>`）。")
     else:
         print("  [PASS] 未发现真实凭证，可进入打包流程。")
     if suspect:

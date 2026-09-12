@@ -75,9 +75,13 @@ jobs:
         run: python scripts/verify_evidence.py
 
   # 密钥门禁：防止真实凭证被提交进仓库。
-  # 历史教训：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`
-  #（第 4 位是连字符即断匹配），一把真 key 从洞里漏过而门禁报 CLEAN。
+  # 历史教训（两次）：
+  #   ① 2026-09-08：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`
+  #      （第 4 位是连字符即断匹配），一把真 key 从洞里漏过而门禁报 CLEAN。
+  #   ② 2026-09-13：`is_placeholder` 把 `...` 当无条件占位特征，于是人工打码后的
+  #      真 key 片段被判为"安全"，随交付包外发给了评委。
   # 失效的门禁比没有门禁更危险 —— 它会持续给出假的安全感。
+  # 因此本 job 跑三层：门禁本体 → 门禁自测 → 门禁变异验证（证明自测真能杀死退化）。
   secret-gate:
     runs-on: ubuntu-latest
     steps:
@@ -87,6 +91,10 @@ jobs:
           python-version: "3.12"
       - name: Secret guard (real credentials block, placeholders allowed)
         run: python scripts/secret_guard.py
+      - name: Secret guard self-test (must still catch the leaks it once missed)
+        run: python scripts/secret_guard_test.py
+      - name: Secret guard mutation check (prove the self-test can kill regressions)
+        run: python scripts/secret_guard_mutation_check.py
 
   # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
   # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
