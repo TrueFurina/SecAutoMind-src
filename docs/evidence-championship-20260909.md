@@ -42,7 +42,7 @@
 | IM 适配器（`func Start*`） | 7 |
 | Agent(md) / 技能(SKILL.md) / RBAC 角色 | 18 / 23 / 13 |
 | internal 子目录 | 32 |
-| 交付 exe | md5 `4da4720ea7e406da0f0a91fa02a480e3`，85.1 MiB（终版 exe，冻结至决赛） |
+| 交付 exe | md5 `4da4720ea7e406da0f0a91fa02a480e3`，85.1 MiB（**该值已被 2026-09-12 重建取代，详见文末附记**） |
 
 > 口径漂移说明：相较 09-08 初测（688/155681/170），本次 HEAD `6251ca8` 因并行会话合入 HITL fail-closed 及其回归测试、count_stats 指标扩展、gofmt 全量等改动，文件数 +1、总行 +150。一律以 `count_stats.py --json` 实时值为准。
 >
@@ -154,7 +154,7 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 5. **静态 34.5% 为天花板**：36 道 MISS 为纯文字 stub，由执行/Web 层覆盖，勿再静态破解。
 6. **唯一红灯 = 密钥门禁**（§3 #8）：`config.yaml` 两把真 key（L137 的 ws 通道 key `sk-ws-…obrA`、L614 的飞书 `app_secret 6jRyD3…pTra`）。该文件被 `.gitignore` 排除不进 GitHub，但会进交付 zip。打包前必须：①到对应平台 revoke/轮换；②改为环境变量注入（本项目 env 优先级高于 yaml）；③重跑 `secret_guard.py` 至 PASS。**此阻塞项不修复不得打包交付**。
 7. **`-race` 门禁本地链接失败为环境限制**（§3 #6），非代码缺陷，CI Linux 上正常；逻辑正确性由非 race 复验与 CI 共同保证。
-8. **exe 冻结至决赛**：交付 exe md5 `4da4720…` 未重建，本轮纯新增求解器 + CI 配置 + 质检文档，不影响已交付 exe。
+8. **exe 冻结至决赛**（**2026-09-12 已变更，详见文末附记**）：本轮未重建 exe，纯新增求解器 + CI 配置 + 质检文档，不影响当时已交付的 exe。
 
 ---
 
@@ -185,3 +185,41 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 **勘误**：原文 §3 门禁 #1 的 HEAD 标签曾误写为 `7a604e2`，已更正为当前 HEAD `6251ca8`（§1 规模数字本即以 6251ca8 为准，本次仅对齐标签，数字无变化）。`gofmt -l .` 早期报 6182 行为 `.workbuddy/gopath/pkg/mod` 依赖缓存误扫，仓库真值排除后 = 0。
 
 **结论**：除 `secret_guard`（打包前必须剔除两把真 key / 改 env 注入）外，全量质检全绿；冠军能力证据链自洽、双语言机验、SHA-256 逐题校验、零注水。
+
+---
+
+## 8. 文末附记 · exe 主动解除冻结重建（2026-09-12）
+
+> 本节是 §1「交付 exe」与 §5.8「exe 冻结至决赛」的**唯一有效更新**；前文一切旧 exe 值（`4da4720…` / Setup `550381db…`）以本节为准。
+
+### 8.1 解除冻结的动机
+原冻结策略是在「源码持续更新、exe 冻结」下的双口径并行（§5.8）。但旧 exe 内嵌 `b4f458d`，**早于**两项关键修复：
+
+1. **平台层 DASCTF 提交契约修复** —— 提交 body 键名 `flag`、剥离 `flag{}`/`DASCTF{}` 外壳、成功判据 `code=="00000" && data.isCorrect==true`、`corpus` 嵌套列表展平、7 项抗打击治理（退避重试 / Retry-After / 429 阶梯 / 403 WAF 冷却 / 列表 TTL 缓存 / HTTP 连接复用）。
+2. **P17–P20 真实加密攻击求解器批次**（174 求解器口径）。
+
+即：交付给评委的二进制缺少**决定决赛成败的平台层修复**。故主动解除冻结、重建。
+
+### 8.2 新产物指纹（本轮亲手复核）
+
+| 产物 | 指纹 | 大小 |
+|---|---|---|
+| `secautomind-ai.exe`（根 + `installer/` 两处一致） | md5 `7c97efd1009518f334256049ea0bcdb0` | 89,439,744 B（85.3 MiB） |
+| 内嵌 commit | `vcs.revision=a34f2a21f3e56bfb790bc0ac44a9112a4be7bd27`（= `a34f2a2`），无 dirty | — |
+| `SecAutoMind-Setup-1.7.25-x64.exe` | md5 `7eba511aef77705e8424cfa6847ef92c` | 20,291,205 B |
+
+旧值（作废）：exe `4da4720ea7e406da0f0a91fa02a480e3`（内嵌 `b4f458d`）/ Setup `550381db451c60f0898d110f7713129e`。
+
+### 8.3 构建口径勘误（技能文档随之更正）
+本轮实证：**`CGO_ENABLED=0` 才是正确构建方式**；`windows-go-exe-relaunch-nsis-package` 技能旧述「必须 `CGO_ENABLED=1`」**已过期**。依据：`go.mod:24` 依赖 `github.com/glebarez/go-sqlite v1.23.0`（纯 Go 实现），全仓无 `mattn/go-sqlite3`（CGO）依赖。构建命令：
+
+```
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+  .workbuddy/toolchain/go/bin/go.exe build -trimpath \
+  -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server
+```
+
+### 8.4 一致性验证
+- NSIS 重打后经 7-Zip 提取：根 exe / `installer/` exe / 包内 exe **三处 md5 一致**（`7c97efd1…`）。
+- 新 exe 独立配置（端口 18099、数据目录 `D:`）冒烟启动：`GET /` **HTTP 200**，全站静态资源 200 加载，初始密码落盘、`/api/setup/status` 200 —— 服务正常起。
+- 交付包 `dist/SecAutoMind-v1.7.25-share.tar.gz` 随本轮**重打**（1636 条目 / 309.0 MB / 三项红线 rc=0）；旧包内为旧 exe（`4da4720…`）、已不符，作废。
