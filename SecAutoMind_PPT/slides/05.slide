@@ -10,7 +10,7 @@
         <Text style={{ fontSize: 26, fontWeight: 700, color: '#F1F5F9', lineHeight: 1.45 }}>“面向授权靶场与攻防演练场景，用多智能体自主编排 + 百级工具库 + 人机协同，完成从意图输入到标准化报告的全流程闭环。”</Text>
         {[
           { num: '01', title: '分层多智能体', desc: 'Deep / Plan-Execute / Supervisor 三种编排，适配不同任务复杂度' },
-          { num: '02', title: '通用工具生态', desc: '90 个 YAML 工具、18 个角色化 Agent、23 个技能，覆盖全攻防链路' },
+          { num: '02', title: '通用工具生态', desc: '91 个 YAML 工具、18 个角色化 Agent、23 个技能，覆盖全攻防链路' },
           { num: '03', title: '国产模型 + 一键部署', desc: '默认 qwen3-max，支持 DeepSeek，可部署在腾讯轻量云等标准 Linux 环境' },
         ].map((item, idx) => (
           <Box key={idx} style={{ flexDirection: 'row', gap: 14, padding: 10, background: 'rgba(14,165,233,0.10)', borderRadius: 12, borderLeft: '3px solid #0EA5E9' }}>
@@ -62,7 +62,7 @@
 
           <rect x={170} y={420} width={380} height={56} rx={10} fill='url(#boxGrad)' stroke='#0EA5E9' strokeWidth={2} />
           <text x={360} y={445} textAnchor='middle' fill='#F1F5F9' fontSize={18} fontWeight='bold' fontFamily='思源黑体, sans-serif'>工具库 + MCP 服务</text>
-          <text x={360} y={465} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>90 个 YAML 工具 · 2 类 MCP 服务</text>
+          <text x={360} y={465} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>91 个 YAML 工具 · 2 类 MCP 服务</text>
         </svg>
       </Box>
     </Box>

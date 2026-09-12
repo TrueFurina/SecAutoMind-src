@@ -60,7 +60,7 @@
 
         <rect x={230} y={430} width={300} height={56} rx={10} fill='url(#boxGrad7)' stroke='#0EA5E9' strokeWidth={2} />
         <text x={380} y={455} textAnchor='middle' fill='#F1F5F9' fontSize={17} fontWeight='bold' fontFamily='思源黑体, sans-serif'>工具执行</text>
-        <text x={380} y={475} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>90 个 YAML 工具 · MCP 服务</text>
+        <text x={380} y={475} textAnchor='middle' fill='#94A3B8' fontSize={13} fontFamily='思源黑体, sans-serif'>91 个 YAML 工具 · MCP 服务</text>
       </svg>
     </Box>
   </Box>

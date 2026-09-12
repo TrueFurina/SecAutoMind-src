@@ -517,8 +517,8 @@ s = add_slide()
 bg(s)
 sec_banner(s, 12, "跨平台三端发布：CI 自动构建 · 官网分发")
 plats = [
-    ("Windows", "Setup 安装版 33.6 MB\n（选目录+快捷方式+卸载）\n绿色版 158 MB", ACCENT),
-    ("Linux", "amd64 单文件\nchmod +x 即跑\n原生 cgo 编译", ACCENT2),
+    ("Windows", "Setup 安装版 19.4 MiB\n（选目录+快捷方式+卸载）\n绿色版 85.3 MiB", ACCENT),
+    ("Linux", "amd64 单文件\nchmod +x 即跑\n原生编译（纯 Go 免 CGO）", ACCENT2),
     ("macOS", "Apple Silicon arm64\n+ Intel amd64\n原生编译", WARN),
 ]
 x = Inches(0.6)
@@ -529,7 +529,7 @@ for name, body, col in plats:
     x += Inches(4.18)
 text(s, Inches(0.6), Inches(5.2), Inches(12.1), Inches(1.4),
      [[("CI 流水线：", 14.5, ACCENT, True),
-       ("push tag → GitHub Actions 三平台原生编译（含 cgo sqlite）→ 产物自动上传 Release → 官网（GitHub Pages）三端下载，全程可复现、无需本机环境。", 14, MUTED, False)]],
+       ("push tag → GitHub Actions 三平台原生编译（含纯 Go sqlite 驱动）→ 产物自动上传 GitHub Release，全程可复现、无需本机环境。", 14, MUTED, False)]],
      line_spacing=1.35)
 footer(s, 18)
 
@@ -578,8 +578,8 @@ sec_banner(s, 14, "实测验证：编译零错误 · 测试全绿 · 全流程�
 text(s, Inches(0.6), Inches(1.2), Inches(12), Inches(0.4),
      "（2026-09 实测，全部为磁盘/接口真实数据，无模拟）", size=13, color=MUTED)
 stats2 = [
-    ("0", "编译错误\n（125,388 行 Go）", ACCENT),
-    ("163", "确定性求解器\n（注册表全量实跑）", ACCENT2),
+    ("0", "编译错误\n（126,000 行 Go）", ACCENT),
+    ("174", "确定性求解器\n（注册表全量实跑）", ACCENT2),
     ("34.5%", "静态 55 真题命中\n（19 题，双语言机验）", WARN),
     ("100%", "执行 17/17 · Web 10/10\n· JWT 3/3 · 取证 10/10", GOLD),
 ]

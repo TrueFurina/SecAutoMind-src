@@ -40,7 +40,7 @@
     <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
       {[
         { dim: '自主决策能力', score: '17', resp: '三层编排 + 事实黑板，任务可分解、可回溯' },
-        { dim: '通用性与场景覆盖', score: '18', resp: '90 工具 / 18 个角色化 Agent，覆盖靶场攻防全链路' },
+        { dim: '通用性与场景覆盖', score: '18', resp: '91 工具 / 18 个角色化 Agent，覆盖靶场攻防全链路' },
         { dim: '工具协同与集成', score: '18', resp: 'YAML 工具库 + MCP + 角色权限，可扩展' },
         { dim: '创新性', score: '17', resp: 'Eino 多代理 + 渐进披露 + 长上下文管理' },
         { dim: '应用成效与可落地', score: '18', resp: '一键脚本 + 腾讯云部署，可演示可验证' },

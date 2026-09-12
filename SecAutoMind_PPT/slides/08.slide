@@ -1,12 +1,12 @@
 <Slide style={{ width: '1280px', height: '720px', padding: 40, background: '#0B1120', color: '#F1F5F9', fontFamily: '思源黑体, sans-serif' }}>
   <Box style={{ height: 80, justifyContent: 'center' }}>
-    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>通用性：90 个工具 · 18 个角色化 Agent · 全链路覆盖</Text>
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#0EA5E9' }}>通用性：91 个工具 · 18 个角色化 Agent · 全链路覆盖</Text>
   </Box>
   <Box style={{ height: 560, flexDirection: 'row', gap: 36 }}>
     <Box style={{ width: '58%', flexDirection: 'column', justifyContent: 'center', gap: 24 }}>
       <Box style={{ flexDirection: 'row', gap: 24 }}>
         <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(14,165,233,0.10)', borderRadius: 16, border: '1px solid rgba(14,165,233,0.35)' }}>
-          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>90</Text>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>91</Text>
           <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>YAML 安全工具</Text>
         </Box>
         <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(59,130,246,0.10)', borderRadius: 16, border: '1px solid rgba(59,130,246,0.35)' }}>
@@ -20,7 +20,7 @@
           <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>角色定义</Text>
         </Box>
         <Box style={{ flex: 1, flexDirection: 'column', alignItems: 'center', padding: 22, background: 'rgba(14,165,233,0.10)', borderRadius: 16, border: '1px solid rgba(14,165,233,0.35)' }}>
-          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>27</Text>
+          <Text style={{ fontSize: 72, fontWeight: 'bold', color: '#22D3EE', lineHeight: 1 }}>23</Text>
           <Text style={{ fontSize: 20, color: '#94A3B8', marginTop: 8 }}>技能文档</Text>
         </Box>
       </Box>
