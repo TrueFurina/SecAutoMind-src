@@ -167,3 +167,46 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}   # ← 被豁免的文件没人�
 3. **"测试全绿"≠"测试有效"**。必须做变异验证：主动改回错误行为，确认测试会红。
 4. **最强防线是"反查真值"**，不是"匹配形态"。正则永远有下一个洞；直接比对"是否含正在用的凭证片段"没有形态假设。
 5. **门禁要进 CI，且门禁自己也要有 CI**。这是本项目**第二次**栽在同一件事上。
+
+---
+
+## 8. 后续加固：凭据改为纯环境变量注入（2026-09-13 同日）
+
+§6.1 第 3 条「新值只经环境变量注入，不再落 `config.yaml`」已执行。**判据不是"看起来像"，
+而是逐字节比对 + 持久化层级 + 加载链 + 端到端探针。**
+
+### 8.1 env 现状核查（逐字节，非长度/前缀）
+
+| 凭据 | 位置 | 环境变量 | 持久化层级 | 比对 |
+|---|---|---|---|---|
+| 千问 key（116 字符） | `config.yaml:137` | `DASHSCOPE_API_KEY` | User 级 | ✅ `sha256_16` 一致 |
+| 飞书 `app_secret`（32 字符） | `config.yaml:614` | `FEISHU_APP_SECRET` | User + Machine 级 | ✅ `sha256_16` 一致 |
+
+两把 key **本就在环境变量中且已持久化**，因此按「在就清理」处置。
+
+### 8.2 清理动作
+
+- `config.yaml:137` `api_key: sk-ws-…` → `api_key: ${DASHSCOPE_API_KEY}`（对齐 `config.share.yaml` 既有口径）
+- `config.yaml:614` `app_secret: …` → `app_secret: ${FEISHU_APP_SECRET}`
+- 仅替换「值」，保留缩进与注释；改前备份、**验证通过后回收备份**（含明文的 `.bak` 本身就是新的泄露面）。
+
+### 8.3 验证结论（全部实测）
+
+| 验证项 | 方法 | 结果 |
+|---|---|---|
+| 门禁转 PASS | `scripts/secret_guard.py` | **RC=1(BLOCK, real=5) → RC=0，真实凭证命中 0** |
+| 门禁自测 | `scripts/secret_guard_test.py` | RC=0（9 检出 + 10 豁免） |
+| 反向扫描 | 45 个敏感 env × 1470 个文本文件前缀搜索 | 无真 key 落盘（唯一命中 `TOKENROUTER_BASE_URL`，是 URL 非密钥） |
+| 持久化 | `[Environment]::GetEnvironmentVariable(n,'User'/'Machine')` | config 引用的 8 个 `${VAR}` 全部 User 级持久化 |
+| 加载链 | `grep` 调用点 | `config.go:1457 ExpandSecretEnv` → `1459 ResolveRobotSecretsFromEnv` → `ResolveAllAPIKeysFromEnv`（`envsecrets.go:301-318`） |
+| 端到端 | 临时 Go 探针真实 `Load(config.yaml)`（跑完即删） | 8 通道全部解析成功，`qwen-max` key len=116、`lark.app_secret` len=32，**无 `${` 字面串残留** |
+| config 包测试 | `go test ./internal/config/` | RC=0 |
+| 交付包 | 包内 `config.yaml`（= share 版）本就走 env | 无需重打 |
+
+### 8.4 边界声明（诚实项）
+
+- 本次仅**消除工作树内的明文**。§6.1 的**轮换仍然必要** —— 两把 key 已推公开仓库，
+  清理文件不等于失效凭证。
+- 反向扫描的候选是「名字含 `KEY/SECRET/TOKEN/PASSWORD/CREDENTIAL` 的环境变量」；
+  若某凭证从未被注入本机 env，此法覆盖不到该凭证（但也不存在"本机在用却不在 env"的落盘场景）。
+
