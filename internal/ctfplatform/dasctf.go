@@ -243,10 +243,29 @@ var flagWrapperRe = regexp.MustCompile(`(?is)^(?:flag|ctf|dasctf)\{(.+)\}$`)
 // 预编译正则（避免每次解析题目重复编译）。
 var (
 	// bareCategoryRe 匹配 "CRYPTO-32" 这类纯题型-编号标识符标题（对解题无用）。
-	bareCategoryRe = regexp.MustCompile(`(?i)^(web|crypto|misc|reverse|rev|pwn|re)[-_ ]?\d+$`)
+	// ⚠️ 必须与 Python 真源 _parse_challenge 的
+	// `^(web|crypto|misc|reverse|pwn)[-_ ]?\d+$` 完全一致：
+	// 早期版本自行扩展了 rev/re 分支，导致 "re-01" 被误判为裸标识符 →
+	// description 不兜底（真源会兜底），双语言 golden 已固化该差异。
+	bareCategoryRe = regexp.MustCompile(`(?i)^(web|crypto|misc|reverse|pwn)[-_ ]?\d+$`)
 	// urlRe 用于从描述中提取附件 URL。
 	urlRe = regexp.MustCompile(`https?://\S+`)
 )
+
+// defaultFlagFormat 与真源 ChallengeInfo.flag_format 默认值一致；
+// 题面未给格式提示时使用（下游据此生成/校验 flag 外壳）。
+const defaultFlagFormat = `flag\{[^}]+\}`
+
+// realWebKeywords REAL-xx 系列附件名里的 CMS/中间件/数据库关键字。
+// 与真源 _parse_challenge 的 _web_keywords 逐项一致——这类题实为 web 源码审计，
+// 但标题只写 "REAL-16"（不含 web 字样），只能靠附件名判型。
+var realWebKeywords = []string{
+	"joomla", "wordpress", "drupal", "ghost", "cmsms", "nginx",
+	"httpd", "apache", "openlitespeed", "caddy", "openresty",
+	"mysql", "postgresql", "redis", "mongodb", "clickhouse",
+	"mariadb", "sqlite", "mssql", "oracle", "elasticsearch",
+	"01_", "02_", "03_", "04_", "05_", "06_", "07_", "08_", "09_", "10_",
+}
 
 // StripFlagWrapper 按官方手册剥离 flag{}/DASCTF{} 外壳，仅提交花括号内内容。
 //
@@ -320,24 +339,49 @@ func parseChallenge(raw json.RawMessage) Challenge {
 	}
 
 	ch := Challenge{}
-	// str 已兼容字符串/数字两种 id 表示（json.Number 分支），无需二次兜底。
+	// ID 取第一个「真值」候选（0/""/null/false 会被跳过，对齐真源的 `or` 取值链）。
+	// str 已兼容字符串/数字两种 id 表示（json.Number 分支）。
 	ch.ID = str("id", "code", "challenge_id", "exerciseId")
-	ch.Title = str("title", "name")
+
+	// rawTitle 是**兜底前**的原始标题。判 description 是否兜底时必须用它——
+	// 真源用的是 item["title"] 原值；若误用兜底后的 ch.Title（可能是 id），
+	// 会把 "1014" 这类纯 id 当成题面写进 description，污染下游解题输入。
+	rawTitle := str("title", "name")
+	ch.Title = rawTitle
 	if ch.Title == "" {
 		ch.Title = ch.ID
 	}
 	ch.Description = str("description", "desc")
 	// 纯标识符标题（如 "CRYPTO-32"）对解题无用且会破坏 no-data 快速止损，
 	// 故仅对"描述性标题"兜底；与真源 _parse_challenge 一致。
-	if ch.Description == "" {
-		if !bareCategoryRe.MatchString(ch.Title) {
-			ch.Description = ch.Title
-		}
+	if ch.Description == "" && rawTitle != "" && !bareCategoryRe.MatchString(rawTitle) {
+		ch.Description = rawTitle
 	}
 
-	// 题型归一化：优先 category/type，其次标题前缀
+	// 题型归一化（严格对齐真源：先 category/title 关键字，再 REAL-xx 附件名判型）。
+	// 早期版本在此额外加过 pwn/exploit/re- 同义词分支，会把 "re-01" 判成 reverse
+	// 而真源判 misc——偏离真源即偏离实战验证过的行为，已移除。
 	catRaw := strings.ToLower(str("category", "type"))
-	titleRaw := strings.ToLower(str("title", "name"))
+	titleRaw := strings.ToLower(rawTitle)
+
+	// 附件名辅助判型（REAL-xx 系列：附件名含 CMS/中间件/数据库名 → web 源码审计）
+	attName := ""
+	if v, ok := m["attachment"]; ok {
+		var att struct {
+			Name string `json:"name"`
+		}
+		if json.Unmarshal(v, &att) == nil {
+			attName = strings.ToLower(att.Name)
+		}
+	}
+	if attName == "" {
+		// P0 数据链路：大文件题的附件 URL 直接放在 description 里
+		if u := urlRe.FindString(ch.Description); u != "" {
+			if i := strings.LastIndex(u, "/"); i >= 0 && i+1 < len(u) {
+				attName = strings.ToLower(u[i+1:])
+			}
+		}
+	}
 	ch.Category = "misc"
 	for _, c := range []string{"web", "crypto", "misc", "reverse", "pwn"} {
 		if strings.Contains(catRaw, c) || strings.Contains(titleRaw, c) {
@@ -345,47 +389,33 @@ func parseChallenge(raw json.RawMessage) Challenge {
 			break
 		}
 	}
-	if ch.Category == "misc" {
-		// pwn 常写作 pwn/exploit，reverse 常写作 re；补一轮同义词
-		switch {
-		case strings.Contains(catRaw, "pwn") || strings.Contains(titleRaw, "pwn"),
-			strings.Contains(catRaw, "exploit"):
-			ch.Category = "pwn"
-		case strings.Contains(catRaw, "reverse") || strings.Contains(titleRaw, "reverse"),
-			strings.Contains(catRaw, "re-") || strings.HasPrefix(titleRaw, "re-"),
-			strings.Contains(catRaw, "rev"):
-			ch.Category = "reverse"
+	if ch.Category == "misc" && strings.HasPrefix(titleRaw, "real-") {
+		for _, kw := range realWebKeywords {
+			if strings.Contains(attName, kw) {
+				ch.Category = "web"
+				break
+			}
 		}
 	}
 
-	// 附件：attachment 为对象时取 name；否则从 description 里的 URL 推断
-	if v, ok := m["attachment"]; ok {
-		var att struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		}
-		if json.Unmarshal(v, &att) == nil && (att.Name != "" || att.URL != "") {
-			ch.HasAttachment = true
-		}
-	}
-	if !ch.HasAttachment {
-		if u := urlRe.FindString(ch.Description); u != "" {
-			ch.HasAttachment = true
-		}
-	}
-	if v, ok := m["score"]; ok {
-		_ = json.Unmarshal(v, &ch.Score)
-	}
-	// 实例类题目标记（endpoints 非空即需靶机访问）
-	if v, ok := m["endpoints"]; ok {
-		var eps []json.RawMessage
-		if json.Unmarshal(v, &eps) == nil && len(eps) > 0 {
-			ch.HasInstance = true
-		}
-	}
-	// flag 格式提示（部分题面直接写 "DASCTF{}"/"flag{}"）
-	if ff := str("flagFormat", "flag_format"); ff != "" {
-		ch.FlagFormat = ff
+	// 附件判定（真源条件全集；漏掉 attachments/file 会让附件题判成无附件 → 不下载 → 无输入）
+	ch.HasAttachment = jsonTruthy(m["has_attachment"]) || jsonTruthy(m["has_file"]) ||
+		jsonTruthy(m["file"]) || attachmentHasPayload(m["attachment"]) ||
+		isNonEmptyList(m["attachments"]) || urlRe.MatchString(ch.Description)
+
+	// 分值：score 优先，其次 points（真源 `_safe_int(score or points or 0)`）。
+	// 官方可能返回 "50.0"/"200" 这类字符串，故走 safeInt 而非直接 Unmarshal 到 int。
+	ch.Score = safeInt(rawTruthy(m, "score", "points"))
+
+	// 实例类题目（endpoints 非空，或平台显式标记需起靶机）。
+	// 漏判 → 不起靶机 → 实例题完全无输入，必然解不出。
+	ch.HasInstance = jsonTruthy(m["has_instance"]) || jsonTruthy(m["need_instance"]) ||
+		jsonTruthy(m["isNeedInit"]) || isNonEmptyList(m["endpoints"])
+
+	// flag 格式提示；题面未给时用真源默认值（下游据此校验/生成外壳）
+	ch.FlagFormat = str("flag_format", "flag_pattern")
+	if ch.FlagFormat == "" {
+		ch.FlagFormat = defaultFlagFormat
 	}
 	// 原始字段留存（供上层审计/扩展，不丢信息）
 	ch.Extra = make(map[string]interface{}, len(m))
@@ -396,6 +426,94 @@ func parseChallenge(raw json.RawMessage) Challenge {
 		}
 	}
 	return ch
+}
+
+// jsonTruthy 判定 JSON 值在 Python 语义下是否为真（None/False/0/""/[]/{} 为假）。
+// 真源大量使用 `a or b or c` 取值链，Go 侧必须复刻该语义，否则 0/"" 会被误当有效值。
+func jsonTruthy(v json.RawMessage) bool {
+	if len(v) == 0 {
+		return false
+	}
+	var any interface{}
+	if err := json.Unmarshal(v, &any); err != nil || any == nil {
+		return false
+	}
+	switch x := any.(type) {
+	case bool:
+		return x
+	case float64:
+		return x != 0
+	case string:
+		return strings.TrimSpace(x) != ""
+	case []interface{}:
+		return len(x) > 0
+	case map[string]interface{}:
+		return len(x) > 0
+	}
+	return true
+}
+
+// rawTruthy 按候选键顺序返回第一个「真值」的原始 JSON（Python `a or b or c` 语义）。
+func rawTruthy(m map[string]json.RawMessage, keys ...string) json.RawMessage {
+	for _, k := range keys {
+		if v, ok := m[k]; ok && jsonTruthy(v) {
+			return v
+		}
+	}
+	return nil
+}
+
+// safeInt 复刻真源 _safe_int：int(float(value))，失败返回 0。
+// 官方 score 可能返回 "50.0" 这类字符串，直接 Unmarshal 到 int 会失败归零。
+func safeInt(v json.RawMessage) int {
+	if len(v) == 0 {
+		return 0
+	}
+	var f float64
+	if err := json.Unmarshal(v, &f); err == nil {
+		return int(f)
+	}
+	var s string
+	if err := json.Unmarshal(v, &s); err == nil {
+		if f2, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil {
+			return int(f2)
+		}
+	}
+	return 0
+}
+
+// attachmentHasPayload 判定 attachment 字段是否携带实际附件（真源形态全集：
+// 字符串 URL、含 url/downloadUrl/src/path/files 的对象、非空列表）。
+func attachmentHasPayload(v json.RawMessage) bool {
+	if len(v) == 0 {
+		return false
+	}
+	var s string
+	if json.Unmarshal(v, &s) == nil {
+		return strings.TrimSpace(s) != ""
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(v, &obj) == nil {
+		for _, k := range []string{"url", "downloadUrl", "src", "path", "file_url", "download_url", "files"} {
+			if jsonTruthy(obj[k]) {
+				return true
+			}
+		}
+		return false
+	}
+	return isNonEmptyList(v)
+}
+
+// isNonEmptyList 判定 JSON 值是否为非空数组。
+func isNonEmptyList(v json.RawMessage) bool {
+	if len(v) == 0 {
+		return false
+	}
+	var arr []json.RawMessage
+	if err := json.Unmarshal(v, &arr); err != nil {
+		return false
+	}
+	return len(arr) > 0
 }
 
 // flattenChallenges 展平官方列表结构。
