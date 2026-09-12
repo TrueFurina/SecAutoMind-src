@@ -10,7 +10,7 @@
     <Box style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 28, paddingLeft: 8 }}>
       {[
         { num: '01', title: '赛题理解与解决方案', desc: 'XH-202609 命题拆解、行业痛点与 SecAutoMind 总体定位' },
-        { num: '02', title: '核心能力与技术架构', desc: '分层多智能体编排、90+ 工具生态、人机协同安全' },
+        { num: '02', title: '核心能力与技术架构', desc: '分层多智能体编排、91 工具生态、人机协同安全' },
         { num: '03', title: '技术创新点', desc: 'Eino 多代理框架、事实黑板、Skills 渐进披露、长上下文管理' },
         { num: '04', title: '应用验证与部署', desc: '5 维度评分对照、腾讯轻量云部署方案与落地路径' },
       ].map((item, idx) => (
