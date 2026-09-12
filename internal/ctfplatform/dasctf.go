@@ -48,6 +48,13 @@ type DasCTFPlatform struct {
 	lastError       string        // 最近一次请求层失败详情（供 SubmitFlag 暴露真实错误）
 }
 
+// defaultUserAgent 与真源（Python 客户端）保持逐字一致。
+//
+// 这不是"伪装技巧"而是协议一致性要求：平台侧的 WAF 会按 UA 判流，
+// Go 默认 UA 会被判为脚本攻击。改动此值必须同步 scripts/gen_request_golden.py
+// 并重新生成 request_golden.json。
+const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+
 // 默认端点映射（对齐官方 AI Agent API）
 var defaultEndpoints = map[string]string{
 	"match_info":       "/slab-match/api/v1/agent/match/notice/match-info",
@@ -151,9 +158,14 @@ func (p *DasCTFPlatform) doRequestURL(ctx context.Context, method, path string, 
 		if p.Token != "" {
 			req.Header.Set("X-Agent-AccessKey", p.Token)
 		}
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-		}
+		// 与真源完全一致：所有请求（含 GET）都带 Content-Type 与浏览器 UA。
+		//
+		// UA 尤其关键：Go 默认的 "Go-http-client/1.1" 是典型 WAF 拦截特征，
+		// 真源（Python）初赛中正是因请求特征被平台判「疑似攻击行为」403 封禁，
+		// 才加了浏览器 UA。这种差异不会在功能测试里暴露，只会在赛时静默触发——
+		// 由 request_golden_test.go 的双语言比对兜住。
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", defaultUserAgent)
 		resp, err := p.HTTPClient.Do(req)
 		if err != nil {
 			// 网络异常：退避后重试（fail-open，不抛 panic）
