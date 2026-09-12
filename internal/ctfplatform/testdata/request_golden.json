@@ -1,0 +1,96 @@
+{
+  "_source": "西湖论剑真源 ctfplatform/dasctf.py 客户端实发请求（记录型 mock server）",
+  "_disclaimer": "golden 由真源生成，禁止手改；改动解析/请求逻辑后重新生成并复核差异",
+  "endpoints": {
+    "openapi": "/openapi.json",
+    "match_info": "/slab-match/api/v1/agent/match/notice/match-info",
+    "overview": "/slab-match/api/v1/agent/answer-panel/overview",
+    "challenges": "/slab-match/api/v1/agent/ctf/exercise-list",
+    "challenge_detail": "/slab-match/api/v1/agent/ctf/exercise",
+    "build_env": "/slab-match/api/v1/agent/ctf/build-exercise-env",
+    "recover_env": "/slab-match/api/v1/agent/ctf/recover-exercise-env",
+    "submit": "/slab-match/api/v1/agent/answer-panel/answer",
+    "notice_list": "/slab-match/api/v1/agent/match/notice/now-list",
+    "notice_detail": "/slab-match/api/v1/agent/match/notice/detail"
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/slab-match/api/v1/agent/ctf/exercise-list",
+      "query": {},
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": null
+    },
+    {
+      "method": "GET",
+      "path": "/slab-match/api/v1/agent/ctf/exercise",
+      "query": {
+        "exerciseId": "1001"
+      },
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": null
+    },
+    {
+      "method": "POST",
+      "path": "/slab-match/api/v1/agent/ctf/build-exercise-env",
+      "query": {},
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": {
+        "exerciseId": 1001
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/slab-match/api/v1/agent/answer-panel/answer",
+      "query": {},
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": {
+        "exerciseId": 1001,
+        "flag": "abc_123"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/slab-match/api/v1/agent/answer-panel/answer",
+      "query": {},
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": {
+        "exerciseId": "nonnumeric-id",
+        "flag": "xyz_789"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/slab-match/api/v1/agent/ctf/recover-exercise-env",
+      "query": {},
+      "headers": {
+        "x-agent-accesskey": "SYNTHETIC-TOKEN-FOR-PARITY-ONLY",
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36"
+      },
+      "json": {
+        "exerciseId": 1001
+      }
+    }
+  ]
+}
