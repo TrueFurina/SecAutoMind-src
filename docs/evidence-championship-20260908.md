@@ -40,7 +40,7 @@
 | IM 适配器（`func Start*`） | 7 |
 | 工具 YAML / Agent(md) / 技能(SKILL.md) / RBAC 角色 | 90 / 18 / 23 / 13 |
 | internal 子目录 | 32 |
-| 交付 exe | md5 `4da4720ea7e406da0f0a91fa02a480e3`，85.1 MiB（终版 exe@4da4720） |
+| 交付 exe | md5 `4da4720ea7e406da0f0a91fa02a480e3`，85.1 MiB（**历史值；2026-09-12 已重建为 `7c97efd1009518f334256049ea0bcdb0`**） |
 
 > 诚实口径说明：已提交代码基线（b4f458d 代码 + 76d7920 文档）为 662 文件 / 242 测试 / 123,149 非测试 / **154,001** 总行。
 > 当前工作树较基线多 **+173 非测试行** 的未提交 WIP（`presolve_crypto.go`、`solver_registry.go`，来自并行会话）。
