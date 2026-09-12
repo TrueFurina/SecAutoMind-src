@@ -125,6 +125,32 @@ func TestRBACMiddlewareMapsTokenUsageStatsToDashboardRead(t *testing.T) {
 	}
 }
 
+// 协同作战（3 队员 + N Agent）路由复用 tasks:* 命名空间。
+// 若有人删掉 rbac_middleware.go 里的 /collab 映射，本断言与 route_inventory_test
+// 的目录扫描会同时变红，避免「新路由静默脱离 RBAC 管辖」。
+func TestCollabRoutesReuseTasksPermissionNamespace(t *testing.T) {
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		want   string
+	}{
+		{"总览只读", http.MethodGet, "/api/collab/overview", "tasks:read"},
+		{"席位列表只读", http.MethodGet, "/api/collab/seats", "tasks:read"},
+		{"席位创建", http.MethodPost, "/api/collab/seats", "tasks:write"},
+		{"席位更新", http.MethodPut, "/api/collab/seats/seat-1", "tasks:write"},
+		{"席位删除", http.MethodDelete, "/api/collab/seats/seat-1", "tasks:delete"},
+		{"任务领取", http.MethodPost, "/api/collab/tasks/task-1/claim", "tasks:write"},
+		{"任务完成", http.MethodPost, "/api/collab/tasks/task-1/complete", "tasks:write"},
+		{"卡死回收", http.MethodPost, "/api/collab/reaper/run", "tasks:write"},
+	}
+	for _, tc := range cases {
+		if got := permissionForRequest(tc.method, tc.path); got != tc.want {
+			t.Errorf("%s: permissionForRequest(%s, %s) = %q, want %q", tc.name, tc.method, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestMCPInvocationPermissionIsSeparateFromMCPAdministration(t *testing.T) {
 	if got := permissionForRequest(http.MethodPost, "/api/mcp"); got != "mcp:execute" {
 		t.Fatalf("MCP invocation permission = %q, want mcp:execute", got)

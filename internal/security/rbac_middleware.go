@@ -116,7 +116,10 @@ func permissionForRequest(method, fullPath string) string {
 			return "hitl:read"
 		}
 		return "hitl:write"
-	case strings.HasPrefix(path, "/agent-loop"), strings.HasPrefix(path, "/batch-tasks"):
+	case strings.HasPrefix(path, "/agent-loop"), strings.HasPrefix(path, "/batch-tasks"),
+		strings.HasPrefix(path, "/collab"):
+		// 协同作战（3 队员 + N Agent 席位/任务池）复用既有 tasks:* 命名空间，
+		// 不新增权限项——避免 RBAC 目录与既有角色绑定漂移。
 		return crudPermission(method, "tasks")
 	case path == "/usage/tokens":
 		return "dashboard:read"

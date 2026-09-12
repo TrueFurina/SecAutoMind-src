@@ -13,6 +13,15 @@ import (
 // SolverFunc 定义求解函数签名：输入题目信息，输出候选 flag 列表。
 type SolverFunc func(ctx context.Context, ch *Challenge) ([]string, error)
 
+// BackoffAdvisor 平台抗打击建议接口（由 DasCTFPlatform 实现；可选注入 Poller）。
+// Poller 据此动态拉长轮询间隔（连续 429 阶梯）或在 WAF 冷却期跳过本轮，
+// 避免雪崩式打平台。
+type BackoffAdvisor interface {
+	BackoffSuggestion(base float64) float64
+	WafBlockedSeconds() float64
+	LastListOK() bool
+}
+
 // PollerConfig 轮询器配置。
 type PollerConfig struct {
 	PollInterval     time.Duration `json:"poll_interval"`      // 拉题间隔，默认 30s
@@ -38,6 +47,7 @@ type Poller struct {
 	solver   SolverFunc
 	config   PollerConfig
 	logger   *zap.Logger
+	advisor  BackoffAdvisor // 可选：平台抗打击建议（连续 429 阶梯 / WAF 冷却）
 
 	mu        sync.Mutex
 	processed map[string]bool        // 已处理题目 ID（去重）
@@ -59,6 +69,11 @@ func NewPoller(platform PlatformAPI, solver SolverFunc, config PollerConfig, log
 	}
 }
 
+// SetAdvisor 注入平台抗打击建议（可选；nil 表示不做动态退避/WAF 跳过）。
+func (p *Poller) SetAdvisor(advisor BackoffAdvisor) {
+	p.advisor = advisor
+}
+
 // RunOnce 执行一轮：拉题 → 对未处理的新题求解/提交。
 func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 	challenges, err := p.platform.ListChallenges(ctx)
@@ -69,6 +84,11 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 	p.mu.Lock()
 	var newChallenges []Challenge
 	for _, ch := range challenges {
+		// 题号为空 = 列表解析异常：既无法提交（exerciseId 无效），
+		// 又会在去重表里坍缩成一个条目吞掉后续题，必须直接跳过。
+		if ch.ID == "" {
+			continue
+		}
 		if !p.processed[ch.ID] {
 			newChallenges = append(newChallenges, ch)
 		}
@@ -76,7 +96,10 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 	p.mu.Unlock()
 
 	if len(newChallenges) == 0 {
-		p.logger.Debug("轮询：无新题", zap.Int("已处理", len(p.processed)))
+		p.mu.Lock()
+		n := len(p.processed)
+		p.mu.Unlock()
+		p.logger.Debug("轮询：无新题", zap.Int("已处理", n))
 		return nil, nil
 	}
 
@@ -85,7 +108,7 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 	// 并发求解（受 maxConcurrency 限制）
 	sem := make(chan struct{}, p.config.MaxConcurrency)
 	var wg sync.WaitGroup
-	var mu sync.Mutex
+	var recMu sync.Mutex // 仅保护 records 切片；共享 map 一律走 p.mu（GetRecords 亦读 p.mu）
 	var records []PollRecord
 
 	for _, ch := range newChallenges {
@@ -97,11 +120,13 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 
 			rec := p.handleChallenge(ctx, &c)
 
-			mu.Lock()
+			recMu.Lock()
 			records = append(records, *rec)
+			recMu.Unlock()
+			p.mu.Lock()
 			p.records[c.ID] = rec
 			p.processed[c.ID] = true
-			mu.Unlock()
+			p.mu.Unlock()
 		}(ch)
 	}
 	wg.Wait()
@@ -109,23 +134,37 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 }
 
 // RunForever 持续轮询（阻塞）。
+// 引入 advisor 后，轮询节奏由「固定 ticker」改为「动态退避」：
+//   - ⑤ WAF 冷却中 → 跳过本轮，休眠至冷却结束，避免雪崩；
+//   - ④ 连续 429 ≥3 → 按阶梯拉长本轮等待（30s/60s/120s/300s），而非死磕平台。
 func (p *Poller) RunForever(ctx context.Context) error {
-	ticker := time.NewTicker(p.config.PollInterval)
-	defer ticker.Stop()
-
-	p.logger.Info("轮询器启动", zap.Duration("interval", p.config.PollInterval))
+	p.logger.Info("轮询器启动",
+		zap.Duration("interval", p.config.PollInterval),
+		zap.Bool("submit_after_solve", p.config.SubmitAfterSolve))
 
 	for {
 		select {
 		case <-ctx.Done():
 			p.logger.Info("轮询器停止")
 			return ctx.Err()
-		case <-ticker.C:
-			records, err := p.RunOnce(ctx)
-			if err != nil {
-				p.logger.Error("轮询失败", zap.Error(err))
+		default:
+		}
+
+		// ⑤ WAF 冷却中：跳过本轮，休眠至冷却结束
+		if p.advisor != nil {
+			if secs := p.advisor.WafBlockedSeconds(); secs > 0 {
+				p.logger.Warn("WAF 风控冷却中，跳过本轮", zap.Float64("剩余秒", secs))
+				if err := p.sleepCtx(ctx, time.Duration(secs)*time.Second); err != nil {
+					return err
+				}
 				continue
 			}
+		}
+
+		records, err := p.RunOnce(ctx)
+		if err != nil {
+			p.logger.Error("轮询失败", zap.Error(err))
+		} else {
 			for _, rec := range records {
 				if rec.Accepted {
 					p.logger.Info("✅ flag 已接受",
@@ -134,7 +173,45 @@ func (p *Poller) RunForever(ctx context.Context) error {
 				}
 			}
 		}
+
+		// ④ 连续 429 阶梯退避：建议间隔 > 基础间隔时拉长本轮等待
+		wait := p.config.PollInterval
+		if p.advisor != nil {
+			if s := p.advisor.BackoffSuggestion(p.config.PollInterval.Seconds()); s > wait.Seconds() {
+				wait = time.Duration(s) * time.Second
+			}
+		}
+		if err := p.sleepCtx(ctx, wait); err != nil {
+			return err
+		}
 	}
+}
+
+// sleepCtx 在 ctx 取消前休眠 d（尊重生命周期，便于优雅退出）。
+func (p *Poller) sleepCtx(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}
+
+// FilterFlagCandidates 仅保留 flag 形态的候选，杜绝把 "hash_crack: x=weak" 这类
+// 非 flag 文本误提交到真实平台。旗形判定沿用 flagRegex。
+func FilterFlagCandidates(flags []string) []string {
+	var out []string
+	for _, f := range flags {
+		if flagRegex.MatchString(f) {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // GetRecords 获取审计记录。
@@ -173,6 +250,16 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 	if len(flags) == 0 {
 		rec.Error = "无候选 flag"
 		rec.FinishedAt = time.Now()
+		return rec
+	}
+
+	// 兜底闸门：只认 flag 形态候选。Poller 是被外部复用的公开 API，
+	// 调用方若未过滤，此处必须拦住 "hash_crack: x=weak" 之类文本误提交真实平台。
+	flags = FilterFlagCandidates(flags)
+	if len(flags) == 0 {
+		rec.Error = "候选均不符合 flag 格式，已拦截"
+		rec.FinishedAt = time.Now()
+		p.logger.Warn("拦截非 flag 形态候选", zap.String("题目", ch.Title))
 		return rec
 	}
 

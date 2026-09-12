@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"secautomind-ai/internal/agent"
 	"secautomind-ai/internal/audit"
 	"secautomind-ai/internal/c2"
+	"secautomind-ai/internal/collab"
 	"secautomind-ai/internal/config"
 	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/database"
@@ -63,6 +65,9 @@ type App struct {
 	c2WatchdogCancel   context.CancelFunc        // 看门狗取消函数
 	c2Handler          *handler.C2Handler        // C2 REST（与 Manager 生命周期同步）
 	auditSvc           *audit.Service
+	collabSvc          *collab.Service        // 「3 队员 + N Agent」协同作战服务
+	collabHandler      *handler.CollabHandler // 协同作战 REST
+	ctfPollCancel      context.CancelFunc     // CTF 平台轮询器取消函数（决赛自动解题；默认关闭）
 }
 
 // New 创建新应用
@@ -397,8 +402,49 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// CTF presolve 钩子：在 Agent 推理前先跑确定性预解层（0 token），命中则跳过 Agent。
 	ctfPresolve := ctfplatform.NewPresolver(log.Logger)
 	ctfAnalyzer := ctfplatform.NewTaskAnalyzer()
-	ctfIntegrator := ctfplatform.NewPresolveAgentIntegrator(ctfPresolve, ctfAnalyzer, nil, log.Logger)
+	// 接线平台层：构造真实 DasCTFPlatform（baseURL/token 仅从环境变量读取——
+	// DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN，绝不硬编码），
+	// 取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
+	ctfPlatform := ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	ctfIntegrator := ctfplatform.NewPresolveAgentIntegrator(ctfPresolve, ctfAnalyzer, ctfPlatform, log.Logger)
 	agentHandler.SetCTFPresolveIntegrator(ctfIntegrator)
+
+	// ── CTF 平台轮询器（决赛自动解题+提交）──
+	// 默认关闭；需环境变量 CTF_POLL_ENABLED=true 才启用。SubmitAfterSolve 默认 false，
+	// 仅当 CTF_AUTOSOLVE_SUBMIT=true 才向真实平台自动提交，杜绝误提交。
+	// 取消函数先存局部变量，待 App 实例构造后回填（与 alertCancel 同一模式）。
+	var ctfPollCancel context.CancelFunc
+	if strings.EqualFold(os.Getenv("CTF_POLL_ENABLED"), "true") {
+		pollInterval := 30 * time.Second
+		if v := strings.TrimSpace(os.Getenv("CTF_POLL_INTERVAL")); v != "" {
+			if secs, e := strconv.Atoi(v); e == nil && secs > 0 {
+				pollInterval = time.Duration(secs) * time.Second
+			}
+		}
+		pc := ctfplatform.DefaultPollerConfig()
+		pc.PollInterval = pollInterval
+		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
+		// 求解器：确定性预解层（0 token）。仅返回 flag 形态候选，避免误提交。
+		solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
+			res := ctfPresolve.Presolve(ctx, ch, nil)
+			if !res.Solved {
+				return nil, nil
+			}
+			return ctfplatform.FilterFlagCandidates(res.Flags), nil
+		}
+		poller := ctfplatform.NewPoller(ctfPlatform, solver, pc, log.Logger)
+		poller.SetAdvisor(ctfPlatform) // 注入抗打击建议（连续 429 阶梯 / WAF 冷却跳过）
+		pollCtx, pollCancel := context.WithCancel(context.Background())
+		ctfPollCancel = pollCancel
+		go func() {
+			if err := poller.RunForever(pollCtx); err != nil && err != context.Canceled {
+				log.Logger.Error("CTF 平台轮询器异常退出", zap.Error(err))
+			}
+		}()
+		log.Logger.Info("CTF 平台轮询器已启用",
+			zap.Duration("interval", pollInterval),
+			zap.Bool("auto_submit", pc.SubmitAfterSolve))
+	}
 	monitorHandler := handler.NewMonitorHandler(mcpServer, executor, db, log.Logger)
 	monitorHandler.SetAudit(auditSvc)
 	monitorHandler.SetMonitorRetention(monitorRetention)
@@ -464,6 +510,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	db.SetVulnerabilityCreatedHook(robotHandler.NotifyNewVulnerability)
 	openAPIHandler := handler.NewOpenAPIHandler(db, log.Logger, conversationHandler, agentHandler)
 
+	// 协同作战（B2/C1–C5）：席位 + 任务池 + 卡死回收 + 总览。
+	// 与既有 batch-tasks 并存：前者是「3 人+N Agent 抢同一批题」，后者是「一人批量喂题」。
+	collabSvc := collab.New(collab.Options{DB: db, Audit: auditSvc, Logger: log.Logger})
+	collabHandler := handler.NewCollabHandler(collabSvc, log.Logger)
+
 	// 创建 App 实例（部分字段稍后填充）
 	app := &App{
 		config:             cfg,
@@ -480,6 +531,8 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		knowledgeRetriever: knowledgeRetriever,
 		knowledgeIndexer:   knowledgeIndexer,
 		knowledgeHandler:   knowledgeHandler,
+		collabSvc:          collabSvc,
+		collabHandler:      collabHandler,
 		agentHandler:       agentHandler,
 		robotHandler:       robotHandler,
 		c2Manager:          c2Manager,
@@ -493,6 +546,10 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	alertCtx, alertCancel := context.WithCancel(context.Background())
 	app.alertCancel = alertCancel
 	go robotHandler.RunVulnerabilityAlertWorker(alertCtx)
+
+	// 回填 CTF 平台轮询器取消函数（仅当 CTF_POLL_ENABLED=true 时才非 nil），
+	// 供 Shutdown 优雅停止轮询 goroutine。
+	app.ctfPollCancel = ctfPollCancel
 
 	// 设置漏洞工具注册器（内置工具，必须设置）
 	vulnerabilityRegistrar := func() error {
@@ -603,7 +660,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		mcpServer,
 		authManager,
 		openAPIHandler,
+		collabHandler,
 	)
+
+	// 协同任务池的卡死回收循环随应用启动；进程退出即终止。
+	app.collabSvc.StartReaper()
 
 	return app, nil
 
@@ -642,6 +703,7 @@ func setupRoutes(
 	mcpServer *mcp.Server,
 	authManager *security.AuthManager,
 	openAPIHandler *handler.OpenAPIHandler,
+	collabHandler *handler.CollabHandler,
 ) {
 	// API路由
 	api := router.Group("/api")
@@ -783,6 +845,23 @@ func setupRoutes(
 		protected.POST("/batch-tasks/:queueId/tasks/:taskId/run", agentHandler.RunSingleBatchTask)
 		protected.POST("/batch-tasks/:queueId/tasks", agentHandler.AddBatchTask)
 		protected.DELETE("/batch-tasks/:queueId/tasks/:taskId", agentHandler.DeleteBatchTask)
+
+		// 协同作战（3 队员 + N Agent）：席位 / 任务池 / 总览。
+		// 权限复用既有 tasks:* 命名空间，不新增权限项，避免 RBAC 目录漂移。
+		protected.GET("/collab/overview", collabHandler.Overview)
+		protected.GET("/collab/seats", collabHandler.ListSeats)
+		protected.POST("/collab/seats", security.RequirePermission("tasks:write"), collabHandler.CreateSeat)
+		protected.GET("/collab/seats/:id", collabHandler.GetSeat)
+		protected.PUT("/collab/seats/:id", security.RequirePermission("tasks:write"), collabHandler.UpdateSeat)
+		protected.DELETE("/collab/seats/:id", security.RequirePermission("tasks:delete"), collabHandler.DeleteSeat)
+		protected.GET("/collab/tasks", collabHandler.ListTasks)
+		protected.POST("/collab/tasks", security.RequirePermission("tasks:write"), collabHandler.EnqueueTask)
+		protected.GET("/collab/tasks/:id", collabHandler.GetTask)
+		protected.POST("/collab/tasks/:id/claim", security.RequirePermission("tasks:write"), collabHandler.ClaimTask)
+		protected.POST("/collab/tasks/:id/complete", security.RequirePermission("tasks:write"), collabHandler.CompleteTask)
+		protected.POST("/collab/tasks/:id/abandon", security.RequirePermission("tasks:write"), collabHandler.AbandonTask)
+		protected.POST("/collab/tasks/:id/renew", security.RequirePermission("tasks:write"), collabHandler.RenewTask)
+		protected.POST("/collab/reaper/run", security.RequirePermission("tasks:write"), collabHandler.RunReaper)
 
 		// 对话历史
 		protected.GET("/usage/tokens", conversationHandler.GetTokenUsageStats)
