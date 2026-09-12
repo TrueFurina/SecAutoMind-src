@@ -495,6 +495,49 @@ func (db *DB) initTables() error {
 		FOREIGN KEY (queue_id) REFERENCES batch_task_queues(id) ON DELETE CASCADE
 	);`
 
+	// 创建协同席位表（3 队员 + N Agent，见 docs/zh-CN/collab-design.md）
+	createCollabSeatsTable := `
+	CREATE TABLE IF NOT EXISTS collab_seats (
+		id TEXT PRIMARY KEY,
+		kind TEXT NOT NULL,
+		display_name TEXT NOT NULL,
+		username TEXT,
+		role_name TEXT,
+		conversation_id TEXT,
+		status TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);`
+
+	// 创建协同任务池表
+	// 并发安全的关键：status + claim_token 上的条件式 UPDATE（原子领取），
+	// 绝不做「先查后写」。claim_token 用于拒绝「已退池的旧持有者」晚到的脏回写。
+	createCollabTasksTable := `
+	CREATE TABLE IF NOT EXISTS collab_tasks (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		message TEXT NOT NULL,
+		status TEXT NOT NULL,
+		assignee_seat_id TEXT,
+		claim_token TEXT,
+		claimed_at DATETIME,
+		wall_clock_deadline DATETIME,
+		started_at DATETIME,
+		completed_at DATETIME,
+		result TEXT,
+		error TEXT,
+		return_count INTEGER NOT NULL DEFAULT 0,
+		project_id TEXT,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);`
+
+	// 协同任务池按状态检索的索引（总览与 reaper 扫描都靠它）
+	createCollabTasksIndexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_collab_tasks_status ON collab_tasks(status);`,
+		`CREATE INDEX IF NOT EXISTS idx_collab_tasks_assignee ON collab_tasks(assignee_seat_id);`,
+	}
+
 	// 创建 WebShell 连接表
 	createWebshellConnectionsTable := `
 	CREATE TABLE IF NOT EXISTS webshell_connections (
@@ -874,6 +917,20 @@ func (db *DB) initTables() error {
 
 	if _, err := db.Exec(createBatchTasksTable); err != nil {
 		return fmt.Errorf("创建batch_tasks表失败: %w", err)
+	}
+
+	if _, err := db.Exec(createCollabSeatsTable); err != nil {
+		return fmt.Errorf("创建collab_seats表失败: %w", err)
+	}
+
+	if _, err := db.Exec(createCollabTasksTable); err != nil {
+		return fmt.Errorf("创建collab_tasks表失败: %w", err)
+	}
+
+	for _, idx := range createCollabTasksIndexes {
+		if _, err := db.Exec(idx); err != nil {
+			return fmt.Errorf("创建collab_tasks索引失败: %w", err)
+		}
 	}
 
 	if _, err := db.Exec(createWebshellConnectionsTable); err != nil {

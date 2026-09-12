@@ -177,6 +177,12 @@ func (a *App) Shutdown() {
 		a.alertCancel = nil
 	}
 
+	// 停止 CTF 平台轮询器（决赛自动解题；默认关闭，仅 CTF_POLL_ENABLED=true 时存在）
+	if a.ctfPollCancel != nil {
+		a.ctfPollCancel()
+		a.ctfPollCancel = nil
+	}
+
 	// 停止钉钉/飞书长连接
 	a.robotMu.Lock()
 	if a.dingCancel != nil {

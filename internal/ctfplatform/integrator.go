@@ -110,3 +110,17 @@ func FormatPresolveResult(attempt *PresolveAttempt) string {
 func (i *PresolveAgentIntegrator) ShouldSkipAgent(attempt *PresolveAttempt) bool {
 	return attempt != nil && attempt.SkipAgent && len(attempt.Flags) > 0
 }
+
+// Platform 返回当前接线的平台实例（可能为 nil——未接线时 TryPresolve 仅做本地预解）。
+func (i *PresolveAgentIntegrator) Platform() PlatformAPI {
+	return i.platform
+}
+
+// SubmitFlag 经平台提交 flag（平台未接线时返回错误）。
+// 决赛链路：Agent 推理命中后，可经此路径向真实平台提交，完成「预解/推理 → 提交」闭环。
+func (i *PresolveAgentIntegrator) SubmitFlag(ctx context.Context, challengeID, flag string) (*SubmitResult, error) {
+	if i.platform == nil {
+		return nil, fmt.Errorf("平台未接线：无法提交 flag")
+	}
+	return i.platform.SubmitFlag(ctx, challengeID, flag)
+}
