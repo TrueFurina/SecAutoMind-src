@@ -1,0 +1,236 @@
+{
+  "_comment": "由 scripts/gen_protocol_golden.py 依据 Python 真源生成，请勿手改。",
+  "source": "E:\\Program\\西湖论剑\\ctf_agent",
+  "challenges": [
+    {
+      "name": "official_list_bare_identifier",
+      "id": "1001",
+      "title": "CRYPTO-01",
+      "category": "crypto",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "descriptive_title_falls_back_to_description",
+      "id": "1002",
+      "title": "简单RSA",
+      "category": "misc",
+      "description": "简单RSA",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 100,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "category_field_wins",
+      "id": "1003",
+      "title": "WEB-01",
+      "category": "web",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "attachment_url_in_description_real_series",
+      "id": "1004",
+      "title": "REAL-16",
+      "category": "web",
+      "description": "https://20260818-atta.dasctf.com/06_mysql_x.zip",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": true
+    },
+    {
+      "name": "endpoints_list_implies_instance",
+      "id": "1005",
+      "title": "PWN-01",
+      "category": "pwn",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": true,
+      "has_attachment": false
+    },
+    {
+      "name": "attachment_dict_with_url",
+      "id": "1006",
+      "title": "MISC-01",
+      "category": "misc",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": true
+    },
+    {
+      "name": "string_id_passthrough",
+      "id": "abc-1",
+      "title": "Reverse Me",
+      "category": "reverse",
+      "description": "Reverse Me",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "points_alias_and_numeric_string",
+      "id": "1008",
+      "title": "签到",
+      "category": "misc",
+      "description": "签到",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 200,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "reverse_title_keyword",
+      "id": "1009",
+      "title": "REVERSE-03",
+      "category": "reverse",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "re_prefix_title",
+      "id": "1010",
+      "title": "re-01",
+      "category": "misc",
+      "description": "re-01",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "custom_flag_format",
+      "id": "1011",
+      "title": "MISC-02",
+      "category": "misc",
+      "description": "",
+      "flag_format": "DASCTF{[^}]+}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "isNeedInit_implies_instance",
+      "id": "1012",
+      "title": "WEB-02",
+      "category": "web",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": true,
+      "has_attachment": false
+    },
+    {
+      "name": "attachments_list_implies_attachment",
+      "id": "1013",
+      "title": "MISC-03",
+      "category": "misc",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": true
+    },
+    {
+      "name": "bare_id_only",
+      "id": "1014",
+      "title": "1014",
+      "category": "misc",
+      "description": "",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    },
+    {
+      "name": "description_with_url_implicit_attachment",
+      "id": "1015",
+      "title": "MISC-04",
+      "category": "misc",
+      "description": "请下载附件 http://x.com/c.zip 后分析",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": true
+    },
+    {
+      "name": "nested_flag_braces",
+      "id": "1016",
+      "title": "MISC-05",
+      "category": "misc",
+      "description": "nested braces",
+      "flag_format": "flag\\{[^}]+\\}",
+      "score": 0,
+      "has_instance": false,
+      "has_attachment": false
+    }
+  ],
+  "flags": [
+    {
+      "input": "flag{synthetic_case_1}",
+      "expected": "synthetic_case_1"
+    },
+    {
+      "input": "DASCTF{abc-123}",
+      "expected": "abc-123"
+    },
+    {
+      "input": "raw_value_no_braces",
+      "expected": "raw_value_no_braces"
+    },
+    {
+      "input": "flag{}",
+      "expected": "flag{}"
+    },
+    {
+      "input": "  flag{ spaced }  ",
+      "expected": "spaced"
+    },
+    {
+      "input": "FLAG{UPPER_CASE}",
+      "expected": "UPPER_CASE"
+    },
+    {
+      "input": "dasctf{lower_case}",
+      "expected": "lower_case"
+    },
+    {
+      "input": "",
+      "expected": ""
+    },
+    {
+      "input": "ctf{wrapped}",
+      "expected": "wrapped"
+    },
+    {
+      "input": "flag{a{b}c}",
+      "expected": "a{b}c"
+    },
+    {
+      "input": "DASCTF{}",
+      "expected": "DASCTF{}"
+    },
+    {
+      "input": "flag{   }",
+      "expected": "flag{   }"
+    },
+    {
+      "input": "flag{synthetic_case}",
+      "expected": "synthetic_case"
+    }
+  ]
+}

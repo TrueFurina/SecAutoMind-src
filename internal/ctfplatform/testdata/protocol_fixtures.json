@@ -1,0 +1,84 @@
+{
+  "_comment": "双语言协议一致性机验 fixture。真值由 Python 真源 ctf_agent/ctfplatform/dasctf.py 的 _parse_challenge / _strip_flag_wrapper 生成（见 scripts/gen_protocol_golden.py），Go 侧 internal/ctfplatform 的 parseChallenge / StripFlagWrapper 必须与之逐字段一致。新增用例时须重跑生成器刷新 protocol_golden.json。",
+  "challenges": [
+    {
+      "name": "official_list_bare_identifier",
+      "item": { "id": 1001, "name": "CRYPTO-01", "order": 1, "isOpen": true, "hasSolved": false }
+    },
+    {
+      "name": "descriptive_title_falls_back_to_description",
+      "item": { "id": 1002, "title": "简单RSA", "score": 100 }
+    },
+    {
+      "name": "category_field_wins",
+      "item": { "id": 1003, "name": "WEB-01", "category": "web" }
+    },
+    {
+      "name": "attachment_url_in_description_real_series",
+      "item": { "id": 1004, "name": "REAL-16", "description": "https://20260818-atta.dasctf.com/06_mysql_x.zip" }
+    },
+    {
+      "name": "endpoints_list_implies_instance",
+      "item": { "id": 1005, "name": "PWN-01", "endpoints": ["1.2.3.4:9999"] }
+    },
+    {
+      "name": "attachment_dict_with_url",
+      "item": { "id": 1006, "name": "MISC-01", "attachment": { "name": "a.zip", "url": "http://x/a.zip" } }
+    },
+    {
+      "name": "string_id_passthrough",
+      "item": { "id": "abc-1", "title": "Reverse Me" }
+    },
+    {
+      "name": "points_alias_and_numeric_string",
+      "item": { "id": 1008, "title": "签到", "points": "200" }
+    },
+    {
+      "name": "reverse_title_keyword",
+      "item": { "id": 1009, "name": "REVERSE-03" }
+    },
+    {
+      "name": "re_prefix_title",
+      "item": { "id": 1010, "name": "re-01" }
+    },
+    {
+      "name": "custom_flag_format",
+      "item": { "id": 1011, "name": "MISC-02", "flag_format": "DASCTF{[^}]+}" }
+    },
+    {
+      "name": "isNeedInit_implies_instance",
+      "item": { "id": 1012, "name": "WEB-02", "isNeedInit": true }
+    },
+    {
+      "name": "attachments_list_implies_attachment",
+      "item": { "id": 1013, "name": "MISC-03", "attachments": [{ "name": "b.zip" }] }
+    },
+    {
+      "name": "bare_id_only",
+      "item": { "id": 1014 }
+    },
+    {
+      "name": "description_with_url_implicit_attachment",
+      "item": { "id": 1015, "name": "MISC-04", "description": "请下载附件 http://x.com/c.zip 后分析" }
+    },
+    {
+      "name": "nested_flag_braces",
+      "item": { "id": 1016, "name": "MISC-05", "description": "nested braces" }
+    }
+  ],
+  "flags": [
+    "flag{synthetic_case_1}",
+    "DASCTF{abc-123}",
+    "raw_value_no_braces",
+    "flag{}",
+    "  flag{ spaced }  ",
+    "FLAG{UPPER_CASE}",
+    "dasctf{lower_case}",
+    "",
+    "ctf{wrapped}",
+    "flag{a{b}c}",
+    "DASCTF{}",
+    "flag{   }",
+    "flag{synthetic_case}"
+  ]
+}
