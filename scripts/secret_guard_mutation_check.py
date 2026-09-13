@@ -49,6 +49,16 @@ MUTANT = (
     '        return True'
 )
 
+# 变异 2（2026-09-13 深度复检新增）：最强防线缺席时的 fail-closed 被改回"静默放行"。
+# 探针文本必须与 secret_guard.py 逐字一致；改结构时同步更新，否则本脚本会显式报 FAIL。
+GOOD2 = '    fingerprint_block = fingerprint_degraded and not allow_no_fp'
+MUTANT2 = '    fingerprint_block = False'
+
+MUTATIONS = (
+    ("省略号 -> 无条件豁免（复现 2026-09-13 泄露事故旧行为）", GOOD, MUTANT),
+    ("指纹库为空 -> 静默放行（复现 09-13 复检发现的『防线缺席=通过』）", GOOD2, MUTANT2),
+)
+
 
 def run_test():
     r = subprocess.run([PY, str(TEST)], capture_output=True, text=True,
@@ -62,33 +72,41 @@ def main():
     print("=" * 62)
 
     orig = SG.read_text(encoding="utf-8")
-    if GOOD not in orig:
-        print("[FAIL] 未在 secret_guard.py 中找到探针原文（is_placeholder 省略号分支）。")
-        print("       门禁结构已变，请同步更新本脚本的 GOOD/MUTANT 常量。")
+    missing = [name for name, good, _ in MUTATIONS if good not in orig]
+    if missing:
+        print("[FAIL] 未在 secret_guard.py 中找到探针原文：")
+        for name in missing:
+            print("       - %s" % name)
+        print("       门禁结构已变，请同步更新本脚本的探针常量。")
         return 1
 
     ok = True
 
-    print("\n[1/4] 基线：回归测试应 PASS")
+    print("\n[1/%d] 基线：回归测试应 PASS" % (len(MUTATIONS) + 2))
     rc, _ = run_test()
     print("  RC=%d  %s" % (rc, "PASS" if rc == 0 else "FAIL"))
     if rc != 0:
         ok = False
 
-    try:
-        print("\n[2/4] 注入变异：省略号 -> 无条件豁免（复现 2026-09-13 旧行为）")
-        SG.write_text(orig.replace(GOOD, MUTANT), encoding="utf-8")
-        rc_m, out_m = run_test()
-        print("  RC=%d  %s" % (rc_m, "FAIL(✅ 变异被捕获)" if rc_m != 0 else "PASS(❌ 变异未被捕获 = 测试无效)"))
-        if rc_m == 0:
-            ok = False
-            print("  测试输出尾部：")
-            print("\n".join(out_m.splitlines()[-8:]))
-    finally:
-        print("\n[3/4] 恢复原文件（finally 保证）")
-        SG.write_text(orig, encoding="utf-8")
+    idx = 2
+    for name, good, mutant in MUTATIONS:
+        step = "[%d/%d]" % (idx, len(MUTATIONS) + 2)
+        idx += 1
+        try:
+            print("\n%s 注入变异：%s" % (step, name))
+            SG.write_text(orig.replace(good, mutant), encoding="utf-8")
+            rc_m, out_m = run_test()
+            caught = rc_m != 0
+            print("  RC=%d  %s" % (rc_m, "FAIL(✅ 变异被捕获)" if caught else "PASS(❌ 变异未被捕获 = 测试无效)"))
+            if not caught:
+                ok = False
+                print("  测试输出尾部：")
+                print("\n".join(out_m.splitlines()[-8:]))
+        finally:
+            print("  恢复原文件（finally 保证）")
+            SG.write_text(orig, encoding="utf-8")
 
-    print("\n[4/4] 恢复后：回归测试应重新 PASS")
+    print("\n[%d/%d] 恢复后：回归测试应重新 PASS" % (len(MUTATIONS) + 2, len(MUTATIONS) + 2))
     rc_r, _ = run_test()
     print("  RC=%d  %s" % (rc_r, "PASS" if rc_r == 0 else "FAIL"))
     if rc_r != 0:
@@ -101,7 +119,7 @@ def main():
 
     print("\n" + "=" * 62)
     if ok:
-        print("[PASS] 变异验证有效：基线绿 → 注入旧行为变红 → 恢复后复绿。")
+        print("[PASS] 变异验证有效：基线绿 → 注入 %d 类旧行为均变红 → 恢复后复绿。" % len(MUTATIONS))
         print("=" * 62)
         return 0
     print("[FAIL] 密钥门禁的回归测试无效或恢复失败，必须修 scripts/secret_guard.py。")

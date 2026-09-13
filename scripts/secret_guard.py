@@ -98,30 +98,91 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}
 FINGERPRINT_LEN = 12
 FINGERPRINT_SOURCES = ("api_key", "app_secret")
 
+# 显式注入通道（回归测试 / CI 自检用；逗号分隔）
+FINGERPRINT_ENV_EXTRA = "SECRET_GUARD_EXTRA_FINGERPRINTS"
+# 强制清空指纹来源（仅用于 fail-closed 自检，模拟"读不到真值"的环境）
+FINGERPRINT_DISABLE_ENV = "SECRET_GUARD_DISABLE_FINGERPRINTS"
+# 固定兜底名单：config.yaml 里以 ${VAR} 引用、但可能不在同机 env 的通道
+ENV_FALLBACK_NAMES = (
+    "DASHSCOPE_API_KEY", "ARK_API_KEY", "DEEPSEEK_API_KEY", "OPENAI_API_KEY",
+    "MOONSHOT_API_KEY", "SILICONFLOW_API_KEY", "ZHIPU_API_KEY", "QIANFAN_API_KEY",
+    "FEISHU_APP_SECRET",
+)
+
+
+def _iter_user_env():
+    """读 Windows 用户级环境变量（HKCU\\Environment）。
+
+    背景：WorkBuddy/Git Bash 等 shell 常继承不到 User 级变量，导致 os.environ 为空
+    → 指纹库为 0 → 最强防线静默缺席（2026-09-13 复检发现）。此处补上注册表回退。
+    非 Windows 返回 {}。
+    """
+    if os.name != "nt":
+        return {}
+    try:
+        import winreg
+    except Exception:
+        return {}
+    out = {}
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+            i = 0
+            while True:
+                try:
+                    name, val, _ = winreg.EnumValue(k, i)
+                except OSError:
+                    break
+                i += 1
+                if isinstance(val, str) and val:
+                    out[name] = val
+    except Exception:
+        return {}
+    return out
+
 
 def load_real_fingerprints(root=None):
-    """收集"本项目真凭证"的前缀指纹。读不到来源时返回空集（并提示）。"""
+    """收集"本项目真凭证"的前缀指纹。
+
+    来源（并集）：显式注入 env > config.yaml 明文/`${VAR}` 引用 > 进程 env > HKCU\\Environment。
+    返回空集表示**最强防线无法生效** —— 调用方 main() 会据此 fail-closed。
+    """
     root = root or ROOT
+    if os.environ.get(FINGERPRINT_DISABLE_ENV, "").strip() in ("1", "true", "yes"):
+        return set()
+
+    names = set(ENV_FALLBACK_NAMES)
     vals = []
+
+    # 1) 显式注入（测试/自检）
+    for v in os.environ.get(FINGERPRINT_ENV_EXTRA, "").split(","):
+        v = v.strip()
+        if len(v) >= FINGERPRINT_LEN:
+            vals.append(v)
+
+    # 2) config.yaml：历史明文路径 + ${VAR} 引用收集
     cfg = os.path.join(root, "config.yaml")
     if os.path.isfile(cfg):
         try:
             with open(cfg, "r", encoding="utf-8", errors="ignore") as fh:
                 for line in fh:
                     m = re.match(r"^\s*(api_key|app_secret)\s*:\s*(\S+)", line)
-                    if not m:
-                        continue
-                    v = m.group(2).strip().strip('"').strip("'")
-                    if v.startswith("${") or v.startswith("#") or len(v) < 20:
-                        continue
-                    vals.append(v)
+                    if m:
+                        v = m.group(2).strip().strip('"').strip("'")
+                        if not v.startswith("${") and not v.startswith("#") and len(v) >= 20:
+                            vals.append(v)
+                    for ref in re.findall(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", line):
+                        names.add(ref)
         except Exception:
             pass
-    # 环境变量兜底（env 优先级高于 yaml 是本项目约定）
-    for env in ("DASHSCOPE_API_KEY", "ARK_API_KEY", "DEEPSEEK_API_KEY", "OPENAI_API_KEY"):
-        v = os.environ.get(env, "").strip()
-        if len(v) >= 20:
-            vals.append(v)
+
+    # 3) 进程 env / Windows 用户级 env
+    user_env = _iter_user_env()
+    for n in sorted(names):
+        v = (os.environ.get(n) or user_env.get(n) or "").strip()
+        if len(v) < 20 or "://" in v or v.lower() in ("true", "false"):
+            continue
+        vals.append(v)
+
     fps = set()
     for v in vals:
         fps.add(v[:FINGERPRINT_LEN])
@@ -254,6 +315,7 @@ def main():
     root = ROOT
     if "--dir" in sys.argv:
         root = os.path.abspath(sys.argv[sys.argv.index("--dir") + 1])
+    allow_no_fp = "--allow-no-fingerprint" in sys.argv
     scanned, findings = scan_dir(root)
 
     real = [f for f in findings
@@ -264,24 +326,34 @@ def main():
     forced = [f for f in findings if f.get("forced")]
     fps = load_real_fingerprints(root)
 
+    # fail-closed：指纹库为空 = 最强防线（真 key 反查）缺席 → 默认拒绝放行。
+    # 依据 2026-09-13 深度复检：旧实现只打一行小字仍给 PASS，与 09-08 / 09-13 两次
+    # 门禁失效同构（"防线缺席"被当成"防线通过"）。CI 等确实无真值的环境须显式
+    # 传 --allow-no-fingerprint 降级，并接受"仅形态匹配"的人工复核义务。
+    fingerprint_degraded = not fps
+    fingerprint_block = fingerprint_degraded and not allow_no_fp
+    blocked = bool(real) or fingerprint_block
+
     if "--json" in sys.argv:
         print(json.dumps({
             "scanned_files": scanned,
             "fingerprints_loaded": len(fps),
+            "fingerprint_degraded": fingerprint_degraded,
+            "fingerprint_block": fingerprint_block,
             "real_findings": real,
             "forced_findings": forced,
             "suspect_findings": suspect,
             "placeholder_findings": len(placeholder),
-            "verdict": "BLOCK" if real else "PASS",
+            "verdict": "BLOCK" if blocked else "PASS",
         }, ensure_ascii=False, indent=2))
-        return 1 if real else 0
+        return 1 if blocked else 0
 
     print("=" * 66)
     print("SecAutoMind 密钥门禁 · 扫描根目录 %s" % root)
     print("=" * 66)
     print("  已扫描文本文件   %d" % scanned)
     print("  真 key 指纹库     %d 条%s" % (
-        len(fps), "" if fps else "（⚠️ 未加载到真 key：config.yaml 缺失且无相关 env，指纹反查未生效）"))
+        len(fps), "" if fps else "（⚠️ 未加载到真 key：config.yaml / 进程 env / HKCU 用户级 env 均取不到）"))
     print("  占位符/示例命中  %d（判定安全，不计违规）" % len(placeholder))
     print("  可疑命中         %d（测试夹具/CTF 语料，不阻塞但请人工确认）" % len(suspect))
     print("  真实凭证命中     %d" % len(real))
@@ -301,8 +373,19 @@ def main():
             print("\n  ⚠️ 上述带 🔴指纹 的命中 = 文档/代码里出现了**本项目正在用的真 key 片段**。")
             print("     这不是'打码示例'，而是真凭证泄露：即使只泄露前 12 字符也应视为已泄露，")
             print("     必须轮换该 key，并把片段替换为完全脱敏的文本（如 `<redacted>`）。")
+    elif fingerprint_block:
+        print("  [BLOCK] 真 key 指纹库为空 —— 最强防线（真 key 反查）未生效，拒绝放行。")
+        print("    当前环境读不到 config.yaml 明文，也读不到相关环境变量")
+        print("    （含 Windows 用户级 HKCU\\Environment），无法判定「真实凭证是否落盘」。")
+        print("    处理顺序：")
+        print("      1) 确认 User 级环境变量已设置（DASHSCOPE_API_KEY / FEISHU_APP_SECRET 等）；")
+        print("      2) Shell 继承不到时，改用能读到用户级变量的进程重跑（如 PowerShell）；")
+        print("      3) CI 等确无真值的环境须显式加 --allow-no-fingerprint（降级为仅形态匹配，需人工复核）。")
+    elif fingerprint_degraded:
+        print("  [PASS·降级] 未发现真实凭证；但指纹库为空且已显式 --allow-no-fingerprint，")
+        print("    本次仅经形态匹配、**未启用真 key 指纹反查**，请人工复核后再放行。")
     else:
-        print("  [PASS] 未发现真实凭证，可进入打包流程。")
+        print("  [PASS] 未发现真实凭证，且真 key 指纹反查已生效，可进入打包流程。")
     if suspect:
         print("\n  可疑命中清单（测试/语料，通常无需处理）：")
         for f in suspect[:15]:
@@ -310,7 +393,7 @@ def main():
         if len(suspect) > 15:
             print("    ... 另有 %d 条" % (len(suspect) - 15))
     print("=" * 66)
-    return 1 if real else 0
+    return 1 if blocked else 0
 
 
 if __name__ == "__main__":

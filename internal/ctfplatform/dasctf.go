@@ -249,8 +249,14 @@ func truncate(s string, n int) string {
 //  2. 「提交时仅需提交 {} 内内容」→ 必须剥离 flag{}/DASCTF{} 外壳
 //  3. 成功判据 = code=="00000"（字符串）且 data.isCorrect==true
 
-// flagWrapperRe 匹配标准 flag 外壳（大小写不敏感，跨行）。
-var flagWrapperRe = regexp.MustCompile(`(?is)^(?:flag|ctf|dasctf)\{(.+)\}$`)
+// flagWrapperRe 与真源**逐字对齐**（dasctf.py `_FLAG_WRAPPER_RE`）：
+//
+//	真源 = ^(?:flag|FLAG|ctf|CTF|DASCTF|dasctf)\{(.+)\}$   （枚举大小写 + DOTALL）
+//
+// 这里刻意**不用** `(?i)`：混合大小写外壳（`Flag{}` / `Ctf{}` / `Dasctf{}`）真源不剥壳，
+// Go 侧若忽略大小写就会单边"更宽容"，与真源分叉（2026-09-13 深度复检实测 7/25 用例分叉）。
+// 铁律：目标侧偏离真源一律按缺陷处理。
+var flagWrapperRe = regexp.MustCompile(`(?s)^(?:flag|FLAG|ctf|CTF|DASCTF|dasctf)\{(.+)\}$`)
 
 // 预编译正则（避免每次解析题目重复编译）。
 var (
@@ -306,20 +312,12 @@ func exerciseIDValue(challengeID string) interface{} {
 }
 
 // codeIsSuccess 判定平台业务码是否成功。
-// 真源实测成功码是**字符串 "00000"**（不是 int 0）；此处对 int/string 双兼容，
-// 避免 JSON 类型不匹配导致正确提交被静默判负（10719 同类教训）。
+// 严格对齐真源（dasctf.py:562 `ok_code = str(data.get("code", "")) == "00000"`）：
+// **只认字符串 "00000"**。曾对 int/string 双兼容（`0`、`"0"` 也判成功），属目标侧单边放宽，
+// 于 2026-09-13 深度复检按「目标侧偏离真源一律按缺陷处理」回退。
 func codeIsSuccess(raw json.RawMessage) bool {
 	s := strings.TrimSpace(strings.Trim(string(raw), `"`))
-	if s == "" || s == "null" {
-		return false
-	}
-	if s == "00000" {
-		return true
-	}
-	if n, err := strconv.Atoi(s); err == nil {
-		return n == 0
-	}
-	return false
+	return s == "00000"
 }
 
 // parseChallenge 把平台返回的题目对象解析为 Challenge（字段名多版本兼容）。
