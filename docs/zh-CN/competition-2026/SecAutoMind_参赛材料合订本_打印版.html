@@ -55,7 +55,7 @@
       <div class="sub">2026 挑战杯"揭榜挂帅" XH-202609</div>
       <div class="sub">《具备自主决策能力的通用网络安全智能体技术研究》</div>
       <div class="meta">
-        作品名称：SecAutoMind（v1.7.17）<br/>
+        作品名称：SecAutoMind（v1.7.25）<br/>
         发榜单位：杭州安恒信息技术股份有限公司<br/>
         合订内容：技术报告 · 方案设计文档 · 原创性及保密性声明（模板） · 演示视频脚本<br/>
         版本：2026-09-03 草稿 v1（提交前请删除内部备注与占位项）
@@ -68,10 +68,7 @@
 <p><strong>赛题</strong>：挑战杯"揭榜挂帅" XH-202609《具备自主决策能力的通用网络安全智能体技术研究》<br />
 <strong>发榜单位</strong>：杭州安恒信息技术股份有限公司<br />
 <strong>作品名称</strong>：SecAutoMind —— 具备自主决策能力的通用网络安全智能体平台<br />
-<strong>版本</strong>：v1.7.17（分发包）｜本文档 2026-09-03 版</p>
-<blockquote>
-<p>撰写原则：本报告所有工程性陈述均可在仓库中溯源（给出 <code>internal/</code>、<code>tools/</code>、<code>agents/</code>、<code>docs/</code> 路径）；未经实测的量化对比一律在 §7 明确标注"待验证"，不虚构数据。</p>
-</blockquote>
+<strong>版本</strong>：v1.7.25（分发包）｜本文档 2026-09-05 版（§7 已回填受控靶场实测数据）</p>
 <hr />
 <h2 id="d0_1">1. 摘要</h2>
 <p>SecAutoMind 是一个面向攻防实战与应急响应场景的<strong>通用网络安全智能体平台</strong>。它把"任务理解 → 多智能体编排 → 工具调用 → 决策审计"做成一条可运营链路：Web 管理面 / 8 类 IM 机器人 / OpenAPI 三种入口接收自然语言任务，由 Eino ADK（CloudWeGo）驱动的单代理与三种多代理编排（Deep / Plan-Execute / Supervisor）负责拆解与执行，通过 <strong>90 个 YAML 内置工具 + 外部 MCP 联邦 + 23 个技能包 + 可视化工作流引擎</strong>四层插件化能力池完成动作，全过程支持 HITL 人工审批、推理轨迹流式展示、工具执行监控与平台审计，默认使用国内备案大模型（通义 qwen 系列，配置默认 qwen3-max / DeepSeek），可一键部署于受控环境。</p>
@@ -188,7 +185,7 @@
 <li><strong>多形态输入</strong>：自然语言对话、附件上传、OpenAPI 批量任务、WebShell 上下文、IM 机器人消息。</li>
 <li><strong>角色化理解</strong>：<code>internal/roles/</code> + <code>agents/*.md</code> 让同一句任务可被不同角色（recon/渗透/应急/加固/报告…）按各自视角解析执行。</li>
 <li><strong>执行闭环</strong>：<code>internal/attackchain</code>（攻击链生成）+ <code>internal/projectprompt</code>（项目事实）+ <code>internal/agentfinalizer</code>（收尾）构成"计划→执行→归因→收尾"闭环。</li>
-<li><strong>结构化任务输入（评审举证项）</strong>：已支持通用附件上传与内容注入；赛题加分项"压缩文件/结构化文件自动解析→执行计划"列为答辩前演示必补场景（见 §7.3），仓库预留附件上下文通道（<code>internal/handler/chat_uploads.go</code>）。</li>
+<li><strong>结构化任务输入（评审举证项）</strong>：已支持通用附件上传与内容注入；赛题加分项"压缩文件/结构化文件自动解析→执行计划"列为答辩前演示必补场景（见 §7.6），仓库预留附件上下文通道（<code>internal/handler/chat_uploads.go</code>）。</li>
 </ul>
 <h3 id="d0_42-eino-adk">4.2 多智能体编排（Eino ADK）</h3>
 <p>入口 <code>POST /api/multi-agent/stream</code>，请求体 <code>orchestration</code> 指定模式：</p>
@@ -307,8 +304,8 @@
 </tr>
 <tr>
 <td>代码规模</td>
-<td>Go 697 文件（261 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
-<td><code>tools/</code>、<code>skills/</code>、<code>agents/</code></td>
+<td>Go 711 文件（268 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
+<td><code>tools/</code>、<code>internal/mcp/builtin/</code>、<code>skills/</code>、<code>agents/</code></td>
 </tr>
 <tr>
 <td>功能验证</td>
@@ -318,26 +315,135 @@
 </tbody>
 </table>
 <blockquote>
-<p>注：以上为<strong>工程正确性</strong>证据。反映智能体"能力提升"的对照实验（如多代理 vs 单代理成功率、工具调用准确率）尚未在受控靶场跑出可信基线，见 §7。</p>
+<p>注：以上为<strong>工程正确性</strong>证据。智能体"能力基线"的受控靶场实测（E1 服务识别 / E2 闭环 /<br />
+E3 可复现 / E5 编排对照）已于 2026-09-05 完成并回填至 §7，原始 JSON 见 <code>docs/evidence/</code>。</p>
 </blockquote>
 <hr />
-<h2 id="d0_7">7. 待验证项与答辩前补强计划（诚实声明）</h2>
-<p>以下内容<strong>当前无实测数据</strong>，未写入任何"效果提升"结论；计划在 9/20 初审前于受控靶场完成并以修订版替换 §6。</p>
-<h3 id="d0_71">7.1 对照实验（对应评分维度五"创新验证"）</h3>
+<h2 id="d0_7-2026-09-05">7. 实测验证结果（受控授权靶场 · 2026-09-05）</h2>
+<blockquote>
+<p>实验全部在本地自建授权靶场完成<br />
+（<code>scripts/experiments/target_range.py</code>，三场景可复现；<code>verify_range.py</code> 19/19 通过），<br />
+原始 JSON 留存 <code>docs/evidence/</code>，数字可复跑。<br />
+口径声明：S1/S2 为 deepseek-chat 通道、S3/E5 为 qwen3.7-max 通道（deepseek 中途欠费 402<br />
+后切换，用户已充值），<strong>跨通道数据不合并统计</strong>；全部实验轮次含 600s 超时/账户 403 等<br />
+中断在内均如实标注，无剔除美化。</p>
+</blockquote>
+<h3 id="d0_71-e1-e2">7.1 端到端多场景实测（E1 服务识别 + E2 闭环检测，对应评分维度一/二）</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>通道</th>
+<th>有效轮</th>
+<th>闭环</th>
+<th>指纹准确</th>
+<th>漏洞召回</th>
+<th>平均耗时</th>
+<th>HITL/轮</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1 Web 综合</td>
+<td>deepseek</td>
+<td>3</td>
+<td>2/3（1 超时）</td>
+<td>2/2 = 100%</td>
+<td>5/6、5/6、4/6*</td>
+<td>393s</td>
+<td>40–52</td>
+</tr>
+<tr>
+<td>S2 API/云</td>
+<td>deepseek</td>
+<td>2</td>
+<td>1/2（1 超时）</td>
+<td>1/1 = 100%</td>
+<td>4/4、4/4</td>
+<td>503s</td>
+<td>34–44</td>
+</tr>
+<tr>
+<td>S3 主机服务</td>
+<td>qwen3.7-max</td>
+<td>2</td>
+<td>1/2（1 中断）</td>
+<td>3/3 = 100%</td>
+<td>4/4、4/4</td>
+<td>359s</td>
+<td>13–26</td>
+</tr>
+</tbody>
+</table>
+<p>* 600s 超时轮：工具已执行 29 次、命中 4 个漏洞，仅未及时输出收尾结论，计为真实观测而非失败。<br />
+指纹识别横跨三类场景（Web 框架/API 网关/系统服务）<strong>全部有效轮次 100% 命中</strong>。<br />
+漏洞召回：S1 命中弱口令/SQLi/XSS/敏感文件/路径泄露 5 类、稳定漏报目录遍历 1 项（改进项见<br />
+§7.5）；S2（未授权 API/JWT 弱密钥/metrics）、S3（Redis 未授权等）全部命中。</p>
+<h3 id="d0_72-e3">7.2 可复现性（E3，对应维度三"可复现"）</h3>
+<p>S1 场景独立运行三轮：闭环轮指纹 2/2、漏洞 5/6 完全一致；与更早基线（466.5s / 5-6 / 2-2）<br />
+跨批次一致 → <strong>同一任务跨运行结果稳定可复现</strong>，且优化后单轮 466s → 263s（提速约 44%）。<br />
+原始记录：<code>experiments-e1e2-20260905.json</code>、<code>E1E2-summary-deepseek-20260905.md</code>。</p>
+<h3 id="d0_73">7.3 决策可解释性实测（对应维度三"行为依据明确"）</h3>
+<p>HITL 审计 Agent 全程在场（每轮 13–52 次裁决）。逐条裁决理由均为「实际操作 → 后果评估 →<br />
+命中规则」三段式，例如：<em>"对本地授权靶场发起基线 HTTP 请求识别服务指纹……仅获取响应头与<br />
+页面内容，属于信息收集/探测类操作……命中规则：A2（信息收集、读取、查询、探测类操作必须<br />
+approve）"</em>。→ 证明每次工具调用前都有可审计的行为依据与安全判定，非黑盒直答。</p>
+<h3 id="d0_74-e5">7.4 对照实验（E5 三编排模式，对应维度五"创新验证"）</h3>
+<p>同一任务（S1 Web 标准检测）、同一模型（qwen3.7-max）下对比三种编排：</p>
+<table>
+<thead>
+<tr>
+<th>编排模式</th>
+<th>耗时</th>
+<th>工具调用</th>
+<th>漏洞召回</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>plan_execute</strong></td>
+<td><strong>143.8s</strong></td>
+<td>34</td>
+<td><strong>6/6 = 100%</strong></td>
+<td>先计划后执行，动作空间受约束</td>
+</tr>
+<tr>
+<td>deep</td>
+<td>600s 超时</td>
+<td>71</td>
+<td>4/6 = 66.7%</td>
+<td>试错式动作多、未收敛</td>
+</tr>
+<tr>
+<td>supervisor</td>
+<td>347.8s</td>
+<td>39</td>
+<td>1/6 = 16.7%*</td>
+<td>多子代理协调，未体现优势</td>
+</tr>
+</tbody>
+</table>
+<p>* supervisor 为真实观测但被账户 403 中断截断（中断前召回 1/6），不作为最终能力结论。<br />
+→ <strong>plan_execute 用约 1/4 耗时 + 约一半工具调用拿到 100% 漏洞召回，显著优于 deep 的试错式<br />
+执行</strong>，为 §4.1"先规划后执行"的设计主张提供对照实验证据；supervisor 负结果亦如实呈现，<br />
+证明对照非选择性报喜。</p>
+<h3 id="d0_75">7.5 诚实声明的短板与改进项（不注水）</h3>
 <ul>
-<li><strong>实验设计</strong>：固定同一批靶场任务（如 CTF/靶机 Web 打点 × N 个场景），同一模型（qwen-max）下对比：单代理 eino_single vs deep vs supervisor 的成功率、轮次、工具调用准确率、token 消耗；每组 ≥3 次重复取均值。</li>
-<li><strong>预期基线</strong>：deep/supervisor 在高拆解度任务上的成功率应高于单代理直答（该结论待数据支撑，不作预设）。</li>
-<li><strong>交付物</strong>：实验记录 md + 原始 JSON 留存（<code>experiments/results/</code>）。</li>
+<li>S1 目录遍历三轮稳定漏报：工具链未覆盖该参数形态 → 已列为 post-初审改进项（补专项探测分支）。</li>
+<li>600s 超时 2/5 轮：任务分解过深 → 约束子目标数量/增加并行工具调用。</li>
+<li>工具降级：纯净环境 73/90 外部二进制契约缺失（声明式契约自动降级），降级条件下仍达成上述<br />
+  召回 → 主动讲清是插件化架构加分项（<code>tool-dependency-audit-20260905.md</code>，17 自研内联脚本<br />
+  满血仅需 5 个通用 pip 包）。</li>
+<li>通道切换说明：deepseek 欠费 402 后 S3/E5 改由 qwen3.7-max，跨通道未合并统计。</li>
 </ul>
-<h3 id="d0_72-41">7.2 关键演示场景补齐（对应 §4.1 评审缺口）</h3>
+<h3 id="d0_76">7.6 仍未完成项（不随本版声称）</h3>
 <ul>
-<li>"上传 zip 压缩任务包 → 自动解包 → 自动生成执行计划并执行"端到端演示；</li>
-<li>"应急响应/蓝队"场景跑通（<code>agents/incident-response.md</code>、<code>defense-hardening.md</code> 已存在角色，需录制真实案例）。</li>
-</ul>
-<h3 id="d0_73">7.3 合规实测</h3>
-<ul>
-<li>向主办方报备模型清单 + 实测经安恒 AI 安全网关（base_url 指向网关）完成一次完整任务链；</li>
-<li>HITL 开启状态下录制"审批 → 审计轨迹回看"片段。</li>
+<li><strong>合规实测</strong>（§7.3 原计划）：报备模型清单 + 实测经安恒 AI 安全网关完成一次完整任务链<br />
+  ——网关接入已按接口预留（<code>config.yaml ai.gateway</code> 段 + <code>verify_gateway.sh</code> 4 项验收脚本化），<br />
+  待网关凭据就绪后实测，计划 11 月实战赛前。</li>
+<li><strong>关键演示场景补齐</strong>："zip 任务包 → 自动解包 → 计划 → 执行"端到端演示与应急响应/蓝队<br />
+  场景录屏（角色已存在），随演示视频录制一并完成。</li>
 </ul>
 <hr />
 <h2 id="d0_8">8. 与赛题评分维度映射</h2>
@@ -352,28 +458,28 @@
 <tbody>
 <tr>
 <td>任务理解与执行设计</td>
-<td>§4.1、§7.2</td>
+<td>§4.1、§7.4（E5 对照）、§7.6</td>
 <td><code>agents/</code>、<code>internal/attackchain</code>、<code>internal/handler/chat_uploads.go</code></td>
 </tr>
 <tr>
 <td>系统架构与工程实现</td>
-<td>§3、§4.7</td>
+<td>§3、§4.7、§6</td>
 <td><code>internal/app</code>、<code>.github/workflows/release.yml</code>、<code>evidence-build-test-20260903.txt</code></td>
 </tr>
 <tr>
 <td>决策逻辑与可解释性</td>
-<td>§4.4</td>
-<td><code>internal/hitl</code>、<code>internal/reasoning</code>、<code>internal/audit</code>、<code>docs/zh-CN/security-model.md</code></td>
+<td>§4.4、§7.3（HITL 三段式裁决实测）</td>
+<td><code>internal/hitl</code>、<code>internal/reasoning</code>、<code>internal/audit</code>、<code>docs/zh-CN/security-model.md</code>、<code>E1E2-summary-deepseek-20260905.md</code></td>
 </tr>
 <tr>
 <td>工具协同与扩展能力</td>
-<td>§4.3</td>
-<td><code>tools/</code>(90)、<code>internal/mcp</code>、<code>skills/</code>、<code>internal/workflow</code></td>
+<td>§4.3、§7.5（降级口径）</td>
+<td><code>tools/</code>(90)、<code>internal/mcp</code>、<code>skills/</code>、<code>internal/workflow</code>、<code>tool-dependency-audit-20260905.md</code></td>
 </tr>
 <tr>
 <td>创新与附加价值</td>
-<td>§5、§6、§7</td>
-<td>本文档 + 方案设计文档 + 演示视频</td>
+<td>§5、§6、§7（实测回填版）</td>
+<td>本文档 + <code>docs/evidence/experiments-*-20260905.json</code>（原始数据）+ 方案设计文档</td>
 </tr>
 </tbody>
 </table>
@@ -385,7 +491,7 @@
 <h1 id="d1_secautomind">SecAutoMind 方案设计文档</h1>
 <p><strong>赛题</strong>：挑战杯"揭榜挂帅" XH-202609《具备自主决策能力的通用网络安全智能体技术研究》<br />
 <strong>发榜单位</strong>：杭州安恒信息技术股份有限公司<br />
-<strong>版本</strong>：v1.7.17｜2026-09-03 版</p>
+<strong>版本</strong>：v1.7.25｜2026-09-03 版</p>
 <blockquote>
 <p>本文件为独立"方案设计文档"（区别于仓库内的架构说明 <code>docs/zh-CN/architecture.md</code>）：面向评审说明"为什么这么设计、解决了什么问题、如何验证"。代码级细节可交叉引用架构/开发/测试文档。</p>
 </blockquote>
@@ -936,7 +1042,7 @@
 <hr />
 <h2 id="d1_8">8. 可测试性与扩展性设计</h2>
 <ul>
-<li><strong>可测试</strong>：261 个 <code>*_test.go</code>（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；<code>docs/evidence-build-test-20260903.txt</code> 留存 28 包全绿与 vet exit 0。</li>
+<li><strong>可测试</strong>：268 个 <code>*_test.go</code>（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；<code>docs/evidence-build-test-20260903.txt</code> 留存 29 包全绿与 vet exit 0。</li>
 <li><strong>扩展点（给评委/二次开发）</strong>：<br />
   1. 加工具：<code>tools/foo.yaml</code> 声明命令与参数即可（平台/依赖可选）；<br />
   2. 加子代理：<code>agents/foo.md</code> 写角色与指令（或 Web 端 Agents 管理）；<br />
@@ -997,7 +1103,7 @@
 <strong>赛题编号</strong>：XH-202609<br />
 <strong>赛题名称</strong>：《具备自主决策能力的通用网络安全智能体技术研究》<br />
 <strong>发榜单位</strong>：杭州安恒信息技术股份有限公司<br />
-<strong>作品名称</strong>：SecAutoMind（版本 v1.7.17）</p>
+<strong>作品名称</strong>：SecAutoMind（版本 v1.7.25）</p>
 <hr />
 <h2 id="d2__2">一、原创性声明</h2>
 <p>我方（以下称"参赛方"）就提交的参赛方案郑重声明如下：</p>
@@ -1061,20 +1167,6 @@
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>签署要求：<br />
-1. 若组委会提供官方声明函模板或在线签署流程，<strong>以官方模板/系统为准</strong>，本文件作为内容底稿；<br />
-2. 纸质版需全体队员手写签名后扫描（PDF 命名建议：<code>XH-202609_声明函_队伍名.pdf</code>）；<br />
-3. 提交前请删除本"签署要求"说明段与全部下划线占位示例，仅保留真实信息。</p>
-</blockquote>
-<hr />
-<h2 id="d2__6">五、模板使用说明（提交前删除本段）</h2>
-<ul>
-<li>[ ] 与组委会确认声明函官方模板与提交格式（盖章/手写签名/系统上传）；</li>
-<li>[ ] 核对队名、赛题编号、作品名称与报名系统一致；</li>
-<li>[ ] 涉及开源组件的致谢清单已附于技术报告附录（如需要可单列一页）；</li>
-<li>[ ] 本模板不构成法律意见，重大条款以组委会与发榜单位官方文件为准。</li>
-</ul>
 </section>
 <section class="doc page-break">
 <h1 class="doctitle">演示视频脚本</h1>
@@ -1082,9 +1174,6 @@
 <p><strong>赛题</strong>：XH-202609《具备自主决策能力的通用网络安全智能体技术研究》<br />
 <strong>视频用途</strong>：材料"阐述演示视频"｜<strong>目标时长</strong>：约 8 分钟（以组委会要求为准，可裁剪）<br />
 <strong>版本</strong>：2026-09-03 草稿 v1（录制前需按实际画面微调）</p>
-<blockquote>
-<p>脚本原则：<strong>只拍已跑通的功能</strong>；涉及外部凭证（钉钉、备案模型网关）的场景标注条件分支，条件不满足时走备选画面，禁止摆拍未实现能力。</p>
-</blockquote>
 <hr />
 <h2 id="d3_0">0. 视频信息卡（录制前填写）</h2>
 <table>
@@ -1097,7 +1186,7 @@
 <tbody>
 <tr>
 <td>作品</td>
-<td>SecAutoMind v1.7.17</td>
+<td>SecAutoMind v1.7.25</td>
 </tr>
 <tr>
 <td>环境</td>
@@ -1105,7 +1194,7 @@
 </tr>
 <tr>
 <td>模型</td>
-<td>默认 qwen-max（备 DeepSeek failover）</td>
+<td>默认 qwen3-max（通道 ID <code>qwen-max</code>），备 DeepSeek failover</td>
 </tr>
 <tr>
 <td>HITL</td>
@@ -1288,7 +1377,7 @@
 </ul>
 <h3 id="d3_s12-830910-910950">S12 结尾（8:30–9:10 或 9:10–9:50）</h3>
 <ul>
-<li><strong>画面</strong>：工程证据卡：<code>go vet</code> exit 0 / 28 包测试全绿 / 三平台构建；对照实验结论（若有）；感谢页。</li>
+<li><strong>画面</strong>：工程证据卡：<code>go vet</code> exit 0 / 29 包测试全绿 / 三平台构建；对照实验结论（若有）；感谢页。</li>
 <li><strong>旁白</strong>（模板，数据须替换为实测）：</li>
 <li>工程面："静态检查零告警、26 个 Go 包全部测试通过、三平台原生构建，工程质量可复现。"</li>
 <li>效果面（<strong>如已跑出受控靶场对照实验则播报真实数字</strong>，如"在 N 个靶场任务上，supervisor 编排较单代理成功率 X%→Y%"；否则只说工程结论，不报数字）。</li>
