@@ -204,11 +204,15 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 
 | 产物 | 指纹 | 大小 |
 |---|---|---|
-| `secautomind-ai.exe`（根 + `installer/` 两处一致） | md5 `7c97efd1009518f334256049ea0bcdb0` | 89,439,744 B（85.3 MiB） |
-| 内嵌 commit | `vcs.revision=a34f2a21f3e56bfb790bc0ac44a9112a4be7bd27`（= `a34f2a2`），无 dirty | — |
-| `SecAutoMind-Setup-1.7.25-x64.exe` | md5 `7eba511aef77705e8424cfa6847ef92c` | 20,291,205 B |
+| `secautomind-ai.exe`（根 + `installer/` 两处一致） | md5 `3519a1f965f6bb5a5550458ac754836d` | 89,439,744 B（85.3 MiB） |
+| 内嵌 commit | `vcs.revision=ed95f53a2948b96eef72e86d644199ac587a107a`（= `ed95f53`），无 dirty | — |
+| `SecAutoMind-Setup-1.7.25-x64.exe` | md5 `172eda4c4c44d11cc47e1ae0faf6c243` | 20,292,460 B |
 
-旧值（作废）：exe `4da4720ea7e406da0f0a91fa02a480e3`（内嵌 `b4f458d`）/ Setup `550381db451c60f0898d110f7713129e`。
+历史值（作废）：exe `7c97efd1009518f334256049ea0bcdb0`（内嵌 `a34f2a2`）/ Setup `7eba511aef77705e8424cfa6847ef92c`；更早 exe `4da4720ea7e406da0f0a91fa02a480e3`（内嵌 `b4f458d`）/ Setup `550381db451c60f0898d110f7713129e`。
+
+> 2026-09-13 第三次重建：携深度复检 5 项修复 —— 密钥门禁 fail-closed（指纹缺失即 BLOCK）、
+> 内置自举模板 `default_config.yaml` HITL `off→approval`、平台层提交协议严格对齐真源
+> （flag 剥壳正则去 `(?i)`；成功码只认字符串 `"00000"`）等。
 
 ### 8.3 构建口径勘误（技能文档随之更正）
 本轮实证：**`CGO_ENABLED=0` 才是正确构建方式**；`windows-go-exe-relaunch-nsis-package` 技能旧述「必须 `CGO_ENABLED=1`」**已过期**。依据：`go.mod:24` 依赖 `github.com/glebarez/go-sqlite v1.23.0`（纯 Go 实现），全仓无 `mattn/go-sqlite3`（CGO）依赖。构建命令：
@@ -220,6 +224,6 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
 ```
 
 ### 8.4 一致性验证
-- NSIS 重打后经 7-Zip 提取：根 exe / `installer/` exe / 包内 exe **三处 md5 一致**（`7c97efd1…`）。
+- NSIS 重打后经 7-Zip 提取：根 exe / `installer/` exe / 包内 exe **三处 md5 一致**（`3519a1f9…`）。
 - 新 exe 独立配置（端口 18099、数据目录 `D:`）冒烟启动：`GET /` **HTTP 200**，全站静态资源 200 加载，初始密码落盘、`/api/setup/status` 200 —— 服务正常起。
-- 交付包 `dist/SecAutoMind-v1.7.25-share.tar.gz` 随本轮**重打**（1636 条目 / 309.0 MB / 三项红线 rc=0）；旧包内为旧 exe（`4da4720…`）、已不符，作废。
+- 交付包 `dist/SecAutoMind-v1.7.25-share.tar.gz` 随本轮**重打**（1643 条目 / 1494 文件 / 309.0 MB / 三项红线 rc=0）；旧包内为旧 exe（`7c97efd1…`）、已不符，作废。
