@@ -434,7 +434,7 @@ rows = [
     ('go test ./...', '核心包全绿：multiagent 15.6s · database 5.4s · attackchain 4.5s', ACCENT),
     ('系统启动', 'go run --http 启动成功，GET / → 200，服务端口监听正常', ACCENT2),
     ('API 可达', '/api/auth/login 可达（参数校验生效），鉴权中间件在路径上', ACCENT2),
-    ('代码卫生', '0 panic · 0 处 TODO · 267 测试文件 · 33 个 internal 包', ACCENT),
+    ('代码卫生', '0 panic · 0 处 TODO · 268 测试文件 · 33 个 internal 包', ACCENT),
     ('安全基线', 'CORS 白名单 · SQL 参数化 · 7 个配置占位符 · HITL 审批桥', WARN),
 ]
 for i, (t, body, ac) in enumerate(rows):
@@ -537,7 +537,7 @@ text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('总结与展望', 
 summary = [
     ('做了什么', '3 层编排 × 91 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
     ('技术创新', '按复杂度自动选型的三模式编排 · 事实黑板上下文共享 · C2-HITL 审批桥 · 离线自主决策'),
-    ('工程证明', '126,000 行 Go · 267 测试文件 · 0 panic · 33 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
+    ('工程证明', '126,000 行 Go · 268 测试文件 · 0 panic · 33 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
     ('未来展望', '接入更多国内模型 · 扩工具生态（社区 YAML）· 多靶场联动 · 智能体自学习（攻击链记忆）'),
 ]
 for i, (t, body) in enumerate(summary):

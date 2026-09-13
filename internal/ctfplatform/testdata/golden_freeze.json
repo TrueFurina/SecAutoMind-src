@@ -1,5 +1,5 @@
 {
   "protocol_fixtures.json": "1277f93030746ebf3b921b0c553dd408c4552f079a483484214f22462e22bd71",
-  "protocol_golden.json": "556c6e9efe87dc4aaa783dd243f9f476ab0132ee1d176b5cef9f761c7259da13",
-  "request_golden.json": "1d4527f11cfa66e6db750369c26e97eba52fc18782cf9aacfb4b0b82a717b20d"
+  "protocol_golden.json": "a685449f21b27e047aacf2b0c193325677905f86e0b56e8c39873ef15c565de2",
+  "request_golden.json": "bb511d7560a3c65565a850a85c9d7bcbe381f953b89a75a6c2a0c8c5d59564f2"
 }

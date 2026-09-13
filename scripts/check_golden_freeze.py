@@ -36,11 +36,14 @@ FILES = ("protocol_fixtures.json", "protocol_golden.json", "request_golden.json"
 
 
 def sha256(p: pathlib.Path) -> str:
-    h = hashlib.sha256()
-    with open(p, "rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    """按**规范化行尾（CRLF→LF）**计算哈希。
+
+    原因：本仓 Windows 工作区是 CRLF、git 入库是 LF，CI（Linux）checkout 得到 LF。
+    若直接用工作区字节算哈希，同一份文件在本地与 CI 的哈希必然不同 —— 冻结校验会在
+    CI 上无条件失败（2026-09-13 实测踩到：本地 PASS、CI `failure`）。规范化后两侧一致。
+    """
+    data = p.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def current() -> dict:
