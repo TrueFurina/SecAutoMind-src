@@ -94,6 +94,8 @@ def main() -> int:
     )
     print(f"[OK] golden 已生成: {GOLDEN}")
     print(f"     题目用例 {len(golden['challenges'])} 条 / flag 用例 {len(golden['flags'])} 条")
+    print("     ⚠️ 接着必须刷新冻结值，否则 CI 的 golden freeze check 会红：")
+    print("        python scripts/check_golden_freeze.py --update")
     return 0
 
 

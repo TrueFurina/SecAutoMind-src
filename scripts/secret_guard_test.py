@@ -26,6 +26,7 @@
 退出码：0 = 门禁健康；1 = 门禁已退化，必须修 scripts/secret_guard.py
 """
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -94,6 +95,66 @@ def classify(content):
     return real
 
 
+def check_fingerprint_defense():
+    """[3/3] 最强防线自检（2026-09-13 复检发现新增）。
+
+    背景：门禁的"真 key 指纹反查"是最强防线，但实测发现——当 config.yaml 已零明文、
+    且当前 shell 读不到 User 级环境变量时，指纹库为空，旧实现**只打一行小字仍给 PASS**。
+    "防线缺席"被当成"防线通过"，与 09-08 / 09-13 两次失效同构。
+
+    本段锁定三条行为：
+      A. 指纹反查**可用**：注入构造指纹 → 必须被加载，且 fingerprint_hit 能命中；
+      B. 指纹缺失 → **fail-closed（rc=1）**；
+      C. 显式 `--allow-no-fingerprint` → 允许降级放行（rc=0），但**不得**静默。
+    """
+    failures = []
+    sg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "secret_guard.py")
+    tmp = tempfile.mkdtemp(prefix="sg_selftest_")
+    probe = "ZZprobeFingerprint01"  # 构造值，与任何真 key 零公共前缀
+
+    # A. 注入指纹 → 加载 + 命中
+    # 注意：指纹库存的是**前 FINGERPRINT_LEN 字符**，断言必须用截断值比对。
+    code_a = (
+        "import sys; sys.path.insert(0, r'%s'); import secret_guard as g;"
+        "fps = g.load_real_fingerprints();"
+        "print('HAS', %r in fps);"
+        "print('HIT', g.fingerprint_hit('x-' + %r + '-y', fps) is not None);"
+    ) % (os.path.dirname(sg), probe[:secret_guard.FINGERPRINT_LEN], probe)
+    env_a = dict(os.environ)
+    env_a[secret_guard.FINGERPRINT_ENV_EXTRA] = probe
+    ra = subprocess.run([sys.executable, "-c", code_a], env=env_a,
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    out_a = ra.stdout or ""
+    ok_a = ("HAS True" in out_a) and ("HIT True" in out_a)
+    print("  %s 指纹反查可用（注入指纹被加载且能命中）" % ("PASS" if ok_a else "FAIL"))
+    if not ok_a:
+        failures.append("指纹反查失效：注入指纹后加载/命中失败\n    %s" % out_a.strip().replace("\n", "\n    "))
+
+    # B / C. 模拟"读不到任何真值"的环境
+    env_b = dict(os.environ)
+    env_b[secret_guard.FINGERPRINT_DISABLE_ENV] = "1"
+    rb = subprocess.run([sys.executable, sg, "--dir", tmp], env=env_b,
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    ok_b = (rb.returncode == 1)
+    print("  %s 指纹缺失时 fail-closed（期望 rc=1，实际 rc=%d）" % ("PASS" if ok_b else "FAIL", rb.returncode))
+    if not ok_b:
+        failures.append("指纹库为空却未 fail-closed（rc=%d）—— 最强防线缺席被当成通过" % rb.returncode)
+
+    rc_c = subprocess.run([sys.executable, sg, "--dir", tmp, "--allow-no-fingerprint"], env=env_b,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace")
+    ok_c = (rc_c.returncode == 0)
+    print("  %s 显式降级可放行（--allow-no-fingerprint，期望 rc=0，实际 rc=%d）"
+          % ("PASS" if ok_c else "FAIL", rc_c.returncode))
+    if not ok_c:
+        failures.append("显式 --allow-no-fingerprint 未能放行（rc=%d）" % rc_c.returncode)
+
+    try:
+        os.rmdir(tmp)
+    except Exception:
+        pass
+    return failures
+
+
 def main():
     failures = []
 
@@ -101,7 +162,7 @@ def main():
     print("secret_guard 门禁回归测试")
     print("=" * 62)
 
-    print("\n[1/2] 必须检出（漏检 = 门禁失效）")
+    print("\n[1/3] 必须检出（漏检 = 门禁失效）")
     for label, content in MUST_CATCH:
         real = classify(content)
         ok = len(real) > 0
@@ -109,13 +170,16 @@ def main():
         if not ok:
             failures.append("未能检出真实凭证: %s" % label)
 
-    print("\n[2/2] 必须豁免（误报 = 噪声淹没告警）")
+    print("\n[2/3] 必须豁免（误报 = 噪声淹没告警）")
     for label, content in MUST_IGNORE:
         real = classify(content)
         ok = len(real) == 0
         print("  %s %s" % ("PASS" if ok else "FAIL", label))
         if not ok:
             failures.append("误报为真实凭证: %s -> %s" % (label, secret_guard.mask(real[0][1])))
+
+    print("\n[3/3] 最强防线：指纹反查可用 + 缺失时 fail-closed")
+    failures.extend(check_fingerprint_defense())
 
     print("\n" + "=" * 62)
     if failures:
@@ -124,7 +188,7 @@ def main():
             print("  - %s" % f)
         print("=" * 62)
         return 1
-    print("[PASS] 密钥门禁健康：%d 类真实凭证全部可检出，%d 类占位符全部正确豁免。"
+    print("[PASS] 密钥门禁健康：%d 类真实凭证全部可检出，%d 类占位符全部正确豁免，指纹反查/fail-closed 自检通过。"
           % (len(MUST_CATCH), len(MUST_IGNORE)))
     print("=" * 62)
     return 0

@@ -231,6 +231,30 @@
     {
       "input": "flag{synthetic_case}",
       "expected": "synthetic_case"
+    },
+    {
+      "input": "Flag{mixed_case}",
+      "expected": "Flag{mixed_case}"
+    },
+    {
+      "input": "fLaG{mixed_case}",
+      "expected": "fLaG{mixed_case}"
+    },
+    {
+      "input": "Ctf{mixed_case}",
+      "expected": "Ctf{mixed_case}"
+    },
+    {
+      "input": "cTf{mixed_case}",
+      "expected": "cTf{mixed_case}"
+    },
+    {
+      "input": "Dasctf{mixed_case}",
+      "expected": "Dasctf{mixed_case}"
+    },
+    {
+      "input": "DASctf{mixed_case}",
+      "expected": "DASctf{mixed_case}"
     }
   ]
 }

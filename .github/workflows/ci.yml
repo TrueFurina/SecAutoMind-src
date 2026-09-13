@@ -31,6 +31,11 @@ jobs:
       # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。
       - name: Regenerate execution fixtures (nested .git repos not committed by design)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
+      # 跨语言 golden 的冻结校验：CI 无真源仓库（西湖论剑 ctf_agent），
+      # 无法直接跑 gen_protocol_golden.py --check；这里用哈希冻结堵住"手改 golden 不重跑生成器"。
+      # 真源↔golden 的一致性仍需本地 `gen_protocol_golden.py --check`（见脚本内提示）。
+      - name: Cross-language golden freeze check (blocks hand-edited golden)
+        run: python scripts/check_golden_freeze.py
       - name: Vet
         run: go vet ./...
       - name: Test with race detector
@@ -89,8 +94,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Secret guard (real credentials block, placeholders allowed)
-        run: python scripts/secret_guard.py
+      # ⚠️ CI 容器内既无 config.yaml 明文、也无 User 级环境变量 → 指纹库必然为空。
+      #    门禁默认对此 fail-closed（BLOCK），故此处显式降级为「仅形态匹配」，
+      #    并把"未启用指纹反查"的事实留在日志里。真正的最强防线由本地打包路径强制启用
+      #    （make_delivery_package.py 不传该标志 → 取不到指纹即拒绝打包）。
+      - name: Secret guard (form-pattern only in CI; real fingerprint check is enforced locally)
+        run: python scripts/secret_guard.py --allow-no-fingerprint
       - name: Secret guard self-test (must still catch the leaks it once missed)
         run: python scripts/secret_guard_test.py
       - name: Secret guard mutation check (prove the self-test can kill regressions)

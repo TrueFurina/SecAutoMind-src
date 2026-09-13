@@ -79,6 +79,12 @@
     "flag{a{b}c}",
     "DASCTF{}",
     "flag{   }",
-    "flag{synthetic_case}"
+    "flag{synthetic_case}",
+    "Flag{mixed_case}",
+    "fLaG{mixed_case}",
+    "Ctf{mixed_case}",
+    "cTf{mixed_case}",
+    "Dasctf{mixed_case}",
+    "DASctf{mixed_case}"
   ]
 }

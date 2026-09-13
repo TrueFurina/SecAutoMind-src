@@ -46,12 +46,13 @@ func TestStripFlagWrapper(t *testing.T) {
 	}
 }
 
-// 契约②：成功码是字符串 "00000"（int/string 双兼容）。
+// 契约②：成功码**只认字符串 "00000"**（严格对齐真源 dasctf.py:562 `str(code) == "00000"`）。
+// 2026-09-13 深度复检：原实现 int/string 双兼容（`0` / `"0"` 判成功）属目标侧单边放宽，已回退。
 func TestCodeIsSuccess(t *testing.T) {
 	cases := map[string]bool{
 		`"00000"`: true,
-		`0`:       true,
-		`"0"`:     true,
+		`0`:       false, // 真源 str(0)="0" != "00000" → 不算成功
+		`"0"`:     false,
 		`"10001"`: false,
 		`500`:     false,
 		`""`:      false,
