@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "lfsr_deg24": {
+      "description": "A server generates a keystream with a linear feedback shift register (LFSR), but it leaked 64 consecutive output bits of the LFSR keystream.\nPredict the next 16 bits (the secret) with Berlekamp-Massey.\n\nbits = 1111111111111111111111110101010101010101011010100110011001101110\n",
+      "flag_sha256": "5d9c2d67f6b4f88e3ba35e64facbe26e301961fabb3f9c20ce24dae14d4a0fd0",
+      "algo": "lfsr",
+      "note": "24 级 Fibonacci LFSR 密钥流：泄露 64 位，预测随后 16 位"
+    },
+    "lfsr_deg32": {
+      "description": "A server generates a keystream with a linear feedback shift register (LFSR), but it leaked 80 consecutive output bits of the LFSR keystream.\nPredict the next 16 bits (the secret) with Berlekamp-Massey.\n\nbits = 11111111111111111111111111111111010101010110011001101110111011111000011100100111\n",
+      "flag_sha256": "e8a898cde15be9bcaa89f3ce0343df31022b93a7abb15ebd45e36c03ab49f0f3",
+      "algo": "lfsr",
+      "note": "32 级 Fibonacci LFSR 密钥流：泄露 80 位，预测随后 16 位"
+    }
+  }
+}

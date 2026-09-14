@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "hle_md5_basic": {
+      "description": "This endpoint validates requests with MAC = md5(secret || data) where secret is unknown. Perform a length extension attack to append data without knowing the secret.\nknown_hash=d2cd6c5950f33417008a43f9e444c5fe\nknown_message=user=guest\nappend=;role=admin\nsecret_length=26\n",
+      "flag_sha256": "62c63e72ea054a8dd09afe0735247cc7317b578a59cdffdd6df847afd171238a",
+      "algo": "md5",
+      "note": "MD5(secret||data) 长度扩展，secret 未知，伪造含 role=admin 的 MAC"
+    },
+    "hle_sha1_basic": {
+      "description": "This endpoint validates requests with MAC = sha1(secret || data) where secret is unknown. Perform a length extension attack to append data without knowing the secret.\nknown_hash=16d833bb65f4622871657c6fd520e2ccab9a7825\nknown_message=role=user\nappend=&admin=1\nsecret_length=25\n",
+      "flag_sha256": "f2870e8e010aaf030a4bdcde91cd57ae243ce6e6ddaff953c4908dddd1cb38a9",
+      "algo": "sha1",
+      "note": "SHA1(secret||data) 长度扩展，伪造含 admin=1 的 MAC"
+    }
+  }
+}
