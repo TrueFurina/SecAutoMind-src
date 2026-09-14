@@ -73,7 +73,7 @@
 <h2 id="d0_1">1. 摘要</h2>
 <p>SecAutoMind 是一个面向攻防实战与应急响应场景的<strong>通用网络安全智能体平台</strong>。它把"任务理解 → 多智能体编排 → 工具调用 → 决策审计"做成一条可运营链路：Web 管理面 / 8 类 IM 机器人 / OpenAPI 三种入口接收自然语言任务，由 Eino ADK（CloudWeGo）驱动的单代理与三种多代理编排（Deep / Plan-Execute / Supervisor）负责拆解与执行，通过 <strong>90 个 YAML 内置工具 + 外部 MCP 联邦 + 23 个技能包 + 可视化工作流引擎</strong>四层插件化能力池完成动作，全过程支持 HITL 人工审批、推理轨迹流式展示、工具执行监控与平台审计，默认使用国内备案大模型（通义 qwen 系列，配置默认 qwen3-max / DeepSeek），可一键部署于受控环境。</p>
 <p>作品以"<strong>通用</strong>"为设计目标：不止覆盖传统渗透测试，还内置应急响应、防护加固、攻击面枚举、漏洞研判、报告整改等 18 个角色化子代理；以"<strong>可信可解释</strong>"为安全基线：决策链（thinking/reasoningChain/planning）全量入审计、高危工具默认经 HITL、凭据仅走环境变量注入；以"<strong>低门槛落地</strong>"为工程基线：单体 Go + SQLite + 静态前端，预编译 150MB 单文件一键启动，零公网回调（机器人走 Stream 长连接）即可演示。</p>
-<p>工程验证：<code>go vet ./...</code> 退出码 0，<code>go test ./...</code> 28 个含测试包全部通过（证据见 <code>docs/evidence-build-test-20260903.txt</code>）；三平台（linux/darwin/windows）原生 CGo 构建工作流已入库（<code>.github/workflows/release.yml</code>）。</p>
+<p>工程验证：<code>go vet ./...</code> 退出码 0，<code>go test ./...</code> 29 个含测试包全部通过（证据见 <code>docs/evidence-build-test-20260903.txt</code>）；三平台（linux/darwin/windows）原生 CGo 构建工作流已入库（<code>.github/workflows/release.yml</code>）。</p>
 <hr />
 <h2 id="d0_2">2. 赛题理解与总体目标</h2>
 <p>赛题要求"具备<strong>自主决策能力</strong>的<strong>通用</strong>网络安全智能体"，结合 5 维评分（任务理解与执行设计 / 系统架构与工程实现 / 决策逻辑与可解释性 / 工具协同与扩展能力 / 创新与附加价值），我们将其拆解为四条可验证的产品目标：</p>
@@ -294,7 +294,7 @@
 </tr>
 <tr>
 <td>单元/集成测试</td>
-<td>28 个含测试包全部 <code>ok</code>；仓库 261 个 <code>*_test.go</code>（覆盖 config 环境变量注入、HITL、审计、多代理 typed 栈、知识库、WebShell 流等）</td>
+<td>29 个含测试包全部 <code>ok</code>；仓库 270 个 <code>*_test.go</code>（覆盖 config 环境变量注入、HITL、审计、多代理 typed 栈、知识库、WebShell 流等）</td>
 <td>同上 + <code>internal/</code> 各包</td>
 </tr>
 <tr>
@@ -304,7 +304,7 @@
 </tr>
 <tr>
 <td>代码规模</td>
-<td>Go 711 文件（268 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
+<td>Go 715 文件（270 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
 <td><code>tools/</code>、<code>internal/mcp/builtin/</code>、<code>skills/</code>、<code>agents/</code></td>
 </tr>
 <tr>
