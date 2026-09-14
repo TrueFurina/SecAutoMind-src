@@ -291,6 +291,12 @@ func init() {
 
 	// P20 批次：LFSR 流预测（Berlekamp–Massey 恢复线性递推，双语言机验）
 	RegisterSolver(SolverEntry{Name: "lfsr_predict", Category: CategoryCryptoS, Priority: 69, Solver: solveLFSRPredict})
+
+	// P21 批次：LCG 线性同余预测（已知参数/反解 a,c/gcd 恢复模数，双语言机验）
+	RegisterSolver(SolverEntry{Name: "lcg_predict", Category: CategoryCryptoS, Priority: 70, Solver: solveLCGPredict})
+
+	// P22 批次：CRC32 伪造（线性校验 ≠ MAC，追加 4 字节改任意目标，双语言机验）
+	RegisterSolver(SolverEntry{Name: "crc32_forge", Category: CategoryCryptoS, Priority: 71, Solver: solveCRC32Forge})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────

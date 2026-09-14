@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "gcm_nr_basic": {
+      "description": "AES-GCM with REUSED nonce: the same 256-bit key and the same 96-bit nonce were used to encrypt two messages, so they share one CTR keystream.\nnonce=000102030405060708090a0b\nct1=3f5b1c5305075a02060d041b17120a0d00000a0d041a0313160d1d13100145590a004e0f091718520f42571f12787a7a6179676939763f3a2c2d632029692f273f3a2661292c39725e5e\nknown_plaintext=54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f672e204b4e4f574e5f5052454649585f50414444494e475f424c4f434b5f3031\nct2=0d5f18140f15500c324309071b003b5f031a014831040b1a16590000141e3a5f070601150d1f0416341f0003044e\nRecover the second plaintext (the secret).\n",
+      "flag_sha256": "8f02e405a60daf86b223bdfbef6304abb28c25cb193243e322af4b55cd7186c4",
+      "algo": "aes-gcm",
+      "note": "AES-GCM 同密钥同 nonce，两条密文共享 CTR keystream，由已知明文还原第二条明文"
+    },
+    "gcm_nr_long_secret": {
+      "description": "AES-GCM with REUSED nonce: the same 256-bit key and the same 96-bit nonce were used to encrypt two messages, so they share one CTR keystream.\nnonce=000102030405060708090a0b\nct1=3b7c2a27545d5211040210585701014e141602594e273a373502434b447e6f4e0d0b1a0606194c06125d550b125244455a5e5b581f5a161d5b18400e03206c\nknown_plaintext=504f5354202f6170692f76312f6465637279707420485454502f312e310d0a636f6e74656e742d747970653a206170706c69636174696f6e2f6a736f6e0d0a\nct2=0d5f18140f1c5c0f0e48391b1d101748390d00480f041d3c024e1f3a161c0b4b0b010b0d1c04001e0259496e5c5c6b5e534e67570e561d16100f\nRecover the second plaintext (the secret).\n",
+      "flag_sha256": "b9119f94f412f634e3e02be379fadf70f5037e51eb847bf71e155a9859e4b88a",
+      "algo": "aes-gcm",
+      "note": "GCM nonce 复用：服务端对同一 nonce 加密了请求头(已知)与敏感 token(未知)"
+    }
+  }
+}

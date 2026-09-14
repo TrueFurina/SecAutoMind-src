@@ -428,6 +428,48 @@ def run_lfsr():
     return total, hit
 
 
+def run_crc32():
+    """跑 CRC32 伪造基准（judge_crc32.py），返回 (total, hit)。
+
+    真实攻击：CRC32 是 GF(2) 线性校验（非 MAC），已知消息即可追加恰好 4 字节使
+    crc32(m‖X)=任意目标：crc32(m‖X)=crc32(m‖0000)⊕L(X)，解 32×32 GF(2) 方程组
+    L(X)=d 得唯一 X。Python judge_crc32.py 与 Go TestCRC32* 双语言镜像，SHA-256 比对。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_crc32.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_crc32.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "crc32_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("HIT")
+    return total, hit
+
+
+def run_lcg():
+    """跑 LCG 预测基准（judge_lcg.py），返回 (total, hit)。
+
+    真实攻击：三形态——① 参数全知直接倍增推进求 K 步后状态；② 模数已知 +
+    连续输出反解 a,c；③ 模数亦未知用 gcd 恢复 m 再反解。Python judge_lcg.py
+    与 Go TestLCG* 双语言镜像，SHA-256 比对。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_lcg.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0:
+        print("[WARN] judge_lcg.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    try:
+        total = len(json.load(open(os.path.join(HERE, "lcg_benchmark.json"),
+                                   encoding="utf-8"))["problems"])
+    except Exception:
+        total = 0
+    hit = out.count("HIT")
+    return total, hit
+
+
 def run_go():
     """跑 Go 侧权威机验，返回一段状态文本（可选）。"""
     go = os.path.join(REPO, ".workbuddy", "toolchain", "go", "bin", "go.exe")
@@ -438,7 +480,7 @@ def run_go():
     env["GOPROXY"] = "off"
     r = subprocess.run(
         [go, "test", "./internal/ctfplatform/",
-         "-run", "TestRealBenchmark_ShippedPresolve|TestSSRFAttackAgainstRange|TestSSRFAttackViaProductionText|TestSSRFSolverRegistered|TestSQLiAttackAgainstRange|TestSQLiAttackViaProductionText|TestSQLiSolverRegistered|TestSSTIAttackAgainstRange|TestSSTIAttackViaProductionText|TestSSTISolverRegistered|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered|TestECDSANonceReuseAgainstBenchmark|TestECDSANonceReuseSelfConsistent|TestECDSANonceReuseSolverRegistered|TestPaddingOracleSelfConsistent|TestPaddingOracleAgainstBenchmark|TestPaddingOracleSolverRegistered|TestHashLengthExtensionSelfConsistent|TestHashLengthExtensionMD5|TestHashLengthExtensionSHA1|TestHashLengthExtensionSolverParses|TestHashLengthExtensionSolverRegistered|TestGCMNonceReuseBasic|TestGCMNonceReuseSolverParses|TestGCMNonceReuseBlobFormat|TestGCMNonceReusePartialKnown|TestGCMNonceReuseSolverRegistered|TestMT19937UntemperIsInverse|TestMT19937PredictNext|TestMT19937SolverParses|TestMT19937SolverRegistered|TestMT19937NoFalsePositive|TestMT19937InsufficientOutputs|TestMT19937RecoverSha256Consistency|TestLFSRBerlekampMasseyBasic|TestLFSRPredictDegree32|TestLFSRSolverParses|TestLFSRSolverRegistered|TestLFSRNoFalsePositive|TestLFSRShortLeakNoPredict",
+         "-run", "TestRealBenchmark_ShippedPresolve|TestSSRFAttackAgainstRange|TestSSRFAttackViaProductionText|TestSSRFSolverRegistered|TestSQLiAttackAgainstRange|TestSQLiAttackViaProductionText|TestSQLiSolverRegistered|TestSSTIAttackAgainstRange|TestSSTIAttackViaProductionText|TestSSTISolverRegistered|TestExecSolversAgainstBenchmark|TestLiveExploitation|TestWebExploitAgainstRange|TestPresolveAutoExploitsWebTarget|TestAttachmentForensicsBenchmark|TestAttachmentForensicsPerSolver|TestAttachmentBenchmarkNotSolvableByNaiveRegex|TestHintDrivenWebExploit|TestParseWebHintsOffline|TestJWTAttackAgainstRange|TestJWTAttackViaProductionText|TestJWTCandidatesOffline|TestJWTSolverRegistered|TestDeserAttackAgainstRange|TestDeserAttackViaProductionText|TestDeserPayloadsOffline|TestDeserSolverRegistered|TestXXEAttackAgainstRange|TestXXEAttackViaProductionText|TestXXEPayloadsOffline|TestXXESolverRegistered|TestUploadAttackAgainstRange|TestUploadAttackViaProductionText|TestUploadMultipartBuilder|TestUploadSolverRegistered|TestGraphQLAttackAgainstRange|TestGraphQLAttackViaProductionText|TestGraphQLSolverRegistered|TestECDSANonceReuseAgainstBenchmark|TestECDSANonceReuseSelfConsistent|TestECDSANonceReuseSolverRegistered|TestPaddingOracleSelfConsistent|TestPaddingOracleAgainstBenchmark|TestPaddingOracleSolverRegistered|TestHashLengthExtensionSelfConsistent|TestHashLengthExtensionMD5|TestHashLengthExtensionSHA1|TestHashLengthExtensionSolverParses|TestHashLengthExtensionSolverRegistered|TestGCMNonceReuseBasic|TestGCMNonceReuseSolverParses|TestGCMNonceReuseBlobFormat|TestGCMNonceReusePartialKnown|TestGCMNonceReuseSolverRegistered|TestMT19937UntemperIsInverse|TestMT19937PredictNext|TestMT19937SolverParses|TestMT19937SolverRegistered|TestMT19937NoFalsePositive|TestMT19937InsufficientOutputs|TestMT19937RecoverSha256Consistency|TestLFSRBerlekampMasseyBasic|TestLFSRPredictDegree32|TestLFSRSolverParses|TestLFSRSolverRegistered|TestLFSRNoFalsePositive|TestLFSRShortLeakNoPredict|TestLCGAdvanceMatchesNaive|TestLCGRecoverAC|TestLCGRecoverModulus|TestLCGSolverParsesKnownParams|TestLCGSolverParsesRecoverAC|TestLCGSolverParsesRecoverModulus|TestLCGSolverRegistered|TestLCGNoFalsePositive|TestCRC32StdMatchesStdlib|TestCRC32ForgeProducesTarget|TestCRC32ForgeUniqueness|TestCRC32SolverParses|TestCRC32SolverRegistered|TestCRC32NoFalsePositive",
          "-count=1", "-timeout", "900s"],
         cwd=REPO, env=env, capture_output=True, text=True)
     out = r.stdout + r.stderr
@@ -472,9 +514,11 @@ def main():
     gnr_total, gnr_hit = run_gcm_nr()
     mt_total, mt_hit = run_mt19937()
     lf_total, lf_hit = run_lfsr()
+    lc_total, lc_hit = run_lcg()
+    cr_total, cr_hit = run_crc32()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力二十基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力二十二基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -636,6 +680,24 @@ def main():
     print("              最小连接多项式 → 逐位前推预测后续比特（无需寄存器抽头/初态）")
     print()
 
+    print("【21】LCG 线性同余预测 (lcg_benchmark.json, 三形态: 全知/反解/模数未知)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (lc_total, lc_hit, lc_total - lc_hit,
+           (100.0 * lc_hit / lc_total) if lc_total else 0.0))
+    print("    Python judge_lcg.py == Go TestLCG*（双语言镜像）")
+    print("    攻破维度：x'=(a·x+c) mod m。① 参数全知 → 倍增推进；② 模数已知 →")
+    print("              a=(x2-x1)/(x1-x0) mod m 反解；③ 模数未知 → gcd 恢复 m（m | t_{i+1}·t_{i-1}-t_i²）")
+    print()
+
+    print("【22】CRC32 伪造 (crc32_benchmark.json, 线性校验 ≠ MAC)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (cr_total, cr_hit, cr_total - cr_hit,
+           (100.0 * cr_hit / cr_total) if cr_total else 0.0))
+    print("    Python judge_crc32.py == Go TestCRC32*（双语言镜像）")
+    print("    攻破维度：crc32(m‖X) = crc32(m‖0000) ⊕ L(X)，解 32×32 GF(2) 方程组")
+    print("              L(X)=d 得唯一 4 字节后缀 → 校验值被改成任意目标（无需密钥）")
+    print()
+
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
     real_solver = st_hit - len(flag_scan)
@@ -647,23 +709,25 @@ def main():
 
     print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
           "+ JWT %d/%d + 反序列化 %d/%d + XXE %d/%d + 上传RCE %d/%d + GraphQL %d/%d"
-          " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d + ECDSA %d/%d + PaddingOracle %d/%d + BlindOOB %d/%d + HashExt %d/%d + GCMNR %d/%d + MT19937 %d/%d + LFSR %d/%d" %
+          " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d + ECDSA %d/%d + PaddingOracle %d/%d + BlindOOB %d/%d + HashExt %d/%d + GCMNR %d/%d + MT19937 %d/%d + LFSR %d/%d + LCG %d/%d + CRC32 %d/%d" %
           (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total, de_hit, de_total,
            xe_hit, xe_total, up_hit, up_total, gq_hit, gq_total,
            sr_hit, sr_total, sq_hit, sq_total, si_hit, si_total, ec_hit, ec_total,
            po_hit, po_total, bo_hit, bo_total, he_hit, he_total, gnr_hit, gnr_total,
-           mt_hit, mt_total, lf_hit, lf_total))
+           mt_hit, mt_total, lf_hit, lf_total, lc_hit, lc_total, cr_hit, cr_total))
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
     print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL、SSRF、SQLi、SSTI、"
-          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey 十六大利用层是冠军差异点：")
+          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey、LCG 预测、CRC32 伪造 十八大利用层是冠军差异点：")
     print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
     print("    『真跑工具 + 真打靶机 + 真攻 Web + 真解析二进制 + 读题定向渗透 + 真绕过 JWT")
     print("     + 真反序列化 RCE + 真 XXE（含 Blind OOB）+ 真上传 RCE + 真 GraphQL 利用"
           " + 真 SSRF 链（gopher Redis/云凭证/内网服务）+ 真 SQLi 三族提取 + 真 SSTI 三态逃逸")
     print("     + 真 GCM nonce 复用（CTR keystream 复原，无需密钥）")
     print("     + 真 MT19937 状态恢复（泄露 624 输出预测下一个，无需种子）")
-    print("     + 真 LFSR 流预测（Berlekamp–Massey 恢复线性递推）』(双语言机验)。")
+    print("     + 真 LFSR 流预测（Berlekamp–Massey 恢复线性递推）")
+    print("     + 真 LCG 参数恢复与预测（含模数未知的 gcd 复原）")
+    print("     + 真 CRC32 伪造（线性校验破解，追加 4 字节改任意目标，无需密钥）』(双语言机验)。")
     print()
 
     if args.go:
@@ -711,6 +775,10 @@ def main():
                             "coverage_pct": (100.0 * mt_hit / mt_total) if mt_total else 0.0},
         "lfsr_predict": {"total": lf_total, "hit": lf_hit, "miss": lf_total - lf_hit,
                          "coverage_pct": (100.0 * lf_hit / lf_total) if lf_total else 0.0},
+        "lcg_predict": {"total": lc_total, "hit": lc_hit, "miss": lc_total - lc_hit,
+                        "coverage_pct": (100.0 * lc_hit / lc_total) if lc_total else 0.0},
+        "crc32_forge": {"total": cr_total, "hit": cr_hit, "miss": cr_total - cr_hit,
+                        "coverage_pct": (100.0 * cr_hit / cr_total) if cr_total else 0.0},
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }

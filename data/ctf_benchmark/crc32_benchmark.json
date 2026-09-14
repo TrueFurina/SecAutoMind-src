@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "crc32_admin_forge": {
+      "description": "The integrity of a message is protected with a CRC32 checksum. CRC32 is a linear checksum, not a MAC, so a 4-byte suffix can be forged.\nmessage (hex) = 757365723d616c69636526726f6c653d757365722661646d696e3d30\ncrc32 = 7c87d463\ntarget = deadbeef\nAppend exactly 4 bytes to the message so that CRC32(message || suffix) equals the target.\nSubmit the 4 appended bytes as flag{<8 hex>}.\n",
+      "flag_sha256": "d6ac7719e8f675a37ddc7efdc0f563a608aa2bd207acf990bb94bde6e18e27f7"
+    },
+    "crc32_firmware_patch": {
+      "description": "The integrity of a message is protected with a CRC32 checksum. CRC32 is a linear checksum, not a MAC, so a 4-byte suffix can be forged.\nmessage (hex) = 7f454c46020101000000000000000000\ncrc32 = f018584b\ntarget = cafebabe\nAppend exactly 4 bytes to the message so that CRC32(message || suffix) equals the target.\nSubmit the 4 appended bytes as flag{<8 hex>}.\n",
+      "flag_sha256": "cfb24db85c4df9a4fc91d980d6c3810695aba9c762b6215300c663619d0c15c2"
+    },
+    "crc32_request_tamper": {
+      "description": "The integrity of a message is protected with a CRC32 checksum. CRC32 is a linear checksum, not a MAC, so a 4-byte suffix can be forged.\nmessage (hex) = 474554202f61646d696e20485454502f312e310d0a486f73743a20746172676574\ncrc32 = 0b82265a\ntarget = 0badf00d\nAppend exactly 4 bytes to the message so that CRC32(message || suffix) equals the target.\nSubmit the 4 appended bytes as flag{<8 hex>}.\n",
+      "flag_sha256": "f6a1b92feba8820da65c9e4339c047a353f63f502a26e81107edf6f3bf695ff2"
+    }
+  }
+}

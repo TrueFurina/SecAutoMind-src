@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "lcg_known_params": {
+      "description": "A service emits authentication tokens with a Linear Congruential Generator (LCG). Its parameters are known:\nmodulus = 18446744073709551616\nmultiplier = 6364136223846793005\nincrement = 1442695040888963407\nseed = 2026\nPredict the generator state after 1000 steps and submit it as flag{value}.\n",
+      "flag_sha256": "60d400f21eafd7cd1158a8b06aa879f471a15749dfb6851513bebba7fd714adf"
+    },
+    "lcg_recover_ac": {
+      "description": "An LCG (linear congruential generator) is used to produce one-time passwords. The modulus is known: modulus = 2147483647\nIt leaked these consecutive outputs = [1, 48271, 182605794, 1291394886, 1914720637]\nThe multiplier and increment are unknown. Recover them and predict the next output as flag{value}.\n",
+      "flag_sha256": "5854489d03a6e77baba23602aaae0f81682fd2946c488c6c4bfd9176f87a17e6"
+    },
+    "lcg_recover_modulus": {
+      "description": "A vulnerable service uses an LCG (linear congruential generator) whose parameters (modulus, multiplier, increment) are all unknown.\nIt leaked these consecutive outputs = [999, 48222740, 2035092850, 1475013993, 580139829, 742928790, 1086200848, 1187892314]\nRecover the generator and predict the next output as flag{value}.\n",
+      "flag_sha256": "8695b27b3ae4e7d326b4a6cd623684c00a10a21ca01f02cc1dbe455e8b647107"
+    }
+  }
+}

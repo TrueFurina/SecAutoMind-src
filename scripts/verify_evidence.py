@@ -7,8 +7,9 @@
      关键结构性指标不低于安全下限（防止求解器/文件被误删导致口径塌缩）。
   2. 双语言机验证据包健康：data/ctf_benchmark/all_benchmarks_summary.json
      （由 run_all_benchmarks.py 重新生成）内部一致且全绿——
-        ・冠军差异点十一大利用层（jwt/deser/xxe/upload/graphql/ssrf/sqli_deep/
-          ssti_deep/ecdsa_nonce_reuse/padding_oracle/blind_oob）hit==total，无未命中、无注水；
+        ・冠军差异点十八大利用层（jwt/deser/xxe/upload/graphql/ssrf/sqli_deep/
+          ssti_deep/ecdsa_nonce_reuse/padding_oracle/blind_oob/hash_ext/gcm_nonce_reuse/
+          mt19937_recover/lfsr_predict/lcg_predict/crc32_forge）hit==total，无未命中、无注水；
         ・附件集反注水门禁 water_filled==0；
         ・静态/执行/Web/附件 四项 total>0、miss>=0。
 
@@ -27,6 +28,8 @@ MUST_FULL = [
     "jwt", "deser", "xxe", "upload", "graphql", "ssrf",
     "sqli_deep", "ssti_deep", "ecdsa_nonce_reuse",
     "padding_oracle", "blind_oob",
+    "hash_ext", "gcm_nonce_reuse", "mt19937_recover", "lfsr_predict", "lcg_predict",
+    "crc32_forge",
 ]
 
 # 计数口径安全下限（远低于真值，仅拦截灾难性塌缩/脚本损坏）。
@@ -110,7 +113,7 @@ def check_evidence(summary_path):
     if s["attachment"].get("water_filled", 0) != 0:
         raise AssertionError("附件集反注水门禁触发：water_filled=%s（存在注水命中）" % s["attachment"].get("water_filled"))
 
-    # 冠军差异点十一大利用层：必须全命中，零未命中
+    # 冠军差异点十六大利用层：必须全命中，零未命中
     for k in MUST_FULL:
         blk = s.get(k)
         if not isinstance(blk, dict):
@@ -123,7 +126,7 @@ def check_evidence(summary_path):
         if miss != 0 or hit != total:
             raise AssertionError("冠军差异点 %s 未全绿：hit=%s/%s miss=%s（存在未命中=能力回退/注水）" % (k, hit, total, miss))
 
-    print("      四大基础集 + 十一大利用层（含 ECDSA/PaddingOracle/BlindOOB）全绿，反注水门禁通过 OK")
+    print("      四大基础集 + 十八大利用层（含 HLE/GCM-NR/MT19937/LFSR/LCG/CRC32）全绿，反注水门禁通过 OK")
     return s
 
 
