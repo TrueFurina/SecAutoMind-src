@@ -83,6 +83,9 @@ ANCHORS = [
     # 「N 包测试全绿」= 有测试的包数（28），**不等于** go list 总包数（41）。
     # 两者混用正是「26 包」长期漂移却无人能自动校验的根因 —— 以前真值源里根本没有这个数。
     (r"(?<![\d.])(?P<n>\d+)\s*(个)?包(测试|全绿|有测)", "test_packages", "有测试的包数"),
+    # 09-15 新增：代码行数此前**完全没有锚点** —— 122,131 / 125,998 / 126,396 这类数字
+    # 只能靠人肉比对，正是官网"行数差 7 倍却长期无人发现"的根因之一。
+    (r"(?<![\d,.])(?P<n>\d{2,3},\d{3})\s*行", "non_test_lines", "非测试代码行数"),
 ]
 
 # 历史档案豁免：文件**内容里**带 CALIBER-SNAPSHOT 标记即视为历史快照。
@@ -202,7 +205,14 @@ def main():
         except Exception:
             continue
         is_snapshot = SNAPSHOT_MARK in "".join(lines[:40]) or is_historical(rpath)
+        # HTML 材料：先把标签替换为空格再做锚点匹配。
+        # 实测盲区（2026-09-15）：官网 stats 区 `>268</div><div class="lbl">自动化测试文件`
+        # 因数字与单位被标签隔断，命中不了 `(?P<n>\d{3})\s*(个)?测试文件` → 门禁 PASS 却漏检。
+        # 用"替换为空格"而非"删除"，避免把相邻文本粘起来产生新误报。
+        strip_html = rpath.lower().endswith((".html", ".htm"))
         for lineno, line in enumerate(lines, 1):
+            if strip_html:
+                line = re.sub(r"<[^>]*>", " ", line)
             if is_snapshot:
                 exempted += len([1 for pat, _ in BANNED if re.search(pat, line)])
                 continue
@@ -216,7 +226,7 @@ def main():
                 if not m:
                     continue
                 want = truth[key]
-                got = int(m.group("n"))
+                got = int(m.group("n").replace(",", ""))  # 行数锚点带千分位（如 126,396）
                 if got != int(want):
                     anchor_hits.append((rpath, lineno, label, got, int(want), line.strip()[:120]))
 
