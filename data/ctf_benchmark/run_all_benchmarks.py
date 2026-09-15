@@ -735,6 +735,29 @@ def main():
         print(run_go())
         print()
 
+    # ── §2.3 诚信铁律：显式标注题目来源（真题 vs 自产题）────────────────────
+    # 背景：本项目一批「100%」来自 gen_*.py 自产题（自产自解，无外部真值）。
+    # 铁律（继承自西湖论剑）：**无外部 flag 真值不计入 KPI**。自产题的覆盖率只证明
+    # 「工程链路可跑通」，不构成真实赛场竞争力证据；对外引用必须标注来源。
+    # 判定依据：real_benchmark.json 每题带 `source`（如 "picoCTF 2024 - interencdec"）
+    # 与公开 writeup 来源 → 真题；其余基准集为 gen_*.py 生成 / 自建靶场 / 自造工件 → 自产。
+    synth_total = (ex_total + wb_total + at_total + wh_total
+                   + jt_total + de_total + xe_total + up_total + gq_total
+                   + sr_total + sq_total + si_total + ec_total + po_total
+                   + bo_total + he_total + gnr_total + mt_total + lf_total
+                   + lc_total + cr_total)
+    real_total = st_total
+    all_total = real_total + synth_total
+    synth_ratio = round(100.0 * synth_total / all_total, 1) if all_total else 0.0
+
+    print("【来源标注（§2.3 诚信铁律）】")
+    print("    真题 %d 题（static = real_benchmark.json，公开 writeup 来源 + SHA-256）" % real_total)
+    print("    自产题 %d 题（gen_*.py 生成 / 自建靶场 / 自造工件）" % synth_total)
+    print("    → **自产题占比 %.1f%%**（总 %d 题）" % (synth_ratio, all_total))
+    print("    ⚠️ 自产题的高覆盖率只证明「工程链路可跑通」，**不构成真实赛场竞争力证据**；")
+    print("       对外引用任何 100% 必须标注「自产题」或「自建靶场」。")
+    print()
+
     # 落盘汇总
     summary = {
         "static": {"total": st_total, "hit": st_hit, "miss": st_miss, "coverage_pct": st_pct,
@@ -779,6 +802,26 @@ def main():
                         "coverage_pct": (100.0 * lc_hit / lc_total) if lc_total else 0.0},
         "crc32_forge": {"total": cr_total, "hit": cr_hit, "miss": cr_total - cr_hit,
                         "coverage_pct": (100.0 * cr_hit / cr_total) if cr_total else 0.0},
+        "provenance": {
+            "real": {
+                "label": "真题（公开 writeup 来源；每题带 source 与 flag_sha256）",
+                "benchmarks": ["static"],
+                "problems": real_total,
+            },
+            "synthetic": {
+                "label": "自产题（gen_*.py 生成 / 自建靶场 / 自造工件）",
+                "benchmarks": ["execution", "web", "attachment", "web_hints", "jwt", "deser",
+                               "xxe", "upload", "graphql", "ssrf", "sqli_deep", "ssti_deep",
+                               "ecdsa_nonce_reuse", "padding_oracle", "blind_oob", "hash_ext",
+                               "gcm_nonce_reuse", "mt19937_recover", "lfsr_predict",
+                               "lcg_predict", "crc32_forge"],
+                "problems": synth_total,
+            },
+            "total_problems": all_total,
+            "synthetic_ratio_pct": synth_ratio,
+            "rule": ("无外部 flag 真值不计入 KPI（继承西湖论剑铁律）。自产题的高覆盖率只证明"
+                     "工程链路可跑通，不构成真实赛场竞争力证据；对外引用任何 100% 必须标注来源。"),
+        },
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }

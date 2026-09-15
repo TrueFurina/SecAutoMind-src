@@ -126,7 +126,29 @@ def check_evidence(summary_path):
         if miss != 0 or hit != total:
             raise AssertionError("冠军差异点 %s 未全绿：hit=%s/%s miss=%s（存在未命中=能力回退/注水）" % (k, hit, total, miss))
 
+    # §2.3 诚信铁律：来源标注必须存在且自洽（真题 vs 自产题）
+    # 为什么必须门禁化：本项目一批「100%」来自 gen_*.py 自产题，若不显式标注来源，
+    # 对外引用时极易被误读为真实赛场能力（答辩追问"你这 100% 怎么来的"就答不上来）。
+    prov = s.get("provenance")
+    if not isinstance(prov, dict):
+        raise AssertionError(
+            "证据汇总缺 provenance 段（§2.3 诚信铁律：必须标注真题/自产题来源）。\n"
+            "  请重跑 `python data/ctf_benchmark/run_all_benchmarks.py` 重新生成汇总。")
+    real_n = (prov.get("real") or {}).get("problems")
+    synth_n = (prov.get("synthetic") or {}).get("problems")
+    total_n = prov.get("total_problems")
+    ratio = prov.get("synthetic_ratio_pct")
+    if not all(isinstance(x, (int, float)) for x in (real_n, synth_n, total_n, ratio)):
+        raise AssertionError("provenance 字段不完整：real/synthetic/total_problems/synthetic_ratio_pct 均需为数值")
+    if real_n + synth_n != total_n:
+        raise AssertionError("provenance 不自洽：real(%s)+synthetic(%s) != total(%s)" % (real_n, synth_n, total_n))
+    expect_ratio = round(100.0 * synth_n / total_n, 1) if total_n else 0.0
+    if abs(ratio - expect_ratio) > 0.15:
+        raise AssertionError("provenance 占比不自洽：记录 %s%% vs 实算 %.1f%%" % (ratio, expect_ratio))
+
     print("      四大基础集 + 十八大利用层（含 HLE/GCM-NR/MT19937/LFSR/LCG/CRC32）全绿，反注水门禁通过 OK")
+    print("      来源标注（§2.3）：真题 %d 题 / 自产题 %d 题（自产占比 %.1f%%）—— "
+          "自产题仅证明工程链路可跑通，对外引用须标注来源" % (real_n, synth_n, ratio))
     return s
 
 

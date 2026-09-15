@@ -134,5 +134,44 @@
     "miss": 0,
     "coverage_pct": 100.0
   },
+  "provenance": {
+    "real": {
+      "label": "真题（公开 writeup 来源；每题带 source 与 flag_sha256）",
+      "benchmarks": [
+        "static"
+      ],
+      "problems": 55
+    },
+    "synthetic": {
+      "label": "自产题（gen_*.py 生成 / 自建靶场 / 自造工件）",
+      "benchmarks": [
+        "execution",
+        "web",
+        "attachment",
+        "web_hints",
+        "jwt",
+        "deser",
+        "xxe",
+        "upload",
+        "graphql",
+        "ssrf",
+        "sqli_deep",
+        "ssti_deep",
+        "ecdsa_nonce_reuse",
+        "padding_oracle",
+        "blind_oob",
+        "hash_ext",
+        "gcm_nonce_reuse",
+        "mt19937_recover",
+        "lfsr_predict",
+        "lcg_predict",
+        "crc32_forge"
+      ],
+      "problems": 85
+    },
+    "total_problems": 140,
+    "synthetic_ratio_pct": 60.7,
+    "rule": "无外部 flag 真值不计入 KPI（继承西湖论剑铁律）。自产题的高覆盖率只证明工程链路可跑通，不构成真实赛场竞争力证据；对外引用任何 100% 必须标注来源。"
+  },
   "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。"
 }
