@@ -130,6 +130,23 @@ jobs:
         if: github.event_name == 'pull_request'
         run: python scripts/freeze_gate.py --base "${{ github.event.pull_request.base.sha }}"
 
+  # 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分）。
+  # 既有测试是**组件级**的；这一路把「仿真 DASCTF 平台 + 真实 Poller + 真实求解器」串起来跑：
+  # 拉题（含注入 429）→ 并发求解 → 提交（剥离外壳）→ 判分 accepted，并验证
+  # 解不出的题不提交（保护每题约 50 次机会）、每题只提交一次、第二轮去重。
+  # 它同时是冻结期（第七条）"演练"这一项的一键入口，CI 日志里会留一张赛况快照表。
+  finals-rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
+        run: sudo apt-get update && sudo apt-get install -y gcc
+      - name: Finals full-loop rehearsal (simulated platform + poller + solver)
+        run: go test -race -count=1 -v -run 'TestRehearsal' ./internal/ctfplatform/ -timeout 300s
+
   # 密钥门禁：防止真实凭证被提交进仓库。
   # 历史教训（两次）：
   #   ① 2026-09-08：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`

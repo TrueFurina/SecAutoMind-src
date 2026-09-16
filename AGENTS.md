@@ -112,7 +112,9 @@ exe、官网数字、PPT 口径全部要重刷，而时间只剩几天。此前�
 - **效果**：窗口内任何 `internal/` `agents/` `cmd/` 改动一律 BLOCK；材料/证据/文档/配置/scripts 不受限。
 - **用法**：`python scripts/freeze_gate.py`（查暂存区，pre-commit 用）· `--worktree`（查工作树，pre-push 用）·
   `--base <sha>`（查 PR 区间，CI 用）· `--status`（只看窗口状态）· `--json`。
-- **冻结期只做四件事**：构建 + 全测 + 交付包自检 + 演练。
+- **冻结期只做四件事**：构建 + 全测 + 交付包自检 + **演练**。演练用：
+  `go test -count=1 -v -run TestRehearsal ./internal/ctfplatform/`（CI job `finals-rehearsal`，
+  仿真平台 + 真实 Poller 跑"拉题→解题→提交→判分"，含限流注入/并发/去重/无解题不提交）。
 - **逃生阀（仅安全官/主理人）**：`--freeze-override "<≥20 字理由>"` **且** `FREEZE_OVERRIDE_ACK=1`，
   二者缺一不可；触发后自动追加审计到 `docs/freeze-override-log.md`（可追溯谁在何时为何破例）。
 - **配置写错即 fail-closed**：`enabled=true` 但 `final_date` 缺失或非法 → 直接 BLOCK，不静默放行。
