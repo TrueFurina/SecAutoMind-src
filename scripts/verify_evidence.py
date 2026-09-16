@@ -7,7 +7,7 @@
      关键结构性指标不低于安全下限（防止求解器/文件被误删导致口径塌缩）。
   2. 双语言机验证据包健康：data/ctf_benchmark/all_benchmarks_summary.json
      （由 run_all_benchmarks.py 重新生成）内部一致且全绿——
-        ・冠军差异点十八大利用层（jwt/deser/xxe/upload/graphql/ssrf/sqli_deep/
+        ・冠军差异点十七大利用层（jwt/deser/xxe/upload/graphql/ssrf/sqli_deep/
           ssti_deep/ecdsa_nonce_reuse/padding_oracle/blind_oob/hash_ext/gcm_nonce_reuse/
           mt19937_recover/lfsr_predict/lcg_predict/crc32_forge）hit==total，无未命中、无注水；
         ・附件集反注水门禁 water_filled==0；
@@ -146,7 +146,8 @@ def check_evidence(summary_path):
     if abs(ratio - expect_ratio) > 0.15:
         raise AssertionError("provenance 占比不自洽：记录 %s%% vs 实算 %.1f%%" % (ratio, expect_ratio))
 
-    print("      四大基础集 + 十八大利用层（含 HLE/GCM-NR/MT19937/LFSR/LCG/CRC32）全绿，反注水门禁通过 OK")
+    print("      四大基础集 + 冠军差异点 %d 项利用层（含 HLE/GCM-NR/MT19937/LFSR/LCG/CRC32）全绿，反注水门禁通过 OK"
+          % len(MUST_FULL))
     print("      来源标注（§2.3）：真题 %d 题 / 自产题 %d 题（自产占比 %.1f%%）—— "
           "自产题仅证明工程链路可跑通，对外引用须标注来源" % (real_n, synth_n, ratio))
     return s

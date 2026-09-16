@@ -718,7 +718,7 @@ def main():
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
     print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL、SSRF、SQLi、SSTI、"
-          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey、LCG 预测、CRC32 伪造 十八大利用层是冠军差异点：")
+          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey、LCG 预测、CRC32 伪造 十七大利用层是冠军差异点：")
     print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
     print("    『真跑工具 + 真打靶机 + 真攻 Web + 真解析二进制 + 读题定向渗透 + 真绕过 JWT")
     print("     + 真反序列化 RCE + 真 XXE（含 Blind OOB）+ 真上传 RCE + 真 GraphQL 利用"

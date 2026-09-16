@@ -133,6 +133,29 @@ def _find_go():
     return shutil.which("go")
 
 
+def _go_env():
+    """构造 go 子进程环境。
+
+    本机坑（2026-09-16 实锤，比之前记录的三个坑更隐蔽）：
+      从 WorkBuddy / Git-Bash 启动的 shell 里**没有 `%AppData%`**，于是 go 找不到自己的
+      GOENV 配置文件（`%AppData%\\go\\env`，里面就写着 `GOPATH=D:\\DevCache\\gopath`
+      `GOPROXY=https://goproxy.cn,direct` `GOTOOLCHAIN=local`），GOPATH 回落到默认的
+      `C:\\Users\\<u>\\go`（模块缓存是空的）→ 所有 go 命令都报
+      "go: downloading ..." + "module lookup disabled by GOPROXY=off"。
+      症状极易被误判成"模块缓存被删/网络不可用"，实际只需补一个环境变量。
+
+    实测：仅补 `APPDATA` 后 `go list ./...` 由 rc=1 变 **rc=0（42 包）**，
+    `go build ./cmd/server` 也恢复 rc=0。
+    """
+    env = dict(os.environ)
+    if os.name == "nt" and not env.get("APPDATA"):
+        home = env.get("USERPROFILE") or os.path.expanduser("~")
+        cand = os.path.join(home, "AppData", "Roaming")
+        if os.path.isdir(cand):
+            env["APPDATA"] = cand
+    return env
+
+
 def go_packages_count():
     """统计 go list ./... 中可构建的包数（排除 ? 前缀的非构建项，输出容错解码）。
 
@@ -150,7 +173,7 @@ def go_packages_count():
               "依赖它的口径检查会失败而非静默通过）", file=sys.stderr)
         return None
     try:
-        r = subprocess.run([go, "list", "./..."], cwd=ROOT, shell=False,
+        r = subprocess.run([go, "list", "./..."], cwd=ROOT, shell=False, env=_go_env(),
                            capture_output=True, encoding="utf-8", errors="ignore",
                            timeout=240)
         if r.returncode != 0:

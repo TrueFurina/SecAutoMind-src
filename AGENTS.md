@@ -82,6 +82,7 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 | 远程跟踪引用被静默吞 | `.git/refs/remotes/**` 写入（**含 `git update-ref`**）在本环境 rc=0 但 ref 不变。判 ahead/behind 不可信本地引用，以 push 输出或 `git ls-remote` 为准。绕行：备份后整文件覆盖 `.git/packed-refs` |
 | CGO 测试报 cgo.exe exit 2 | 先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"` |
 | Go 工具链 | `.workbuddy/toolchain/go/bin/go.exe`；`GOPROXY=https://goproxy.cn,direct` |
+| 🔴 **本 shell 缺 `%AppData%` → 所有 go 命令失效**（2026-09-16 实锤） | 症状：`go build/list/test` 报 `go: downloading ...` 或 `module lookup disabled by GOPROXY=off`，**极易误判成"模块缓存被删/网络断了"**。真因：go 找不到自己的 GOENV 配置文件 `%AppData%\go\env`（内含 `GOPATH=D:\DevCache\gopath`、`GOPROXY=goproxy.cn`、`GOTOOLCHAIN=local`）→ GOPATH 回落到空的默认缓存。**正解：先 `export APPDATA="$USERPROFILE/AppData/Roaming"`**（实测 `go list ./...` rc=1→**0**，42 包；`go build ./cmd/server` 恢复 rc=0）。`scripts/count_stats.py` 已内置该回退（`_go_env()`），故 `go_packages` 不再退化为 null。 |
 | Python venv | `C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe` |
 | C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时 `export TMP=TEMP=TMPDIR=D:/tmp_gotest` 再跑测试 |
 | `官网/` 被 `.gitignore:81` 排除 | 官网**从未进版本库**，改它只在磁盘/交付包生效，不随 git 分发 |
