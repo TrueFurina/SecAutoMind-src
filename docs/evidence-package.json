@@ -1,0 +1,216 @@
+{
+  "schema": "secautomind-championship-evidence/1",
+  "generated_at": "2026-09-16T14:32:31+08:00",
+  "caliber": {
+    "head": "984aa67",
+    "tools_yaml": 91,
+    "builtin_tools": 52,
+    "runtime_tools": 143,
+    "agents_md": 18,
+    "skills": 23,
+    "roles_yaml": 13,
+    "internal_dirs": 33,
+    "go_packages": 42,
+    "test_packages": 29,
+    "go_files": 715,
+    "test_files": 270,
+    "non_test_lines": 126396,
+    "test_lines": 36342,
+    "total_lines": 162738,
+    "ctf_solvers": 176,
+    "im_adapters": 7,
+    "exe": {
+      "present": true,
+      "md5": "957ddffabad44e97459714e6e28c2d94",
+      "size_mib": 85.3,
+      "vcs_revision": "0f9ab1830b96e5006a7e3736d52c8587a11f7554",
+      "vcs_time": "2026-09-15T04:26:33Z",
+      "mod_version": "vcs 0f9ab1830b96 @ 2026-09-15T04:26:33Z"
+    }
+  },
+  "benchmark": {
+    "base": {
+      "static": {
+        "total": 55,
+        "hit": 19,
+        "miss": 36,
+        "coverage_pct": 34.5,
+        "flag_scan_only": 4,
+        "real_solver_hit": 15
+      },
+      "execution": {
+        "total": 17,
+        "hit": 17,
+        "miss": 0,
+        "coverage_pct": 100.0
+      },
+      "web": {
+        "total": 10,
+        "hit": 10,
+        "miss": 0,
+        "coverage_pct": 100.0
+      },
+      "attachment": {
+        "total": 10,
+        "hit": 10,
+        "miss": 0,
+        "coverage_pct": 100.0,
+        "water_filled": 0
+      }
+    },
+    "layers": {
+      "jwt": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "deser": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "xxe": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "upload": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "graphql": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "ssrf": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "sqli_deep": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "ssti_deep": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "ecdsa_nonce_reuse": {
+        "total": 1,
+        "hit": 1,
+        "miss": 0
+      },
+      "padding_oracle": {
+        "total": 1,
+        "hit": 1,
+        "miss": 0
+      },
+      "blind_oob": {
+        "total": 2,
+        "hit": 2,
+        "miss": 0
+      },
+      "hash_ext": {
+        "total": 2,
+        "hit": 2,
+        "miss": 0
+      },
+      "gcm_nonce_reuse": {
+        "total": 2,
+        "hit": 2,
+        "miss": 0
+      },
+      "mt19937_recover": {
+        "total": 2,
+        "hit": 2,
+        "miss": 0
+      },
+      "lfsr_predict": {
+        "total": 2,
+        "hit": 2,
+        "miss": 0
+      },
+      "lcg_predict": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      },
+      "crc32_forge": {
+        "total": 3,
+        "hit": 3,
+        "miss": 0
+      }
+    },
+    "web_hints": {
+      "total": 6,
+      "group_a_no_hint": 3,
+      "group_b_with_hint": 6,
+      "delta": 3
+    },
+    "provenance": {
+      "real_problems": 55,
+      "synthetic_problems": 85,
+      "total_problems": 140,
+      "synthetic_ratio_pct": 60.7
+    },
+    "summary_sha256": "83dc8578140030146311d24672f88d356526e7df153836960c07abdc4fb02b81"
+  },
+  "golden": {
+    "freeze_check_rc": 0,
+    "files_sha256": {
+      "internal/ctfplatform/testdata/protocol_golden.json": "556c6e9efe87dc4aaa783dd243f9f476ab0132ee1d176b5cef9f761c7259da13",
+      "internal/ctfplatform/testdata/protocol_fixtures.json": "1277f93030746ebf3b921b0c553dd408c4552f079a483484214f22462e22bd71",
+      "internal/ctfplatform/testdata/request_golden.json": "1d4527f11cfa66e6db750369c26e97eba52fc18782cf9aacfb4b0b82a717b20d"
+    }
+  },
+  "gates": {
+    "secret_guard_rc": 0,
+    "secret_guard_verdict": "PASS",
+    "secret_guard_fingerprint_mode": "fingerprint",
+    "secret_guard_selftest_rc": 0,
+    "secret_guard_mutation_rc": 0,
+    "verify_evidence_rc": 0
+  },
+  "artifacts": {
+    "exe_root": {
+      "path": "secautomind-ai.exe",
+      "present": true,
+      "size_bytes": 89456640,
+      "md5": "957ddffabad44e97459714e6e28c2d94",
+      "sha256": "e89be09f48315defc1c2f1c188e1877f31e1d88d46cb1bb21b0254f0dd1bd506"
+    },
+    "exe_installer": {
+      "path": "installer/secautomind-ai.exe",
+      "present": true,
+      "size_bytes": 89456640,
+      "md5": "957ddffabad44e97459714e6e28c2d94",
+      "sha256": "e89be09f48315defc1c2f1c188e1877f31e1d88d46cb1bb21b0254f0dd1bd506"
+    },
+    "setup": {
+      "path": "installer/SecAutoMind-Setup-1.7.25-x64.exe",
+      "present": true,
+      "size_bytes": 20295078,
+      "md5": "ab2bddd018c43b9fd9020662bb080207",
+      "sha256": "e249fec718c6d315696f9aebbfda15c52142844aa2936ce634872bf1f31c38bb"
+    },
+    "delivery_package": {
+      "path": "dist/SecAutoMind-v1.7.25-share.tar.gz",
+      "present": true,
+      "size_bytes": 324042617,
+      "md5": "ab111ed9b1037ddeca07afa5105eb68c",
+      "sha256": "27aacfd6fcd17ff3da6fa865fb7308e0478c6c2335e63be572f2659277568d83"
+    },
+    "exe_build": {
+      "vcs_revision": "0f9ab1830b96e5006a7e3736d52c8587a11f7554",
+      "vcs_modified": "false"
+    }
+  },
+  "build": {
+    "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
+  },
+  "notes": []
+}
