@@ -108,6 +108,28 @@ jobs:
       - name: Evidence package gate mutation check (prove the gate can fail)
         run: python scripts/evidence_package_mutation_check.py
 
+  # 决赛冻结纪律闸门（规划总纲 §4.3）：决赛前 14 天起拒绝"架构改动"的 PR。
+  # 目的：09-12 定下的停工边界③"距决赛 < 14 天 → 不动架构"此前只写在文档里，
+  # 本 job 把它变成可机验的闸门（改 internal/ agents/ cmd/ 一律 BLOCK）。
+  # 策略由 config.share.yaml 的 freeze 段驱动：未武装（enabled=false）时 SKIP，不阻塞日常开发；
+  # 决赛日期确定后置 enabled=true + final_date 即自动生效。
+  freeze-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 需要 base commit 才能做 base...HEAD 的改动比对
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Freeze gate self-test (prove the gate can actually block)
+        run: python scripts/freeze_gate_test.py
+      - name: Freeze gate status (armed? window?)
+        run: python scripts/freeze_gate.py --status
+      - name: Freeze gate (reject architecture changes inside freeze window)
+        if: github.event_name == 'pull_request'
+        run: python scripts/freeze_gate.py --base "${{ github.event.pull_request.base.sha }}"
+
   # 密钥门禁：防止真实凭证被提交进仓库。
   # 历史教训（两次）：
   #   ① 2026-09-08：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`

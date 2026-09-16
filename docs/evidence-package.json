@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-09-16T14:32:31+08:00",
+  "generated_at": "2026-09-16T15:25:38+08:00",
   "caliber": {
-    "head": "984aa67",
+    "head": "0b15e5b",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -173,7 +173,8 @@
     "secret_guard_fingerprint_mode": "fingerprint",
     "secret_guard_selftest_rc": 0,
     "secret_guard_mutation_rc": 0,
-    "verify_evidence_rc": 0
+    "verify_evidence_rc": 0,
+    "freeze_gate_selftest_rc": 0
   },
   "artifacts": {
     "exe_root": {

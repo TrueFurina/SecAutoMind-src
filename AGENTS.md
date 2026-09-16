@@ -69,7 +69,12 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 - 门禁自身必须有回归测试。**失效的门禁比没有门禁更危险**——它会持续给出假的安全感。
   实证：旧打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`（第 4 位是连字符），
   一把真 key 从洞里漏过而门禁报 CLEAN。
-- 现有门禁：`ci.yml` 三个 job（test / capability-gate / evidence-gate）+ `scripts/secret_guard.py` + `scripts/verify_evidence.py`。
+- 现有门禁（`ci.yml` **七个** job）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
+  `evidence-gate`（基准双语言机验 + `verify_evidence`）· `secret-gate`（密钥三件套：门禁本体 + 自测 + 变异验证）·
+  `caliber-gate`（材料数字 vs `count_stats` 真值）· `evidence-package-gate`（冠军证据包一致性 + 变异验证）·
+  `freeze-gate`（决赛冻结纪律，见第七条）。
+- **门禁的通用纪律**：① 门禁自身必须有回归测试；② 关键门禁必须有**变异验证**（注入错误必须变红，
+  否则"测试有效"无从证明）；③ 取不到真值时必须 **fail-closed** 或显式降级并留痕，不许静默放过。
 
 ---
 
@@ -94,6 +99,24 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 - **打包前必跑** `python scripts/secret_guard.py`（exit 1 = 禁止打包）。它会扫**磁盘真实文件**，包括被 gitignore 却会进交付包的 `config.yaml`。
 - 落盘必须内置打码；日志写 key 只用占位符。
 - 用户原创项目**一律不要 LICENSE 文件**。
+
+---
+
+## 第七条 · 决赛冻结纪律（<14 天不动架构）
+
+决赛前最大的风险不是"能力不够"，而是**临阵改架构**——动一处内部接口，全库测试、交付包、
+exe、官网数字、PPT 口径全部要重刷，而时间只剩几天。此前这条只写在文档里，现在有闸门。
+
+- **武装**：决赛日期确定后，把 `config.share.yaml` 的 `freeze.enabled` 置 `true` 并填 `final_date`（YYYY-MM-DD）。
+  窗口 = `final_date - freeze_days`（默认 14）~ `final_date`；窗口结束后自动解除。
+- **效果**：窗口内任何 `internal/` `agents/` `cmd/` 改动一律 BLOCK；材料/证据/文档/配置/scripts 不受限。
+- **用法**：`python scripts/freeze_gate.py`（查暂存区，pre-commit 用）· `--worktree`（查工作树，pre-push 用）·
+  `--base <sha>`（查 PR 区间，CI 用）· `--status`（只看窗口状态）· `--json`。
+- **冻结期只做四件事**：构建 + 全测 + 交付包自检 + 演练。
+- **逃生阀（仅安全官/主理人）**：`--freeze-override "<≥20 字理由>"` **且** `FREEZE_OVERRIDE_ACK=1`，
+  二者缺一不可；触发后自动追加审计到 `docs/freeze-override-log.md`（可追溯谁在何时为何破例）。
+- **配置写错即 fail-closed**：`enabled=true` 但 `final_date` 缺失或非法 → 直接 BLOCK，不静默放行。
+- 自测：`python scripts/freeze_gate_test.py`（16 项用例，含"把 protected_paths 置空后同文件必须放行"的因果验证）。
 
 ---
 

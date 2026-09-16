@@ -217,7 +217,9 @@ def collect_gates(notes):
 
     for name, script in (("secret_guard_selftest", "secret_guard_test.py"),
                          ("secret_guard_mutation", "secret_guard_mutation_check.py"),
-                         ("verify_evidence", "verify_evidence.py")):
+                         ("verify_evidence", "verify_evidence.py"),
+                         # 决赛冻结纪律工具的可用性（16 项用例）；证据包记录"纪律工具本身没坏"
+                         ("freeze_gate_selftest", "freeze_gate_test.py")):
         rc, _, err = _run(_py(script), timeout=1800)
         gates[name + "_rc"] = rc
         if rc != 0:

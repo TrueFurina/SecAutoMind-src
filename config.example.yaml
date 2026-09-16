@@ -11,6 +11,17 @@
 
 # 前端显示的版本号（可选，不填则显示默认版本）
 version: "v1.7.25"
+
+# ── 决赛冻结纪律（由 scripts/freeze_gate.py 读取；Go 侧不解析此段，不影响运行时）──
+# 宗旨：决赛前 freeze_days 天起，禁止改动 protected_paths 下的"架构"代码，只允许改材料/证据/配置/文档。
+# 武装方式：把 enabled 置 true 并填 final_date（若 enabled=true 却没填可解析的 final_date，闸门 fail-closed）。
+# 逃生阀：--freeze-override "<≥20 字理由>" 且环境变量 FREEZE_OVERRIDE_ACK=1（会写入 docs/freeze-override-log.md 审计）。
+freeze:
+  enabled: false
+  final_date: ""            # 决赛日期 YYYY-MM-DD（例 2026-11-15）；窗口 = final_date - freeze_days ~ final_date
+  freeze_days: 14
+  protected_paths: [internal/, agents/, cmd/]   # 冻结窗口内禁止改动的路径前缀
+  override_ack_env: FREEZE_OVERRIDE_ACK
 # 服务器配置
 server:
   host: 127.0.0.1 # 监听地址，默认仅本机访问；需要局域网/公网访问时再显式修改并配置网络层访问控制（见部署文档）
