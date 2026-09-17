@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,11 @@ type PollerConfig struct {
 	SubmitAfterSolve bool          `json:"submit_after_solve"` // 解出后自动提交
 	MaxRetrySubmit   int           `json:"max_retry_submit"`   // 提交失败重试次数，默认 2
 	MaxConcurrency   int           `json:"max_concurrency"`    // 跨题并发上限，默认 2
+	// AutoBuildEnv 对 HasInstance 的题自动「起靶机 → 取访问地址」，并把地址并入题目描述交给求解器。
+	// 🔴 默认 false：CreateInstance/GetAccess 此前从未被生产代码调用过（09-17 实锤的生产缺口），
+	//    开启前先跑演练台验证（internal/ctfplatform/rehearsal_test.go）。决赛由
+	//    环境变量 CTF_AUTO_BUILD_ENV=true 开启（见决赛 runbook）。
+	AutoBuildEnv bool `json:"auto_build_env"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -238,6 +244,14 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 	solveCtx, cancel := context.WithTimeout(ctx, p.config.SolveTimeout)
 	defer cancel()
 
+	// 起靶机（决赛关键链，默认关闭；见 PollerConfig.AutoBuildEnv）。
+	// 官方平台把靶机地址放在 challenge_detail.endpoints[].exposeIps[0]，
+	// 而 CreateInstance/GetAccess 此前从未被生产代码调用（09-17 实锤的生产缺口）——
+	// 需要靶机的题会因"没有可打的地址"整题 0 分。
+	if p.config.AutoBuildEnv && ch.HasInstance {
+		p.buildEnvAndInject(ctx, ch, rec)
+	}
+
 	// 求解
 	flags, err := p.solver(solveCtx, ch)
 	if err != nil {
@@ -289,6 +303,49 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 
 	rec.FinishedAt = time.Now()
 	return rec
+}
+
+// buildEnvAndInject 为需要靶机的题启动环境，并把访问地址注入求解上下文。
+//
+// 注入方式有二（求解器两条路都能吃到）：
+//  1. ch.Extra["target_url"]  —— 结构化读取（新求解器用这个）；
+//  2. 追加到 ch.Description   —— 既有求解器/presolve 的 ExploitURLsInText 会扫文本里的 URL，
+//     这样不改任何既有求解器就能打上靶。
+//
+// 失败不致命：记入 rec.Detail 后继续求解（"没有靶机也试一把"好过整题卡死）。
+// ch 是每题一份的副本（RunOnce 里 go func(c Challenge) 传值），这里改它不影响共享状态。
+func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *PollRecord) {
+	if inst, err := p.platform.CreateInstance(ctx, ch.ID); err != nil {
+		// 平台可能返回"环境已存在"之类的业务错误 —— 不视为致命，继续取地址。
+		p.logger.Warn("起靶机失败（继续尝试取地址）",
+			zap.String("题目", ch.Title), zap.String("challengeID", ch.ID), zap.Error(err))
+		rec.Detail += "起靶机失败: " + err.Error() + "; "
+	} else {
+		p.logger.Info("靶机已启动", zap.String("题目", ch.Title),
+			zap.String("instance", inst.InstanceID), zap.String("status", inst.Status))
+		rec.Detail += "靶机实例 " + inst.InstanceID + "; "
+	}
+
+	// GetAccess 传的是 exerciseId（题号）—— 真源踩坑记录：靶机地址在
+	// challenge_detail.endpoints[].exposeIps[0]，不在 build_env 返回里。
+	acc, err := p.platform.GetAccess(ctx, ch.ID)
+	if err != nil {
+		p.logger.Warn("获取靶机地址失败", zap.String("题目", ch.Title), zap.Error(err))
+		rec.Detail += "取靶机地址失败: " + err.Error() + "; "
+		return
+	}
+	if strings.TrimSpace(acc.URL) == "" {
+		rec.Detail += "靶机地址为空; "
+		return
+	}
+	if ch.Extra == nil {
+		ch.Extra = map[string]interface{}{}
+	}
+	ch.Extra["target_url"] = acc.URL
+	if !strings.Contains(ch.Description, acc.URL) {
+		ch.Description += "\n靶机地址: " + acc.URL
+	}
+	rec.Detail += "靶机地址 " + acc.URL + "; "
 }
 
 // flagRegex 通用 flag 格式匹配。
