@@ -424,6 +424,10 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		pc := ctfplatform.DefaultPollerConfig()
 		pc.PollInterval = pollInterval
 		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
+		// 🔴 决赛关键链（09-17 补的生产缺口）：对 HasInstance 的题自动「起靶机 → 取地址 →
+		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题
+		//    会因"没有可打的地址"整题 0 分。默认关；决赛按 runbook 设 CTF_AUTO_BUILD_ENV=true。
+		pc.AutoBuildEnv = strings.EqualFold(os.Getenv("CTF_AUTO_BUILD_ENV"), "true")
 		// 求解器：确定性预解层（0 token）。仅返回 flag 形态候选，避免误提交。
 		solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 			res := ctfPresolve.Presolve(ctx, ch, nil)
