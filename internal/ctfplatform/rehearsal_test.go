@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -503,6 +504,141 @@ func TestRehearsalInstanceChain(t *testing.T) {
 	}
 	t.Logf("起靶机整链演练：build-env×1 / detail×%d / 3001=%v 3002=%v；对照组 3001=%v",
 		sim.detailCalls, sim.acceptedByID["3001"], sim.acceptedByID["3002"], sim2.acceptedByID["3001"])
+}
+
+// TestRehearsalAttachmentChain 附件链演练（09-18 补的生产缺口）。
+//
+// 背景：DownloadAttachment 是**存根**且生产代码零调用、app 层 Presolve 恒传 nil attachments
+// → 附件题（取证/二进制/pcap，执行层 10/10 的那批求解器）在真实流程里**整个休眠**。
+// 本演练用 PlatformAPI 测试替身（真实客户端的附件端点未确认）+ **真实 Presolver** 验证：
+// 附件下载 → 落 chat_uploads 白名单 → [用户上传的文件] 标记块并入描述 →
+// loadChatAttachmentFiles 读入 → 求解 → 提交 accepted。并含对照组。
+func TestRehearsalAttachmentChain(t *testing.T) {
+	// 附件内容放在 t.TempDir()（**不在** chat_uploads 白名单内），
+	// 以便同时验证 poller 的"外部文件复制进白名单"兜底逻辑。
+	attachment := filepath.Join(t.TempDir(), "flag_evidence.txt")
+	if err := os.WriteFile(attachment,
+		[]byte("=== 取证附件 ===\n敏感字符串: flag{attachment_chain_ok}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &fakeAttachPlatform{
+		attachmentPath: attachment,
+		expectInner:    "attachment_chain_ok",
+		ch: &Challenge{
+			ID: "3001", Title: "MISC-ATTACH-01", Category: "misc",
+			HasAttachment: true, Description: "分析附件文件得到 flag",
+		},
+	}
+
+	pc := DefaultPollerConfig()
+	pc.SubmitAfterSolve = true
+	pc.AutoFetchAttachment = true
+	poller := NewPoller(fake, solverForAttachmentDrill(), pc, zap.NewNop())
+
+	records, err := poller.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("附件链演练失败: %v", err)
+	}
+	if len(records) != 1 || !records[0].Accepted {
+		t.Fatalf("附件题未被解决（附件链断裂）records=%+v", records)
+	}
+	if records[0].Flag != "flag{attachment_chain_ok}" {
+		t.Errorf("flag 应来自附件内容，实际 %q", records[0].Flag)
+	}
+	if fake.downloadCalls != 1 {
+		t.Errorf("DownloadAttachment 应恰好调用 1 次，实际 %d", fake.downloadCalls)
+	}
+	// 注：不校验 fake.ch.Description —— Poller 求解用的是每题的**副本**（RunOnce 传值），
+	// 替身里的原描述本来就不会变；标记块是否生效由"flag 来自附件内容"这条断言背书。
+	// 附件应已复制进白名单目录（源文件在 t.TempDir()，白名单外）
+	cwd, _ := os.Getwd()
+	copied := filepath.Join(cwd, "chat_uploads", "ctf", "3001", "flag_evidence.txt")
+	if _, err := os.Stat(copied); err != nil {
+		t.Errorf("附件应已复制进 chat_uploads 白名单：%v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(cwd, "chat_uploads", "ctf")) })
+
+	// ── 对照组：AutoFetchAttachment=false → 不下载、不解出、不提交 ──
+	fake2 := &fakeAttachPlatform{
+		attachmentPath: attachment,
+		expectInner:    "attachment_chain_ok",
+		ch: &Challenge{
+			ID: "3001", Title: "MISC-ATTACH-01", Category: "misc",
+			HasAttachment: true, Description: "分析附件文件得到 flag",
+		},
+	}
+	pc2 := DefaultPollerConfig()
+	pc2.SubmitAfterSolve = true // AutoFetchAttachment 保持 false
+	poller2 := NewPoller(fake2, solverForAttachmentDrill(), pc2, zap.NewNop())
+	if _, err := poller2.RunOnce(context.Background()); err != nil {
+		t.Fatalf("对照组运行失败: %v", err)
+	}
+	if fake2.downloadCalls != 0 {
+		t.Errorf("对照组不应有任何附件下载，实际 %d", fake2.downloadCalls)
+	}
+	if fake2.submitCalls != 0 {
+		t.Errorf("对照组不应有提交（描述里没有 flag，附件没下载），实际 %d", fake2.submitCalls)
+	}
+	t.Logf("附件链演练：download×1 / accepted=%v；对照组 download=%d submit=%d",
+		fake.accepted, fake2.downloadCalls, fake2.submitCalls)
+}
+
+// solverForAttachmentDrill 返回**真实 presolve 形态**的求解器：
+// 与 app.go 生产闭包同构（Presolve(ctx, ch, nil)），附件内容靠
+// loadChatAttachmentFiles 从描述标记块读入 —— 证明零求解器改动的注入方式真的生效。
+func solverForAttachmentDrill() SolverFunc {
+	pres := NewPresolver(zap.NewNop())
+	return func(ctx context.Context, ch *Challenge) ([]string, error) {
+		res := pres.Presolve(ctx, ch, nil)
+		if !res.Solved {
+			return nil, nil
+		}
+		return FilterFlagCandidates(res.Flags), nil
+	}
+}
+
+// fakeAttachPlatform 附件链演练用的 PlatformAPI 测试替身。
+// 只覆盖 Poller 在该配置下会触碰的三个方法（List/Download/Submit），
+// 其余方法不会被执行（AutoBuildEnv=false），嵌入接口即可。
+type fakeAttachPlatform struct {
+	PlatformAPI
+
+	mu             sync.Mutex
+	ch             *Challenge
+	attachmentPath string
+	expectInner    string
+
+	downloadCalls int
+	submitCalls   int
+	submitGot     string
+	accepted      bool
+}
+
+func (f *fakeAttachPlatform) ListChallenges(ctx context.Context) ([]Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return []Challenge{*f.ch}, nil
+}
+
+func (f *fakeAttachPlatform) DownloadAttachment(ctx context.Context, challengeID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.downloadCalls++
+	return []string{f.attachmentPath}, nil
+}
+
+func (f *fakeAttachPlatform) SubmitFlag(ctx context.Context, challengeID string, flag string) (*SubmitResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.submitCalls++
+	f.submitGot = flag
+	// 真实客户端在 SubmitFlag 内剥壳（契约：只交 {} 内内容），替身必须同口径
+	ok := StripFlagWrapper(flag) == f.expectInner
+	if ok {
+		f.accepted = true
+	}
+	return &SubmitResult{Correct: ok, Detail: "rehearsal"}, nil
 }
 
 // rehearsalEnvInt 读环境变量整数（带默认值）。

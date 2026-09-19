@@ -803,7 +803,16 @@ func extractAccess(detail json.RawMessage) *Access {
 	return nil
 }
 
-// DownloadAttachment 下载题目附件。
+// DownloadAttachment 下载题目附件，返回本地路径列表。
+//
+// 🔴 **当前是存根**（2026-09-18）：官方平台的附件下载端点尚未确认（本机无凭证、无法联调），
+//    故返回 nil,nil。**实现本存根时必须遵守两条契约**，否则整条附件链路会静默断裂：
+//      ① 文件必须落在 `<cwd>/chat_uploads/` 白名单目录之下 —— Presolve 的
+//         loadChatAttachmentFiles 只读该目录（防任意文件读）；
+//      ② 返回值为本地绝对路径列表（poller 的 AutoFetchAttachment 会把不在白名单内的
+//         复制进 chat_uploads/ctf/<题号>/ 兜底，但最好一步到位）。
+//    链路下游（标记块并入描述 → 执行层求解器吃到内容）已由
+//    TestRehearsalAttachmentChain 演练验证，端点一实现、CTF_AUTO_FETCH_ATTACHMENT=true 即通。
 func (p *DasCTFPlatform) DownloadAttachment(ctx context.Context, challengeID string) ([]string, error) {
 	// 附件通常在题目详情中包含下载链接
 	p.Logger.Debug("附件下载（待平台 API 确认具体端点）", zap.String("challenge_id", challengeID))

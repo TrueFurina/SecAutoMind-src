@@ -428,6 +428,9 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题
 		//    会因"没有可打的地址"整题 0 分。默认关；决赛按 runbook 设 CTF_AUTO_BUILD_ENV=true。
 		pc.AutoBuildEnv = strings.EqualFold(os.Getenv("CTF_AUTO_BUILD_ENV"), "true")
+		// 附件链（09-18 补）：对 HasAttachment 的题自动下载附件并并入描述，激活执行层求解器。
+		// 默认关：DownloadAttachment 仍是存根（官方附件端点待确认），链路已由演练验证。
+		pc.AutoFetchAttachment = strings.EqualFold(os.Getenv("CTF_AUTO_FETCH_ATTACHMENT"), "true")
 		// 求解器：确定性预解层（0 token）。仅返回 flag 形态候选，避免误提交。
 		solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 			res := ctfPresolve.Presolve(ctx, ch, nil)
