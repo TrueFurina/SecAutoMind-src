@@ -3,6 +3,8 @@ package ctfplatform
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -35,6 +37,12 @@ type PollerConfig struct {
 	//    开启前先跑演练台验证（internal/ctfplatform/rehearsal_test.go）。决赛由
 	//    环境变量 CTF_AUTO_BUILD_ENV=true 开启（见决赛 runbook）。
 	AutoBuildEnv bool `json:"auto_build_env"`
+	// AutoFetchAttachment 对 HasAttachment 的题自动「下载附件 → 落到 chat_uploads 白名单 →
+	// 以 [用户上传的文件] 标记块并入描述」，让既有执行层求解器（exec_strings / exec_pcap_http …）
+	// 直接吃到附件内容 —— Presolve 的 loadChatAttachmentFiles 会自动识别该标记块。
+	// 🔴 默认 false：DownloadAttachment 目前是存根（官方附件端点待确认）；链路已由
+	//    演练 TestRehearsalAttachmentChain 验证，端点一实现、开关一开即通。
+	AutoFetchAttachment bool `json:"auto_fetch_attachment"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -252,6 +260,13 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 		p.buildEnvAndInject(ctx, ch, rec)
 	}
 
+	// 附件下载（默认关闭；见 PollerConfig.AutoFetchAttachment）。
+	// 此前 DownloadAttachment 是存根且无人调用、app 层恒传 nil attachments ——
+	// 附件题（取证/二进制/pcap）的执行层求解器在真实流程里整个休眠。
+	if p.config.AutoFetchAttachment && ch.HasAttachment {
+		p.fetchAttachments(ctx, ch, rec)
+	}
+
 	// 求解
 	flags, err := p.solver(solveCtx, ch)
 	if err != nil {
@@ -346,6 +361,109 @@ func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *Poll
 		ch.Description += "\n靶机地址: " + acc.URL
 	}
 	rec.Detail += "靶机地址 " + acc.URL + "; "
+}
+
+// fetchAttachments 下载题目附件，并以「[用户上传的文件]」标记块并入题目描述。
+//
+// 为什么用这个格式：Presolve 入口的 loadChatAttachmentFiles 已实现
+// 「识别标记块 → 校验 chat_uploads 白名单 → 读入内容 → 灌给执行层求解器」的完整链路
+//（见 presolve_attachment.go），这里只是把平台附件接进同一入口，零求解器改动。
+//
+// 失败/为空都不致命：附件端点尚未由官方确认（DownloadAttachment 存根），
+// 如实记入 rec.Detail 后继续求解。
+func (p *Poller) fetchAttachments(ctx context.Context, ch *Challenge, rec *PollRecord) {
+	paths, err := p.platform.DownloadAttachment(ctx, ch.ID)
+	if err != nil {
+		p.logger.Warn("附件下载失败", zap.String("题目", ch.Title), zap.Error(err))
+		rec.Detail += "附件下载失败: " + err.Error() + "; "
+		return
+	}
+	if len(paths) == 0 {
+		// 存根返回 nil,nil → 如实记录，不算失败
+		rec.Detail += "平台未返回附件（DownloadAttachment 存根，官方端点待确认）; "
+		return
+	}
+
+	final, err := ensureUnderChatUploads(ch.ID, paths)
+	if err != nil {
+		p.logger.Warn("附件落位白名单目录失败", zap.String("题目", ch.Title), zap.Error(err))
+		rec.Detail += "附件落位失败: " + err.Error() + "; "
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString("\n[用户上传的文件]\n")
+	for _, f := range final {
+		b.WriteString("- " + filepath.Base(f) + ": " + f + "\n")
+	}
+	ch.Description += b.String()
+	rec.Detail += fmt.Sprintf("附件 %d 个已就位; ", len(final))
+	p.logger.Info("附件已就位", zap.String("题目", ch.Title), zap.Int("count", len(final)))
+}
+
+// ensureUnderChatUploads 把附件路径归位到 chat_uploads 白名单之下
+//（presolve 的 loadChatAttachmentFiles 只读该目录内的文件）。
+// 已在白名单内的直接复用；在外的复制一份进去（平台实现方存哪不管，链路不断）。
+func ensureUnderChatUploads(challengeID string, paths []string) ([]string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	uploadRoot, err := filepath.Abs(filepath.Join(cwd, "chat_uploads"))
+	if err != nil {
+		return nil, err
+	}
+	dest := filepath.Join(uploadRoot, "ctf", challengeID)
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		return nil, err
+	}
+
+	out := make([]string, 0, len(paths))
+	for _, raw := range paths {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		abs, err := filepath.Abs(raw)
+		if err != nil {
+			continue
+		}
+		if inDir(abs, uploadRoot) {
+			out = append(out, abs) // 已在白名单内
+			continue
+		}
+		st, err := os.Stat(abs)
+		if err != nil || !st.Mode().IsRegular() {
+			continue // 不存在/非普通文件：跳过，不影响其余附件
+		}
+		dst := filepath.Join(dest, filepath.Base(abs))
+		if err := copyFile(abs, dst); err != nil {
+			continue
+		}
+		out = append(out, dst)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("无有效附件可落位（原始 %d 个）", len(paths))
+	}
+	return out, nil
+}
+
+// inDir 判断 abs 是否位于 dir 目录内（防穿越）。
+func inDir(abs, dir string) bool {
+	rel, err := filepath.Rel(dir, abs)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// copyFile 复制普通文件（覆盖同名）。
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o644)
 }
 
 // flagRegex 通用 flag 格式匹配。
