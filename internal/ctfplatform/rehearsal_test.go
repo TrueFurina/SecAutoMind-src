@@ -522,7 +522,7 @@ func TestRehearsalAttachmentChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fake := &fakeAttachPlatform{
+	fake := &fakeRehearsalPlatform{
 		attachmentPath: attachment,
 		expectInner:    "attachment_chain_ok",
 		ch: &Challenge{
@@ -560,7 +560,7 @@ func TestRehearsalAttachmentChain(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(cwd, "chat_uploads", "ctf")) })
 
 	// ── 对照组：AutoFetchAttachment=false → 不下载、不解出、不提交 ──
-	fake2 := &fakeAttachPlatform{
+	fake2 := &fakeRehearsalPlatform{
 		attachmentPath: attachment,
 		expectInner:    "attachment_chain_ok",
 		ch: &Challenge{
@@ -598,10 +598,10 @@ func solverForAttachmentDrill() SolverFunc {
 	}
 }
 
-// fakeAttachPlatform 附件链演练用的 PlatformAPI 测试替身。
-// 只覆盖 Poller 在该配置下会触碰的三个方法（List/Download/Submit），
-// 其余方法不会被执行（AutoBuildEnv=false），嵌入接口即可。
-type fakeAttachPlatform struct {
+// fakeRehearsalPlatform 演练用的 PlatformAPI 测试替身（通用）。
+// 只覆盖 Poller 在具体配置下会触碰的方法；其余方法不会被调用（其余开关默认关），
+// 嵌入接口即可 —— 一旦 Poller 新增调用，缺失方法会以 nil panic 立刻暴露，不会静默跳过。
+type fakeRehearsalPlatform struct {
 	PlatformAPI
 
 	mu             sync.Mutex
@@ -609,26 +609,71 @@ type fakeAttachPlatform struct {
 	attachmentPath string
 	expectInner    string
 
+	// 详情补全相关
+	detailDesc          string
+	detailHasInstance   bool
+	detailHasAttachment bool
+	detailErr           error
+
 	downloadCalls int
 	submitCalls   int
 	submitGot     string
 	accepted      bool
+	detailCalls   int
+	destroyCalls  int
+	createCalls   int
 }
 
-func (f *fakeAttachPlatform) ListChallenges(ctx context.Context) ([]Challenge, error) {
+func (f *fakeRehearsalPlatform) ListChallenges(ctx context.Context) ([]Challenge, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return []Challenge{*f.ch}, nil
 }
 
-func (f *fakeAttachPlatform) DownloadAttachment(ctx context.Context, challengeID string) ([]string, error) {
+func (f *fakeRehearsalPlatform) DownloadAttachment(ctx context.Context, challengeID string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.downloadCalls++
 	return []string{f.attachmentPath}, nil
 }
 
-func (f *fakeAttachPlatform) SubmitFlag(ctx context.Context, challengeID string, flag string) (*SubmitResult, error) {
+// GetChallenge 返回详情（题干可能比列表更完整）。detailErr 用于演练"详情取不到"的回退。
+func (f *fakeRehearsalPlatform) GetChallenge(ctx context.Context, challengeID string) (*Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.detailCalls++
+	if f.detailErr != nil {
+		return nil, f.detailErr
+	}
+	return &Challenge{
+		ID:            challengeID,
+		Title:         f.ch.Title,
+		Category:      f.ch.Category,
+		Description:   f.detailDesc,
+		HasInstance:   f.detailHasInstance,
+		HasAttachment: f.detailHasAttachment,
+	}, nil
+}
+
+func (f *fakeRehearsalPlatform) CreateInstance(ctx context.Context, challengeID string) (*Instance, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.createCalls++
+	return &Instance{InstanceID: "inst-fake-1", Status: "running"}, nil
+}
+
+func (f *fakeRehearsalPlatform) GetAccess(ctx context.Context, instanceID string) (*Access, error) {
+	return &Access{Host: "127.0.0.1", Port: 8080, URL: "http://127.0.0.1:8080"}, nil
+}
+
+func (f *fakeRehearsalPlatform) DestroyInstance(ctx context.Context, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.destroyCalls++
+	return nil
+}
+
+func (f *fakeRehearsalPlatform) SubmitFlag(ctx context.Context, challengeID string, flag string) (*SubmitResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.submitCalls++
@@ -639,6 +684,134 @@ func (f *fakeAttachPlatform) SubmitFlag(ctx context.Context, challengeID string,
 		f.accepted = true
 	}
 	return &SubmitResult{Correct: ok, Detail: "rehearsal"}, nil
+}
+
+// TestRehearsalDetailEnrichment 详情补全演练（09-24 补的第三处生产缺口）。
+//
+// 背景：平台列表的 description 可能是**摘要**，完整题干在详情里；且 has_instance /
+// has_attachment 标记可能只在详情给出 —— 生产代码此前从未调 GetChallenge，
+// 等于一直拿"半份题干"在解题。
+// 本演练：列表给摘要、详情给全文（含 flag）→ 开启 AutoFetchDetail 后必须解出；
+// 对照组关闭后必须解不出、且不该产生详情请求。
+func TestRehearsalDetailEnrichment(t *testing.T) {
+	newFake := func() *fakeRehearsalPlatform {
+		return &fakeRehearsalPlatform{
+			expectInner: "detail_enrich_ok",
+			ch: &Challenge{
+				ID: "4001", Title: "CRYPTO-01", Category: "crypto",
+				Description: "题干摘要：多层编码（完整题干见详情）",
+			},
+			detailDesc: "完整题干：以下密文经 base64→hex 多层编码，flag{detail_enrich_ok}",
+		}
+	}
+
+	// 实验组
+	fake := newFake()
+	pc := DefaultPollerConfig()
+	pc.SubmitAfterSolve = true
+	pc.AutoFetchDetail = true
+	poller := NewPoller(fake, solverForAttachmentDrill(), pc, zap.NewNop())
+	records, err := poller.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("详情补全演练失败: %v", err)
+	}
+	if len(records) != 1 || !records[0].Accepted {
+		t.Fatalf("开启详情补全后应解出（详情链断裂）records=%+v", records)
+	}
+	if records[0].Flag != "flag{detail_enrich_ok}" {
+		t.Errorf("flag 应来自完整题干，实际 %q", records[0].Flag)
+	}
+	if fake.detailCalls != 1 {
+		t.Errorf("GetChallenge 应恰好调用 1 次，实际 %d", fake.detailCalls)
+	}
+
+	// 对照组：关闭 → 只有摘要，解不出；且不应产生详情请求
+	fake2 := newFake()
+	pc2 := DefaultPollerConfig()
+	pc2.SubmitAfterSolve = true // AutoFetchDetail 保持 false
+	poller2 := NewPoller(fake2, solverForAttachmentDrill(), pc2, zap.NewNop())
+	if _, err := poller2.RunOnce(context.Background()); err != nil {
+		t.Fatalf("对照组运行失败: %v", err)
+	}
+	if fake2.detailCalls != 0 {
+		t.Errorf("对照组不应有任何详情请求，实际 %d", fake2.detailCalls)
+	}
+	if fake2.submitCalls != 0 {
+		t.Errorf("对照组只有摘要、不应提交，实际 %d", fake2.submitCalls)
+	}
+	t.Logf("详情补全演练：detail×1 accepted=true；对照组 detail=%d submit=%d",
+		fake2.detailCalls, fake2.submitCalls)
+}
+
+// TestRehearsalEnvRelease 靶机回收演练（09-24 补的资源缺口）。
+//
+// 背景：CreateInstance 在 09-17 才被接进生产；但 DestroyInstance **始终无人调用** ——
+// 起完不销毁会一直占平台配额，赛时可能"想开新环境却开不出来"。
+// 本演练：解出并 accepted → 必须销毁一次；对照组（开关关 / 未解出）不得销毁。
+func TestRehearsalEnvRelease(t *testing.T) {
+	newFake := func(detailDesc string) *fakeRehearsalPlatform {
+		return &fakeRehearsalPlatform{
+			expectInner: "env_release_ok",
+			ch: &Challenge{
+				ID: "4101", Title: "WEB-01", Category: "web",
+				Description: "访问靶机读取 flag", HasInstance: true,
+			},
+			detailDesc: detailDesc,
+		}
+	}
+
+	// 实验组：起靶机 + 回收，题干含 flag → accepted → 应销毁 1 次
+	// 注：flag 放在**列表描述**里（本用例验的是回收语义，与详情补全无关，故不开 AutoFetchDetail）
+	fake := newFake("访问靶机读取 flag：flag{env_release_ok}")
+	fake.ch.Description = "访问靶机读取 flag：flag{env_release_ok}"
+	pc := DefaultPollerConfig()
+	pc.SubmitAfterSolve = true
+	pc.AutoBuildEnv = true
+	pc.AutoReleaseEnv = true
+	poller := NewPoller(fake, solverForAttachmentDrill(), pc, zap.NewNop())
+	records, err := poller.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("靶机回收演练失败: %v", err)
+	}
+	if len(records) != 1 || !records[0].Accepted {
+		t.Fatalf("应解出并 accepted，records=%+v", records)
+	}
+	if fake.createCalls != 1 {
+		t.Errorf("CreateInstance 应 1 次，实际 %d", fake.createCalls)
+	}
+	if fake.destroyCalls != 1 {
+		t.Errorf("accepted 后应销毁靶机 1 次，实际 %d", fake.destroyCalls)
+	}
+
+	// 对照组 A：开关关 → 起了也不销毁（证明销毁来自开关，不是别的副作用）
+	fake2 := newFake("访问靶机读取 flag：flag{env_release_ok}")
+	fake2.ch.Description = "访问靶机读取 flag：flag{env_release_ok}"
+	pc2 := DefaultPollerConfig()
+	pc2.SubmitAfterSolve = true
+	pc2.AutoBuildEnv = true // AutoReleaseEnv 保持 false
+	poller2 := NewPoller(fake2, solverForAttachmentDrill(), pc2, zap.NewNop())
+	if _, err := poller2.RunOnce(context.Background()); err != nil {
+		t.Fatalf("对照组A失败: %v", err)
+	}
+	if fake2.destroyCalls != 0 {
+		t.Errorf("对照组A不应销毁，实际 %d", fake2.destroyCalls)
+	}
+
+	// 对照组 B：未解出 → 保留靶机供人工接手，不得销毁
+	fake3 := newFake("访问靶机读取 flag（详情也没给 flag）")
+	pc3 := DefaultPollerConfig()
+	pc3.SubmitAfterSolve = true
+	pc3.AutoBuildEnv = true
+	pc3.AutoReleaseEnv = true
+	poller3 := NewPoller(fake3, solverForAttachmentDrill(), pc3, zap.NewNop())
+	if _, err := poller3.RunOnce(context.Background()); err != nil {
+		t.Fatalf("对照组B失败: %v", err)
+	}
+	if fake3.destroyCalls != 0 {
+		t.Errorf("未解出的题应保留靶机、不得销毁，实际 %d", fake3.destroyCalls)
+	}
+	t.Logf("靶机回收演练：accepted→destroy×1；对照组A(关开关)=%d，对照组B(未解出)=%d",
+		fake2.destroyCalls, fake3.destroyCalls)
 }
 
 // rehearsalEnvInt 读环境变量整数（带默认值）。

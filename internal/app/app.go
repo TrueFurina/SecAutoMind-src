@@ -431,6 +431,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		// 附件链（09-18 补）：对 HasAttachment 的题自动下载附件并并入描述，激活执行层求解器。
 		// 默认关：DownloadAttachment 仍是存根（官方附件端点待确认），链路已由演练验证。
 		pc.AutoFetchAttachment = strings.EqualFold(os.Getenv("CTF_AUTO_FETCH_ATTACHMENT"), "true")
+		// 题干补全（09-24 补）：列表 description 可能是摘要，详情才有完整题干/靶机与附件标记。
+		// 拿不到详情会静默沿用列表描述，无回退风险 → 决赛建议直接开。
+		pc.AutoFetchDetail = strings.EqualFold(os.Getenv("CTF_AUTO_FETCH_DETAIL"), "true")
+		// 靶机回收（09-24 补）：解出并 accepted 后销毁靶机，释放平台配额。
+		pc.AutoReleaseEnv = strings.EqualFold(os.Getenv("CTF_AUTO_RELEASE_ENV"), "true")
 		// 求解器：确定性预解层（0 token）。仅返回 flag 形态候选，避免误提交。
 		solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 			res := ctfPresolve.Presolve(ctx, ch, nil)
