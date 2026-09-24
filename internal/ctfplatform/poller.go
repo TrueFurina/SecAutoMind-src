@@ -43,6 +43,15 @@ type PollerConfig struct {
 	// 🔴 默认 false：DownloadAttachment 目前是存根（官方附件端点待确认）；链路已由
 	//    演练 TestRehearsalAttachmentChain 验证，端点一实现、开关一开即通。
 	AutoFetchAttachment bool `json:"auto_fetch_attachment"`
+	// AutoFetchDetail 用「题目详情」补全题干与标记。
+	// 平台列表里的 description 可能是**摘要**；完整题干（含附件/端点提示）在详情里才给 ——
+	// 直接决定解题输入质量。同时详情才标出 has_instance / has_attachment 的题，
+	// 这里补齐标记，后两个阶段才不会漏掉（只补 true，绝不覆盖已有 true 为 false）。
+	// 默认 false：拿不到详情就静默沿用列表描述，无回退风险。
+	AutoFetchDetail bool `json:"auto_fetch_detail"`
+	// AutoReleaseEnv 解出并 accepted 后销毁靶机，释放平台配额（起完不销毁会一直占资源）。
+	// 仅对"本轮确实起过环境"且"已 accepted"的题生效 —— 未解出的题保留靶机，供人工接手。
+	AutoReleaseEnv bool `json:"auto_release_env"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -252,15 +261,21 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 	solveCtx, cancel := context.WithTimeout(ctx, p.config.SolveTimeout)
 	defer cancel()
 
-	// 起靶机（决赛关键链，默认关闭；见 PollerConfig.AutoBuildEnv）。
+	// ① 详情补全（放最前：详情可能才标出需要靶机/附件，后两步依赖这些标记）
+	var builtEnv bool
+	if p.config.AutoFetchDetail {
+		p.enrichFromDetail(ctx, ch, rec)
+	}
+
+	// ② 起靶机（决赛关键链，默认关闭；见 PollerConfig.AutoBuildEnv）。
 	// 官方平台把靶机地址放在 challenge_detail.endpoints[].exposeIps[0]，
 	// 而 CreateInstance/GetAccess 此前从未被生产代码调用（09-17 实锤的生产缺口）——
 	// 需要靶机的题会因"没有可打的地址"整题 0 分。
 	if p.config.AutoBuildEnv && ch.HasInstance {
-		p.buildEnvAndInject(ctx, ch, rec)
+		builtEnv = p.buildEnvAndInject(ctx, ch, rec)
 	}
 
-	// 附件下载（默认关闭；见 PollerConfig.AutoFetchAttachment）。
+	// ③ 附件下载（默认关闭；见 PollerConfig.AutoFetchAttachment）。
 	// 此前 DownloadAttachment 是存根且无人调用、app 层恒传 nil attachments ——
 	// 附件题（取证/二进制/pcap）的执行层求解器在真实流程里整个休眠。
 	if p.config.AutoFetchAttachment && ch.HasAttachment {
@@ -316,11 +331,52 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 		}
 	}
 
+	// ④ 回收靶机：仅对本轮确实起过环境且已 accepted 的题（未解出的保留环境供人工接手）
+	if builtEnv && p.config.AutoReleaseEnv && rec.Accepted {
+		if err := p.platform.DestroyInstance(ctx, ch.ID); err != nil {
+			p.logger.Warn("销毁靶机失败（仅影响资源占用，不影响本题得分）",
+				zap.String("题目", ch.Title), zap.Error(err))
+			rec.Detail += "销毁靶机失败: " + err.Error() + "; "
+		} else {
+			rec.Detail += "靶机已回收; "
+			p.logger.Info("靶机已回收", zap.String("题目", ch.Title))
+		}
+	}
+
 	rec.FinishedAt = time.Now()
 	return rec
 }
 
+// enrichFromDetail 用题目详情补全题干与标记（见 PollerConfig.AutoFetchDetail）。
+// 失败/详情为空一律静默沿用列表描述 —— 无回退风险（这是它默认也能安全开启的原因）。
+func (p *Poller) enrichFromDetail(ctx context.Context, ch *Challenge, rec *PollRecord) {
+	d, err := p.platform.GetChallenge(ctx, ch.ID)
+	if err != nil || d == nil {
+		p.logger.Debug("取题目详情失败，沿用列表描述",
+			zap.String("题目", ch.Title), zap.Error(err))
+		rec.Detail += "取详情失败（沿用列表描述）; "
+		return
+	}
+	if len(strings.TrimSpace(d.Description)) > len(strings.TrimSpace(ch.Description)) {
+		ch.Description = d.Description
+		rec.Detail += "题干已用详情补全; "
+		p.logger.Info("题干已用详情补全", zap.String("题目", ch.Title),
+			zap.Int("长度", len(ch.Description)))
+	}
+	// 只补 true，绝不把已有 true 改成 false（详情缺失不能反过来削弱列表信息）
+	if d.HasInstance {
+		ch.HasInstance = true
+	}
+	if d.HasAttachment {
+		ch.HasAttachment = true
+	}
+	if strings.TrimSpace(ch.Category) == "" && strings.TrimSpace(d.Category) != "" {
+		ch.Category = d.Category
+	}
+}
+
 // buildEnvAndInject 为需要靶机的题启动环境，并把访问地址注入求解上下文。
+// 返回值：本轮是否**确实起过环境**（供 AutoReleaseEnv 决定是否回收）。
 //
 // 注入方式有二（求解器两条路都能吃到）：
 //  1. ch.Extra["target_url"]  —— 结构化读取（新求解器用这个）；
@@ -329,13 +385,15 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 //
 // 失败不致命：记入 rec.Detail 后继续求解（"没有靶机也试一把"好过整题卡死）。
 // ch 是每题一份的副本（RunOnce 里 go func(c Challenge) 传值），这里改它不影响共享状态。
-func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *PollRecord) {
+func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *PollRecord) bool {
+	created := false
 	if inst, err := p.platform.CreateInstance(ctx, ch.ID); err != nil {
 		// 平台可能返回"环境已存在"之类的业务错误 —— 不视为致命，继续取地址。
 		p.logger.Warn("起靶机失败（继续尝试取地址）",
 			zap.String("题目", ch.Title), zap.String("challengeID", ch.ID), zap.Error(err))
 		rec.Detail += "起靶机失败: " + err.Error() + "; "
 	} else {
+		created = true
 		p.logger.Info("靶机已启动", zap.String("题目", ch.Title),
 			zap.String("instance", inst.InstanceID), zap.String("status", inst.Status))
 		rec.Detail += "靶机实例 " + inst.InstanceID + "; "
@@ -347,11 +405,11 @@ func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *Poll
 	if err != nil {
 		p.logger.Warn("获取靶机地址失败", zap.String("题目", ch.Title), zap.Error(err))
 		rec.Detail += "取靶机地址失败: " + err.Error() + "; "
-		return
+		return created
 	}
 	if strings.TrimSpace(acc.URL) == "" {
 		rec.Detail += "靶机地址为空; "
-		return
+		return created
 	}
 	if ch.Extra == nil {
 		ch.Extra = map[string]interface{}{}
@@ -361,6 +419,7 @@ func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *Poll
 		ch.Description += "\n靶机地址: " + acc.URL
 	}
 	rec.Detail += "靶机地址 " + acc.URL + "; "
+	return created
 }
 
 // fetchAttachments 下载题目附件，并以「[用户上传的文件]」标记块并入题目描述。
