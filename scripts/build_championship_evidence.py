@@ -99,8 +99,23 @@ def _rel(path):
 # --------------------------------------------------------------------------
 # 采集
 # --------------------------------------------------------------------------
-def collect_caliber(notes):
-    """规模真值：count_stats.py --json（唯一权威口径）。"""
+def collect_caliber(notes, caliber_json=None):
+    """规模真值：count_stats.py --json（唯一权威口径）。
+
+    caliber_json（可选）：直接给定一份 count_stats.py --json 的输出文件。
+    用途：**工作树里存在他人未提交的在途文件**时，磁盘活值会混入 WIP，而证据包必须体现
+    **已提交状态** —— 此时在干净检出（git worktree add <dir> HEAD）里跑一次 count_stats，
+    再用 --caliber-json 传进来：口径取提交态，产物指纹仍取本机真值。
+    （绝不手改生成结果：口径永远来自 count_stats 实跑，只是换了个执行目录。）
+    """
+    if caliber_json:
+        try:
+            data = json.load(open(caliber_json, "r", encoding="utf-8"))
+            notes.append("规模真值取自 %s（提交态口径；工作树含在途文件，不采磁盘活值）"
+                         % os.path.basename(caliber_json))
+            return data
+        except Exception as e:
+            notes.append("--caliber-json 读取失败，回退实跑 count_stats：%s" % e)
     rc, out, err = _run(_py("count_stats.py", " --json"), timeout=600)
     if rc != 0:
         notes.append("count_stats.py 退出码 %d，规模真值缺失：%s" % (rc, err.strip()[:200]))
@@ -181,12 +196,26 @@ def collect_golden(notes):
         "internal/ctfplatform/testdata/request_golden.json",
     ]
     hashes = {}
+    # 🔴 行尾归一化（2026-09-24 实锤）：Windows 本地（core.autocrlf=true，但 golden 由生成器
+    # 写出为 LF）与 CI/Linux 检出（CRLF）的**原始字节不同**，直接哈希会让 CI 永久 BLOCK。
+    # 故统一按 LF 归一化后再哈希 —— 内容改动照样能被发现，平台差异被消掉。
     for rel in golden_files:
-        h = _sha256_file(os.path.join(ROOT, rel))
+        h = _sha256_file_lf(os.path.join(ROOT, rel))
         if h is None:
             notes.append("golden 文件缺失：%s" % rel)
         hashes[rel] = h
-    return {"freeze_check_rc": freeze_rc, "files_sha256": hashes}
+    return {"freeze_check_rc": freeze_rc, "files_sha256": hashes,
+            "hash_note": "行尾归一化（CRLF→LF）后的 SHA-256：消除 Windows/CI 行尾差异"}
+
+
+def _sha256_file_lf(path):
+    """按 LF 归一化读取文件并计算 SHA-256（消除 CRLF/LF 平台差异）。"""
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return None
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def collect_gates(notes):
@@ -293,12 +322,12 @@ def collect_build(notes):
 # --------------------------------------------------------------------------
 # 构建 / 校验
 # --------------------------------------------------------------------------
-def build(with_build=False, with_gates=True):
+def build(with_build=False, with_gates=True, caliber_json=None):
     notes = []
     pkg = {
         "schema": SCHEMA,
         "generated_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-        "caliber": collect_caliber(notes),
+        "caliber": collect_caliber(notes, caliber_json),
         "benchmark": collect_benchmark(notes),
         "golden": collect_golden(notes),
         "gates": collect_gates(notes) if with_gates else {
@@ -390,9 +419,17 @@ def check(pkg_live, pkg_saved):
 
 
 def main():
-    args = set(sys.argv[1:])
+    argv = sys.argv[1:]
+    args = set(argv)
+    # --caliber-json <path>：用外部 count_stats 输出替代当前磁盘活值
+    #（工作树有他人在途文件时，在干净检出里取提交态口径）
+    caliber_json = None
+    for i, a in enumerate(argv):
+        if a == "--caliber-json" and i + 1 < len(argv):
+            caliber_json = argv[i + 1]
+
     if "--print" in args:
-        pkg = build(with_build="--with-build" in args)
+        pkg = build(with_build="--with-build" in args, caliber_json=caliber_json)
         print(json.dumps(pkg, ensure_ascii=False, indent=2))
         return
     if "--check" in args:
@@ -400,7 +437,7 @@ def main():
             print("✗ 证据包不存在：%s\n  先跑 `python scripts/build_championship_evidence.py`" % _rel(OUT))
             sys.exit(1)
         saved = json.load(open(OUT, "r", encoding="utf-8"))
-        live = build(with_build=False, with_gates=("--with-gates" in args))
+        live = build(with_build=False, with_gates=("--with-gates" in args), caliber_json=caliber_json)
         drift = check(live, saved)
         print("=" * 70)
         print("冠军证据包一致性校验（%s）" % _rel(OUT))
@@ -422,7 +459,7 @@ def main():
         print("\n证据包一致性：PASS")
         return
 
-    pkg = build(with_build="--with-build" in args)
+    pkg = build(with_build="--with-build" in args, caliber_json=caliber_json)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(pkg, fh, ensure_ascii=False, indent=2, sort_keys=False)

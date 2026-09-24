@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-09-24T08:05:11+08:00",
+  "generated_at": "2026-09-24T08:15:00+08:00",
   "caliber": {
-    "head": "f5326c2",
+    "head": "58811fb",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,22 +10,17 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 33,
-    "go_packages": 42,
-    "test_packages": 36,
-    "go_files": 723,
-    "test_files": 278,
+    "go_packages": null,
+    "test_packages": 29,
+    "go_files": 716,
+    "test_files": 271,
     "non_test_lines": 126651,
-    "test_lines": 38432,
-    "total_lines": 165083,
+    "test_lines": 37356,
+    "total_lines": 164007,
     "ctf_solvers": 176,
     "im_adapters": 7,
     "exe": {
-      "present": true,
-      "md5": "957ddffabad44e97459714e6e28c2d94",
-      "size_mib": 85.3,
-      "vcs_revision": "0f9ab1830b96e5006a7e3736d52c8587a11f7554",
-      "vcs_time": "2026-09-15T04:26:33Z",
-      "mod_version": "vcs 0f9ab1830b96 @ 2026-09-15T04:26:33Z"
+      "present": false
     }
   },
   "benchmark": {
@@ -162,10 +157,11 @@
   "golden": {
     "freeze_check_rc": 0,
     "files_sha256": {
-      "internal/ctfplatform/testdata/protocol_golden.json": "556c6e9efe87dc4aaa783dd243f9f476ab0132ee1d176b5cef9f761c7259da13",
+      "internal/ctfplatform/testdata/protocol_golden.json": "a685449f21b27e047aacf2b0c193325677905f86e0b56e8c39873ef15c565de2",
       "internal/ctfplatform/testdata/protocol_fixtures.json": "1277f93030746ebf3b921b0c553dd408c4552f079a483484214f22462e22bd71",
-      "internal/ctfplatform/testdata/request_golden.json": "1d4527f11cfa66e6db750369c26e97eba52fc18782cf9aacfb4b0b82a717b20d"
-    }
+      "internal/ctfplatform/testdata/request_golden.json": "bb511d7560a3c65565a850a85c9d7bcbe381f953b89a75a6c2a0c8c5d59564f2"
+    },
+    "hash_note": "行尾归一化（CRLF→LF）后的 SHA-256：消除 Windows/CI 行尾差异"
   },
   "gates": {
     "secret_guard_rc": 0,
@@ -213,5 +209,7 @@
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": []
+  "notes": [
+    "规模真值取自 tmp_clean_caliber.json（提交态口径；工作树含在途文件，不采磁盘活值）"
+  ]
 }
