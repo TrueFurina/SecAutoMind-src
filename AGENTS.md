@@ -75,6 +75,11 @@ python scripts/verify_evidence.py        # 证据/口径门禁
   `freeze-gate`（决赛冻结纪律，见第七条）。
 - **门禁的通用纪律**：① 门禁自身必须有回归测试；② 关键门禁必须有**变异验证**（注入错误必须变红，
   否则"测试有效"无从证明）；③ 取不到真值时必须 **fail-closed** 或显式降级并留痕，不许静默放过。
+- 🔴 **"冻结哈希"类门禁必须用干净检出做一次 CI 仿真**（2026-09-24 实锤）：证据包对 golden 文件做
+  **原始字节**哈希，而 Windows 工作树那份是生成器写出的 **LF**、CI/Linux 检出（core.autocrlf=true）
+  是 **CRLF** → 本地永远绿、**CI 必然 BLOCK**，本地怎么测都测不出来。
+  做法：`git worktree add D:/tmp_wt_clean HEAD` → 把包与脚本复制进去 → 在提交态跑 `--check`。
+  修法：哈希前做行尾归一化（`_sha256_file_lf`）。**凡"本地与 CI 环境不同"的门禁，都必须仿真一次。**
 
 ---
 
@@ -90,6 +95,7 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 | 🔴 **本 shell 缺 `%AppData%` → 所有 go 命令失效**（2026-09-16 实锤） | 症状：`go build/list/test` 报 `go: downloading ...` 或 `module lookup disabled by GOPROXY=off`，**极易误判成"模块缓存被删/网络断了"**。真因：go 找不到自己的 GOENV 配置文件 `%AppData%\go\env`（内含 `GOPATH=D:\DevCache\gopath`、`GOPROXY=goproxy.cn`、`GOTOOLCHAIN=local`）→ GOPATH 回落到空的默认缓存。**正解：先 `export APPDATA="$USERPROFILE/AppData/Roaming"`**（实测 `go list ./...` rc=1→**0**，42 包；`go build ./cmd/server` 恢复 rc=0）。`scripts/count_stats.py` 已内置该回退（`_go_env()`），故 `go_packages` 不再退化为 null。 |
 | Python venv | `C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe` |
 | C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时 `export TMP=TEMP=TMPDIR=D:/tmp_gotest` 再跑测试 |
+| 🔴 **禁用 `git add -A` / `git add -A <dir>`**（09-24 事故） | 会把并行会话的**未跟踪在途文件**一并卷进提交，违反"不代提交他人 WIP"。一律显式列文件路径，或先 `git status --porcelain` 逐条确认。误加后纠正：`git reset --soft HEAD~1` → `git restore --staged <文件>` → 显式列路径重新提交，并用 `git show --stat HEAD` 复验零交集。 |
 | `官网/` 被 `.gitignore:81` 排除 | 官网**从未进版本库**，改它只在磁盘/交付包生效，不随 git 分发 |
 
 ---
@@ -119,6 +125,28 @@ exe、官网数字、PPT 口径全部要重刷，而时间只剩几天。此前�
   二者缺一不可；触发后自动追加审计到 `docs/freeze-override-log.md`（可追溯谁在何时为何破例）。
 - **配置写错即 fail-closed**：`enabled=true` 但 `final_date` 缺失或非法 → 直接 BLOCK，不静默放行。
 - 自测：`python scripts/freeze_gate_test.py`（16 项用例，含"把 protected_paths 置空后同文件必须放行"的因果验证）。
+
+---
+
+## 第八条 · 缺口审计：定义齐全 ≠ 接线
+
+本项目最致命的问题从来不是"没写"，而是**写了、测了、但生产链路没人调用**——组件级单测全绿，
+上场照样 0 分。已实锤四例：`CreateInstance/GetAccess`（起靶机）、`DownloadAttachment`（附件）、
+`GetChallenge`（题干补全）、`DestroyInstance`（靶机回收）。
+
+**审计方法**（决赛前对每个接口面至少做一遍）：
+```bash
+# 逐个方法 grep 生产调用点：排除接口自身的定义文件与 *_test.go
+for m in ListChallenges GetChallenge CreateInstance GetAccess DownloadAttachment \
+         SubmitFlag ResetInstance DestroyInstance GetMatchInfo GetOverview; do
+  printf "%-20s " "$m"
+  grep -rn "\.$m(" --include=*.go internal/ cmd/ | grep -v "_test.go" \
+    | grep -vE "^internal/ctfplatform/(dasctf|types)\.go" | wc -l
+done
+```
+- 计数 0 = 生产零调用 → 判断它是否影响得分/资源，影响则修（配置开关默认关 + 演练覆盖 + 反向对照）。
+- 演练替身要**嵌入接口**（`type fake struct { PlatformAPI }`）：被测方一旦新增调用，缺失方法会
+  nil panic 立刻暴露，不会静默跳过。
 
 ---
 
