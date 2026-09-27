@@ -181,7 +181,9 @@ def collect_benchmark(notes):
             "total_problems": prov.get("total_problems"),
             "synthetic_ratio_pct": prov.get("synthetic_ratio_pct"),
         },
-        "summary_sha256": _sha256_file(SUMMARY),
+        # 行尾归一化（CRLF→LF），与 golden 段同款：本仓 Windows 工作树是 CRLF、CI 检出是 LF，
+        # 用原始字节哈希会让本地与 CI 必然不同 → CI evidence-package-gate 无条件 BLOCK（2026-09-28 实锤）。
+        "summary_sha256": _sha256_file_lf(SUMMARY),
     }
 
 
