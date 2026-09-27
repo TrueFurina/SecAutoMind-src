@@ -826,7 +826,11 @@ def main():
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }
     out_path = os.path.join(HERE, "all_benchmarks_summary.json")
-    json.dump(summary, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    # newline="\n"：显式写 LF。否则 Windows 上 Python 文本模式会写出 CRLF，
+    # 与 CI 检出（LF）字节不一致 —— 凡对本文件做哈希比对的门禁都会在 CI 侧炸（2026-09-28 实锤）。
+    with open(out_path, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(summary, fh, ensure_ascii=False, indent=2)
+        fh.write("\n")
     print("汇总已写入: %s" % out_path)
 
 
