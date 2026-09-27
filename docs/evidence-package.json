@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-09-24T08:15:00+08:00",
+  "generated_at": "2026-09-28T02:05:52+08:00",
   "caliber": {
-    "head": "58811fb",
+    "head": "3122b16",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,17 +10,22 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 33,
-    "go_packages": null,
-    "test_packages": 29,
-    "go_files": 716,
-    "test_files": 271,
+    "go_packages": 42,
+    "test_packages": 36,
+    "go_files": 723,
+    "test_files": 278,
     "non_test_lines": 126651,
-    "test_lines": 37356,
-    "total_lines": 164007,
+    "test_lines": 38432,
+    "total_lines": 165083,
     "ctf_solvers": 176,
     "im_adapters": 7,
     "exe": {
-      "present": false
+      "present": true,
+      "md5": "5ae7bcbf0cdde65bc70017c8f9c301d6",
+      "size_mib": 85.3,
+      "vcs_revision": "3122b16721f16dc503ad4ddbecfeb3290a59fb48",
+      "vcs_time": "2026-09-27T17:57:51Z",
+      "mod_version": "vcs 3122b16721f1 @ 2026-09-27T17:57:51Z"
     }
   },
   "benchmark": {
@@ -176,40 +181,38 @@
     "exe_root": {
       "path": "secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89456640,
-      "md5": "957ddffabad44e97459714e6e28c2d94",
-      "sha256": "e89be09f48315defc1c2f1c188e1877f31e1d88d46cb1bb21b0254f0dd1bd506"
+      "size_bytes": 89472512,
+      "md5": "5ae7bcbf0cdde65bc70017c8f9c301d6",
+      "sha256": "7b08f3d5b99ccb981963a6079553b8663df27f0a9fe84c79b70d634a7f6482fc"
     },
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89456640,
-      "md5": "957ddffabad44e97459714e6e28c2d94",
-      "sha256": "e89be09f48315defc1c2f1c188e1877f31e1d88d46cb1bb21b0254f0dd1bd506"
+      "size_bytes": 89472512,
+      "md5": "5ae7bcbf0cdde65bc70017c8f9c301d6",
+      "sha256": "7b08f3d5b99ccb981963a6079553b8663df27f0a9fe84c79b70d634a7f6482fc"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.25-x64.exe",
       "present": true,
-      "size_bytes": 20295078,
-      "md5": "ab2bddd018c43b9fd9020662bb080207",
-      "sha256": "e249fec718c6d315696f9aebbfda15c52142844aa2936ce634872bf1f31c38bb"
+      "size_bytes": 20302039,
+      "md5": "ab7ece0cdb9c88d9a69d172ed9ffd3b8",
+      "sha256": "35dad83463fb5a535c06908fea971f9bbe9603b3b95771c0db3c2c92f2827e28"
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.25-share.tar.gz",
       "present": true,
-      "size_bytes": 324082639,
-      "md5": "38b5a9ec5e19f823f46bb4fcb4605fe9",
-      "sha256": "bc95bdd0b2600f29f57c1ffc7821f932e3ea9aeff253f5c15ec258f710ef604d"
+      "size_bytes": 324121463,
+      "md5": "debd161cb932133ac5bdb3b1a4e0c788",
+      "sha256": "70a81da392b28dc5df13de8ea31f1a94c2d5b1c3a567da9c308004ab8caf1aa7"
     },
     "exe_build": {
-      "vcs_revision": "0f9ab1830b96e5006a7e3736d52c8587a11f7554",
+      "vcs_revision": "3122b16721f16dc503ad4ddbecfeb3290a59fb48",
       "vcs_modified": "false"
     }
   },
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": [
-    "规模真值取自 tmp_clean_caliber.json（提交态口径；工作树含在途文件，不采磁盘活值）"
-  ]
+  "notes": []
 }
