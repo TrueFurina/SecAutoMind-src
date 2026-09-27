@@ -15,10 +15,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 )
 
 type attachProblem struct {
@@ -64,6 +66,10 @@ func TestAttachmentForensicsBenchmark(t *testing.T) {
 	sort.Strings(ids)
 
 	p := NewPresolver(nil)
+	// 诊断（用 fmt.Printf 而非 t.Logf：t.Logf 只在测试失败时才出现在 CI 日志里，
+	// 导致偶发失败时拿不到上下文。2026-09-28 该测试在 CI 上偶发 9/10，
+	// 就是因为在"成功的那几次"里没有任何留痕，无法比对。）
+	fmt.Printf("[att-diag] 注册表求解器数=%d 基准题数=%d\n", len(GetSolvers()), len(ids))
 	hit := 0
 	for _, id := range ids {
 		prob := probs[id]
@@ -72,9 +78,12 @@ func TestAttachmentForensicsBenchmark(t *testing.T) {
 			t.Errorf("%s: 读取附件失败: %v", id, err)
 			continue
 		}
+		t0 := time.Now()
 		res := p.Presolve(context.Background(),
 			&Challenge{Description: prob.Description, Category: prob.Category},
 			map[string]string{filepath.Base(prob.Attachment): string(data)})
+		fmt.Printf("[att-diag] %-24s engine=%-18s flags=%-2d 附件=%-6dB 耗时=%v\n",
+			id, res.Engine, len(res.Flags), len(data), time.Since(t0).Round(time.Millisecond))
 		ok := false
 		for _, f := range res.Flags {
 			if flagSHA(f) == prob.FlagSHA256 {
