@@ -127,6 +127,20 @@ def main():
     if not ok:
         blocking_fail.append("密钥门禁未通过（禁止打包/上场）")
 
+    # ⑤ 冠军证据包一致性
+    #    09-28 补：此前漏检 → CI 自 09-19 起 `evidence-package-gate` 连续红（其余 job 全绿，
+    #    极易被误判为偶发）。证据包必须随任何改变对外数字的提交同步重生成。
+    rc, out = run('"%s" scripts/build_championship_evidence.py --check' % PY, timeout=900)
+    ok = add("evidence_package", rc, out)
+    if not ok:
+        if results["wip_untracked_go"]:
+            warnings.append("证据包与磁盘活值不一致，但磁盘含 %d 个未跟踪 .go（在途 WIP）→ "
+                            "CI 干净检出可能绿；WIP 提交后需重生成证据包"
+                            % len(results["wip_untracked_go"]))
+        else:
+            blocking_fail.append("冠军证据包过期（CI evidence-package-gate 会 BLOCK）—— "
+                                 "跑 `python scripts/build_championship_evidence.py` 重生成")
+
     # ⑤ 可选：整包 go test
     if full:
         rc, out = run("%s test -count=1 ./..." % GO, timeout=3600)
