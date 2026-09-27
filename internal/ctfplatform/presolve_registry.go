@@ -140,13 +140,21 @@ func SolverRunCounts() map[string]int {
 }
 
 // registrySweepTimeout 注册表全量扫描的总时限（默认 6s，可用环境变量覆盖）。
+// registrySweepTimeout 注册表全量扫描的时间预算。
+//
+// 默认值从 6s 提到 20s（2026-09-28 依据 CI 实测数据调整）：
+//   - CI（共享 runner + `go test -race`）上该基准集单题耗时最高 **6.849s**（artifact_png_lsb），
+//     已经超过原 6s 预算 —— 意味着**尊重 ctx 的求解器会被超时砍掉、结果直接丢失**
+//     （不尊重 ctx 的纯计算求解器如 bfxZipInner 不受影响）。
+//   - 决赛单题时间预算是分钟级，多等 14s 无实质影响；而"慢环境下丢求解器结果"= 直接丢分。
+//   - 仍可用环境变量覆盖：SECAUTOMIND_REGISTRY_SWEEP_MS（毫秒，>0 生效）。
 func registrySweepTimeout() time.Duration {
 	if v := os.Getenv("SECAUTOMIND_REGISTRY_SWEEP_MS"); v != "" {
 		if ms, err := strconv.Atoi(v); err == nil && ms > 0 {
 			return time.Duration(ms) * time.Millisecond
 		}
 	}
-	return 6 * time.Second
+	return 20 * time.Second
 }
 
 // registrySweepEnabled 是否启用注册表全量扫描（生产 Presolve 会并入）。
