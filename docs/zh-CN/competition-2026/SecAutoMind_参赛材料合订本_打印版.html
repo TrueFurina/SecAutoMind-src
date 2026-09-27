@@ -304,7 +304,7 @@
 </tr>
 <tr>
 <td>代码规模</td>
-<td>Go 716 文件（271 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
+<td>Go 723 文件（278 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md</td>
 <td><code>tools/</code>、<code>internal/mcp/builtin/</code>、<code>skills/</code>、<code>agents/</code></td>
 </tr>
 <tr>
@@ -1042,7 +1042,7 @@ approve）"</em>。→ 证明每次工具调用前都有可审计的行为依据
 <hr />
 <h2 id="d1_8">8. 可测试性与扩展性设计</h2>
 <ul>
-<li><strong>可测试</strong>：268 个 <code>*_test.go</code>（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；<code>docs/evidence-build-test-20260903.txt</code> 留存 29 包全绿与 vet exit 0。</li>
+<li><strong>可测试</strong>：278 个 <code>*_test.go</code>（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；<code>docs/evidence-build-test-20260903.txt</code> 留存 36 包全绿与 vet exit 0。</li>
 <li><strong>扩展点（给评委/二次开发）</strong>：<br />
   1. 加工具：<code>tools/foo.yaml</code> 声明命令与参数即可（平台/依赖可选）；<br />
   2. 加子代理：<code>agents/foo.md</code> 写角色与指令（或 Web 端 Agents 管理）；<br />
@@ -1377,7 +1377,7 @@ approve）"</em>。→ 证明每次工具调用前都有可审计的行为依据
 </ul>
 <h3 id="d3_s12-830910-910950">S12 结尾（8:30–9:10 或 9:10–9:50）</h3>
 <ul>
-<li><strong>画面</strong>：工程证据卡：<code>go vet</code> exit 0 / 29 包测试全绿 / 三平台构建；对照实验结论（若有）；感谢页。</li>
+<li><strong>画面</strong>：工程证据卡：<code>go vet</code> exit 0 / 36 包测试全绿 / 三平台构建；对照实验结论（若有）；感谢页。</li>
 <li><strong>旁白</strong>（模板，数据须替换为实测）：</li>
 <li>工程面："静态检查零告警、26 个 Go 包全部测试通过、三平台原生构建，工程质量可复现。"</li>
 <li>效果面（<strong>如已跑出受控靶场对照实验则播报真实数字</strong>，如"在 N 个靶场任务上，supervisor 编排较单代理成功率 X%→Y%"；否则只说工程结论，不报数字）。</li>
