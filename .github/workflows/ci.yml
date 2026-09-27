@@ -40,6 +40,11 @@ jobs:
         run: go vet ./...
       - name: Test with race detector
         run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
+      # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
+      # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
+      # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
+      - name: Attachment benchmark diagnostics (verbose, for flaky triage)
+        run: CGO_ENABLED=1 go test -race -count=1 -v -run TestAttachmentForensicsBenchmark ./internal/ctfplatform/ 2>&1 | tail -25
       - name: Build
         run: CGO_ENABLED=1 go build -trimpath ./cmd/server
 
