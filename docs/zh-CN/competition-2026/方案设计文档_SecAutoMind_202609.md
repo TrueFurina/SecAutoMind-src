@@ -232,7 +232,7 @@ schema 演进须兼容旧库（`internal/database` 有版本化约定）。
 
 ## 8. 可测试性与扩展性设计
 
-- **可测试**：268 个 `*_test.go`（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；`docs/evidence-build-test-20260903.txt` 留存 29 包全绿与 vet exit 0。
+- **可测试**：278 个 `*_test.go`（config env 注入、HITL、typed 多代理、审计、流式回放、知识库、WebShell）；`docs/evidence-build-test-20260903.txt` 留存 36 包全绿与 vet exit 0。
 - **扩展点（给评委/二次开发）**：
   1. 加工具：`tools/foo.yaml` 声明命令与参数即可（平台/依赖可选）；
   2. 加子代理：`agents/foo.md` 写角色与指令（或 Web 端 Agents 管理）；
