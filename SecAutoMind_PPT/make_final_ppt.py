@@ -227,7 +227,7 @@ text(s, Inches(0.6), Inches(1.3), Inches(12.1), Inches(1.2),
      [[("以「", 20, MUTED, False),
        ("规划 / 执行 / 审计 / 复盘", 20, ACCENT, True),
        ("」四类 Agent 协同，通过共享事实黑板传递上下文；用 ", 20, MUTED, False),
-       ("90 个 YAML 安全工具 + 3 种编排模式", 20, ACCENT, True),
+       ("91 个 YAML 安全工具 + 3 种编排模式", 20, ACCENT, True),
        ("，构建可离线运行的自主决策攻防推演平台。", 20, MUTED, False)]],
      line_spacing=1.35)
 # 四类 Agent
@@ -271,7 +271,7 @@ sec_banner(s, 3, "系统架构：五层解耦 · 纵深防御")
 layers = [
     ("① Web 控制台", "仪表盘 / 对话 / 资产 / 漏洞 / 工作流 / C2 / 审计回放 / 多用户 RBAC", ACCENT),
     ("② Agent 编排层", "规划 / 执行 / 审计 / 复盘 Agent · Deep / Plan-Execute / Supervisor 三种编排", ACCENT2),
-    ("③ 安全工具层", "90 个 YAML 工具配方 + MCP 协议 · 注入型与独立型统一接入", WARN),
+    ("③ 安全工具层", "91 个 YAML 工具配方 + MCP 协议 · 注入型与独立型统一接入", WARN),
     ("④ 知识层", "攻防知识库 / 复盘沉淀 / 模型多通道（qwen · deepseek · openai…自动探测）", GOLD),
     ("⑤ 数据与安全底座", "审计日志全链路 · HITL 审批 · RBAC 权限隔离 · SQLite 本地持久化", ACCENT2),
 ]
@@ -441,7 +441,7 @@ card(s, Inches(0.6), Inches(1.5), Inches(6.0), Inches(3.3), "行业痛点：安�
     ("▸ 能力难扩展：加工具=改代码", 13, MUTED, False),
 ], accent=WARN)
 card(s, Inches(6.9), Inches(1.5), Inches(5.9), Inches(3.3), "我们的统一抽象", [
-    ("▸ 90 个 YAML 工具配方（元数据+Schema）", 13, ACCENT, True),
+    ("▸ 91 个 YAML 工具配方（元数据+Schema）", 13, ACCENT, True),
     ("▸ MCP 协议统一接入注入型 / 独立型工具", 13, ACCENT, True),
     ("▸ Agent 按 Schema 自动生成调用参数", 13, MUTED, False),
     ("▸ 新增工具 = 新增 YAML（可扩展）", 13, ACCENT2, True),
