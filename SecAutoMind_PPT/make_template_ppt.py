@@ -217,7 +217,7 @@ rect(s, Inches(0.7), Inches(2.0), Inches(11.9), Inches(1.6), fill=PANEL, line=AC
 text(s, Inches(1.0), Inches(2.2), Inches(11.2), Inches(1.2),
      [('一句话：', {'size': 18, 'bold': True, 'color': ACCENT}),
       ('以「规划 / 执行 / 审计 / 复盘」四类 Agent 协同，通过共享事实黑板传递上下文，', {'size': 18, 'color': INK, 'ls': 1.4}),
-      ('用 90 个 YAML 安全工具 + 3 种编排模式，构建可离线运行的自主决策攻防推演平台', {'size': 18, 'color': INK, 'ls': 1.4})])
+      ('用 91 个 YAML 安全工具 + 3 种编排模式，构建可离线运行的自主决策攻防推演平台', {'size': 18, 'color': INK, 'ls': 1.4})])
 flow = [('① 规划器', '拆解目标\n生成行动链'), ('② 执行器', '调度工具\n执行动作'), ('③ 审计器', 'HITL 审批\n证据留存'), ('④ 复盘器', '导出报告\n风险评分')]
 for i, (t, body) in enumerate(flow):
     x = Inches(0.7 + i * 3.05)
@@ -244,7 +244,7 @@ layers = [
     ('① Web 控制台', '仪表盘 / 对话 / 资产 / 漏洞 / 工作流 / C2 / 审计回放', ACCENT2),
     ('② 编排器', 'Deep / Plan-Execute / Supervisor 三种编排模式（eino）', ACCENT),
     ('③ Agent 层', '规划 Agent · 执行 Agent · 审计 Agent · 复盘 Agent · 18 个场景角色', ACCENT2),
-    ('④ 工具层', '90 个 YAML 工具配方 + MCP Server（stdio）+ 工具权限控制', ACCENT),
+    ('④ 工具层', '91 个 YAML 工具配方 + MCP Server（stdio）+ 工具权限控制', ACCENT),
     ('⑤ 数据与安全', 'SQLite 持久化 · RBAC 鉴权 · HITL 审批 · 审计脱敏 · CORS 白名单', WARN),
 ]
 for i, (t, body, ac) in enumerate(layers):
@@ -386,10 +386,10 @@ tag(s, Inches(0.7), Inches(0.6), 'INNOVATION 02', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('创新点二：91 工具 × 18 Agent 的「全链路通用对抗」', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.9), Inches(11.6), Inches(0.9),
      [('安全工具碎片化是行业痛点——Nmap 在命令行、Burp 在 GUI、脚本各写各的。', {'size': 15, 'color': MUTED, 'ls': 1.4}),
-      ('我们统一为 90 个 YAML 工具配方 + MCP 协议，Agent 可编排调用、上下文共享。', {'size': 15, 'color': MUTED, 'ls': 1.4})])
+      ('我们统一为 91 个 YAML 工具配方 + MCP 协议，Agent 可编排调用、上下文共享。', {'size': 15, 'color': MUTED, 'ls': 1.4})])
 card(s, Inches(0.7), Inches(3.0), Inches(5.85), Inches(3.2),
      '工具层创新',
-     ['· 100+ YAML 配方：网络/Web/漏洞/云/容器/二进制/取证/后渗透全覆盖', '· 自定义扩展：写 YAML 即可接入新工具，无需改代码',
+     ['· 91 个 YAML 配方：网络/Web/漏洞/云/容器/二进制/取证/后渗透全覆盖', '· 自定义扩展：写 YAML 即可接入新工具，无需改代码',
       '· MCP Server：stdio 接入，兼容通用 Agent 生态', '· 按角色控制工具可用范围（RBAC 资源授权）'], accent=ACCENT2)
 card(s, Inches(6.75), Inches(3.0), Inches(5.85), Inches(3.2),
      'Agent 层创新',
