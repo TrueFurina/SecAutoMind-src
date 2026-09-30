@@ -82,6 +82,10 @@ SecAutoMind_PPT/__pycache__/
 *.log
 logs/
 rsrc.syso
+# Windows 资源对象：由 CI build-windows 的 rsrc 现生成，绝不能入库——
+# 它会作为 _windows.syso 被错误卷进 darwin/arm64 链接（unknown ARM64 relocation），
+# 导致 build-macos(arm64) 失败。macos/linux checkout 不含它即可正常交叉编译。
+cmd/server/resource_windows.syso
 
 # Local toolchains / agent workspace (NOT project source)
 .workbuddy/
