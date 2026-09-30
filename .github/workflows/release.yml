@@ -134,12 +134,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Generate icon resource
-        run: |
-          go install github.com/akavel/rsrc@latest
-          "/c/Users/runneradmin/go/bin/rsrc.exe" -ico assets/secautomind.ico -o cmd/server/resource_windows.syso || \
-            rsrc -ico assets/secautomind.ico -o cmd/server/resource_windows.syso
+      - name: Generate icon resource (best-effort; build still works without it)
+        continue-on-error: true
         shell: bash
+        run: |
+          go install github.com/akavel/rsrc@latest 2>/dev/null || true
+          "$(go env GOPATH)/bin/rsrc.exe" -ico assets/secautomind.ico -o cmd/server/resource_windows.syso 2>/dev/null || \
+            rsrc -ico assets/secautomind.ico -o cmd/server/resource_windows.syso 2>/dev/null || true
       - name: Build windows GUI exe
         run: CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server
         shell: bash
