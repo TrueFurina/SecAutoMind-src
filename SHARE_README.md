@@ -16,7 +16,7 @@
 | 磁盘 | ≥ 500 MB 可用空间 |
 | Python | **3.10+** （仅在使用安全工具/MCP 时需要） |
 | 浏览器 | Chrome / Edge / Firefox 最新版 |
-| 网络 | 默认监听 `127.0.0.1:8080`（不开外网） |
+| 网络 | 默认监听 `127.0.0.1:18086`（不开外网） |
 
 > Linux/macOS 本包不直接支持（二进制是 Windows 版），需要源码重新编译。
 
@@ -28,7 +28,7 @@
 
 1. 解压本目录到任意位置，**路径不要有中文和空格**（推荐 `C:\SecAutoMind\`）
 2. 双击 `start.bat`
-3. 等浏览器自动打开 `http://127.0.0.1:8080/`
+3. 等浏览器自动打开 `http://127.0.0.1:18086/`
 4. 首次启动会生成随机 admin 密码，**在控制台窗口里打印，并同时写入 `data/admin_initial_password.txt`**（可直接打开该文件查看，GUI 无控制台也不受影响）
 5. 用 `admin` + 那个密码登录
 
@@ -91,7 +91,7 @@ SecAutoMind/
 ├── internal/ cmd/            # Go 源码 (仅供参考，编译用)
 ├── agents/ roles/            # Agent 与角色定义
 ├── skills/                   # Skill 库 (23 个攻防技能包)
-├── tools/                    # 工具库 (90 个 YAML 工具定义)
+├── tools/                    # 工具库 (91 个 YAML 工具定义)
 ├── mcp-servers/              # MCP 服务 (pent_claude_agent, reverse_shell)
 ├── plugins/                  # 浏览器/Burp 插件源码
 ├── knowledge_base/           # 知识库 (SQL Injection / Prompt Injection)
@@ -105,9 +105,9 @@ SecAutoMind/
 ## 6. 常见问题
 
 ### Q: 启动后浏览器没自动打开
-A: 手动访问 `http://127.0.0.1:8080/`。
+A: 手动访问 `http://127.0.0.1:18086/`（端口以 `config.yaml` 的 `server.port` 为准）。
 
-### Q: 端口 8080 被占用
+### Q: 端口 18086 被占用
 A: 编辑 `config.yaml` 中 `server.port`，改完后重启。
 
 ### Q: 报错 "missing python"
@@ -135,7 +135,7 @@ A: 机器人通道默认关闭，属可选扩展。以钉钉为例：在钉钉�
 - ✅ 默认 dashboard 有 KPI 卡片
 
 如果页面打不开或 404，检查：
-1. 防火墙是否拦截 8080
+1. 防火墙是否拦截 18086
 2. 控制台窗口（或 `config.yaml` 指定的日志文件）末尾是否有 ERROR
 3. 浏览器开发者工具 Network 是否有 401（多半是 admin 密码没拿到）
 
@@ -191,6 +191,6 @@ GCM nonce 复用、MT19937、LFSR 等），结果写入 `data/ctf_benchmark/all_
 ---
 
 **版本**: v1.7.25
-**构建时间**: 2026-09-13（exe 内嵌 commit `ed95f53`，md5 `3519a1f965f6bb5a5550458ac754836d`；本轮为深度复检修复而重建：密钥门禁 fail-closed + 内置自举模板 HITL 默认 approval + 平台层提交协议严格对齐真源）
-**分发包制作**: 2026-09-13
+**构建时间**: 2026-09-27（exe 内嵌 commit `3122b16`，md5 `5ae7bcbf0cdde65bc70017c8f9c301d6`，89,472,512 B；配方 `CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server`）
+**分发包制作**: 2026-09-28（`dist/SecAutoMind-v1.7.25-share.tar.gz`；重新打包后请同步更新本行）
 

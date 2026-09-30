@@ -56,7 +56,7 @@ ai:
     qwen-max:
       api_key: "<安恒网关分配的 Key>"
       base_url: "https://<安恒网关地址>/v1"   # 以主办方现场提供为准
-      model: "qwen-max"                        # 模型名以网关注册为准
+      model: "qwen3-max"                       # 模型名以网关注册为准（注意 qwen-max 是"通道 ID"，不是模型名）
 ```
 
 **接入验收清单**（赛前完成）——4 条均已脚本化，可一键执行：
@@ -82,7 +82,7 @@ bash scripts/verify_gateway.sh --base-url https://<网关>/v1 --api-key <网关K
 
 | 项 | 内容 |
 |---|---|
-| 使用模型 | 通义千问 qwen-max（阿里云，已备案）；备选 DeepSeek-V3（已备案） |
+| 使用模型 | 交付包默认通道为 `deepseek` → 模型 **`deepseek-chat`**（已备案）；`qwen-max` 通道（阿里云百炼）→ 模型 **`qwen3-max`**（已备案）<br>⚠️ `qwen-max` 是**通道 ID 不是模型名**；且交付包 `config.share.yaml` 的 `default_channel` 是 `deepseek`，报备与注入 key 时以实际默认通道为准 |
 | 提供方 | 阿里云计算有限公司 / DeepSeek（杭州深度求索） |
 | 接入方式 | HTTPS API（OpenAI 兼容协议），终审经安恒 AI 安全网关 |
 | 数据出境 | 无（模型与网关均在境内） |

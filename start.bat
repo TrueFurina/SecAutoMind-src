@@ -8,7 +8,17 @@ cd /d "%~dp0"
 
 set "EXE=secautomind-ai.exe"
 set "CFG=config.yaml"
-set "PORT=8080"
+
+REM --- Resolve the service port from config.yaml (do NOT hardcode) ---
+REM The FIRST two-space-indented "port:" in config.yaml is server.port;
+REM mcp.port comes later, so taking the first match is correct.
+REM This keeps the script in sync with what cmd/server/main.go actually listens on.
+set "PORT="
+set "CFGPORTFILE=%CFG%"
+if not exist "%CFGPORTFILE%" if exist "config.example.yaml" set "CFGPORTFILE=config.example.yaml"
+for /f "tokens=2" %%p in ('findstr /r /c:"^  port:" "%CFGPORTFILE%" 2^>nul') do if not defined PORT set "PORT=%%p"
+if defined PORT set "PORT=%PORT:"=%"
+if not defined PORT set "PORT=8080"
 set "URL=http://127.0.0.1:%PORT%/"
 
 REM --- Already running? Just open browser ---
