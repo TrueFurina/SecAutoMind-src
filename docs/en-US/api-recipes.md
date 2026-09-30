@@ -7,7 +7,7 @@ Common API workflows for scripts and plugins. Use `/api-docs` and `/api/openapi/
 ## Recipe 1: Login and Validate
 
 ```bash
-curl -k https://127.0.0.1:8080/api/auth/login \
+curl -k https://127.0.0.1:18086/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"password":"<password>"}'
 ```
@@ -21,7 +21,7 @@ Authorization: Bearer <token>
 Validate:
 
 ```bash
-curl -k https://127.0.0.1:8080/api/auth/validate \
+curl -k https://127.0.0.1:18086/api/auth/validate \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -30,7 +30,7 @@ curl -k https://127.0.0.1:8080/api/auth/validate \
 Simplest path: call Agent without pre-creating an empty conversation.
 
 ```bash
-curl -k https://127.0.0.1:8080/api/eino-agent \
+curl -k https://127.0.0.1:18086/api/eino-agent \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"Run authorized basic read-only recon against 127.0.0.1"}'
@@ -39,7 +39,7 @@ curl -k https://127.0.0.1:8080/api/eino-agent \
 If you need an empty conversation first:
 
 ```bash
-curl -k https://127.0.0.1:8080/api/conversations \
+curl -k https://127.0.0.1:18086/api/conversations \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"title":"Web Test"}'
@@ -50,7 +50,7 @@ Then pass `conversationId` to the Agent request.
 ## Recipe 3: Stream Agent Output
 
 ```bash
-curl -k -N https://127.0.0.1:8080/api/eino-agent/stream \
+curl -k -N https://127.0.0.1:18086/api/eino-agent/stream \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"Summarize current project facts and propose read-only next steps"}'
@@ -65,7 +65,7 @@ Notes:
 ## Recipe 4: Multi-Agent
 
 ```bash
-curl -k -N https://127.0.0.1:8080/api/multi-agent/stream \
+curl -k -N https://127.0.0.1:18086/api/multi-agent/stream \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -83,7 +83,7 @@ Options:
 ## Recipe 5: Upload Attachment
 
 ```bash
-curl -k https://127.0.0.1:8080/api/chat-uploads \
+curl -k https://127.0.0.1:18086/api/chat-uploads \
   -H "Authorization: Bearer <token>" \
   -F "file=@./request.txt"
 ```
@@ -93,7 +93,7 @@ Upload large files and reference them in messages instead of pasting raw content
 ## Recipe 6: Create Vulnerability
 
 ```bash
-curl -k https://127.0.0.1:8080/api/vulnerabilities \
+curl -k https://127.0.0.1:18086/api/vulnerabilities \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -111,7 +111,7 @@ Check OpenAPI for exact fields.
 ## Recipe 7: Search Knowledge Base
 
 ```bash
-curl -k https://127.0.0.1:8080/api/knowledge/search \
+curl -k https://127.0.0.1:18086/api/knowledge/search \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -127,7 +127,7 @@ If empty, check categories first.
 ## Recipe 8: External MCP Status
 
 ```bash
-curl -k https://127.0.0.1:8080/api/external-mcp/stats \
+curl -k https://127.0.0.1:18086/api/external-mcp/stats \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -136,7 +136,7 @@ If service is running but Agent cannot find tools, check role constraints and `t
 ## Recipe 9: Tool Schema
 
 ```bash
-curl -k https://127.0.0.1:8080/api/config/tools/nmap/schema \
+curl -k https://127.0.0.1:18086/api/config/tools/nmap/schema \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -145,7 +145,7 @@ Scripts should build args from schema rather than guessing field names.
 ## Recipe 10: Export Audit Logs
 
 ```bash
-curl -k "https://127.0.0.1:8080/api/audit/logs/export" \
+curl -k "https://127.0.0.1:18086/api/audit/logs/export" \
   -H "Authorization: Bearer <token>" \
   -o audit.csv
 ```
@@ -181,7 +181,7 @@ Create `assets.json`:
 Submit it:
 
 ```bash
-curl -k https://127.0.0.1:8080/api/assets/import \
+curl -k https://127.0.0.1:18086/api/assets/import \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   --data-binary @assets.json

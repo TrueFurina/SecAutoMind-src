@@ -8,7 +8,7 @@ SecAutoMind 的主配置文件是 `config.yaml`。大多数配置也可以在 We
 version: "vX.Y.Z" # 占位符；请使用 config.example.yaml 中当前发布版本的值
 server:
   host: 0.0.0.0
-  port: 8080
+  port: 18086
   tls_enabled: true
   tls_auto_self_sign: true
   # 可选：其他可信 Web 集成；Chromium 浏览器插件无需配置
@@ -295,7 +295,7 @@ project:
 修改后验证：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/auth/validate \
+curl -k https://127.0.0.1:18086/api/auth/validate \
   -H "Authorization: Bearer <token>"
 ```
 

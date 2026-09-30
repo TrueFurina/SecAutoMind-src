@@ -229,3 +229,22 @@ jobs:
         run: python scripts/check_line_endings.py
       - name: Line endings gate mutation check (prove the gate can fail)
         run: python scripts/check_line_endings_test.py
+
+  # 文档端口一致性门禁：docs/ 里的 curl / 浏览器地址 / nginx `proxy_pass` / docker `-p`
+  # 都是**可执行指令**，读者会直接复制；而交付包开箱的 config.yaml 端口是 18086
+  # （8080 只是 config.example.yaml 的模板值 + cmd/server/main.go:90 的代码兜底）。
+  # 历史上 docs 通篇写 8080，照抄必连不上；根因是一条错误注释
+  # 「未启用 TLS 时为 http://localhost:8080」（端口与 TLS 无关）。
+  # 真值源=config.share.yaml 的 server.port；材料线 competition-2026/ 跳过；
+  # 豁免条目极小且有上限（豁免会腐化）。带变异验证（证明门禁真能变红）。
+  doc-port-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Docs service-port consistency (truth = config.share.yaml)
+        run: python scripts/check_doc_port_consistency.py
+      - name: Doc port gate mutation check (prove the gate can fail)
+        run: python scripts/check_doc_port_consistency_test.py

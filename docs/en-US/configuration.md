@@ -9,7 +9,7 @@ The main configuration file is `config.yaml`. Many fields are editable through t
 ```yaml
 server:
   host: 0.0.0.0
-  port: 8080
+  port: 18086
   tls_enabled: true
   # Optional: other trusted Web integrations; Chromium extensions need no entry.
   # cors_allowed_origins:

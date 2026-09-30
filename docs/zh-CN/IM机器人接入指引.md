@@ -324,7 +324,7 @@ source robots-demo.env
 Docker 等价：
 ```bash
 docker run -e DINGTALK_ENABLED=true -e DING_APP_KEY=dingxxxx -e DING_APP_SECRET=xxxx \
-  -p 8080:8080 your/secautomind:1.7.25
+  -p 18086:18086 your/secautomind:1.7.25
 ```
 
 ---

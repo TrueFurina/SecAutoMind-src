@@ -7,7 +7,7 @@
 ## Recipe 1：登录并验证
 
 ```bash
-curl -k https://127.0.0.1:8080/api/auth/login \
+curl -k https://127.0.0.1:18086/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"password":"<password>"}'
 ```
@@ -21,7 +21,7 @@ Authorization: Bearer <token>
 验证：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/auth/validate \
+curl -k https://127.0.0.1:18086/api/auth/validate \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -30,7 +30,7 @@ curl -k https://127.0.0.1:8080/api/auth/validate \
 最简单方式是不先创建空对话，直接调用 Agent：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/eino-agent \
+curl -k https://127.0.0.1:18086/api/eino-agent \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"对 127.0.0.1 做授权的基础信息收集，只做只读操作"}'
@@ -39,7 +39,7 @@ curl -k https://127.0.0.1:8080/api/eino-agent \
 如果需要先创建对话：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/conversations \
+curl -k https://127.0.0.1:18086/api/conversations \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"title":"Web 测试"}'
@@ -50,7 +50,7 @@ curl -k https://127.0.0.1:8080/api/conversations \
 ## Recipe 3：流式调用 Agent
 
 ```bash
-curl -k -N https://127.0.0.1:8080/api/eino-agent/stream \
+curl -k -N https://127.0.0.1:18086/api/eino-agent/stream \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"总结当前项目事实并列出下一步，只读"}'
@@ -65,7 +65,7 @@ curl -k -N https://127.0.0.1:8080/api/eino-agent/stream \
 ## Recipe 4：调用多代理
 
 ```bash
-curl -k -N https://127.0.0.1:8080/api/multi-agent/stream \
+curl -k -N https://127.0.0.1:18086/api/multi-agent/stream \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -83,7 +83,7 @@ curl -k -N https://127.0.0.1:8080/api/multi-agent/stream \
 ## Recipe 5：上传附件
 
 ```bash
-curl -k https://127.0.0.1:8080/api/chat-uploads \
+curl -k https://127.0.0.1:18086/api/chat-uploads \
   -H "Authorization: Bearer <token>" \
   -F "file=@./request.txt"
 ```
@@ -93,7 +93,7 @@ curl -k https://127.0.0.1:8080/api/chat-uploads \
 ## Recipe 6：写入漏洞
 
 ```bash
-curl -k https://127.0.0.1:8080/api/vulnerabilities \
+curl -k https://127.0.0.1:18086/api/vulnerabilities \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -111,7 +111,7 @@ curl -k https://127.0.0.1:8080/api/vulnerabilities \
 ## Recipe 7：查询知识库
 
 ```bash
-curl -k https://127.0.0.1:8080/api/knowledge/search \
+curl -k https://127.0.0.1:18086/api/knowledge/search \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -127,7 +127,7 @@ curl -k https://127.0.0.1:8080/api/knowledge/search \
 ## Recipe 8：检查外部 MCP 状态
 
 ```bash
-curl -k https://127.0.0.1:8080/api/external-mcp/stats \
+curl -k https://127.0.0.1:18086/api/external-mcp/stats \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -136,7 +136,7 @@ curl -k https://127.0.0.1:8080/api/external-mcp/stats \
 ## Recipe 9：获取工具 schema
 
 ```bash
-curl -k https://127.0.0.1:8080/api/config/tools/nmap/schema \
+curl -k https://127.0.0.1:18086/api/config/tools/nmap/schema \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -145,7 +145,7 @@ curl -k https://127.0.0.1:8080/api/config/tools/nmap/schema \
 ## Recipe 10：导出审计日志
 
 ```bash
-curl -k "https://127.0.0.1:8080/api/audit/logs/export" \
+curl -k "https://127.0.0.1:18086/api/audit/logs/export" \
   -H "Authorization: Bearer <token>" \
   -o audit.csv
 ```
@@ -181,7 +181,7 @@ curl -k "https://127.0.0.1:8080/api/audit/logs/export" \
 提交：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/assets/import \
+curl -k https://127.0.0.1:18086/api/assets/import \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   --data-binary @assets.json
