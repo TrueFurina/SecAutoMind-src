@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-09-30T12:56:19+08:00",
+  "generated_at": "2026-09-30T18:32:55+08:00",
   "caliber": {
-    "head": "4ce977d",
+    "head": "c94e259",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -15,8 +15,8 @@
     "go_files": 724,
     "test_files": 279,
     "non_test_lines": 126675,
-    "test_lines": 38586,
-    "total_lines": 165261,
+    "test_lines": 38599,
+    "total_lines": 165274,
     "ctf_solvers": 176,
     "im_adapters": 7,
     "exe": {
