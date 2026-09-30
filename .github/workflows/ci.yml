@@ -190,3 +190,42 @@ jobs:
           python-version: "3.12"
       - name: Material numbers vs single source of truth
         run: python scripts/check_material_numbers.py
+
+  # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
+  # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。
+  # 只改根 web/ 而不同步 → 前端改动在 exe 里完全不生效且无任何报错。
+  # 历史教训：commit 8805a04「fix: sync wizard frontend into embed source」即一次手工补同步。
+  # 合法差异：.gitignore 全局忽略 vendor/，仅反忽略 internal/app/web/static/vendor/
+  # （故全新 clone 下根 web/ 为 62 个文件、嵌入副本为 71 个，二者交集必须逐字节一致）。
+  # 与 secret-gate 同规格：门禁本体 → 变异验证（证明门禁真能变红）。
+  web-parity-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Web asset copy parity (drift => BLOCK)
+        run: python scripts/check_web_asset_parity.py
+      - name: Web parity gate mutation check (prove the gate can fail)
+        run: python scripts/check_web_asset_parity_test.py
+
+  # 行尾门禁：脚本行尾此前是「各机器 core.autocrlf 说了算」的盲区（本仓无 .gitattributes）。
+  # 实锤缺陷：run.sh / upgrade.sh / plugins/*.sh 等工作副本为 CRLF，而
+  # scripts/make_delivery_package.py 走 shutil.copy2 **字节级复制**（不经 git 过滤器），
+  # 于是 CRLF 的 .sh 被原样打进交付包 —— 已对 dist/SecAutoMind-v1.7.25-share.tar.gz
+  # 开箱复核：包内 run.sh=CRLF(501)、upgrade.sh=CRLF(411)。收件人在 Linux 上
+  # `bash run.sh` 会直接报 `$'\r': command not found`，对「一键部署」是致命的。
+  # 现由仓库根 .gitattributes 定死行尾，本 job 同时校验「仓内脚本行尾」与
+  # 「.gitattributes ↔ 内置规则表 未漂移」，并带变异验证（证明门禁真能变红）。
+  line-endings-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Script line endings (.sh=LF / .bat,.cmd,.ps1=CRLF)
+        run: python scripts/check_line_endings.py
+      - name: Line endings gate mutation check (prove the gate can fail)
+        run: python scripts/check_line_endings_test.py

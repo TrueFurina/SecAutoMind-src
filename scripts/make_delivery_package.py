@@ -12,11 +12,13 @@
     1) 构建干净 staging：按排除清单复制，并用 config.share.yaml（纯 ${ENV} 占位、零真 key）
        顶替 config.yaml，保证接收方开箱即用
     2) 打包为 tar.gz
-    3) 解包复核三条硬红线：
+    3) 解包复核四条硬红线：
        - 包内不得出现 data/ · logs/ · .env · *.db · chat_uploads/ 等运行数据
          （例外：data/ctf_benchmark/ 属可机验的**测试资产**而非运行数据，默认纳入）
        - 包内 config.yaml 必须与 config.share.yaml 逐字节一致（即确认顶替生效）
        - 对 staging 跑 secret_guard.py → 必须 PASS(rc=0)
+       - 对 staging 跑 check_line_endings.py → 必须 PASS(rc=0)：.sh 必须 LF
+         （CRLF 的 .sh 在 Linux 上会报 $'\r': command not found）、.bat/.ps1 必须 CRLF
     4) 任一红线失败 → 删除成品包并 rc=1（宁可不出包，不可出事）
 
 用法：
@@ -26,7 +28,7 @@
     python scripts/make_delivery_package.py --keep-staging   # 保留 staging 目录以便排查
 
 退出码：
-    0 = 包已生成且三项自验全过
+    0 = 包已生成且四项自验全过
     1 = 自验失败（含真凭证 / 含禁区数据），成品包已删除
 """
 import argparse
@@ -47,6 +49,7 @@ except Exception:
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_GUARD = os.path.join(ROOT, "scripts", "secret_guard.py")
+LINE_ENDINGS_CHECK = os.path.join(ROOT, "scripts", "check_line_endings.py")
 CLEAN_CONFIG = os.path.join(ROOT, "config.share.yaml")
 
 # ── 排除：目录名（任一父级命中即整棵剪掉）────────────────────────────
@@ -77,6 +80,9 @@ EXCLUDE_FILE_PATTERNS = [
     ".env", ".env.*",
     "*.db", "*.db-shm", "*.db-wal", "*.db-journal", "*.sqlite", "*.sqlite3",
     "*.pyc", "*.pyo", "*.log", "*.bak", "*.pem", "*.key", "*.crt", "*.new",
+    # 内部复核类文档：面向前置作者修订用（如对交付手册的勘误），
+    # 不应随交付包发给评委。命名约定见「部署手册_勘误与补充_*.md」。
+    "部署手册_勘误*.md", "*_内部复核_*.md",
 ]
 EXCLUDE_FILE_EXCEPTIONS = {".env.example"}
 
@@ -199,7 +205,7 @@ def sha256(path):
 
 
 def verify(package, staging):
-    """三条硬红线；返回 (ok, issues, notes)。"""
+    """四条硬红线；返回 (ok, issues, notes)。"""
     issues, notes = [], []
     with tarfile.open(package, "r:gz") as tf:
         names = tf.getnames()
@@ -248,6 +254,27 @@ def verify(package, staging):
                     notes.append("  | " + line.strip())
     else:
         issues.append("未找到 scripts/secret_guard.py，无法自验")
+
+    # 红线 4：脚本行尾（2026-09-30 新增，实锤缺陷驱动的加固）
+    # 本脚本用 shutil.copy2 做**字节级复制**，不走 git 的 autocrlf / .gitattributes
+    # eol 过滤器 —— 工作副本的行尾会被原样带进交付包。已对 v1.7.25 成品包开箱复核：
+    # run.sh / upgrade.sh 为 CRLF，收件人在 Linux 上 `bash run.sh` 直接报
+    # `$'\r': command not found`，对「一键部署」是致命的。
+    if os.path.exists(LINE_ENDINGS_CHECK):
+        r = subprocess.run([sys.executable, LINE_ENDINGS_CHECK, "--dir", staging],
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="ignore")
+        if r.returncode == 0:
+            notes.append("check_line_endings -> PASS（.sh=LF / .bat,.cmd,.ps1=CRLF）")
+        else:
+            issues.append("check_line_endings -> BLOCK（rc=%d），包内脚本行尾不合规"
+                          % r.returncode)
+            for line in (r.stdout or "").strip().splitlines():
+                if "[FAIL]" in line or "[BLOCK]" in line:
+                    notes.append("  | " + line.strip())
+    else:
+        issues.append("未找到 scripts/check_line_endings.py，无法自验行尾")
+
     return (not issues), issues, notes
 
 
@@ -310,7 +337,7 @@ def main():
     for n in notes:
         print("  · %s" % n)
     if ok:
-        print("  [PASS] 三项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0")
+        print("  [PASS] 四项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0 · 脚本行尾合规")
         print("  交付包就绪：%s" % out)
     else:
         print("  [BLOCK] 自验失败，已删除成品包：")
