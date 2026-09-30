@@ -1,6 +1,6 @@
 name: release
 
-# 三平台原生编译（mattn/go-sqlite3 需 cgo，各平台用自身原生编译器，杜绝交叉编译损坏）
+# 三平台原生编译（SQLite 驱动为纯 Go glebarez，CGO_ENABLED=0 即可，无需系统 sqlite 库与 cgo 工具链）
 # 触发：推送 v* 标签 → 三平台产物自动上传到对应 Release
 on:
   push:
@@ -17,7 +17,7 @@ permissions:
   contents: write
 
 jobs:
-  # 测试门禁：vet + 全量测试 + 竞态检测（-race 需 cgo，ubuntu 原生 gcc 支持）
+  # 测试门禁：vet + 全量测试 + 竞态检测（-race 运行时需 gcc，与 sqlite 驱动无关）
   test-linux:
     runs-on: ubuntu-latest
     steps:
@@ -25,8 +25,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install sqlite build deps
-        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev gcc
+      - name: Install gcc (for -race runtime only; sqlite driver is pure-Go glebarez)
+        run: sudo apt-get update && sudo apt-get install -y gcc
       - name: Vet
         run: go vet ./...
       - name: Test with race detector
@@ -54,14 +54,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install sqlite build deps
-        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev gcc
       - name: Build linux amd64
-        run: CGO_ENABLED=1 go build -trimpath -o secautomind-ai-linux-amd64 ./cmd/server
+        run: CGO_ENABLED=0 go build -trimpath -o secautomind-ai-linux-amd64 ./cmd/server
       - name: Smoke test
         run: |
           timeout 20 ./secautomind-ai-linux-amd64 --http & sleep 6
-          curl -fsS -o /dev/null -w "GET / -> %{http_code}\n" http://127.0.0.1:8080/ || true
+          curl -fsS -o /dev/null -w "GET / -> %{http_code}\n" http://127.0.0.1:18086/ || true
           pkill -f secautomind-ai-linux-amd64 || true
       - name: Upload to Release
         env:
@@ -85,7 +83,7 @@ jobs:
           go-version: "1.25.x"
       - name: Build macOS ${{ matrix.arch }}
         run: |
-          GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -trimpath -o secautomind-ai-macos-${{ matrix.arch }} ./cmd/server
+          GOARCH=${{ matrix.arch }} CGO_ENABLED=0 go build -trimpath -o secautomind-ai-macos-${{ matrix.arch }} ./cmd/server
       - name: Upload to Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -103,9 +101,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install mingw (cgo for go-sqlite3)
-        run: choco install mingw -y --no-progress
-        shell: bash
       - name: Generate icon resource
         run: |
           go install github.com/akavel/rsrc@latest
@@ -113,10 +108,7 @@ jobs:
             rsrc -ico assets/secautomind.ico -o cmd/server/resource_windows.syso
         shell: bash
       - name: Build windows GUI exe
-        run: |
-          export PATH="/c/ProgramData/chocolatey/bin:/c/msys64/mingw64/bin:$PATH"
-          export CC="x86_64-w64-mingw32-gcc"
-          CGO_ENABLED=1 go build -trimpath -ldflags "-H windowsgui" -o secautomind-ai.exe ./cmd/server
+        run: CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server
         shell: bash
       - name: Upload to Release
         env:

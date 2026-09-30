@@ -18,7 +18,7 @@
 
 # 前端显示的版本号（可选，不填则显示默认版本）
 
-version: "v1.7.25"
+version: "v1.7.28"
 
 # ── 决赛冻结纪律（由 scripts/freeze_gate.py 读取；Go 侧不解析此段，不影响运行时）──
 # 宗旨：决赛前 freeze_days 天起，禁止改动 protected_paths 下的"架构"代码，只允许改材料/证据/配置/文档。
