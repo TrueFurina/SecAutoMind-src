@@ -14,7 +14,7 @@ version: "v1.7.28"
 # 服务器配置
 server:
   host: 0.0.0.0 # 监听地址，0.0.0.0 表示监听所有网络接口
-  port: 8080 # 服务端口；未启用 TLS 时为 http://localhost:8080
+  port: 18086 # 服务端口。8080 只是「本项未设置(<=0)时」的代码兜底值(cmd/server/main.go:90)；与 TLS 开关无关。访问地址：http://localhost:18086
   # 其他可信 Web 集成的精确 Origin。Chromium 浏览器插件会自动识别，无需配置；不要使用通配符。
   # cors_allowed_origins:
   #   - https://trusted-integration.example
