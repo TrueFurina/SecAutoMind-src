@@ -192,3 +192,123 @@ func TestBinaryForensicsSolversReturnFlagShapedOnly(t *testing.T) {
 	}
 	_ = attachments
 }
+
+// TestPresolveSweepResultNotLost 锁死「注册表扫描结果不得被 select 竞态丢弃」。
+//
+// 背景（2026-09-30 定位到 CI 偶发 9/10 的根因）：
+// Presolve 的收集端同时 select chSweep 与 sweepDone，而 sweep goroutine 是
+// 「先 chSweep <-（缓冲 1，不阻塞）→ 再 defer close(sweepDone)」，两个 channel
+// 可能同时就绪 —— Go 的 select 在多 case 就绪时**随机**选取，于是约一半概率
+// 走 sweepDone 分支而把扫描结果丢掉。
+//
+// artifact_utf16_binary 是唯一「快速路径没有任何 solver 能解、只能靠注册表扫描
+// 命中」的基准题（bin_strings 只注册在 forensics_binary.go:732；另一道
+// presolve_skill=bin_strings 的 artifact_b64_binary 在快速路径就被
+// base64_multilayer 解掉了，likeness=3 时根本不进那个 select），所以它单独
+// 表现为偶发失败。
+//
+// 本用例对这道题反复走**生产路径** Presolve：修复前在 CI（-race、负载高）上有
+// 可观概率变红，修复后必须稳定全中。
+func TestPresolveSweepResultNotLost(t *testing.T) {
+	const id = "artifact_utf16_binary"
+	const rounds = 30
+
+	probs := loadAttachmentBenchmark(t)
+	prob, ok := probs[id]
+	if !ok {
+		t.Fatalf("基准集缺少 %s", id)
+	}
+	data, err := os.ReadFile(filepath.Join("..", "..", "data", "ctf_benchmark", prob.Attachment))
+	if err != nil {
+		t.Fatalf("%s: 读取附件失败: %v", id, err)
+	}
+
+	miss := 0
+	for i := 1; i <= rounds; i++ {
+		p := NewPresolver(nil)
+		res := p.Presolve(context.Background(),
+			&Challenge{Description: prob.Description, Category: prob.Category},
+			map[string]string{filepath.Base(prob.Attachment): string(data)})
+		hit := false
+		for _, f := range res.Flags {
+			if flagSHA(f) == prob.FlagSHA256 {
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			miss++
+			if miss <= 3 {
+				t.Errorf("第 %d 轮未命中（engine=%q flags=%v）—— 扫描结果疑似被 select 竞态丢弃",
+					i, res.Engine, res.Flags)
+			}
+		}
+	}
+	if miss > 0 {
+		t.Errorf("%s 在 %d 轮中漏解 %d 次（应为 0）：生产 Presolve 对扫描结果有丢失路径",
+			id, rounds, miss)
+	}
+}
+
+// TestSweepDoneImpliesSweepResultBuffered 用**确定性**方式验证上面那处修复。
+//
+// 为什么需要它：Presolve 的竞态依赖「主 goroutine 恰好晚于 sweep 完成才执行 select」
+// 这一时序，本地跑几十轮都未必触发（本地 sweep 通常慢于快速路径，主 goroutine 会先
+// 阻塞在 select 上），所以 TestPresolveSweepResultNotLost 只能算压力用例、不能算证明。
+// 本用例直接构造与生产**完全一致的 channel 形状**并强制进入「两个 case 同时就绪」
+// 状态（先 <−sweepDone 等 sweep 彻底结束，此时 chSweep 已满且 sweepDone 已关闭），
+// 于是不依赖调度运气即可复现。
+//
+// 两个断言互为自检：
+//   - 修复写法（sweepDone 分支补一次非阻塞读）必须零丢失；
+//   - 原始写法（该分支什么都不做）必须**确有丢失**，否则说明用例没造出同时就绪、
+//     整条用例失效（杀不死变异体的测试是摆设）。
+func TestSweepDoneImpliesSweepResultBuffered(t *testing.T) {
+	const rounds = 2000
+
+	runOnce := func(withDrain bool) bool {
+		chSweep := make(chan int, 1) // 与生产一致：缓冲 1，发送不阻塞
+		sweepDone := make(chan struct{})
+		go func() {
+			defer close(sweepDone) // 与生产一致：先发送，后由 defer 关闭
+			chSweep <- 42
+		}()
+		<-sweepDone // 强制「同时就绪」：此刻 chSweep 有值 且 sweepDone 已关闭
+
+		got := 0
+		select {
+		case v := <-chSweep:
+			got = v
+		case <-sweepDone:
+			if withDrain {
+				select { // ← 修复：把可能已躺在缓冲里的结果捞回来
+				case v := <-chSweep:
+					got = v
+				default:
+				}
+			}
+		}
+		return got == 42
+	}
+
+	lostOld, lostNew := 0, 0
+	for i := 0; i < rounds; i++ {
+		if !runOnce(false) {
+			lostOld++
+		}
+	}
+	for i := 0; i < rounds; i++ {
+		if !runOnce(true) {
+			lostNew++
+		}
+	}
+	fmt.Printf("[att-diag] 同时就绪 %d 次：原写法丢失 %d 次（%.1f%%），修复写法丢失 %d 次\n",
+		rounds, lostOld, float64(lostOld)*100/float64(rounds), lostNew)
+
+	if lostNew != 0 {
+		t.Errorf("修复写法仍丢失 %d/%d —— 补读无效", lostNew, rounds)
+	}
+	if lostOld == 0 {
+		t.Errorf("原写法在 %d 次下竟一次未丢 —— 用例没造出「同时就绪」，证明力为零", rounds)
+	}
+}

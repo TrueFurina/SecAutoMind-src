@@ -370,6 +370,22 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 				best = &r
 			}
 		case <-sweepDone:
+			// 🔴 竞态修复（2026-09-30，CI flaky 根因）：
+			// sweep goroutine 是「先 chSweep <- （缓冲 1，不阻塞）→ 再 defer close(sweepDone)」，
+			// 因此当本分支被选中时，扫描结果**必定**已躺在 chSweep 里；而未命中时
+			// chSweep 永远为空。问题在于 Go 的 select 在多个 case 同时就绪时是**随机**选取的
+			// —— 这里若什么都不做，就等于掷硬币丢掉扫描结果。
+			// 实测后果：artifact_utf16_binary 是唯一「快速路径无 solver 能解、只能靠注册表
+			// 扫描命中」的基准题（bin_strings 仅注册在 forensics_binary.go），它因此偶发
+			// 返回 engine="" / flags=[]，表现为 CI 上 TestAttachmentForensicsBenchmark
+			// 偶发 9/10 —— 放到决赛就是「偶发漏解=丢分」。故必须补一次非阻塞读取捞回结果。
+			select {
+			case r := <-chSweep:
+				if len(r.flags) > 0 && (best == nil || flagLikeness(r.flags) > bestLike) {
+					best = &r
+				}
+			default:
+			}
 		case <-ctx.Done():
 		}
 	}
