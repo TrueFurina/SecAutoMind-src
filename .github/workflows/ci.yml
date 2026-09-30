@@ -190,6 +190,11 @@ jobs:
           python-version: "3.12"
       - name: Material numbers vs single source of truth
         run: python scripts/check_material_numbers.py
+      # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，
+      # 会出现「修复器说修好了、门禁说还红」的隐蔽失效。10 项含 4 项变异验证
+      # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。
+      - name: Material-number fixer self-test (regression + mutation)
+        run: python scripts/fix_material_numbers_test.py
 
   # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
   # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。

@@ -115,10 +115,16 @@ FORCE_CURRENT = {
 # 修复/生成类脚本：它们**必须列举**旧数字才能完成替换，列举 ≠ 使用。
 # 精确文件名，理由同上（secret_guard 的 SELF_EXEMPT 同款教训）。
 TOOL_EXEMPT = {
-    "fix_stale_numbers.py",   # 批量替换旧数字的修复脚本
-    "_qc_final.py",           # PPT 质检脚本，正则里必须写旧数字才能查它
-    "PPT_制作提示词.md",       # 同一份旧数字禁用清单的说明文档
-    "口径修复清单.md",         # 门禁自己产出的修复清单（固定名，覆盖更新）：列举旧数字是它的功能
+    "fix_stale_numbers.py",          # 批量替换旧数字的修复脚本
+    # ↓ 下面两个都在 scripts/，而 scripts/ **当前不在 SCAN_DIRS 内**（实测门禁扫不到它们）。
+    #   登记是前瞻性的：哪天把 scripts/ 纳入扫描，这两个文件必然带着漂移字面量
+    #   （同步器的 docstring 要举例、它的自测要故意注入），届时会被自己误伤。
+    #   实测 is_historical() 对二者均返回 True，豁免链本身有效。
+    "fix_material_numbers.py",       # 真值同步器：docstring 里举 126,659 -> 126,675 作说明
+    "fix_material_numbers_test.py",  # 自测**必须**故意写一个漂移数字才能验证修复器（列举 ≠ 使用）
+    "_qc_final.py",                  # PPT 质检脚本，正则里必须写旧数字才能查它
+    "PPT_制作提示词.md",              # 同一份旧数字禁用清单的说明文档
+    "口径修复清单.md",                # 门禁自己产出的修复清单（固定名，覆盖更新）：列举旧数字是它的功能
 }
 
 # 规范文档自身（它要列举禁用清单来说明规则，列举 ≠ 使用）
@@ -266,7 +272,12 @@ def main():
 
     print("=" * 70)
     if banned_hits or anchor_hits:
-        print("  结论：FAIL —— 口径漂移，禁止合入/打包。请改为从 count_stats.py 取值。")
+        print("  结论：FAIL —— 口径漂移，禁止合入/打包。")
+        if anchor_hits and not banned_hits:
+            # 锚点漂移是**纯机械**的：数字本来就该等于 count_stats 真值。
+            # 与其让人肉 grep 11 处，不如给一条可执行的修复命令（修复器复用本门禁的
+            # ANCHORS 表，判定口径与这里逐字相同，不存在"两套规则"）。
+            print("  修复：python scripts/fix_material_numbers.py --apply --check")
         return 1
     print("  结论：PASS —— 材料口径与单一真值源一致。")
     return 0
