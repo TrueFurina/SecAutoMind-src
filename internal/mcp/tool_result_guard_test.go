@@ -5,13 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
 )
 
+// inMemoryMonitorStorage 是存储接口的测试桩。SaveToolExecution 会被
+// ExecutionService 的 worker goroutine（runWorker → finishEntry）并发调用，
+// 因此必须与生产存储一样线程安全，否则 -race 会在此处报数据竞争。
 type inMemoryMonitorStorage struct {
+	mu         sync.Mutex
 	executions map[string]*ToolExecution
 }
 
@@ -21,12 +26,16 @@ func newInMemoryMonitorStorage() *inMemoryMonitorStorage {
 
 func (s *inMemoryMonitorStorage) SaveToolExecution(exec *ToolExecution) error {
 	if exec != nil {
+		s.mu.Lock()
 		s.executions[exec.ID] = cloneToolExecution(exec)
+		s.mu.Unlock()
 	}
 	return nil
 }
 
 func (s *inMemoryMonitorStorage) UpdateToolExecutionResult(id string, result *ToolResult) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	exec := s.executions[id]
 	if exec == nil {
 		exec = &ToolExecution{ID: id}
@@ -37,6 +46,8 @@ func (s *inMemoryMonitorStorage) UpdateToolExecutionResult(id string, result *To
 }
 
 func (s *inMemoryMonitorStorage) LoadToolExecutions() ([]*ToolExecution, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	out := make([]*ToolExecution, 0, len(s.executions))
 	for _, exec := range s.executions {
 		out = append(out, cloneToolExecution(exec))
@@ -45,6 +56,8 @@ func (s *inMemoryMonitorStorage) LoadToolExecutions() ([]*ToolExecution, error) 
 }
 
 func (s *inMemoryMonitorStorage) GetToolExecution(id string) (*ToolExecution, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if exec := s.executions[id]; exec != nil {
 		return cloneToolExecution(exec), nil
 	}
@@ -108,7 +121,7 @@ func TestServerCallToolStoresAndReturnsSameGuardedResult(t *testing.T) {
 	if !ok || inMem == nil || inMem.Result == nil {
 		t.Fatalf("missing in-memory execution: %#v", inMem)
 	}
-	stored := storage.executions[executionID]
+	stored, _ := storage.GetToolExecution(executionID)
 	if stored == nil || stored.Result == nil {
 		t.Fatalf("missing stored execution: %#v", stored)
 	}
