@@ -6,6 +6,8 @@
 
 [中文](README_CN.md) | [English](README.md)
 
+[![CI](https://github.com/TrueFurina/SecAutoMind-src/actions/workflows/ci.yml/badge.svg)](https://github.com/TrueFurina/SecAutoMind-src/actions/workflows/ci.yml)
+
 </div>
 
 ## 项目简介
