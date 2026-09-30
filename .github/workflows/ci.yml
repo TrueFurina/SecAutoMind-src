@@ -11,6 +11,14 @@ on:
 permissions:
   contents: read
 
+# 免费额度吃紧时的第一道止血：连推时取消同分支的旧 run。
+# 本项目是"修完即推"的节奏（09-30 一次会话连推 8 次），若不取消，
+# 8 个 run 会并行各烧一份额度，而单 run 里光 `-race ./...` 就要十几分钟。
+# 被取消的 run 按已消耗的实际分钟计费，所以取消是净省。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -22,10 +30,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # 注意：本项目 SQLite 驱动为纯 Go 的 github.com/glebarez/go-sqlite（无 cgo 依赖），
-      # 不需要系统 libsqlite3-dev。下方 gcc 仅为 `go test -race` 的 race 运行时（C 实现）所必需。
-      - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
-        run: sudo apt-get update && sudo apt-get install -y gcc
+      # gcc 只是 `go test -race` 的 race 运行时（C 实现）所需；项目 SQLite 驱动是
+      # 纯 Go 的 github.com/glebarez/go-sqlite，不需要 cgo、也不需要 libsqlite3-dev。
+      # GitHub 的 ubuntu runner 镜像本身就带 gcc，无条件 apt-get 会白花 40-60 秒/次；
+      # 改为「有则跳过、无则兜底安装」，既省时又不会在镜像变动时挂掉。
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
       # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
       # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。
@@ -57,8 +72,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
-        run: sudo apt-get update && sudo apt-get install -y gcc
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
       - name: Capability regression gate
         run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestHashLengthExtension|TestGCMNonceReuse|TestMT19937UntemperIsInverse|TestMT19937PredictNext|TestMT19937SolverParses|TestMT19937SolverRegistered|TestMT19937NoFalsePositive|TestMT19937InsufficientOutputs|TestMT19937RecoverSha256Consistency|TestLFSRBerlekampMasseyBasic|TestLFSRPredictDegree32|TestLFSRSolverParses|TestLFSRSolverRegistered|TestLFSRNoFalsePositive|TestLFSRShortLeakNoPredict|TestLCGAdvanceMatchesNaive|TestLCGRecoverAC|TestLCGRecoverModulus|TestLCGSolverParsesKnownParams|TestLCGSolverParsesRecoverAC|TestLCGSolverParsesRecoverModulus|TestLCGSolverRegistered|TestLCGNoFalsePositive|TestCRC32StdMatchesStdlib|TestCRC32ForgeProducesTarget|TestCRC32ForgeUniqueness|TestCRC32SolverParses|TestCRC32SolverRegistered|TestCRC32NoFalsePositive|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s
 
@@ -147,8 +167,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install build deps (gcc for -race; driver is pure-Go glebarez, no system sqlite)
-        run: sudo apt-get update && sudo apt-get install -y gcc
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
       - name: Finals full-loop rehearsal (simulated platform + poller + solver)
         run: go test -race -count=1 -v -run 'TestRehearsal' ./internal/ctfplatform/ -timeout 300s
 

@@ -43,24 +43,55 @@ HEAVY = ("regen_exec_fixtures.py", "run_all_benchmarks.py")
 
 
 def parse_ci():
-    """从 ci.yml 解析 [(job, step_name, command)]，顺序即文件顺序。"""
+    """从 ci.yml 解析 [(job, step_name, command)]，顺序即文件顺序。
+
+    ⚠️ 多行 run（YAML 块标量 `run: |` / `run: >`）必须**显式收集**：
+    只取 `run:` 那一行，拿到的是字面量 "|"，而 classify 会把它归为"非 python 命令"
+    静默跳过。于是哪天有人把一条 python 门禁改写成多行脚本，本地复刻就会**悄悄漏掉它** ——
+    "本地 17/17 全绿"不再等于"CI 会绿"，安全网本身就失效了（fail-open）。
+    这里把块内容拼成一条 [BLOCK] 记录交给 classify 显式处置。
+    """
     if not os.path.isfile(CI):
         raise SystemExit("[FAIL-CLOSED] 找不到 %s" % CI)
-    job, step, out = None, None, []
     with open(CI, "r", encoding="utf-8", errors="ignore") as fh:
-        for raw in fh:
-            line = raw.rstrip("\n")
-            m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
-            if m and not line.startswith("    "):
-                job = m.group(1)
-                continue
-            m = re.match(r"^\s+-\s+name:\s*(.+?)\s*$", line)
-            if m:
-                step = m.group(1).strip().strip('"\'')
-                continue
-            m = re.match(r"^\s+run:\s*(.+?)\s*$", line)
-            if m:
-                out.append((job, step or "(unnamed)", m.group(1).strip().strip('"\'')))
+        lines = [ln.rstrip("\n") for ln in fh]
+
+    job, step, out, i = None, None, [], 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if m and not line.startswith("    "):
+            job = m.group(1)
+            i += 1
+            continue
+        m = re.match(r"^\s+-\s+name:\s*(.+?)\s*$", line)
+        if m:
+            step = m.group(1).strip().strip('"\'')
+            i += 1
+            continue
+        # 块标量：run: | / run: > / run: |- 等（冒号后只有标量指示符）
+        m = re.match(r"^(\s+)run:\s*[|>][-+]?\s*$", line)
+        if m:
+            base = len(m.group(1))
+            block, j = [], i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if nxt.strip() == "":
+                    block.append("")
+                    j += 1
+                    continue
+                if len(nxt) - len(nxt.lstrip()) <= base:
+                    break
+                block.append(nxt.strip())
+                j += 1
+            out.append((job, step or "(unnamed)",
+                        "[BLOCK] " + " ; ".join(x for x in block if x.strip())))
+            i = j
+            continue
+        m = re.match(r"^\s+run:\s*(.+?)\s*$", line)
+        if m:
+            out.append((job, step or "(unnamed)", m.group(1).strip().strip('"\'')))
+        i += 1
     return out
 
 
@@ -69,6 +100,16 @@ def classify(cmd):
 
     跳过一律**带原因**（不静默）：本脚本的结论只覆盖它真的跑过的那些命令。
     """
+    # 多行 run 块（见 parse_ci）：解析器不拆 shell 语法，但**必须**把藏在块里的
+    # python 门禁显式点出来 —— 否则它会被"非 python 命令"这条兜底规则静默吞掉，
+    # 而"本地全绿"就会变成一个假信号。
+    if cmd.startswith("[BLOCK] "):
+        inner = cmd[len("[BLOCK] "):]
+        py_calls = sorted(set(re.findall(r"\bpython3?\s+(\S+\.py)", inner)))
+        if py_calls:
+            return "skip", ("⚠️ 多行 run 内含 python 门禁 %s —— 解析器不自动拆分，请人工复刻"
+                            % ", ".join(py_calls[:3]))
+        return "skip", "多行 shell 脚本（%s）" % (inner[:70] + ("…" if len(inner) > 70 else ""))
     # 含 ${{ }} 的步骤只在 PR/特定事件下有意义，本地跑会把表达式当字面量传进去，
     # 跑出来的结果没有意义 —— 宁可不跑，也不要拿一个"假装跑过"的红/绿。
     if "${{" in cmd:
