@@ -191,6 +191,6 @@ GCM nonce 复用、MT19937、LFSR 等），结果写入 `data/ctf_benchmark/all_
 ---
 
 **版本**: v1.7.25
-**构建时间**: 2026-09-27（exe 内嵌 commit `3122b16`，md5 `5ae7bcbf0cdde65bc70017c8f9c301d6`，89,472,512 B；配方 `CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server`）
+**构建时间**: 2026-09-30（exe 内嵌 commit `344e5bd`，md5 `b339fa5bd2920e310c97344468064f9c`，89,472,512 B；配方 `CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server`）
 **分发包制作**: 2026-09-28（`dist/SecAutoMind-v1.7.25-share.tar.gz`；重新打包后请同步更新本行）
 
