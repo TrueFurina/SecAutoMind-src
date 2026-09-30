@@ -293,7 +293,7 @@ Management routes require `rbac:read` or `rbac:write`; the resource picker requi
 Create a user:
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/users \
+curl -X POST http://localhost:18086/api/rbac/users \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -308,7 +308,7 @@ curl -X POST http://localhost:8080/api/rbac/users \
 Create a custom role:
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/roles \
+curl -X POST http://localhost:18086/api/rbac/roles \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -322,7 +322,7 @@ curl -X POST http://localhost:8080/api/rbac/roles \
 Assign projects:
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/resource-assignments \
+curl -X POST http://localhost:18086/api/rbac/resource-assignments \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

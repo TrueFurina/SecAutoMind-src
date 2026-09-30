@@ -51,7 +51,7 @@ auth:
   session_duration_hours: 12
 server:
   host: 127.0.0.1
-  port: 8080
+  port: 18086
   tls_enabled: false
 audit:
   enabled: true

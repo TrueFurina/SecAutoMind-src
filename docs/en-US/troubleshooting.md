@@ -18,9 +18,9 @@ Debug by layer. Do not change random config before locating the failing layer.
 ## Minimal Commands
 
 ```bash
-lsof -i :8080
-curl -k -I https://127.0.0.1:8080/
-curl -k -I https://127.0.0.1:8080/static/logo.png
+lsof -i :18086
+curl -k -I https://127.0.0.1:18086/
+curl -k -I https://127.0.0.1:18086/static/logo.png
 ls -lh data/
 ```
 

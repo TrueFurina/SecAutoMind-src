@@ -38,7 +38,7 @@ chmod +x run.sh && ./run.sh
 默认配置中 `server.tls_enabled: true` 且 `tls_auto_self_sign: true`，访问地址通常是：
 
 ```text
-https://127.0.0.1:8080/
+https://127.0.0.1:18086/
 ```
 
 自签证书会触发浏览器安全提示，这是本地测试的正常现象。生产环境建议配置真实证书。
@@ -98,7 +98,7 @@ server:
 ```yaml
 server:
   host: 0.0.0.0
-  port: 8080
+  port: 18086
   tls_enabled: true
   tls_cert_path: /etc/letsencrypt/live/example.com/fullchain.pem
   tls_key_path: /etc/letsencrypt/live/example.com/privkey.pem
@@ -121,7 +121,7 @@ server {
     client_max_body_size 200m;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:18086;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

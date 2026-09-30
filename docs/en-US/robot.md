@@ -474,11 +474,11 @@ You can verify bot logic with the **test API** (no DingTalk/Lark client needed):
 
 ```bash
 # Adjust the URL, username, and password for your deployment
-TOKEN=$(curl -s -X POST "http://localhost:8080/api/auth/login" \
+TOKEN=$(curl -s -X POST "http://localhost:18086/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"YOUR_PASSWORD"}' | jq -r '.token')
 
-curl -X POST "http://localhost:8080/api/robot/test" \
+curl -X POST "http://localhost:18086/api/robot/test" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"platform":"dingtalk","user_id":"test_user","text":"帮助"}'

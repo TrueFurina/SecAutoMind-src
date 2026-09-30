@@ -391,14 +391,14 @@ C2：
 登录并提取 token 的返回字段可能随实现调整，建议先看 `/api-docs`。如果已有 token：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/conversations \
+curl -k https://127.0.0.1:18086/api/conversations \
   -H "Authorization: Bearer <token>"
 ```
 
 发送非流式单代理请求：
 
 ```bash
-curl -k https://127.0.0.1:8080/api/eino-agent \
+curl -k https://127.0.0.1:18086/api/eino-agent \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"对 127.0.0.1 做授权的基础信息收集，先不要执行高风险操作"}'

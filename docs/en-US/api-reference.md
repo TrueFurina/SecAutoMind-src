@@ -244,12 +244,12 @@ Every record being removed must share a domain, IP address, or Host with the pri
 ## Curl Example
 
 ```bash
-curl -k https://127.0.0.1:8080/api/conversations \
+curl -k https://127.0.0.1:18086/api/conversations \
   -H "Authorization: Bearer <token>"
 ```
 
 ```bash
-curl -k https://127.0.0.1:8080/api/eino-agent \
+curl -k https://127.0.0.1:18086/api/eino-agent \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"message":"Run authorized basic recon against 127.0.0.1; avoid high-risk actions."}'

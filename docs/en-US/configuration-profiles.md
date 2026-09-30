@@ -17,7 +17,7 @@ chmod +x run.sh && ./run.sh
 ```yaml
 server:
   host: 127.0.0.1
-  port: 8080
+  port: 18086
   tls_enabled: true
   tls_auto_self_sign: true
 auth:
@@ -42,7 +42,7 @@ Goal: shared team instance with audit and limited high-risk surface.
 ```yaml
 server:
   host: 127.0.0.1
-  port: 8080
+  port: 18086
   tls_enabled: false
 auth:
   session_duration_hours: 12

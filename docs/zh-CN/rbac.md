@@ -306,7 +306,7 @@ Authorization: Bearer <token>
 创建用户示例：
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/users \
+curl -X POST http://localhost:18086/api/rbac/users \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -321,7 +321,7 @@ curl -X POST http://localhost:8080/api/rbac/users \
 创建自定义角色示例：
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/roles \
+curl -X POST http://localhost:18086/api/rbac/roles \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -335,7 +335,7 @@ curl -X POST http://localhost:8080/api/rbac/roles \
 批量授权项目示例：
 
 ```bash
-curl -X POST http://localhost:8080/api/rbac/resource-assignments \
+curl -X POST http://localhost:18086/api/rbac/resource-assignments \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

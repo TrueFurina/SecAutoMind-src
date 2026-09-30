@@ -25,7 +25,7 @@ freeze:
 # 服务器配置
 server:
   host: 127.0.0.1 # 监听地址，默认仅本机访问；需要局域网/公网访问时再显式修改并配置网络层访问控制（见部署文档）
-  port: 8080 # 服务端口；未启用 TLS 时为 http://localhost:8080
+  port: 8080 # 服务端口。**端口与 TLS 开关无关**（旧注释"未启用 TLS 时为 8080"是错的，已更正）。8080 只是本模板的示例值；本项目实际配置见 config.yaml / config.share.yaml（交付值 18086），未设置时才回落到代码兜底。访问地址：http(s)://localhost:8080
   # 其他可信 Web 集成的精确 Origin。Chromium 浏览器插件会自动识别，无需配置；不要使用通配符。
   # cors_allowed_origins:
   #   - https://trusted-integration.example
