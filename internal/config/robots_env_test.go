@@ -86,6 +86,29 @@ func TestApplyRobotsEnvOverride_AllChannels(t *testing.T) {
 	}
 }
 
+func TestApplyRobotsEnvOverride_WecomAgentID(t *testing.T) {
+	t.Setenv("WECOM_AGENT_ID", "1000002")
+
+	cfg := &Config{}
+	cfg.ApplyRobotsEnvOverride()
+
+	if cfg.Robots.Wecom.AgentID != 1000002 {
+		t.Fatalf("WECOM_AGENT_ID 应解析为 int64 1000002，got %d", cfg.Robots.Wecom.AgentID)
+	}
+}
+
+func TestApplyRobotsEnvOverride_WecomAgentIDInvalidIgnored(t *testing.T) {
+	t.Setenv("WECOM_AGENT_ID", "not-a-number")
+
+	cfg := &Config{}
+	cfg.Robots.Wecom.AgentID = 777 // yaml 原值
+	cfg.ApplyRobotsEnvOverride()
+
+	if cfg.Robots.Wecom.AgentID != 777 {
+		t.Fatalf("非法 WECOM_AGENT_ID 应被忽略保持 yaml 原值 777，got %d", cfg.Robots.Wecom.AgentID)
+	}
+}
+
 func TestEnabledButIncompleteRobots(t *testing.T) {
 	cfg := &Config{}
 	// 钉钉启用但缺凭证 → 不完整；其余通道未启用 → 完整

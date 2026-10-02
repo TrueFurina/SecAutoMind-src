@@ -93,6 +93,12 @@ func (c *Config) ApplyRobotsEnvOverride() {
 			}
 		}
 	}
+	// 3) 整型凭证覆盖：企业微信 AgentID（int64，主动推送必需，无法走 string 覆盖表）
+	if v := strings.TrimSpace(os.Getenv("WECOM_AGENT_ID")); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			c.Robots.Wecom.AgentID = n
+		}
+	}
 }
 
 // EnabledButIncompleteRobots 返回已启用但凭证不完整的机器人通道名列表。
