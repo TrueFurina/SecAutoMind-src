@@ -220,6 +220,13 @@ jobs:
       # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。
       - name: Material-number fixer self-test (regression + mutation)
         run: python scripts/fix_material_numbers_test.py
+      # 产物门禁（读回 .pptx/.docx/.pdf）的回归自检。产物是 .gitignore 的本地件
+      # （几 MB～60 MB 二进制），CI 检出里**根本不存在**，所以 CI 只能守"门禁本体逻辑正确"：
+      # 用 stdlib 手搓的最小 pptx/docx 夹具跑 10 项，含 2 项变异（改错数字必须变红）、
+      # 1 项 fail-closed（损坏产物必须拦下）、2 项跨形状方向判据。
+      # 真实产物的检查落在打包那一刻（make_delivery_package.py 第五条红线）与本地自检。
+      - name: Artifact-number gate self-test (10 cases, incl. mutation)
+        run: python scripts/check_artifact_numbers_test.py
 
   # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
   # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。

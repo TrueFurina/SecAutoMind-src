@@ -281,7 +281,7 @@ s = add_slide()
 bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'GENERALITY', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('通用性：91 工具 × 18 Agent × 全链路覆盖', {'size': 30, 'bold': True})])
-stats = [('90', 'YAML 工具配方', ACCENT), ('18', '角色化 Agent', ACCENT2), ('23', '技能包', WARN), ('3', '编排模式', ACCENT)]
+stats = [('91', 'YAML 工具配方', ACCENT), ('18', '角色化 Agent', ACCENT2), ('23', '技能包', WARN), ('3', '编排模式', ACCENT)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.0), Inches(2.75), v, lb, color=c)
 cats = [
