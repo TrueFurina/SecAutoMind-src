@@ -188,7 +188,9 @@ func postDingReplyViaWebhook(ctx context.Context, webhook, reply string, logger 
 		"msgtype": "markdown",
 		"markdown": map[string]string{
 			"title": title,
-			"text":  reply,
+			// 🔴 钉钉 markdown 不认单个 \n（会折叠成空格），必须 \n\n 才换行。
+			// 不展开则帮助文本/AI 报告在钉钉里是没有任何换行的一坨。
+			"text": expandLineBreaksForMarkdown(reply),
 		},
 	}
 	bodyBytes, err := json.Marshal(body)
