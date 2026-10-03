@@ -88,7 +88,9 @@ func runWechatPoll(ctx context.Context, cfg config.RobotWechatConfig, h MessageH
 			if strings.TrimSpace(reply) == "" {
 				continue
 			}
-			if err := client.SendTextMessage(ctx, userID, msg.ContextToken, reply, ""); err != nil {
+			// 🔴 微信端对机器人文本按 markdown 语义渲染，单个 \n 不换行（实测：帮助文本
+			// 在微信里连成一片，复制出来却有换行）。发送前统一展开为段落换行。
+			if err := client.SendTextMessage(ctx, userID, msg.ContextToken, expandLineBreaksForMarkdown(reply), ""); err != nil {
 				logger.Warn("微信发送回复失败", zap.String("to", userID), zap.Error(err))
 			}
 		}
