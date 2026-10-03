@@ -32,17 +32,44 @@ func (f *fakeHandler) HandleMessage(platform, userID, text string) string {
 
 func TestHandleDingMessage_NilMsg(t *testing.T) {
 	h := &fakeHandler{reply: "回复"}
-	handleDingMessage(context.Background(), nil, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+	processDingMessage(context.Background(), nil, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
 	if len(h.calls) != 0 {
 		t.Errorf("nil 消息不应触达 handler，实际 %d 次", len(h.calls))
 	}
 }
 
+// TestHandleDingMessage_EmptyWebhook 锁定 Stream 模式语义（历史 bug 的回归防线）。
+//
+// 旧实现以 `if msg.SessionWebhook == "" { return }` 作为丢弃消息的条件，
+// 而 SessionWebhook 是**钉钉 HTTP 回调模式**的字段；Stream 长连接模式下它为空，
+// 于是该行把**每一条 Stream 消息都静默丢弃**——表现就是「建链成功但群里毫无反应」。
+//
+// 因此正确行为是：SessionWebhook 为空（Stream 模式）时，**必须照常处理并返回回复**，
+// 由 SDK 经 Stream 连接发回钉钉。
 func TestHandleDingMessage_EmptyWebhook(t *testing.T) {
-	h := &fakeHandler{reply: "回复"}
-	handleDingMessage(context.Background(), &chatbot.BotCallbackDataModel{}, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
-	if len(h.calls) != 0 {
-		t.Errorf("SessionWebhook 为空不应触达 handler，实际 %d 次", len(h.calls))
+	h := &fakeHandler{reply: "Stream 模式回复"}
+	msg := &chatbot.BotCallbackDataModel{SenderId: "sender-stream"}
+	msg.Text.Content = "你好"
+
+	reply := processDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+
+	if len(h.calls) != 1 {
+		t.Fatalf("Stream 模式（SessionWebhook 为空）必须照常处理消息，实际 handler 调用 %d 次", len(h.calls))
+	}
+	if reply != "Stream 模式回复" {
+		t.Errorf("reply = %q, want %q（应返回给 SDK 经 Stream 回复）", reply, "Stream 模式回复")
+	}
+}
+
+// TestProcessDingMessage_StreamModeSkipsWebhook 确认 Stream 模式下不会误走 webhook 分支。
+func TestProcessDingMessage_StreamModeSkipsWebhook(t *testing.T) {
+	h := &fakeHandler{reply: "走 Stream"}
+	msg := &chatbot.BotCallbackDataModel{SenderId: "sender-x"}
+	msg.Text.Content = "hi"
+
+	reply := processDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+	if reply == "" {
+		t.Error("Stream 模式应返回回复文本供 SDK 经连接发回")
 	}
 }
 
@@ -52,7 +79,7 @@ func TestHandleDingMessage_EmptyContent_Ignored(t *testing.T) {
 	defer srv.Close()
 	msg := &chatbot.BotCallbackDataModel{SessionWebhook: srv.URL}
 	msg.Text.Content = "   " // 仅空白
-	handleDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
 	if len(h.calls) != 0 {
 		t.Errorf("空白内容不应触达 handler，实际 %d 次", len(h.calls))
 	}
@@ -77,7 +104,7 @@ func TestHandleDingMessage_TextFullPath(t *testing.T) {
 	}
 	msg.Text.Content = "  帮我查一下漏洞  "
 
-	handleDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
 
 	// 1) handler 被正确调用：platform / userID（含租户与用户前缀）/ 清洗后的文本
 	if len(h.calls) != 1 {
@@ -124,7 +151,7 @@ func TestHandleDingMessage_UserIDFormat(t *testing.T) {
 	msg.Text.Content = "hi"
 	msg.SenderId = "sender-001"
 
-	handleDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
 
 	if len(h.calls) != 1 {
 		t.Fatalf("handler 应被调用 1 次，实际 %d 次", len(h.calls))
@@ -145,7 +172,7 @@ func TestHandleDingMessage_ConversationFallback(t *testing.T) {
 	msg := &chatbot.BotCallbackDataModel{SessionWebhook: srv.URL, ConversationId: "conv-42"}
 	msg.Text.Content = "hi"
 
-	handleDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, cfg, false, h, zap.NewNop())
 
 	if len(h.calls) != 1 {
 		t.Fatalf("允许回退时 handler 应被调用 1 次，实际 %d 次", len(h.calls))
@@ -164,7 +191,7 @@ func TestHandleDingMessage_NoUserID_Ignored(t *testing.T) {
 	msg := &chatbot.BotCallbackDataModel{SessionWebhook: srv.URL, ConversationId: "conv-42"}
 	msg.Text.Content = "hi"
 
-	handleDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
 
 	if len(h.calls) != 0 {
 		t.Errorf("无用户标识不应触达 handler（拒登语义），实际 %d 次", len(h.calls))
@@ -185,7 +212,7 @@ func TestHandleDingMessage_RichText(t *testing.T) {
 		},
 	}
 
-	handleDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
+	processDingMessage(context.Background(), msg, config.RobotDingtalkConfig{}, false, h, zap.NewNop())
 
 	if len(h.calls) != 1 {
 		t.Fatalf("richText 应提取出文本并触达 handler，实际 %d 次", len(h.calls))
