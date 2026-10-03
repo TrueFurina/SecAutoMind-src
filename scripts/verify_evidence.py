@@ -39,6 +39,10 @@ CALIBER_FLOORS = {
     # 2026-10-03 新增：真求解器（可产出 flag 外形）安全下限。
     # 只拦灾难性塌缩（如批量误删/求解器被检测器替换），远低于真值 117。
     "ctf_real_solvers": 100,
+    # 检测器下限（真值 59）。补齐原因：只守 real 不守 detectors，
+    # 一旦有人把 59 个检测器**改造成**真求解器而总数不变，real 会升、detectors 会降，
+    # 单守 real 的门禁察觉不到「口径结构变了但证据包没更新」——两侧同守才能抓到比例漂移。
+    "ctf_detectors": 40,
     "go_files": 600,
     "test_files": 200,
     "total_lines": 100000,
