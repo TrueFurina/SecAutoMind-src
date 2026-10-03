@@ -7,7 +7,7 @@
 
 用例：
     T1 真值驱动：喂一个假真值 -> 产出该假真值（证明非硬编码）
-    T2 千分位跟随原写法（126,659 -> 126,675；724 -> 1234 不带逗号）
+    T2 千分位跟随原写法（126,659 -> 真值带逗号；724 -> 1234 不带逗号）
     T3 边界：裸数字「126,659」后不接「行」= 不是规模宣称 -> 不得改动
     T4 幂等：修完再修 -> 0 改动
     T5 HTML 分支：数字与单位被标签隔断（<div>126,659</div><div>行 Go</div>）仍须能修
@@ -64,6 +64,11 @@ def main():
 
     truth = cmn.load_truth()
     real = truth["non_test_lines"]
+    # 期望值必须**从真值派生**，不得硬编码当前数字：
+    # 旧版把 "126,675"/"724" 写死在断言里，真值一变（如本次 126,675 -> 126,855）
+    # 测试就假红——红的是"测试的期望过期"，不是修复器坏了。这类漂移型断言本身就是缺陷。
+    fmt_lines = format(truth["non_test_lines"], ",")
+    fmt_start = format(real, ",")
 
     # T1 真值驱动（变异验证：证明不是硬编码 126,675）
     fake = dict(truth)
@@ -72,13 +77,13 @@ def main():
     check("T1 真值驱动：喂 987654 -> 产出 987,654（非硬编码）",
           out == "全量 987,654 行 Go 零错误" and ch, "out=%r ch=%r" % (out, ch))
 
-    # T2 千分位跟随
+    # T2 千分位跟随（期望值取自真值）
     out2, _ = fmn.fix_line("126,659 行 Go", truth)
     fake2 = dict(truth)
     fake2["go_files"] = 1234
     out3, _ = fmn.fix_line("Go 724 文件", fake2)
-    check("T2 千分位跟随：'126,659 行'->'126,675 行'；'Go 724 文件'->'Go 1234 文件'",
-          out2 == "126,675 行 Go" and out3 == "Go 1234 文件", "out2=%r out3=%r" % (out2, out3))
+    check("T2 千分位跟随：'126,659 行'->'%s 行'；'Go 724 文件'->'Go 1234 文件'" % fmt_lines,
+          out2 == "%s 行 Go" % fmt_lines and out3 == "Go 1234 文件", "out2=%r out3=%r" % (out2, out3))
 
     # T3 边界：不是规模宣称的裸数字不得改动
     out4, ch4 = fmn.fix_line("见 commit 126,659 的说明", truth)
@@ -93,7 +98,7 @@ def main():
     # T5 HTML 分支：数字与单位被标签隔断
     body5 = '      <div class="num">126,659</div><div class="lbl">行 Go 工程代码</div>'
     out5, ch5b = fmn.fix_line(body5, truth, strip_html=True)
-    check("T5 HTML：标签隔断仍能修", "126,675" in out5 and "126,659" not in out5 and ch5b,
+    check("T5 HTML：标签隔断仍能修", fmt_lines in out5 and "126,659" not in out5 and ch5b,
           "out=%r" % out5)
 
     # T6 修复-检测闭环（核心变异验证）
@@ -142,7 +147,7 @@ def main():
             cmn.iter_files, cmn.rel = orig_iter, orig_rel
 
         check("T8 端到端：检出并修好临时文件，且换行符仍为 CRLF",
-              ok_detect and raw.count(b"\r\n") == 2 and b"126,675" in raw and not fixable2,
+              ok_detect and raw.count(b"\r\n") == 2 and fmt_lines.encode() in raw and not fixable2,
               "ok_detect=%s crlf=%d fixable2=%d" % (ok_detect, raw.count(b"\r\n"), len(fixable2)))
 
         # T9 BANNED 只上报不改写

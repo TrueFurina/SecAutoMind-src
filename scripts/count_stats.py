@@ -98,6 +98,91 @@ def go_stats():
     return go_files, test_files, non_test_lines, test_lines
 
 
+_CTF_PKG = os.path.join("internal", "ctfplatform")
+_CH_RET = re.compile(r'return\s+\[\]string\{"[\u4e00-\u9fff]')
+_FLAG_BUILD = re.compile(r'"flag\{|"picoCTF\{|"BZHCTF\{|"[A-Za-z0-9_]{2,20}\{"')
+_IDENT = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+
+def ctf_solver_breakdown():
+    """把「已注册 CTF 求解器」拆成 真求解器 / 纯检测器 两类（2026-10-03 口径拆分）。
+
+    为什么必须拆（诚实性，非注水指控）：
+      176 个 `RegisterSolver` 注册项里，有一批的 Solver 实现**只做关键词/魔数检测**，
+      返回的是硬编码中文提示（如 `"攻击链: TTP战术技术程序"`），**永远不可能等于真 flag**
+      （flag 为 ASCII，且基准 55/55 真题 flag 均带 `{}` 外壳）。
+      它们在 `TestAllRegisteredSolversActuallyExecute` 下算「已被执行」，
+      但「注册了」≠「能解题」——两个口径混在一起会让「176 个求解器全部实跑通过」
+      被读成「176 个都能解题」，抽到一个检测器即穿帮。故在真值源里分开计数。
+
+    判据（可复现，只读，与 .workbuddy/ops/audit_solver_inflation.py 同源）：
+      1. 建包内函数表 + 调用图；
+      2. **叶子诊断函数** = 其全部 `return []string{` 均为硬编码中文标签、且函数体不调 scanFlags；
+      3. 某注册求解器的**传递闭包**触及叶子诊断函数，且闭包内无任何「产 flag 能力」
+         （无 scanFlags、不构造 `xxx{...}` 字面量）→ 判为**纯检测器**。
+
+    返回 (real_solvers, detectors)；目录缺失返回 (None, None)（调用方 fail-closed 留痕）。
+    """
+    pkg = os.path.join(ROOT, _CTF_PKG)
+    if not os.path.isdir(pkg):
+        return None, None
+
+    src_all = {}
+    for f in os.listdir(pkg):
+        if f.endswith(".go") and not f.endswith("_test.go"):
+            try:
+                with open(os.path.join(pkg, f), encoding="utf-8", errors="ignore") as fh:
+                    src_all[f] = fh.read()
+            except OSError:
+                continue
+
+    funcs = {}
+    for src in src_all.values():
+        idx = [m.start() for m in re.finditer(r"(?m)^func\s", src)] + [len(src)]
+        for i in range(len(idx) - 1):
+            chunk = src[idx[i]:idx[i + 1]]
+            m = re.match(r"func\s+(?:\([^)]*\)\s*)?([A-Za-z0-9_]+)\s*\(", chunk)
+            if m:
+                funcs.setdefault(m.group(1), chunk)
+
+    def _all_chinese_returns(body):
+        rets = re.findall(r"return\s+\[\]string\{[^\n]*", body)
+        return bool(rets) and all(_CH_RET.match(r) for r in rets)
+
+    leaves = {fn for fn, b in funcs.items()
+              if _all_chinese_returns(b) and "scanFlags(" not in b}
+
+    callees = {fn: {i for i in _IDENT.findall(b) if i in funcs and i != fn}
+               for fn, b in funcs.items()}
+
+    def _closure(fn):
+        seen, stack = set(), [fn]
+        while stack:
+            for c in callees.get(stack.pop(), ()):
+                if c not in seen:
+                    seen.add(c)
+                    stack.append(c)
+        return seen
+
+    total = detectors = 0
+    for src in src_all.values():
+        for m in re.finditer(r"RegisterSolver\(SolverEntry\{(.*?)\}\)", src, re.S):
+            total += 1
+            sv = re.search(r"Solver:\s*([A-Za-z0-9_]+)", m.group(1))
+            fn = sv.group(1) if sv else None
+            # 解析不到实现函数 -> 保守算「真求解器」，不轻易扣减
+            if not fn or fn not in funcs:
+                continue
+            cl = _closure(fn) | {fn}
+            if not (cl & leaves):
+                continue
+            closure_src = "\n".join(funcs.get(x, "") for x in cl)
+            if ("scanFlags(" in closure_src) or _FLAG_BUILD.search(closure_src):
+                continue
+            detectors += 1
+    return total - detectors, detectors
+
+
 def test_packages_count():
     """统计**含至少一个 *_test.go 的包目录数**（磁盘统计，秒级、确定、不依赖跑测试）。
 
@@ -263,6 +348,15 @@ def exe_info():
 def main():
     go_files, test_files, non_test, test = go_stats()
     solvers = _regex_count("internal/ctfplatform", r"RegisterSolver\(SolverEntry\{")
+    real_solvers, solvers_detectors = ctf_solver_breakdown()
+    if real_solvers is None:
+        print("[WARN] ctf_solver_breakdown 取不到真值（internal/ctfplatform 缺失？）"
+              "——ctf_real_solvers/ctf_detectors 将为 null，依赖它的口径检查应失败而非静默通过",
+              file=sys.stderr)
+    elif real_solvers + solvers_detectors != solvers:
+        # 解析口径与正则口径不一致时必须暴露，杜绝两个数各说各话
+        print("[WARN] 求解器拆分与注册总数不一致：real=%d + detector=%d != total=%d"
+              % (real_solvers, solvers_detectors, solvers), file=sys.stderr)
     im_adapters = _regex_count("internal/robot", r"^func Start[A-Za-z]*\(")
     tools_yaml = _count_files("tools", ".yaml")
     builtin_tools = builtin_tools_count()
@@ -286,6 +380,10 @@ def main():
         "test_lines": test,
         "total_lines": non_test + test,
         "ctf_solvers": solvers,
+        # 口径拆分（2026-10-03）：solvers = 真求解器 + 纯检测器，三者自洽。
+        # 材料若宣称「N 个求解器全实跑」必须区分这两类，见 ctf_solver_breakdown 文档。
+        "ctf_real_solvers": real_solvers,
+        "ctf_detectors": solvers_detectors,
         "im_adapters": im_adapters,
         "exe": exe_info(),
     }
@@ -314,6 +412,10 @@ def main():
     print("  测试行               %s" % format(data["test_lines"], ","))
     print("  总行数               %s" % format(data["total_lines"], ","))
     print("  CTF 求解器（真实注册）%d" % data["ctf_solvers"])
+    if data["ctf_real_solvers"] is not None:
+        print("    ├─ 真求解器        %d  (可产出 flag 外形)" % data["ctf_real_solvers"])
+        print("    └─ 纯检测器        %d  (仅关键词/魔数检测，输出中文提示，永不为真 flag)"
+              % data["ctf_detectors"])
     print("  IM 适配器 (func Start*)%d" % data["im_adapters"])
     if e["present"]:
         print("  交付 exe             md5=%s (%s MiB)" % (e["md5"], e["size_mib"]))

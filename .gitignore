@@ -111,3 +111,6 @@ secautomind-ai.exe.new
 scripts/deploy_baidu.py
 scripts/diagnose_gcc.py
 range_scan/
+
+# 本地运维指南（含明文钉钉凭证，禁止入库）
+dingtalk-setup-guide.html
