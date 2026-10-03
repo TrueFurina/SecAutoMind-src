@@ -27,6 +27,7 @@ import (
 	"secautomind-ai/internal/authctx"
 	"secautomind-ai/internal/config"
 	"secautomind-ai/internal/database"
+	"secautomind-ai/internal/mcp/builtin"
 	"secautomind-ai/internal/security"
 
 	"github.com/gin-gonic/gin"
@@ -878,10 +879,10 @@ func (h *RobotHandler) cmdDoctor() string {
 		}
 		return "已关闭"
 	}
-	enabledInternalTools := 0
+	enabledYamlTools := 0
 	for _, tool := range h.config.Security.Tools {
 		if tool.Enabled {
-			enabledInternalTools++
+			enabledYamlTools++
 		}
 	}
 	enabledExternal := 0
@@ -890,7 +891,13 @@ func (h *RobotHandler) cmdDoctor() string {
 			enabledExternal++
 		}
 	}
-	return fmt.Sprintf("【配置诊断】\n主模型: %s\nEino 多代理: %s\n内置 MCP 工具: %d/%d 个已启用\nHTTP MCP 服务: %s\n外部 MCP: %d 个已启用\n知识库: %s\n项目功能: %s\n说明: 内置工具不依赖 HTTP MCP 服务；此命令只检查配置，不主动探测外部服务。", configured(strings.TrimSpace(h.config.OpenAI.Model) != "" && strings.TrimSpace(h.config.OpenAI.BaseURL) != ""), enabled(h.config.MultiAgent.Enabled), enabledInternalTools, len(h.config.Security.Tools), enabled(h.config.MCP.Enabled), enabledExternal, enabled(h.config.Knowledge.Enabled), enabled(h.config.Project.Enabled))
+	// 🔴 口径分层（2026-10-04 修正）：本命令原先把 config.Security.Tools（tools/ 目录下的
+	// YAML 声明）标成「内置 MCP 工具」，而材料/证据包口径里的「内置 MCP 工具」指的是
+	// builtin.GetAllBuiltinTools()（编译进二进制的 Go 工具）——**同名不同义**。
+	// 后果：`诊断` 在未部署 tools/ 时输出「内置 MCP 工具: 0/0」，与材料的「内置 MCP 工具 52」
+	// 直接冲突，评审会判定"产品配置坏了/材料夸大"。现按两层分列，措辞与
+	// scripts/count_stats.py 的 builtin_tools / tools_yaml 字段严格对齐。
+	return fmt.Sprintf("【配置诊断】\n主模型: %s\nEino 多代理: %s\nGo 内置 MCP 工具: %d 个（编译进二进制，不依赖 tools/ 目录）\n工具 YAML 声明: %d/%d 个已启用（来自 tools/ 目录，未部署时为 0/0）\nHTTP MCP 服务: %s\n外部 MCP: %d 个已启用\n知识库: %s\n项目功能: %s\n说明: 本命令只检查配置，不主动探测外部服务。", configured(strings.TrimSpace(h.config.OpenAI.Model) != "" && strings.TrimSpace(h.config.OpenAI.BaseURL) != ""), enabled(h.config.MultiAgent.Enabled), len(builtin.GetAllBuiltinTools()), enabledYamlTools, len(h.config.Security.Tools), enabled(h.config.MCP.Enabled), enabledExternal, enabled(h.config.Knowledge.Enabled), enabled(h.config.Project.Enabled))
 }
 
 func (h *RobotHandler) recordRobotCommandAudit(access *database.RBACAccess, platform, action, resourceType, resourceID, message string) {
