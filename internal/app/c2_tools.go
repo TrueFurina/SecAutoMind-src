@@ -200,6 +200,18 @@ tcp_reverse 默认仅接受 CSB1 加密 Beacon（AES-GCM + ImplantToken）才登
 				}
 				listener.ConfigJSON = string(cfgBytes)
 			}
+			// 安全策略：update 后校验最终配置（legacy shell 不得绑定非回环地址）
+			{
+				ucfg := &c2.ListenerConfig{}
+				raw := strings.TrimSpace(listener.ConfigJSON)
+				if raw == "" {
+					raw = "{}"
+				}
+				_ = json.Unmarshal([]byte(raw), ucfg)
+				if err := c2.ValidateListenerPolicy(listener.Type, listener.BindHost, ucfg); err != nil {
+					return makeC2Result(nil, err)
+				}
+			}
 			if err := m.DB().UpdateC2Listener(listener); err != nil {
 				return makeC2Result(nil, err)
 			}

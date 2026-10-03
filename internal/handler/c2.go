@@ -216,6 +216,20 @@ func (h *C2Handler) UpdateListener(c *gin.Context) {
 		listener.ConfigJSON = string(cfgJSON)
 	}
 
+	// 安全策略：update 后校验最终配置（legacy shell 不得绑定非回环地址）
+	{
+		ucfg := &c2.ListenerConfig{}
+		raw := strings.TrimSpace(listener.ConfigJSON)
+		if raw == "" {
+			raw = "{}"
+		}
+		_ = json.Unmarshal([]byte(raw), ucfg)
+		if err := c2.ValidateListenerPolicy(listener.Type, listener.BindHost, ucfg); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
 	if err := h.mgr().DB().UpdateC2Listener(listener); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
