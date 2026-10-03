@@ -67,6 +67,22 @@ func (c *presolveCache) Set(key string, result *PresolveResult) {
 // flagShapeRegex 通用 flag 外形：前缀{内容}，如 picoCTF{...} / BZHCTF{...}。
 var flagShapeRegex = regexp.MustCompile(`[A-Za-z0-9_]{2,20}\{[^}\s]{4,}\}`)
 
+// minFlagLikenessForHit 判定「算一次命中」所需的最低 flag 可信度。
+//
+// 只接受 likeness=3（真 flag 外形）；likeness=1（诊断/标签文本，如
+// "AES ECB 检测：发现 N 个重复块"、"攻击链: TTP战术技术程序"）一律**不当命中**。
+//
+// 这正是本文件与 presolve_misc.go 注释早已声明的语义（"诊断提示不当命中"），
+// 但旧实现"首个非空即 best"使其形同虚设——2026-10-03 实锤后果：
+// `tryExploitChainDetection` 用 strings.Contains(text,"ttp") 匹配，而 "http" 里
+// 就含 "ttp"，于是任何带 http/https URL 的消息（如用户发的"对http://...渗透测试"）
+// 都被误判为"解出攻击链"，返回垃圾文本 `攻击链: TTP战术技术程序` 并**短路真正的
+// Agent 推理**——用户看到的就是一句没头没尾的"候选 Flag"。
+//
+// 安全性：55/55 真题 flag 均带 {} 外壳（likeness=3），故收紧门槛**不可能**降低
+// SHA-256 校验的真实覆盖率，只会消除假阳性短路。
+const minFlagLikenessForHit = 3
+
 // flagLikeness 评估一组候选「有多像真 flag」，用于裁决不同求解器的结果。
 // 这是修复「注册表首命中缺陷」的关键：像 tryAESECB 那样返回
 // "AES ECB 检测：发现 N 个重复块" 的诊断文本只值 1 分，
@@ -238,6 +254,12 @@ func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, atta
 
 	var best *sweepCandidate
 	for c := range res {
+		// 只接受真 flag 外形（likeness>=minFlagLikenessForHit）；诊断/标签文本
+		// 一律丢弃，否则孤立出现的诊断（如 exploit_chain 的"攻击链: ..."）会被
+		// 当成命中返回并短路 Agent。见 minFlagLikenessForHit 注释。
+		if c.like < minFlagLikenessForHit {
+			continue
+		}
 		if best == nil || betterSweep(c, *best) {
 			c := c
 			best = &c
