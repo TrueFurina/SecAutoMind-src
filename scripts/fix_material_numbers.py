@@ -136,12 +136,20 @@ def collect(truth):
         edits = []
         for i, raw in enumerate(raw_lines, 1):
             body = raw.rstrip("\r\n")
+            banned_here = False
             for pat, why in cmn.BANNED:
                 if re.search(pat, body):
                     manual.append((rpath, i, why, body.strip()[:120]))
+                    banned_here = True
             # 检测与门禁逐字一致：HTML 先剥标签
             probe = re.sub(r"<[^>]*>", " ", body) if strip_html else body
             if not any(re.search(p, probe) for p, _, _ in cmn.ANCHORS):
+                continue
+            if banned_here:
+                # BANNED 命中的行**只上报、不自动改**：旧口径常常语义歧义
+                # （如「90 工具」到底是工具 YAML 91 还是运行时 143？），猜错比不猜更糟。
+                # 若不跳过，后加的锚点会把已作废旧口径一起"顺手改掉"，令「只上报」性质失效
+                # （fix_material_numbers_test.py::T9 锁定此性质）。零当前影响：仓库现无 BANNED 命中。
                 continue
             new_body, changes = fix_line(body, truth, strip_html=strip_html)
             if changes:

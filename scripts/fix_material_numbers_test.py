@@ -15,6 +15,7 @@
     T7 fail-closed：真值缺字段必须崩，不得静默跳过
     T8 换行符零改动：CRLF 文件修完后仍是 CRLF（否则 line-endings-gate 变红）
     T9 BANNED 不猜：命中已作废旧口径只上报、不改写
+    T11「裸 N 测试」族锚点：`279 测试`（无"文件"二字）此前无锚点 → 须能修，且不误伤局部 2 位数
     T10 真实仓库当前状态：修复器 dry-run 无待修 + 门禁 exit 0
 """
 import os
@@ -164,6 +165,27 @@ def main():
             after9 = fh.read()
         check("T9 BANNED 只上报不改写",
               len(m9) >= 1 and after9 == banned_line, "manual=%d after=%r" % (len(m9), after9))
+
+    # T11「裸 N 测试」族锚点（2026-10-04 新增）。
+    # 背景：材料长期写 `127,196 行 Go · 279 测试` / `Go 735 文件（279 测试）`，
+    # 而既有三条 test_files 锚点都要求带"文件"二字 → 这类简写**从无锚点**，
+    # 真值已 286 时 279 仍存活于 PPT 构建脚本 + 打印版合订本 + 技术报告（3 文件 5 处）。
+    # 期望值一律由真值派生，不得硬编码（否则真值一变就假红）。
+    fmt_tf = str(truth["test_files"])
+    stale_tf = "279" if fmt_tf != "279" else "278"
+    t11_bad = "里程碑：127,196 行 Go · %s 测试 · 0 panic。" % stale_tf
+    b11 = probe_hits("docs/x.md", t11_bad, truth)
+    f11, _c11 = fmn.fix_line(t11_bad, truth)
+    a11 = probe_hits("docs/x.md", f11, truth)
+    # 反向自检（防锚点过宽）：
+    #  · 2 位数局部说明（「服务层 11 测试」）不是规模宣称 → 不得被改；
+    #  · 「286 测试文件」仍归"文件"锚点管 → 本锚点不得重复命中把数字改坏。
+    keep_local, ch_local = fmn.fix_line("服务层 11 测试，服务层 11 测试", truth)
+    keep_file, ch_file = fmn.fix_line("材料写 %s 测试文件" % fmt_tf, truth)
+    check("T11 裸测试数锚点：注入 %s 测试(命中%d) -> 修为 %s；局部 2 位数/「测试文件」写法不被误伤"
+          % (stale_tf, b11, fmt_tf),
+          b11 == 1 and a11 == 0 and ("%s 测试" % fmt_tf) in f11 and not ch_local and not ch_file,
+          "b=%d a=%d f11=%r ch_local=%r ch_file=%r" % (b11, a11, f11, ch_local, ch_file))
 
     # T10 真实仓库当前状态
     fixable_r, manual_r = fmn.collect(truth)
