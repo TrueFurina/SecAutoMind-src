@@ -186,6 +186,10 @@ func (m *Manager) CreateListener(in CreateListenerInput) (*database.C2Listener, 
 		cfg.CallbackHost = ch
 	}
 	cfg.ApplyDefaults()
+	// 安全策略：legacy shell 不得绑定非回环地址（见 listener_policy.go 说明）
+	if err := ValidateListenerPolicy(in.Type, bindHost, cfg); err != nil {
+		return nil, err
+	}
 	cfgJSON, err := json.Marshal(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("marshal listener config: %w", err)
@@ -245,6 +249,16 @@ func (m *Manager) StartListener(id string) (*database.C2Listener, error) {
 		_ = json.Unmarshal([]byte(rec.ConfigJSON), cfg)
 	}
 	cfg.ApplyDefaults()
+
+	// 安全策略：重启恢复 / 手动启动时同样校验，数据库中已存在的违规历史记录不会被拉起
+	if err := ValidateListenerPolicy(rec.Type, rec.BindHost, cfg); err != nil {
+		now := time.Now()
+		_ = m.db.SetC2ListenerStatus(rec.ID, "error", err.Error(), &now)
+		m.publishEvent("warn", "listener", "", "", fmt.Sprintf("监听器 %s 被安全策略拒绝启动: %v", rec.Name, err), map[string]interface{}{
+			"listener_id": rec.ID,
+		})
+		return nil, err
+	}
 
 	// 通过工厂创建具体实现。必须使用 rec 的副本：HTTP handler 在返回 JSON 前会清空
 	// rec.ImplantToken / EncryptionKey 做脱敏，若 listener 实现持有同一指针会导致 beacon 鉴权永久失败。
