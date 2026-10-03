@@ -474,48 +474,52 @@ func (h *RobotHandler) cmdHelp(platform, userID string) string {
 	can := func(permission string) bool {
 		return access != nil && access.Permissions[permission]
 	}
+	// 🔴 加粗必须是「成对且平衡」的 markdown：** 开 → ** 闭，绝不允许出现单个
+	// 未闭合的 **。IM 客户端（钉钉/微信）按 markdown 渲染，单个未闭合 ** 会让其后
+	// 所有内容整体加粗（用户实证：帮助前半段没加粗、后半段整段加粗即此因）。
+	// 因此：章节标题 **【…】** 与命令关键词 **命令 / cmd** 成对加粗，描述文字保持常体。
 	var b strings.Builder
-	b.WriteString("【SecAutoMind 机器人命令】\n\n")
-	b.WriteString("【通用 General】\n")
-	b.WriteString("· 帮助 / help — 显示本帮助\n")
-	b.WriteString("· 版本 / version — 显示当前版本号\n")
-	b.WriteString("· 绑定 <绑定码> / bind <code> — 绑定网页端 RBAC 用户\n")
-	b.WriteString("· 解绑 / unbind — 请求解除账号绑定（需确认）\n")
-	b.WriteString("· 身份 / whoami — 显示平台发送者、鉴权模式及当前实际 RBAC 身份\n")
+	b.WriteString("**【SecAutoMind 机器人命令】**\n\n")
+	b.WriteString("**【通用 General】**\n")
+	b.WriteString("· **帮助 / help** — 显示本帮助\n")
+	b.WriteString("· **版本 / version** — 显示当前版本号\n")
+	b.WriteString("· **绑定 <绑定码> / bind <code>** — 绑定网页端 RBAC 用户\n")
+	b.WriteString("· **解绑 / unbind** — 请求解除账号绑定（需确认）\n")
+	b.WriteString("· **身份 / whoami** — 显示平台发送者、鉴权模式及当前实际 RBAC 身份\n")
 	if can("chat:read") || can("chat:write") || can("chat:delete") {
-		b.WriteString("\n【对话 Conversation】\n")
+		b.WriteString("\n**【对话 Conversation】**\n")
 		if can("chat:read") {
-			b.WriteString("· 列表 / list — 列出所有对话标题与 ID\n· 切换 <ID> / switch <ID> — 指定对话继续\n· 状态 / status — 汇总当前选择\n· 任务 / task — 查看当前任务状态\n")
+			b.WriteString("· **列表 / list** — 列出所有对话标题与 ID\n· **切换 <ID> / switch <ID>** — 指定对话继续\n· **状态 / status** — 汇总当前选择\n· **任务 / task** — 查看当前任务状态\n")
 		}
 		if can("chat:write") {
-			b.WriteString("· 新对话 / new；清空 / clear — 开启新对话\n· 重命名 <名称> / rename <name> — 修改当前对话标题\n")
+			b.WriteString("· **新对话 / new**；**清空 / clear** — 开启新对话\n· **重命名 <名称> / rename <name>** — 修改当前对话标题\n")
 		}
 		if can("chat:delete") {
-			b.WriteString("· 删除 <ID> / delete <ID> — 删除指定对话（需确认）\n")
+			b.WriteString("· **删除 <ID> / delete <ID>** — 删除指定对话（需确认）\n")
 		}
 	}
 	if can("roles:read") {
-		b.WriteString("\n【角色 Role】\n· 角色 / roles — 列出所有可用角色\n· 角色 <名> / role <name> — 切换当前角色\n")
+		b.WriteString("\n**【角色 Role】**\n· **角色 / roles** — 列出所有可用角色\n· **角色 <名> / role <name>** — 切换当前角色\n")
 	}
 	if can("agent:execute") {
-		b.WriteString("\n【模式 Mode】\n· 模式 / modes — 列出对话模式与当前选择\n· 模式 <名称> / mode <name> — 切换对话模式\n· 停止 / stop — 中断当前任务\n")
+		b.WriteString("\n**【模式 Mode】**\n· **模式 / modes** — 列出对话模式与当前选择\n· **模式 <名称> / mode <name>** — 切换对话模式\n· **停止 / stop** — 中断当前任务\n")
 	}
 	if can("vulnerability:read") {
-		b.WriteString("\n【漏洞提醒 Vulnerability alerts】\n· 漏洞提醒 — 查看订阅状态\n· 漏洞提醒 开启 / vuln alerts on — 开启提醒\n· 漏洞提醒 仅严重|高危以上|中危以上 / vuln alerts critical|high|medium — 设置最低级别\n· 漏洞提醒 关闭 / vuln alerts off — 关闭提醒\n")
+		b.WriteString("\n**【漏洞提醒 Vulnerability alerts】**\n· **漏洞提醒** — 查看订阅状态\n· **漏洞提醒 开启 / vuln alerts on** — 开启提醒\n· **漏洞提醒 仅严重／高危以上／中危以上 / vuln alerts critical／high／medium** — 设置最低级别\n· **漏洞提醒 关闭 / vuln alerts off** — 关闭提醒\n")
 	}
-	b.WriteString("\n【诊断 Diagnostics】\n")
-	b.WriteString("· 权限 / permissions — 查看当前业务权限\n")
+	b.WriteString("\n**【诊断 Diagnostics】**\n")
+	b.WriteString("· **权限 / permissions** — 查看当前业务权限\n")
 	if can("config:read") {
-		b.WriteString("· 诊断 / doctor — 检查机器人关键配置状态\n")
+		b.WriteString("· **诊断 / doctor** — 检查机器人关键配置状态\n")
 	}
-	b.WriteString("· 确认 / confirm；取消 / cancel — 处理高风险操作确认\n")
+	b.WriteString("· **确认 / confirm**；**取消 / cancel** — 处理高风险操作确认\n")
 	if h.projectsEnabled() && (can("project:read") || can("project:write")) {
-		b.WriteString("\n【项目 Project】\n")
+		b.WriteString("\n**【项目 Project】**\n")
 		if can("project:read") {
-			b.WriteString("· 项目 / projects — 列出所有项目\n")
+			b.WriteString("· **项目 / projects** — 列出所有项目\n")
 		}
 		if can("project:write") {
-			b.WriteString("· 新建项目 <名称> / new project <name> — 创建并绑定当前对话\n· 绑定项目 <ID或名称> / bind project <ID|name> — 绑定已有项目\n· 解除项目 / unbind project — 解除项目绑定\n")
+			b.WriteString("· **新建项目 <名称> / new project <name>** — 创建并绑定当前对话\n· **绑定项目 <ID或名称> / bind project <ID|name>** — 绑定已有项目\n· **解除项目 / unbind project** — 解除项目绑定\n")
 		}
 	}
 	b.WriteString("\n──────────────\n")
