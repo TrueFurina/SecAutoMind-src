@@ -225,7 +225,7 @@ jobs:
       # 用 stdlib 手搓的最小 pptx/docx 夹具跑 10 项，含 2 项变异（改错数字必须变红）、
       # 1 项 fail-closed（损坏产物必须拦下）、2 项跨形状方向判据。
       # 真实产物的检查落在打包那一刻（make_delivery_package.py 第五条红线）与本地自检。
-      - name: Artifact-number gate self-test (10 cases, incl. mutation)
+      - name: Artifact-number gate self-test (11 cases, incl. mutation + always-exclude)
         run: python scripts/check_artifact_numbers_test.py
 
   # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，

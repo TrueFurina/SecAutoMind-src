@@ -75,6 +75,9 @@ installer/
 # 生成的 .pptx 二进制与工具缓存不入库（可从源码重建）
 SecAutoMind_PPT/*.pptx
 SecAutoMind_PPT/_archive/
+# 根级归档区：已冻结件（已提交的 作品报告 等）与已被现行版本取代的旧产物。
+# 移动而非删除，全部可在此找回；口径漂移不再污染交付包与产物门禁。
+_archive/
 SecAutoMind_PPT/.slidep/
 SecAutoMind_PPT/.cache/
 SecAutoMind_PPT/__pycache__/
