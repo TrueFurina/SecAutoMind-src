@@ -9,7 +9,7 @@
 > 与 `secautomind-evidence-verify` 技能文档旧「预期结果」（662/151/14-14）已漂移——**以本文件活值为准**，漂移说明见 §5。
 >
 > 🔻 **求解器口径更新（2026-10-03 追补，非改写原快照）**：本文锚定 09-09 基线（174 求解器），当时「求解器」为**未拆分口径**。
-> 后续审计（`solver-caliber-audit.html` + `.workbuddy/ops/audit_solver_inflation.py`）发现：约 1/3 注册项的 Solver 实现**只做关键词/魔数检测**、
+> 后续审计（可复现脚本 `.workbuddy/ops/audit_solver_inflation.py`：包内调用图传递闭包判定）发现：约 1/3 注册项的 Solver 实现**只做关键词/魔数检测**、
 > 返回硬编码中文提示（如 `"攻击链: TTP战术技术程序"`），**永远不可能等于真 flag**（flag 为 ASCII）。
 > 自 2026-10-03 起口径**拆分**为「真求解器 / 检测器」：真值 **176 注册 = 117 真求解器 + 59 检测器**
 > （`count_stats.py` 新增 `ctf_real_solvers` / `ctf_detectors`，门禁同步锚定）。
