@@ -12,6 +12,7 @@ import (
 
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/client"
+	"github.com/open-dingtalk/dingtalk-stream-sdk-go/payload"
 	dingutils "github.com/open-dingtalk/dingtalk-stream-sdk-go/utils"
 	"go.uber.org/zap"
 )
@@ -21,7 +22,7 @@ const (
 	dingReconnectMax     = 60 * time.Second // 最大重连间隔
 )
 
-// StartDing 启动钉钉 Stream 长连接（无需公网），收到消息后调用 handler 并通过 SessionWebhook 回复。
+// StartDing 启动钉钉 Stream 长连接（无需公网），收到消息后调用 handler 处理并回复。
 // 断线（如笔记本睡眠、网络中断）后会自动重连；ctx 被取消时退出，便于配置变更时重启。
 func StartDing(ctx context.Context, robotsCfg config.RobotsConfig, h MessageHandler, logger *zap.Logger) {
 	cfg := robotsCfg.Dingtalk
@@ -41,15 +42,37 @@ func StartDing(ctx context.Context, robotsCfg config.RobotsConfig, h MessageHand
 // 那会在连接健康时不断丢弃旧连接、新建 client，导致日志刷"正在连接"、
 // 僵尸连接累积，且消息路由在多个连接间抖动。
 // 正确语义：Start() 失败才按退避重建；成功则阻塞到 ctx 取消，把重连交给 SDK。
+//
+// 回复机制（钉钉 Stream 官方约定）：OnEventReceived 回调**返回的 []byte 即作为机器人回复**，
+// 由 SDK 经 Stream 连接发回钉钉。msg.SessionWebhook 是「HTTP 回调模式」的字段，
+// Stream 模式下通常为空——因此绝不能以 "SessionWebhook == \"\"" 作为丢弃消息的条件，
+// 否则会静默丢弃全部 Stream 消息（历史 bug）。本实现双保险：
+//   - Stream 模式（SessionWebhook 空）：直接 return []byte(reply)，由框架经 Stream 回复；
+//   - 兼容旧 HTTP 回调（SessionWebhook 非空）：改走 webhook POST 回复。
 func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) {
+	// 必须先桥接 SDK 日志：SDK 默认 logger 是空实现，不桥接则读帧错误、
+	// topic 未注册、收帧内容全部静默丢弃，消息不进时无从排查。
+	installDingSDKLogger(logger)
 	backoff := dingReconnectInitial
 	for {
 		streamClient := client.NewStreamClient(
 			client.WithAppCredential(client.NewAppCredentialConfig(cfg.ClientID, cfg.ClientSecret)),
-			client.WithSubscription(dingutils.SubscriptionTypeKCallback, "/v1.0/im/bot/messages/get",
+			client.WithSubscription(dingutils.SubscriptionTypeKCallback, payload.BotMessageCallbackTopic,
 				chatbot.NewDefaultChatBotFrameHandler(func(ctx context.Context, msg *chatbot.BotCallbackDataModel) ([]byte, error) {
-					go handleDingMessage(ctx, msg, cfg, strictUserIdentity, h, logger)
-					return nil, nil
+					if msg == nil {
+						return nil, nil
+					}
+					// 回调入口埋点：只要走到这里就说明钉钉确实推了消息过来。
+					// 有了这一行就能区分「消息没到」与「到了但被下游丢弃」。
+					logger.Info("钉钉收到 Stream 回调帧",
+						zap.String("msgtype", msg.Msgtype),
+						zap.String("conversation_id", msg.ConversationId),
+						zap.String("sender_id", msg.SenderId))
+					reply := processDingMessage(ctx, msg, cfg, strictUserIdentity, h, logger)
+					if reply == "" {
+						return nil, nil
+					}
+					return []byte(reply), nil
 				}).OnEventReceived),
 		)
 		logger.Info("钉钉 Stream 正在连接…", zap.String("client_id", cfg.ClientID))
@@ -85,10 +108,47 @@ func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUser
 	}
 }
 
-func handleDingMessage(ctx context.Context, msg *chatbot.BotCallbackDataModel, cfg config.RobotDingtalkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) {
-	if msg == nil || msg.SessionWebhook == "" {
-		return
+// processDingMessage 处理一条钉钉消息并返回回复文本（不为空时由调用方经 Stream 框架回复）。
+// 仅当 msg.SessionWebhook 非空（兼容旧 HTTP 回调场景）时，才改用 webhook POST 回复。
+func processDingMessage(ctx context.Context, msg *chatbot.BotCallbackDataModel, cfg config.RobotDingtalkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) string {
+	if msg == nil {
+		return ""
 	}
+	content := extractDingContent(msg)
+	if content == "" {
+		logger.Debug("钉钉消息内容为空，已忽略", zap.String("msgtype", msg.Msgtype))
+		return ""
+	}
+	logger.Info("钉钉收到消息", zap.String("sender", msg.SenderId), zap.String("content", content))
+	tenantKey := strings.TrimSpace(cfg.ClientID)
+	if tenantKey == "" {
+		tenantKey = "default"
+	}
+	userID := strings.TrimSpace(msg.SenderId)
+	if userID != "" {
+		userID = "t:" + tenantKey + "|u:" + userID
+	} else if cfg.AllowConversationIDFallback && !strictUserIdentity {
+		conversationID := strings.TrimSpace(msg.ConversationId)
+		if conversationID != "" {
+			userID = "t:" + tenantKey + "|c:" + conversationID
+		}
+	}
+	if userID == "" {
+		logger.Warn("钉钉消息缺少可用用户标识，已忽略")
+		return ""
+	}
+	reply := h.HandleMessage("dingtalk", userID, content)
+	// 兼容旧 HTTP 回调模式：若 SessionWebhook 有值，改走 webhook POST（此时本函数返回空，
+	// 避免与 Stream 返回值回复重复发送）。
+	if msg.SessionWebhook != "" {
+		postDingReplyViaWebhook(ctx, msg.SessionWebhook, reply, logger)
+		return ""
+	}
+	return reply
+}
+
+// extractDingContent 从回调消息中提取纯文本正文，兼容 text 与 richText。
+func extractDingContent(msg *chatbot.BotCallbackDataModel) string {
 	content := ""
 	if msg.Text.Content != "" {
 		content = strings.TrimSpace(msg.Text.Content)
@@ -107,30 +167,11 @@ func handleDingMessage(ctx context.Context, msg *chatbot.BotCallbackDataModel, c
 			}
 		}
 	}
-	if content == "" {
-		logger.Debug("钉钉消息内容为空，已忽略", zap.String("msgtype", msg.Msgtype))
-		return
-	}
-	logger.Info("钉钉收到消息", zap.String("sender", msg.SenderId), zap.String("content", content))
-	tenantKey := strings.TrimSpace(cfg.ClientID)
-	if tenantKey == "" {
-		tenantKey = "default"
-	}
-	userID := strings.TrimSpace(msg.SenderId)
-	if userID != "" {
-		userID = "t:" + tenantKey + "|u:" + userID
-	} else if cfg.AllowConversationIDFallback && !strictUserIdentity {
-		conversationID := strings.TrimSpace(msg.ConversationId)
-		if conversationID != "" {
-			userID = "t:" + tenantKey + "|c:" + conversationID
-		}
-	}
-	if userID == "" {
-		logger.Warn("钉钉消息缺少可用用户标识，已忽略")
-		return
-	}
-	reply := h.HandleMessage("dingtalk", userID, content)
-	// 使用 markdown 类型以便正确展示标题、列表、代码块等格式
+	return content
+}
+
+// postDingReplyViaWebhook 经 SessionWebhook 主动 POST 回复（兼容旧 HTTP 回调模式）。
+func postDingReplyViaWebhook(ctx context.Context, webhook, reply string, logger *zap.Logger) {
 	title := reply
 	if idx := strings.IndexAny(reply, "\n"); idx > 0 {
 		title = strings.TrimSpace(reply[:idx])
@@ -148,8 +189,12 @@ func handleDingMessage(ctx context.Context, msg *chatbot.BotCallbackDataModel, c
 			"text":  reply,
 		},
 	}
-	bodyBytes, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, msg.SessionWebhook, bytes.NewReader(bodyBytes))
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		logger.Warn("钉钉构造回复请求失败", zap.Error(err))
+		return
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhook, bytes.NewReader(bodyBytes))
 	if err != nil {
 		logger.Warn("钉钉构造回复请求失败", zap.Error(err))
 		return
