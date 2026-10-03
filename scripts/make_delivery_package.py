@@ -56,14 +56,11 @@ LINE_ENDINGS_CHECK = os.path.join(ROOT, "scripts", "check_line_endings.py")
 ARTIFACT_NUMBERS_CHECK = os.path.join(ROOT, "scripts", "check_artifact_numbers.py")
 CLEAN_CONFIG = os.path.join(ROOT, "config.share.yaml")
 
-# ── 产物体检门禁的排除项（每条必须带理由；只排"文字不进交付语义"的件）──────────
-# 判定标准很窄：**该文件的可见文字不会成为接收方看到的交付内容**。
-# 只要文字会被读，就必须过门禁，不许往这里加。
-#   · 演示模板版.pptx —— make_template_ppt.py 的视觉母版**输入**，脚本只克隆其首页
-#     全屏背景图，文字一个都不进产物（见 make_template_ppt.py:29-30, 63）。
-#   · 闽江御盾•智防矩阵.pptx —— 与上者**逐字节同尺寸的副本**（54091138 B），
-#     未被任何执行链引用，属历史命名备份。
-ARTIFACT_GATE_EXCLUDE = ["演示模板版.pptx", "闽江御盾•智防矩阵.pptx"]
+# ── 构建输入件的排除口径 ─────────────────────────────────────────────
+# 已下沉为门禁自身的 ALWAYS_EXCLUDE（scripts/check_artifact_numbers.py），此处不再维护
+# 第二份清单 —— 曾经两处各写一遍（打包脚本 + 裸跑门禁），是典型的漂移温床。
+# 判定标准（不许放宽）：**该文件的可见文字不会到达读者**，且必须有代码/实测背书。
+#   · 演示模板版.pptx —— make_template_ppt.py 只克隆其首页全屏背景图，文字不进产物。
 
 # ── 排除：目录名（任一父级命中即整棵剪掉）────────────────────────────
 EXCLUDE_DIRS = {
@@ -293,15 +290,14 @@ def verify(package, staging):
     # 写「91 工具」「286 测试文件」—— 文本门禁看不见它们（源脚本里数字与单位被拆成两个
     # 字符串字面量 `('90', 'YAML 工具配方')`），只有**读回渲染后的 pptx** 才暴露。
     # 包内 .docx/.pdf 同理。故对 staging 逐个读回并比对 count_stats 真值；漂移即不出包。
+    # 构建输入件的排除口径**不在这里维护**：已下沉为门禁自身的 ALWAYS_EXCLUDE
+    # （scripts/check_artifact_numbers.py），清单只此一份，避免「打包 vs 裸跑」两处漂移。
     if os.path.exists(ARTIFACT_NUMBERS_CHECK):
         cmd = [sys.executable, ARTIFACT_NUMBERS_CHECK, "--dir", staging]
-        for g in ARTIFACT_GATE_EXCLUDE:
-            cmd += ["--exclude", g]
         r = subprocess.run(cmd, capture_output=True, text=True,
                            encoding="utf-8", errors="ignore")
         if r.returncode == 0:
-            notes.append("check_artifact_numbers -> PASS（排除构建输入：%s）"
-                         % ", ".join(ARTIFACT_GATE_EXCLUDE))
+            notes.append("check_artifact_numbers -> PASS（构建输入由门禁 ALWAYS_EXCLUDE 排除）")
         else:
             issues.append("check_artifact_numbers -> BLOCK（rc=%d），交付物里的数字与真值"
                           "不符或无法核验" % r.returncode)

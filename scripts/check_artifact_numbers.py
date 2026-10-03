@@ -78,6 +78,15 @@ SKIP_DIR_PARTS = {
     "dist", "build", "vendor",
 }
 
+# ── 恒久排除：构建输入件。判定标准极窄，**必须能证明其文字永不到达读者**──────
+#   · 演示模板版.pptx —— make_template_ppt.py 的视觉母版**输入**。该脚本只克隆其
+#     首页全屏背景图（make_template_ppt.py:32-36 选 ≥90% 页面的图片形状，
+#     :63-67 仅 add_picture 该图 blob），文字与形状文本一个都不进产物；已实测
+#     生成物 SecAutoMind_参赛答辩_模板版.pptx 读回为 0 命中。
+#     它本身会被交付包原样携带（供接收方重生成 PPT），但其可见文字不构成交付语义。
+# 放在这里而不是各调用点：清单只此一份，避免「打包脚本 vs 裸跑门禁」两处漂移。
+ALWAYS_EXCLUDE = ["演示模板版.pptx"]
+
 # OOXML 命名空间
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -302,6 +311,9 @@ def main():
     ap.add_argument("--list", action="store_true", help="只列出将被检查的产物，不做比对")
     args = ap.parse_args()
 
+    # 恒久排除（构建输入件）与调用方追加排除合并，统一生效。
+    excludes = list(ALWAYS_EXCLUDE) + list(args.exclude)
+
     root = os.path.abspath(args.dir) if args.dir else cmn.ROOT
     if not os.path.isdir(root):
         print("[FAIL-CLOSED] 目录不存在：%s" % root, file=sys.stderr)
@@ -310,9 +322,11 @@ def main():
     print("=" * 74)
     print("产物数字门禁 · 读回 .pptx/.docx/.pdf 后套用「材料口径门禁」同一套规则")
     print("  扫描根：%s" % root)
+    if ALWAYS_EXCLUDE:
+        print("  恒久排除（构建输入，文字不构成交付语义）：%s" % ", ".join(ALWAYS_EXCLUDE))
 
     if args.list:
-        found = list(iter_artifacts(root, args.exclude))
+        found = list(iter_artifacts(root, excludes))
         for _p, rel in found:
             print("    %s" % rel)
         print("  共 %d 个产物（--list 不比对）" % len(found))
@@ -331,7 +345,7 @@ def main():
         return 2
 
     print("  锚定 HEAD: %s" % truth.get("head"))
-    hits, files, problems = scan(root, truth, args.exclude)
+    hits, files, problems = scan(root, truth, excludes)
     print("-" * 74)
     for rel, n in files:
         print("  · %-72s %d 个文本单元" % (rel, n))

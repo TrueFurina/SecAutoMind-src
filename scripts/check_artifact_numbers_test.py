@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""产物数字门禁的回归测试 —— 10 项，含变异自检与 fail-closed 自检（故意制造漂移，门禁必须变红）。
+"""产物数字门禁的回归测试 —— 11 项，含变异自检与 fail-closed 自检（故意制造漂移，门禁必须变红）。
 
 为什么必须有它
 --------------
@@ -181,6 +181,26 @@ def main():
     check("T9b 跨形状「293 | 测试文件」必须报（数值卡+标签卡）",
           has_label(hits, "测试文件数"), "hits=%s" % labels(hits))
 
+    # ---- T10 恒久排除（构建输入件）：必须真跳过，且不是"因为夹具无害"---------
+    # ALWAYS_EXCLUDE 里的件是构建输入（如 make_template_ppt.py 只克隆其背景图的视觉母版），
+    # 文字不构成交付语义。要求两条**同时**成立，否则本用例是空转：
+    #   a) 裸扫（仅带 ALWAYS_EXCLUDE）时该件被跳过；
+    #   b) 同一份漂移内容换个不被排除的名字 → 必须被抓。
+    ex_dir = os.path.join(base, "always_excl")
+    os.makedirs(ex_dir)
+    drift = [["%d" % (toolsyaml - 1), "YAML 工具配方"]]
+    tpl_name = can.ALWAYS_EXCLUDE[0] if can.ALWAYS_EXCLUDE else "NONE"
+    make_pptx(os.path.join(ex_dir, tpl_name), drift)
+    _h, files, _p = can.scan(ex_dir, truth, list(can.ALWAYS_EXCLUDE))
+    skipped = not any(rel == tpl_name for _p, rel in files)
+    mut_ex = os.path.join(base, "always_excl_mut")
+    os.makedirs(mut_ex)
+    make_pptx(os.path.join(mut_ex, "NOT_" + tpl_name), drift)
+    mhits, _f, _p = can.scan(mut_ex, truth, list(can.ALWAYS_EXCLUDE))
+    check("T10 恒久排除：构建输入件被跳过，同内容换名必被抓（非空转）",
+          bool(can.ALWAYS_EXCLUDE) and skipped and has_label(mhits, "工具 YAML 数"),
+          "skipped=%s mut_hits=%s" % (skipped, labels(mhits)))
+
     print("-" * 74)
     try:
         shutil.rmtree(base)
@@ -189,7 +209,7 @@ def main():
     if fail:
         print("  结论：FAIL —— %d 项未通过：%s" % (len(fail), ", ".join(fail)))
         return 1
-    print("  结论：PASS —— 10/10（含 T4/T5 变异自检、T7 fail-closed、T9 跨形状方向判据）")
+    print("  结论：PASS —— 11/11（含 T4/T5/T10 变异自检、T7 fail-closed、T9 跨形状方向判据）")
     return 0
 
 
