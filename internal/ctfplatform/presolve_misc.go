@@ -353,6 +353,12 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 			continue
 		}
 		like := flagLikeness(r.flags)
+		// 只接受真 flag 外形（见 minFlagLikenessForHit 注释）：诊断/标签文本
+		// （likeness=1）不当命中。旧实现"首个非空即 best"会让任何含 http 的输入
+		// 被 tryExploitChainDetection 误判为解出并短路 Agent（2026-10-03 实锤）。
+		if like < minFlagLikenessForHit {
+			continue
+		}
 		if best == nil || like > bestLike ||
 			(like == bestLike && enginePriority(r.engine) < enginePriority(best.engine)) {
 			r := r
@@ -366,8 +372,9 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	if bestLike < 3 {
 		select {
 		case r := <-chSweep:
-			if len(r.flags) > 0 && (best == nil || flagLikeness(r.flags) > bestLike) {
-				best = &r
+			if like := flagLikeness(r.flags); len(r.flags) > 0 && like >= minFlagLikenessForHit &&
+				(best == nil || like > bestLike) {
+				best, bestLike = &r, like
 			}
 		case <-sweepDone:
 			// 🔴 竞态修复（2026-09-30，CI flaky 根因）：
@@ -381,8 +388,9 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 			// 偶发 9/10 —— 放到决赛就是「偶发漏解=丢分」。故必须补一次非阻塞读取捞回结果。
 			select {
 			case r := <-chSweep:
-				if len(r.flags) > 0 && (best == nil || flagLikeness(r.flags) > bestLike) {
-					best = &r
+				if like := flagLikeness(r.flags); len(r.flags) > 0 && like >= minFlagLikenessForHit &&
+					(best == nil || like > bestLike) {
+					best, bestLike = &r, like
 				}
 			default:
 			}

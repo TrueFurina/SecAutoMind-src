@@ -31,6 +31,29 @@ var (
 	execERe      = regexp.MustCompile(`e\s*[=:：]\s*(\d{1,3})`)
 )
 
+// exploitChainKW 攻击链检测关键词（预编译为「词边界」正则）。
+//
+// 🔴 必须用 \b 词边界，不能用 strings.Contains：早先用裸子串匹配，
+// "ttp" 会命中 "http"/"https"、"apt" 会命中 "adapter"/"chapter"。
+// 2026-10-03 实锤后果：用户发"对http://...渗透测试与等保测评"，因 "http" 含 "ttp"
+// 被误判为攻击链题，返回垃圾文本 `攻击链: TTP战术技术程序` 并短路真正的 Agent。
+var exploitChainKW = []struct {
+	re   *regexp.Regexp
+	hint string
+}{
+	{regexp.MustCompile(`(?i)\bexploit chain\b`), "漏洞利用链"},
+	{regexp.MustCompile(`(?i)\battack chain\b`), "攻击链"},
+	{regexp.MustCompile(`(?i)\bkill chain\b`), "杀伤链"},
+	{regexp.MustCompile(`(?i)\bmitre att&ck\b`), "MITRE ATT&CK"},
+	{regexp.MustCompile(`(?i)\bttp\b`), "TTP战术技术程序"},
+	{regexp.MustCompile(`(?i)\binitial access\b`), "初始访问"},
+	{regexp.MustCompile(`(?i)\bprivilege escalation\b`), "权限提升"},
+	{regexp.MustCompile(`(?i)\blateral movement\b`), "横向移动"},
+	{regexp.MustCompile(`(?i)\bcommand and control\b`), "C2命令控制"},
+	{regexp.MustCompile(`(?i)\bdata exfiltration\b`), "数据外泄"},
+	{regexp.MustCompile(`(?i)\bapt\b`), "高级持续威胁"},
+}
+
 // tryExecStringsFlagScan 等价 strings + flag 扫描（二进制以 latin1 字节保留）。
 func tryExecStringsFlagScan(ctx context.Context, text string, attachments map[string]string) []string {
 	full := text
@@ -327,22 +350,15 @@ func tryKernelExploitAdvanced(text string, attachments map[string]string) []stri
 }
 
 // tryExploitChainDetection 检测攻击链特征（MITRE ATT&CK等）。
+// 关键词走词边界匹配（exploitChainKW），杜绝 "ttp"⊂"http" 这类子串假阳性。
 func tryExploitChainDetection(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
-	lower := strings.ToLower(fullText)
-	kws := []struct{ k, h string }{
-		{"exploit chain", "漏洞利用链"}, {"attack chain", "攻击链"}, {"kill chain", "杀伤链"},
-		{"mitre att&ck", "MITRE ATT&CK"}, {"ttp", "TTP战术技术程序"},
-		{"initial access", "初始访问"}, {"privilege escalation", "权限提升"},
-		{"lateral movement", "横向移动"}, {"command and control", "C2命令控制"},
-		{"data exfiltration", "数据外泄"}, {"apt", "高级持续威胁"},
-	}
-	for _, kw := range kws {
-		if strings.Contains(lower, kw.k) {
-			return []string{"攻击链: " + kw.h}
+	for _, kw := range exploitChainKW {
+		if kw.re.MatchString(fullText) {
+			return []string{"攻击链: " + kw.hint}
 		}
 	}
 	return nil
