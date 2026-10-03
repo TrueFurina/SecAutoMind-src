@@ -43,16 +43,18 @@ func StartDing(ctx context.Context, robotsCfg config.RobotsConfig, h MessageHand
 // 僵尸连接累积，且消息路由在多个连接间抖动。
 // 正确语义：Start() 失败才按退避重建；成功则阻塞到 ctx 取消，把重连交给 SDK。
 //
-// 回复机制（钉钉 Stream 官方约定）：OnEventReceived 回调**返回的 []byte 即作为机器人回复**，
-// 由 SDK 经 Stream 连接发回钉钉。msg.SessionWebhook 是「HTTP 回调模式」的字段，
-// Stream 模式下通常为空——因此绝不能以 "SessionWebhook == \"\"" 作为丢弃消息的条件，
-// 否则会静默丢弃全部 Stream 消息（历史 bug）。本实现双保险：
-//   - Stream 模式（SessionWebhook 空）：直接 return []byte(reply)，由框架经 Stream 回复；
-//   - 兼容旧 HTTP 回调（SessionWebhook 非空）：改走 webhook POST 回复。
+// 回复机制（🔴 实测修正：钉钉 Stream 机器人帧中 SessionWebhook **有值**——线上所有
+// ack data 恒为空串但用户能收到回复，证明回复一直走 webhook POST；下方旧注释
+// "Stream 模式下通常为空"是错误推断，曾据此写出让全部消息被静默丢弃的 bug）：
+//   - 主路径（dingFrameDispatcher）：立即 ack + 异步处理 + SessionWebhook POST 回复，
+//     根治「handler 阻塞数分钟 → 钉钉 ack 超时重投 → 重投帧撞会话锁报假错误」；
+//   - 兜底：webhook 或 msgId 缺失的异常形态，保持同步处理并 return []byte(reply)
+//     由框架经 Stream ack 回复。
 func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) {
 	// 必须先桥接 SDK 日志：SDK 默认 logger 是空实现，不桥接则读帧错误、
 	// topic 未注册、收帧内容全部静默丢弃，消息不进时无从排查。
 	installDingSDKLogger(logger)
+	dispatcher := newDingFrameDispatcher(cfg, strictUserIdentity, h, logger)
 	backoff := dingReconnectInitial
 	for {
 		streamClient := client.NewStreamClient(
@@ -68,7 +70,7 @@ func runDingLoop(ctx context.Context, cfg config.RobotDingtalkConfig, strictUser
 						zap.String("msgtype", msg.Msgtype),
 						zap.String("conversation_id", msg.ConversationId),
 						zap.String("sender_id", msg.SenderId))
-					reply := processDingMessage(ctx, msg, cfg, strictUserIdentity, h, logger)
+					reply := dispatcher.dispatch(ctx, msg)
 					if reply == "" {
 						return nil, nil
 					}
