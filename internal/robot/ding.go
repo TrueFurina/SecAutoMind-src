@@ -214,5 +214,9 @@ func postDingReplyViaWebhook(ctx context.Context, webhook, reply string, logger 
 		logger.Warn("钉钉回复非 200", zap.Int("status", resp.StatusCode))
 		return
 	}
-	logger.Debug("钉钉回复成功", zap.String("content_preview", reply))
+	// 🔴 Info 级（原为 Debug，生产日志级别下不可见）：回复是否真的发出去、发了多长，
+	// 是排查「用户说没收到回复」时唯一能自证的一环——只记失败日志会让人误判为已送达。
+	logger.Info("钉钉回复成功",
+		zap.Int("reply_runes", len([]rune(reply))),
+		zap.String("content_preview", truncateForLog(reply, 80)))
 }

@@ -27,3 +27,16 @@ func splitTextChunks(text string, maxRunes int) []string {
 func trimReply(s string) string {
 	return strings.TrimSpace(s)
 }
+
+// truncateForLog 按 rune 截断日志预览文本（绝不能按字节切，否则中文会被切成乱码，
+// 让排障的人误判成"写入把内容弄坏了"——本机实锤过的虚惊）。
+func truncateForLog(s string, maxRunes int) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= maxRunes {
+		return s
+	}
+	return string(r[:maxRunes]) + "…"
+}

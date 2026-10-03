@@ -90,9 +90,16 @@ func runWechatPoll(ctx context.Context, cfg config.RobotWechatConfig, h MessageH
 			}
 			// 🔴 微信端对机器人文本按 markdown 语义渲染，单个 \n 不换行（实测：帮助文本
 			// 在微信里连成一片，复制出来却有换行）。发送前统一展开为段落换行。
-			if err := client.SendTextMessage(ctx, userID, msg.ContextToken, expandLineBreaksForMarkdown(reply), ""); err != nil {
+			out := expandLineBreaksForMarkdown(reply)
+			if err := client.SendTextMessage(ctx, userID, msg.ContextToken, out, ""); err != nil {
 				logger.Warn("微信发送回复失败", zap.String("to", userID), zap.Error(err))
+				continue
 			}
+			// 发送成功实证：只记失败日志时，无法区分「没发出」与「发出但用户端没显示」。
+			logger.Info("微信回复成功",
+				zap.String("to", userID),
+				zap.Int("reply_runes", len([]rune(out))),
+				zap.String("content_preview", truncateForLog(out, 80)))
 		}
 	}
 }
