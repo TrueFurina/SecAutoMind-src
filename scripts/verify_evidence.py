@@ -36,6 +36,9 @@ MUST_FULL = [
 # runtime_tools/builtin_tools 为后续新增键，旧版可能无，缺失时跳过而非失败。
 CALIBER_FLOORS = {
     "ctf_solvers": 150,
+    # 2026-10-03 新增：真求解器（可产出 flag 外形）安全下限。
+    # 只拦灾难性塌缩（如批量误删/求解器被检测器替换），远低于真值 117。
+    "ctf_real_solvers": 100,
     "go_files": 600,
     "test_files": 200,
     "total_lines": 100000,

@@ -42,6 +42,9 @@ CALIBER_COMPARE = [
     "tools_yaml", "builtin_tools", "runtime_tools", "agents_md", "skills",
     "roles_yaml", "internal_dirs", "test_packages", "go_files", "test_files",
     "non_test_lines", "test_lines", "total_lines", "ctf_solvers", "im_adapters",
+    # 2026-10-03 口径拆分：求解器 = 真求解器 + 检测器。三者一并进入 --check 比对，
+    # 防止「总数未变但两类比例漂移」（例如把检测器改造成真求解器）时证据包静默过期。
+    "ctf_real_solvers", "ctf_detectors",
 ]
 # 环境相关（Go 工具链/模块缓存不同会变），记录但默认不参与比对。
 CALIBER_VOLATILE = ["go_packages"]
@@ -476,6 +479,8 @@ def main():
     print("  规模真值        %s Go 文件 / %s 测试文件 / %s 非测试行 / %s 求解器 / %s 运行时工具" % (
         c.get("go_files"), c.get("test_files"), c.get("non_test_lines"),
         c.get("ctf_solvers"), c.get("runtime_tools")))
+    print("  求解器拆分      %s 真求解器 + %s 检测器 = %s 注册（口径 2026-10-03 拆分）" % (
+        c.get("ctf_real_solvers"), c.get("ctf_detectors"), c.get("ctf_solvers")))
     base = (b.get("base") or {})
     print("  四大基础集      static=%s/%s  execution=%s/%s  web=%s/%s  attachment=%s/%s" % (
         (base.get("static") or {}).get("hit"), (base.get("static") or {}).get("total"),
