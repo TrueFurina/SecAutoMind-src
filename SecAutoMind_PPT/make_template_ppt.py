@@ -293,7 +293,7 @@ s = add_slide()
 bg(s)
 tag(s, Inches(0.7), Inches(0.6), 'GENERALITY', ACCENT2)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('通用性：91 工具 × 18 Agent × 全链路覆盖', {'size': 30, 'bold': True})])
-stats = [('90', 'YAML 工具配方', ACCENT), ('18', '角色化 Agent', ACCENT2), ('23', '技能包', WARN), ('3', '编排模式', ACCENT)]
+stats = [('91', 'YAML 工具配方', ACCENT), ('18', '角色化 Agent', ACCENT2), ('23', '技能包', WARN), ('3', '编排模式', ACCENT)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.0), Inches(2.75), v, lb, color=c)
 cats = [
@@ -426,7 +426,7 @@ tag(s, Inches(0.7), Inches(0.6), 'VERIFICATION', ACCENT)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('实测验证：编译零错误 · 核心测试全绿 · 系统实启动', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.8), Inches(11.6), Inches(0.5),
      [('（2026-09-01 实测：Go 1.25.0 + mingw-w64 环境，全部为磁盘实测数据）', {'size': 13, 'color': MUTED})])
-stats = [('0', '编译错误（127,196 行）', ACCENT), ('29/29', '测试包通过', ACCENT2), ('200', '系统启动 HTTP 响应', WARN), ('270', '测试文件', ACCENT)]
+stats = [('0', '编译错误（127,196 行）', ACCENT), ('29/29', '测试包通过', ACCENT2), ('200', '系统启动 HTTP 响应', WARN), ('286', '测试文件', ACCENT)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.4), Inches(2.75), v, lb, color=c)
 rows = [

@@ -319,7 +319,7 @@ s = add_slide()
 bg(s)
 sec_banner(s, 5, "通用性：91 工具 × 18 Agent × 全链路覆盖")
 stats = [
-    ("90", "YAML 安全工具配方", ACCENT),
+    ("91", "YAML 安全工具配方", ACCENT),
     ("18", "角色化 Agent", ACCENT2),
     ("13", "安全场景覆盖", WARN),
     ("27", "外部协议 / 注入型工具", GOLD),
