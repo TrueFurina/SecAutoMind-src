@@ -96,6 +96,11 @@ func runQQSession(ctx context.Context, cfg config.RobotQQConfig, h MessageHandle
 		return err
 	}
 	logger.Info("QQ 机器人 WebSocket 正在连接…", zap.String("app_id", appID), zap.Bool("sandbox", cfg.Sandbox))
+	// 取到 WebSocket 连接地址 = 鉴权与取址链路已通（api.WS 成功返回）。
+	// 该 SDK 自身不提供「已连接」事件，故此处只声明"地址已获取"，不夸大为链路已建立。
+	// ⚠️ wsInfo.URL 含 ticket 票据（敏感），**禁止**打进日志；只打分片数等非敏感字段。
+	logger.Info("QQ 机器人 WebSocket 连接地址已获取，进入长连接",
+		zap.String("app_id", appID), zap.Uint32("shards", wsInfo.Shards))
 
 	done := make(chan error, 1)
 	go func() {

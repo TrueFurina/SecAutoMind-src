@@ -92,7 +92,11 @@ def main():
                 "钉钉": r"钉钉.*(连接成功|已启动|收到|connected)",
                 "微信": r"微信.*(已启动|收到|连接成功|connected)",
                 "飞书": r"飞书.*(连接成功|已启动|收到|connected)|connected to wss://",
-                "QQ": r"QQ.*(连接成功|已启动|收到|connected)",
+                # QQ：robot/qq.go 原先只打「正在连接…」，**从不打任何成功日志**（该 SDK 无此事件），
+                # 故判据含「连接成功」会永远假红（10-04 实测踩坑）。
+                # 现已在取到 WebSocket 地址后补一条 Info 实证（措辞不夸大：地址已获取 ≠ 已建链），
+                # 判据据此匹配；另保留「收到消息」与「异常将自动重连」两个真实信号。
+                "QQ": r"QQ.*(连接地址已获取|收到|异常，将自动重连)",
             }
             for ch, pat in ch_map.items():
                 ok = bool(re.search(pat, out, re.I))
