@@ -1662,7 +1662,6 @@ func (h *RobotHandler) HandleWecomPOST(c *gin.Context) {
 		tenantKey = "default"
 	}
 	rawUserID := strings.TrimSpace(body.FromUserName)
-	replyUserID := rawUserID
 	userID := ""
 	if rawUserID != "" {
 		userID = "t:" + tenantKey + "|u:" + rawUserID
@@ -1683,16 +1682,22 @@ func (h *RobotHandler) HandleWecomPOST(c *gin.Context) {
 		return s
 	}
 
+	// 2026-10-04 实测裁决：企微客户端不显示本服务发出的被动回包（Debug 日志证实
+	// 加密/签名/回包体均按官方格式发出仍不显示），而主动消息 API 发送稳定可达
+	// （企业可信IP 配置后 60020 已消）。命令与非文本消息一律改走主动发送，
+	// 与 AI 消息路径保持一致；被动回包仅保留 sendWecomReply 供未来排查复用。
 	if body.MsgType != "text" {
-		h.logger.Debug("企业微信收到非文本消息", zap.String("MsgType", body.MsgType))
-		h.sendWecomReply(c, replyUserID, enterpriseID, limitReply("暂仅支持文本消息，请发送文字。"), timestamp, nonce)
+		h.logger.Debug("企业微信收到非文本消息，改走主动发送", zap.String("MsgType", body.MsgType))
+		c.String(http.StatusOK, "success")
+		go h.sendWecomMessageViaAPI(rawUserID, enterpriseID, limitReply("暂仅支持文本消息，请发送文字。"))
 		return
 	}
 
-	// 文本消息：先判断是否为内置命令（如 帮助/列表/新对话 等），这类命令处理很快，可以直接走被动回复，避免依赖主动发送 API。
+	// 文本消息：先判断是否为内置命令（如 帮助/列表/新对话 等），命令结果经主动消息 API 推送。
 	if cmdReply, ok := h.handleRobotCommand("wecom", userID, text); ok {
-		h.logger.Debug("企业微信收到命令消息，走被动回复", zap.String("userID", userID), zap.String("text", text))
-		h.sendWecomReply(c, replyUserID, enterpriseID, limitReply(cmdReply), timestamp, nonce)
+		h.logger.Debug("企业微信收到命令消息，改走主动发送", zap.String("userID", userID), zap.String("text", text))
+		c.String(http.StatusOK, "success")
+		go h.sendWecomMessageViaAPI(rawUserID, enterpriseID, limitReply(cmdReply))
 		return
 	}
 
@@ -1762,9 +1767,9 @@ func (h *RobotHandler) sendWecomReply(c *gin.Context, toUser, fromUser, content,
 		}
 
 		// 使用 c.Writer.Write 直接写入响应，避免 c.String 的转义问题
-		c.Writer.WriteHeader(http.StatusOK)
-		// use text/xml as that's what WeCom examples show
+		// （2026-10-04 修复：Content-Type 必须在 WriteHeader 之前设置，之后设置无效）
 		c.Writer.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		c.Writer.WriteHeader(http.StatusOK)
 		_, _ = c.Writer.Write([]byte(xmlResp))
 		h.logger.Debug("企业微信加密回复已发送")
 		return
