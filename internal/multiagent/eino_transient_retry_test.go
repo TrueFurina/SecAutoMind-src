@@ -42,6 +42,9 @@ func TestIsEinoTransientRunError(t *testing.T) {
 		{"canceled", context.Canceled, false},
 		{"deadline", context.DeadlineExceeded, false},
 		{"auth", errors.New("invalid api key"), false},
+		{"403 free quota exhausted", errors.New("status code: 403, status: 403 Forbidden, message: Free quota exhausted. To continue accessing the model on a paid basis, please add funds"), true},
+		{"403 free quota chinese", errors.New("免费额度用尽即停"), true},
+		{"403 auth not quota", errors.New("status code: 403, status: 403 Forbidden, message: invalid api key"), false},
 	}
 	for _, tc := range cases {
 		tc := tc
