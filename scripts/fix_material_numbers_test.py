@@ -173,7 +173,13 @@ def main():
     # 期望值一律由真值派生，不得硬编码（否则真值一变就假红）。
     fmt_tf = str(truth["test_files"])
     stale_tf = "279" if fmt_tf != "279" else "278"
-    t11_bad = "里程碑：127,196 行 Go · %s 测试 · 0 panic。" % stale_tf
+    # 行数同样**由真值派生**（10-04 订正）：原写死 127,196，而真值随代码增删漂移
+    # （本轮已到 127,279）→ 写死值不再是"错值"，b11 随之从 1 变 2，CI 假红。
+    # 正是本段注释自己警告的「真值一变就假红」。派生后本用例与真值永久同步。
+    fmt_nl = "{:,}".format(int(truth["non_test_lines"]))
+    stale_nl = "1" if fmt_nl == "1" else str(int(fmt_nl.replace(",", "")) - 1)
+    stale_nl = "{:,}".format(int(stale_nl))
+    t11_bad = "里程碑：%s 行 Go · %s 测试 · 0 panic。" % (stale_nl, stale_tf)
     b11 = probe_hits("docs/x.md", t11_bad, truth)
     f11, _c11 = fmn.fix_line(t11_bad, truth)
     a11 = probe_hits("docs/x.md", f11, truth)
@@ -182,9 +188,13 @@ def main():
     #  · 「286 测试文件」仍归"文件"锚点管 → 本锚点不得重复命中把数字改坏。
     keep_local, ch_local = fmn.fix_line("服务层 11 测试，服务层 11 测试", truth)
     keep_file, ch_file = fmn.fix_line("材料写 %s 测试文件" % fmt_tf, truth)
+    # 期望命中数 = 2：样本里注入的**两个**错值都应被门禁检出 ——
+    #   ① 127,196（≠真值 non_test_lines）② 279（≠真值 test_files）。
+    # 原写 b11 == 1 是错��期望（CI 实红、fix_line 行为经诊断完全正确：
+    # 两个数都已被改成真值），已订正为 2。
     check("T11 裸测试数锚点：注入 %s 测试(命中%d) -> 修为 %s；局部 2 位数/「测试文件」写法不被误伤"
           % (stale_tf, b11, fmt_tf),
-          b11 == 1 and a11 == 0 and ("%s 测试" % fmt_tf) in f11 and not ch_local and not ch_file,
+          b11 == 2 and a11 == 0 and ("%s 测试" % fmt_tf) in f11 and not ch_local and not ch_file,
           "b=%d a=%d f11=%r ch_local=%r ch_file=%r" % (b11, a11, f11, ch_local, ch_file))
 
     # T10 真实仓库当前状态
