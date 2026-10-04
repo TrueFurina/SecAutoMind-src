@@ -95,10 +95,14 @@
 
     <h3>第 3 步 · 填三个值，然后点保存</h3>
     <div class="kv">
-      <div><span class="k">URL</span> http://120.48.36.201:18086/api/robot/wecom</div>
+      <div><span class="k">URL</span> <code>http://120.48.36.201:18086/api/robot/wecom</code></div>
       <div><span class="k">Token</span> <code>&lt;见下方「Token 从哪来」&gt;</code></div>
-      <div><span class="k">EncodingAESKey</span> 保持后台原有的，<strong>不要点「随机获取」</strong>（见下方坑 2）</div>
+      <div><span class="k">EncodingAESKey</span> <code>&lt;同样从服务器取原值粘贴，<strong>不要点「随机获取」</strong>（见下方坑 2）&gt;</code></div>
     </div>
+    <p class="note">🔴 <strong>URL 必须带结尾那段 <code>/api/robot/wecom</code> 路径</strong>，不能只填 <code>http://120.48.36.201:18086</code>，也不要<strong>在结尾多打一个 <code>/</code></strong>。三种写法的实测对照：<br>
+      · 只填到端口 → 返回的是 <strong>677&nbsp;KB 的网页首页</strong>（答非所问）→ 企微报「请求不通过」；<br>
+      · 结尾多一个 <code>/</code> → 服务器回 <code>301 跳转</code>，企微未必跟跳 → 同样报「请求不通过」；<br>
+      · 完整、且无尾斜杠 → 返回 <code>HTTP 400 invalid signature</code>。<strong>这才是正常信号</strong>：说明请求准确落到了回调处理器上，只是我这次探测没带合法签名而已。</p>
     <p>填完点「<strong>保存</strong>」。企微会<strong>立刻</strong>向这个 URL 发一条验证请求：</p>
     <ul>
       <li>验证通过 → 弹出保存成功，配置即刻生效 ✅</li>
@@ -106,11 +110,13 @@
     </ul>
     <p class="note">如果后台这块的 EncodingAESKey 现在是<strong>空的</strong>，说明要重新随机生成 —— 那请先别保存，把随机出来的 43 位发我，我同步改服务器配置后再保存。</p>
 
-    <h3>Token 从哪来？</h3>
-    <p>本页<strong>刻意不写死真实 Token</strong>（本仓库是公开的，写死等于永久泄漏）。登录服务器后自己取：</p>
+    <h3>Token / EncodingAESKey 从哪来？</h3>
+    <p>本页<strong>刻意不写死真实凭证</strong>（本仓库是公开的，写死等于永久泄漏）。登录服务器后自己取这三个值：</p>
     <div class="cmd">ssh root@120.48.36.201 \
-  "grep -A3 'wecom:' /opt/secautomind/config.yaml | grep token"</div>
-    <p class="note">粘出来的值<strong>逐字符</strong>填进后台，别手打。Token / EncodingAESKey 必须与服务器配置<strong>完全一致</strong>，否则企微验证必失败。</p>
+  "sed -n 's/.*corp_id: *//p'  /opt/secautomind/config.yaml | head -1; \
+   sed -n 's/.*token: *//p'     /opt/secautomind/config.yaml | head -1; \
+   sed -n 's/.*aes_key: *//p'   /opt/secautomind/config.yaml | head -1"</div>
+    <p class="note">把 Token（26 位）与 EncodingAESKey（43 位）<strong>逐字符</strong>粘进后台那两个框，<strong>别手打</strong>。它们必须与服务器配置<strong>完全一致</strong>，否则企微验证必失败。若后台这两个框现在是空的、或已被点了「随机获取」，<strong>一律清掉，改粘服务器原值</strong>。</p>
   </div>
 
   <div class="card">
@@ -147,7 +153,7 @@
       <li><strong>未认证企业</strong>：<strong>可以直接用 IP 地址</strong>配置回调 URL，<strong>不校验域名主体</strong> —— 即 <code>http://120.48.36.201:18086/api/robot/wecom</code> 这条路本来应走得通。</li>
       <li><strong>已认证企业</strong>：必须用<strong>域名</strong>，且域名<strong>ICP 备案主体</strong>要与企微认证主体<strong>相同或有关联</strong>，否则报「域名主体校验未通过」。</li>
     </ul>
-    <p>所以你填 IP 被拒，只有两种可能：<strong>①</strong> 企微是<strong>已认证</strong>（IP 必被拒）；<strong>②</strong> 未认证，但被<strong>端口 18086 或可达性</strong>卡住。<strong>两者最短路径完全不同，必须先分清。</strong></p>
+    <p>所以你填 IP 被拒，按可能性排序有三种：<strong>① URL 没填对</strong>（漏了结尾的 <code>/api/robot/wecom</code>，或多打了尾斜杠 —— 最常见）；<strong>②</strong> 企微是<strong>已认证</strong>（IP 必被拒）；<strong>③</strong> 未认证，但被<strong>端口/可达性</strong>卡住。<strong>先排掉 ①，再谈 ②③。</strong></p>
     <p class="note">⚠️ 订正：本文档早前版本写过「接收消息 URL 一律不支持 IP」——那句话<strong>只对已认证企业成立</strong>，属错误口径，已删。</p>
     <table>
       <tr><th>后台报错原文</th><th>结论</th><th>最短路径</th></tr>
@@ -158,8 +164,8 @@
       </tr>
       <tr>
         <td>「openapi 回调地址请求不通过 / URL 需要正确响应验证请求」</td>
-        <td>不像是主体被拒，<strong>更像端口/可达性</strong></td>
-        <td>保持 IP，改走企微倾向的<strong>标准端口（80/443/8080）</strong>——先在<strong>腾讯云安全组放行</strong>，反代我可以代配。</td>
+        <td><strong>先查 URL 是否填错</strong>（漏路径 / 多尾斜杠）；两项都排除后，才轮到端口/可达性。</td>
+        <td>按本页第 3 步把 URL 原样（含 <code>/api/robot/wecom</code>、结尾无斜杠）重填一次；仍不过再改走标准端口 80/443。</td>
       </tr>
       <tr>
         <td><span class="pill">兜底</span></td>
