@@ -71,6 +71,19 @@ func TestHandleConnectionDead_MarksLazyClientDisconnected(t *testing.T) {
 	m.mu.Unlock()
 
 	deadErr := errors.New(`connection closed: calling "tools/list": client is closing: EOF`)
+
+	// 预置退避状态，挡住 handleConnectionDead 内 spawn 的 tryReconnect goroutine：
+	// 该 goroutine 走到 startClient 会 delete(m.errors, name)（重连启动清旧错，
+	// external_manager.go:348，产品语义正确）。若它在断言前抢先执行，GetError
+	// 断言就偶发失败（2026-09-28 CI 实锤 run 534ebd0：-race + 共享 runner 下
+	// 调度窗口被命中）。预置 attempts=10 → backoff=5min → goroutine 被限流闸门
+	// 偏转进 scheduleReconnectAfter，只挂一个测试期内不会触发的定时器，
+	// 断言窗口内 errors 必然完好；测试自身语义（断言 markDisconnected + 记错）不受影响。
+	m.reconnectMu.Lock()
+	m.reconnectAttempts[name] = 10
+	m.reconnectLastTry[name] = time.Now()
+	m.reconnectMu.Unlock()
+
 	m.handleConnectionDead(name, client, deadErr)
 
 	if client.IsConnected() {
