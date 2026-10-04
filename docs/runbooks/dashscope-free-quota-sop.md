@@ -7,13 +7,17 @@
 
 ---
 
-## 0. 三条铁律（先记这个，能省掉 80% 的坑）
+## 0. 五条铁律（先记这个，能省掉 80% 的坑）
 
 | # | 铁律 | 违反后果 |
 |---|------|---------|
 | 1 | **`403 Free quota exhausted` ≠ key 死了**，是**某一个模型**的免费额度耗尽 | 白白换 key、反而丢失网关下全部免费模型 |
 | 2 | **改用哪个模型 ≠ 改 key**。key 不动，只改 `model` 字段 | 丢失全部兜底池 |
 | 3 | **配了多个兜底模型 ≠ 会自动切换**。必须实测 failover 判据认不认这个错误 | 配了等于没配，额度耗尽照样硬挂 |
+| 4 | **免费额度按周期重置**。实测：某模型 2 小时内从「耗尽 403」变回「100% 可用」 | 把「等重置」当「永久弃用」，白丢一个可用模型 |
+| 5 | **探活必须看 body 有无 `error`，不能只看 HTTP 码** | 把 200 + `{"error":...}` 的模型误记为可用，配进兜底池后运行期才炸 |
+
+> 铁律 4/5 均为 2026-10-04 实测打脸补记，非事后诸葛亮。
 
 ---
 
@@ -25,19 +29,57 @@
 所以「免费额度用尽」的真实含义是：**你正在用的那个模型的 1M token 免费包烧完了**，
 而同一个 key 下其它模型可能还是 100%。
 
-**先查这张表再动手**。截至 2026-10-04 实测仍 100% 免费的一批（均已 curl 验证 200）：
+**先查这张表再动手**。截至 2026-10-04 用真实 key 全量实测的分类结果（`chat/completions` 直连可用）：
 
-| 模型 | 用途取向 | 实测 |
+### ✅ 可用于 chat（21 个实测通过）
+
+| 家族 | 模型 | 用途取向 |
+|------|------|---------|
+| **DeepSeek** | `deepseek-v3` / `v3.1` / `v3.2-exp` | 通用主力，快稳便宜 |
+| | `deepseek-v4-pro` / `v4-pro-0813` | 强通用（`max_tokens` 小会返回 `finish_reason:length`，属正常） |
+| | `deepseek-r1` | 推理型，解题/多步推导 |
+| | `deepseek-r1-distill-qwen-32b` / `14b` / `7b` | 蒸馏小模型，省额度 |
+| **Qwen 旗舰** | `qwen3-max` / `qwen3-max-preview` | 千问旗舰 |
+| | `qwen3.8-max` | 千问新一代旗舰 |
+| | `qwen3.7-max` / `qwen3.7-max-preview` | 新旗舰 |
+| | `qwen3.6-max-preview` | 上一代旗舰 |
+| **Qwen 档位** | `qwen3.7-plus` / `qwen3.7-flash` / `qwen3.6-flash` / `qwen3.5-plus` / `qwen3.5-flash` | 通用中/快档 |
+| | `qwen3.6-27b` / `qwen3.6-35b-a3b` | MoE 中量级 |
+| **编程** | `qwen3-coder-plus` | 代码场景 |
+| **Kimi** | `kimi-k2.7-code` / `kimi-k2.6` / `kimi-k2.5` | Moonshot 系列 |
+| | `kimi-k2-thinking` / `Moonshot-Kimi-K2-Instruct` | 思考型 / 指令型 |
+| **GLM** | `glm-5.2` / `glm-5.1` / `glm-5` / `glm-4.7` / `glm-4.6` | 智谱系列 |
+| **其他** | `qwen3.5-ocr` / `qwen-mt-lite` | OCR / 翻译（见下方注意事项） |
+
+### ❌ 不可用于 chat（实测报错，**别写进配置**）
+
+| 模型 | 实测报错 | 原因 |
 |------|---------|------|
-| `deepseek-v3.1` | 通用主力，快、稳、便宜 | ✅ 200 |
-| `deepseek-r1` | 推理型（适合解题/多步推导） | ✅ 200 |
-| `deepseek-v3.2-exp` | 较新通用 | ✅ 200 |
-| `deepseek-v4-pro` / `-v4-pro-0813` | 强通用 | ✅ 200 |
-| `qwen3.8-max` | 千问自家旗舰 | ✅ 200 |
-| `deepseek-r1-distill-qwen-32b/14b/7b` | 蒸馏小模型，省额度 | ✅ 200 |
+| `glm-4.5` / `glm-4.5-air` | `This model only support stream mode, please enable stream` | **只支持流式**，非流式调用被拒 |
+| `wanx2.1-*`（视频类） | `Unsupported model ... for OpenAI compatible` | 走视频生成端点，非 chat |
+| `qwen-mt-*`（部分） | 视端点而定 | 翻译专用，chat 语义不对口 |
+
+> 🔴 **`finish_reason: length` 不等于失败**。`deepseek-v4-pro` / `glm-5.2` / `qwen3.5-ocr` 等
+> 在 `max_tokens` 很小时会返回 `length`（输出被截断）但**调用成功**。判成败要看有没有 `error` 字段，
+> **不要**用关键字猜（见 §2.1）。
 
 > ⚠️ **这张表会过期**。百炼调整免费策略、或某模型额度烧完，上表立刻失真。
 > **永远以「控制台截图」+「curl 探活」为准**，不要照抄本文档的模型清单。
+
+### 🔑 关键机制：免费额度**按周期重置**，不是烧完就永久没了
+
+实测对照（同一模型、同一 key、相隔约 2 小时）：
+
+| 时间点 | `qwen3-max` 状态 | 现象 |
+|--------|------------------|------|
+| 15:29 | **Free quota exhausted**（已消耗 1M） | Agent 报 403 |
+| 18:4x | **100%，仅消耗 34 tokens** | curl 完全正常 |
+
+**同一个模型、同一个 key，额度回来了。** 所以：
+
+- **额度耗尽 ≠ 这个模型永久不可用** → 别急着把它从配置里删掉；
+- **也别把"配额耗尽"当致命错误** → 隔一段时间它自己就恢复了（第 4 章的 failover 判据正是为此）；
+- 排障时**先看控制台剩余比例**，再决定是"换模型"还是"等重置"。
 
 ---
 
@@ -53,17 +95,36 @@ curl -s -o /dev/null -w 'http=%{http_code}\n' --max-time 30 \
   -d '{"model":"deepseek-v3.1","messages":[{"role":"user","content":"say ok"}],"max_tokens":8}'
 ```
 
-批量探活多个模型：
+批量探活多个模型（**判成败看 body 有无 `error` 字段，不要只看 HTTP 码**）：
 
 ```bash
-for M in deepseek-v3.1 deepseek-r1 qwen3.8-max deepseek-v3.2-exp; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-    -X POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \
+for M in deepseek-v3.1 deepseek-r1 qwen3.8-max kimi-k2.7-code glm-5.2; do
+  body=$(curl -s --max-time 40 -X POST \
+    https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions \
     -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' \
     -d "{\"model\":\"$M\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":8}")
-  echo "$M http=$code"
+  if printf '%s' "$body" | grep -q '"error"'; then
+    printf '%-24s FAIL  %s\n' "$M" "$(printf '%s' "$body" | grep -o '"message":"[^"]*"' | head -1)"
+  else
+    printf '%-24s USABLE\n' "$M"
+  fi
 done
 ```
+
+### 🔴 §2.1 「有 HTTP 响应」≠「模型可用」
+
+**这是本项目实测踩过的坑**：写探活脚本时按关键字分类（`model_not_found` / `invalid_api_key`），
+结果把返回 `{"error":{"message":"This model only support stream mode..."}}` 的
+`glm-4.5`、`glm-4.5-air` 和 `wanx2.1-t2v-turbo` **全部误判成 OK**——
+它们确实回了 HTTP 200 + JSON，但 `error` 字段就在 body 里。
+
+**正确判据只有一条：body 顶层有没有 `error`。**
+
+| 现象 | 含义 |
+|------|------|
+| 有 `choices` 且无 `error` | ✅ 可用 |
+| 有 `error` 字段 | ❌ 不可用（**即使 HTTP 是 200**） |
+| `finish_reason: length` | ⚠️ 输出被截断，**但调用成功** |
 
 **200 = 可用**，可写进配置。
 
@@ -85,6 +146,11 @@ done
 
 **核心思路**：不要在一个通道里堆模型，而是**同一 key 建多个通道、每个通道一个模型**，
 这样兜底池天然形成，切换逻辑只需在「通道」层面做。
+
+**兜底池要跨家族**：不要把 4 个兜底全押在 DeepSeek 系。百炼按**模型**计费，
+但**家族级限流/维护/策略收紧**是可能的——跨家族（DeepSeek / Qwen / Kimi / GLM 各取一两个）
+才是真兜底。本项目现役 4 通道是 `deepseek-v3.1` + `deepseek-r1` + `qwen3.8-max` + `deepseek-v3.2-exp`，
+**已横跨 DeepSeek 与 Qwen 两族**；若要更强可再加 `kimi-k2.7-code`、`glm-5.1`。
 
 ```yaml
 ai:
@@ -223,9 +289,15 @@ func isEinoTransientRunError(err error) bool {
 
 ## 附：本项目实例（2026-10-04 收口）
 
-- 线上 `ai.channels`：`deepseek`（自有 key，主）+ 4 通道共用 `${DASHSCOPE_API_KEY}` 兜底。
-- 触发经过：QQ @ 报 `[NodeRunError] 403 Free quota exhausted` → 查明是 `qwen3-max` 单模型额度耗尽（key 本身活着）
-  → 换 `deepseek-v3.1` 止血 → 再补代码让配额耗尽可切换 + 补 3 兜底通道做长期兜底。
-- 验证：4 模型服务器 curl 全 200；重启后 `Free quota` 计数 0（末条为修复前那条）。
-- 相关：`scripts/verify_demo_readiness.py`（演示就绪度闸门）、
+- 线上 `ai.channels`：`deepseek`（自有 key，主）+ **5 通道共用同一 `${DASHSCOPE_API_KEY}` 兜底**：
+  `qwen-max`(deepseek-v3.1) / `dashscope-ds-r1`(deepseek-r1) / `dashscope-qwen38`(qwen3.8-max) /
+  `dashscope-ds-v32`(deepseek-v3.2-exp) / `dashscope-kimi-k27code`(kimi-k2.7-code) / `dashscope-glm51`(glm-5.1)
+  → **横跨 DeepSeek / Qwen / Kimi / GLM 四族**（同族全押不叫兜底）。
+  兜底通道 ID 沿用 `dashscope-<族>-<模型>` 命名；`qwen-max` 因被代码按名取模型而保留历史名。
+- 触发经过：QQ @ 报 `[NodeRunError] 403 Free quota exhausted` → 查明是 `qwen3-max` **单模型**额度耗尽
+  （key 本身活着）→ 换 `deepseek-v3.1` 止血 → 补代码让配额耗尽可切换 + 扩兜底池做长期兜底。
+- ⚠️ 约 2 小时后复查控制台：`qwen3-max` 已**回到 100%（仅耗 34 tokens）**→ 印证「额度按周期重置」（§1 铁律 4）。
+- 验证：6 个兜底模型服务器直连全 `USABLE`（body 无 `error`）；`verify_demo_readiness.py` 6/6 🟢；
+  重启后 `Free quota` 计数 0。
+- 相关文件：`scripts/verify_demo_readiness.py`（演示就绪度闸门）、
   `internal/multiagent/eino_transient_retry.go`（配额判据）、`eino_transient_retry_test.go`（含反向用例）。
