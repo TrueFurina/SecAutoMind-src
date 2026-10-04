@@ -1893,6 +1893,24 @@ func (h *RobotHandler) HandleRobotTest(c *gin.Context) {
 }
 
 // sendWecomMessageViaAPI 通过企业微信 API 主动发送消息（用于异步处理后的结果发送）
+// wecomLooksLikeMarkdown 粗判内容是否含 markdown 标记，用于在 text/markdown
+// 消息类型间选择。企微 markdown 仅支持子集（加粗/标题/引用/行内代码/链接等），
+// 但命中标记的内容以 markdown 发送的显示效果明显优于纯文本。
+func wecomLooksLikeMarkdown(content string) bool {
+	if strings.Contains(content, "**") ||
+		strings.Contains(content, "```") ||
+		strings.Contains(content, "](") {
+		return true
+	}
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "> ") {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *RobotHandler) sendWecomMessageViaAPI(toUser, toParty, content string) {
 	if !h.config.Robots.Wecom.Enabled {
 		return
@@ -1931,13 +1949,18 @@ func (h *RobotHandler) sendWecomMessageViaAPI(toUser, toParty, content string) {
 	}
 
 	// 第 2 步：构造发送消息请求
+	// 2026-10-04：企微 text 类型不渲染 markdown；检测到 markdown 标记时改发
+	// markdown 类型（企业内部应用支持），否则维持 text。
+	msgtype := "text"
+	payload := map[string]interface{}{"content": content}
+	if wecomLooksLikeMarkdown(content) {
+		msgtype = "markdown"
+	}
 	msgReq := map[string]interface{}{
 		"touser":  toUser,
-		"msgtype": "text",
+		"msgtype": msgtype,
 		"agentid": agentID,
-		"text": map[string]interface{}{
-			"content": content,
-		},
+		msgtype:   payload,
 	}
 
 	msgBody, err := json.Marshal(msgReq)
