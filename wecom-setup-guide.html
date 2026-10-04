@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecAutoMind 企业微信接通指南</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#121826; --panel2:#0e1420; --line:#1e2a3d;
+    --txt:#e6edf6; --dim:#8aa0bd; --acc:#4da3ff; --ok:#3ad29f; --warn:#ffb454;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.6;padding:32px 18px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.5px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:24px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px 20px;margin:14px 0}
+  .badge{display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;
+    border:1px solid var(--line);color:var(--dim);margin-bottom:8px}
+  .b-ok{color:var(--ok);border-color:#1d4d3f;background:#0f2a22}
+  .b-warn{color:var(--warn);border-color:#4d3a1d;background:#2a210f}
+  .b-no{color:#ff8a8a;border-color:#4d1d1d;background:#2a1414}
+  h2{font-size:16px;margin:0 0 10px}
+  h3{font-size:14px;margin:16px 0 6px;color:var(--dim);font-weight:600}
+  ol,ul{margin:8px 0;padding-left:22px}
+  li{margin:6px 0}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:2px 7px;font-family:"SFMono-Regular",Consolas,monospace;font-size:13px;color:var(--acc)}
+  .kv{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;font-family:"SFMono-Regular",Consolas,monospace;font-size:13px;
+    word-break:break-all;margin:10px 0}
+  .kv .k{color:var(--dim);display:inline-block;min-width:132px}
+  .kv div{margin:4px 0}
+  .step-no{color:var(--acc);font-weight:700}
+  .note{color:var(--dim);font-size:13px}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  td,th{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--dim);font-weight:600}
+  .pill{font-size:12px;padding:2px 8px;border-radius:6px;white-space:nowrap}
+  .p-ok{background:#0f2a22;color:var(--ok);border:1px solid #1d4d3f}
+  .p-warn{background:#2a210f;color:var(--warn);border:1px solid #4d3a1d}
+  a{color:var(--acc)}
+  .big{font-size:15px}
+  .flow{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;
+    color:var(--dim);white-space:pre;overflow-x:auto;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SecAutoMind · 企业微信接通指南</h1>
+  <div class="sub">2026-10-04 · 线上实例 v1.7.28 @ 120.48.36.201:18086 · 面向零基础</div>
+
+  <div class="card">
+    <span class="badge b-ok">服务端已就绪</span>
+    <h2>结论：你只需要在企微后台点两下，不用改代码、不用动服务器</h2>
+    <p class="big">企业微信通道的<strong>代码和服务器配置早就齐了</strong>，我实测过两件事：</p>
+    <ul>
+      <li>服务器上的企微凭证 <strong>真的有效</strong> —— 用它能成功换取 <code>access_token</code>（返回 <code>errcode:0</code>）。</li>
+      <li>回调地址 <strong>公网真的能访问</strong> —— <code>http://120.48.36.201:18086/api/robot/wecom</code> 返回 <code>HTTP 400 invalid signature</code>。<br>
+        <span class="note">这个 400 是<strong>好事</strong>：说明路径活着、验签逻辑在工作，只是我这条 curl 没带正确签名而已。</span></li>
+    </ul>
+    <p class="note">所以缺的只有一环：<strong>企微后台还不知道把你的消息推到哪里</strong>。下面就是填这一步。</p>
+  </div>
+
+  <div class="card">
+    <span class="badge">先搞懂</span>
+    <h2>企业微信和钉钉不一样，别套用钉钉的经验</h2>
+    <div class="flow">钉钉：  服务器  ──主动连──▶  钉钉          （不要公网，Stream 长连接）
+企微：  企业微信  ──推消息──▶  你的服务器地址   （<span style="color:#ffb454">必须有公网地址</span>）</div>
+    <p class="note">所以企微这步必须在后台<strong>登记一个公网地址</strong>，让企微知道消息往哪推。<br>
+    好消息：你的服务器本来就有公网地址 —— <code>120.48.36.201:18086</code>。</p>
+  </div>
+
+  <div class="card">
+    <span class="badge b-warn">你要做的 · 3 步</span>
+    <h2>在企微管理后台登记回调地址</h2>
+
+    <h3>第 1 步 · 打开企微管理后台并登录</h3>
+    <ol>
+      <li>浏览器打开 <a href="https://work.weixin.qq.com/" target="_blank">https://work.weixin.qq.com/</a></li>
+      <li>右上角点「<strong>企业登录</strong>」，用<strong>管理员</strong>的企业微信扫码登录。</li>
+    </ol>
+
+    <h3>第 2 步 · 找到那个应用</h3>
+    <ol>
+      <li>顶部菜单进「<strong>应用管理</strong>」。</li>
+      <li>在「<strong>应用</strong>」列表里，找到「<strong>自建</strong>」分组下、<strong>AgentId 是 <code>1000002</code></strong> 的那个应用，点它的名字进去。</li>
+      <li>在应用详情页里找到「<strong>接收消息</strong>」这一块，点「<strong>设置 API 接收</strong>」按钮。</li>
+    </ol>
+    <p class="note">找不到？就用 <code>1000002</code> 这个 AgentId 去对号 —— 服务器上配的就是它，只有一个。</p>
+
+    <h3>第 3 步 · 填三个值，然后点保存</h3>
+    <div class="kv">
+      <div><span class="k">URL</span> http://120.48.36.201:18086/api/robot/wecom</div>
+      <div><span class="k">Token</span> <code>&lt;见下方「Token 从哪来」&gt;</code></div>
+      <div><span class="k">EncodingAESKey</span> 保持后台原有的，<strong>不要点「随机获取」</strong>（见下方坑 2）</div>
+    </div>
+    <p>填完点「<strong>保存</strong>」。企微会<strong>立刻</strong>向这个 URL 发一条验证请求：</p>
+    <ul>
+      <li>验证通过 → 弹出保存成功，配置即刻生效 ✅</li>
+      <li>验证失败 → 见下方「保存报错怎么办」</li>
+    </ul>
+    <p class="note">如果后台这块的 EncodingAESKey 现在是<strong>空的</strong>，说明要重新随机生成 —— 那请先别保存，把随机出来的 43 位发我，我同步改服务器配置后再保存。</p>
+
+    <h3>Token 从哪来？</h3>
+    <p>本页<strong>刻意不写死真实 Token</strong>（本仓库是公开的，写死等于永久泄漏）。登录服务器后自己取：</p>
+    <div class="cmd">ssh root@120.48.36.201 \
+  "grep -A3 'wecom:' /opt/secautomind/config.yaml | grep token"</div>
+    <p class="note">粘出来的值<strong>逐字符</strong>填进后台，别手打。Token / EncodingAESKey 必须与服务器配置<strong>完全一致</strong>，否则企微验证必失败。</p>
+  </div>
+
+  <div class="card">
+    <span class="badge b-no">三个必踩坑</span>
+    <h2>照做就行，但别在这三处翻车</h2>
+    <table>
+      <tr><th>#</th><th>坑</th><th>后果 / 正解</th></tr>
+      <tr>
+        <td>1</td>
+        <td><strong>Token 抄错一个字符</strong></td>
+        <td>保存必报「验证失败」。后台填的 Token 必须和服务器上<strong>完全一致</strong>：
+          <code>&lt;服务器 config.yaml 里 robots.wecom.token&gt;</code>（26 位，注意大小写）</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>手贱点了「随机获取」</strong></td>
+        <td>EncodingAESKey 一旦重新随机，就<strong>和服务器上那个对不上</strong>了，验证必失败。
+          正解：<strong>保持原值</strong>；若确实要换，把新值发我，我改服务器后再保存。</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>以为保存失败是代码问题</strong></td>
+        <td>保存时企微会<strong>马上来敲门</strong>验证。<strong>服务器必须在跑</strong> + 地址必须公网可达。
+          这两项我刚刚都实测过了 —— 现在是好的。若你操作时恰好变了，先找我。</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <span class="badge b-no">⚠️ 拦路虎（先分清一件事）</span>
+    <h2>规则取决于：你的企业微信<strong>是否已做「企业认证」</strong></h2>
+    <p>企微官方技术支持的原话是<strong>分两种</strong>的：</p>
+    <ul>
+      <li><strong>未认证企业</strong>：<strong>可以直接用 IP 地址</strong>配置回调 URL，<strong>不校验域名主体</strong> —— 即 <code>http://120.48.36.201:18086/api/robot/wecom</code> 这条路本来应走得通。</li>
+      <li><strong>已认证企业</strong>：必须用<strong>域名</strong>，且域名<strong>ICP 备案主体</strong>要与企微认证主体<strong>相同或有关联</strong>，否则报「域名主体校验未通过」。</li>
+    </ul>
+    <p>所以你填 IP 被拒，只有两种可能：<strong>①</strong> 企微是<strong>已认证</strong>（IP 必被拒）；<strong>②</strong> 未认证，但被<strong>端口 18086 或可达性</strong>卡住。<strong>两者最短路径完全不同，必须先分清。</strong></p>
+    <p class="note">⚠️ 订正：本文档早前版本写过「接收消息 URL 一律不支持 IP」——那句话<strong>只对已认证企业成立</strong>，属错误口径，已删。</p>
+    <table>
+      <tr><th>后台报错原文</th><th>结论</th><th>最短路径</th></tr>
+      <tr>
+        <td>「域名主体校验未通过，需配置备案主体与当前企业主体相同或有关联关系的域名」</td>
+        <td><strong>已认证企业</strong></td>
+        <td>必须上域名：买域名 → 解析到 <code>120.48.36.201</code> → nginx 反代 → ICP 备案（福建约 6–9 工作日）。</td>
+      </tr>
+      <tr>
+        <td>「openapi 回调地址请求不通过 / URL 需要正确响应验证请求」</td>
+        <td>不像是主体被拒，<strong>更像端口/可达性</strong></td>
+        <td>保持 IP，改走企微倾向的<strong>标准端口（80/443/8080）</strong>——先在<strong>腾讯云安全组放行</strong>，反代我可以代配。</td>
+      </tr>
+      <tr>
+        <td><span class="pill">兜底</span></td>
+        <td colspan="2">企微先挂着，用<strong>已接通的钉钉</strong>做答辩演示；企微按上表对应路径再补。</td>
+      </tr>
+    </table>
+    <p class="note">服务器侧（nginx 反代、端口监听、证书）<strong>我可以全部代做</strong>；你只需在<strong>腾讯云控制台放行端口</strong>（如需域名则再买域名 + 备案）。</p>
+  </div>
+
+  <div class="card">
+    <span class="badge b-ok">验证</span>
+    <h2>怎么确认真的接上了</h2>
+    <ol>
+      <li>保存成功后，打开<strong>企业微信客户端</strong>（手机或桌面版）→ 找到这个自建应用。</li>
+      <li>给它发一句「<strong>帮助</strong>」。</li>
+      <li>应先在几秒内收到<strong>内置命令回复</strong>；稍后收到 <strong>AI 生成的回复</strong>。</li>
+    </ol>
+    <p class="note">AI 回复走的是「异步处理 + 主动推送」：因为企微只给 5 秒接话时间，AI 想得慢，所以先回你一个占位、算完了再用 API 推给你。所以两条回复之间有几秒间隔是正常的。</p>
+  </div>
+
+  <div class="card">
+    <span class="badge">排查</span>
+    <h2>保存/使用出问题，照这张表对</h2>
+    <table>
+      <tr><th>现象</th><th>最可能原因</th><th>怎么办</th></tr>
+      <tr><td>保存时提示验证失败</td><td>Token 不一致（99% 是这个）</td><td>逐字符比对 Token，注意大小写与首尾空格</td></tr>
+      <tr><td>保存时提示无法访问 URL</td><td>服务没跑 / 端口被安全组拦</td><td>先找我确认服务与端口（刚才实测是通的）</td></tr>
+      <tr><td>提示 URL 需为 HTTPS / 域名非法</td><td>平台策略收紧</td><td>找我上域名 + 反向代理（走 HTTPS）</td></tr>
+      <tr><td>保存成功，但发消息没回复</td><td>主动推送的出口 IP 未被信任</td><td>应用详情页 →「企业可信IP」→ 加入 <code>120.48.36.201</code></td></tr>
+      <tr><td>只收到占位回复，没有 AI 回复</td><td>同上（AI 回复靠主动推送）</td><td>先配「企业可信IP」，再重发</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <span class="badge b-warn">凭证边界</span>
+    <h2>这一页含敏感凭证，别外传</h2>
+    <ul>
+      <li>本页的 <strong>Token / EncodingAESKey</strong> 属于敏感凭据。泄露后可被伪造回调触发你的 Agent。</li>
+      <li>本页<strong>不含</strong>应用 Secret —— 回调接入不需要它，服务器上已配好。</li>
+      <li>已把本页<strong>排除在交付包之外</strong>（与钉钉版的处置一致），不会随包发给评委。</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

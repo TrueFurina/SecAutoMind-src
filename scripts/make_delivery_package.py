@@ -90,6 +90,10 @@ EXCLUDE_FILE_PATTERNS = [
     ".env", ".env.*",
     "*.db", "*.db-shm", "*.db-wal", "*.db-journal", "*.sqlite", "*.sqlite3",
     "*.pyc", "*.pyo", "*.log", "*.bak", "*.pem", "*.key", "*.crt", "*.new",
+    # 内含**明文机器人凭证**的运维接入指南（如 dingtalk-setup-guide.html 带
+    # Client Secret、wecom-setup-guide.html 带回调 Token / EncodingAESKey）。
+    # 属内网运维资料，随包外发即等于凭证泄露 —— 与下列复核文档同一处置逻辑。
+    "*-setup-guide.html",
     # 内部复核类文档：面向前置作者修订用（如对交付手册的勘误），
     # 不应随交付包发给评委。命名约定见「部署手册_勘误与补充_*.md」。
     "部署手册_勘误*.md", "*_内部复核_*.md",
