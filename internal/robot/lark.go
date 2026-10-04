@@ -39,7 +39,8 @@ func StartLark(ctx context.Context, robotsCfg config.RobotsConfig, h MessageHand
 func runLarkLoop(ctx context.Context, cfg config.RobotLarkConfig, strictUserIdentity bool, h MessageHandler, logger *zap.Logger) {
 	backoff := larkReconnectInitial
 	for {
-		larkClient := lark.NewClient(cfg.AppID, cfg.AppSecret)
+		larkLog := installLarkSDKLogger(logger)
+		larkClient := lark.NewClient(cfg.AppID, cfg.AppSecret, lark.WithLogger(larkLog))
 		eventHandler := dispatcher.NewEventDispatcher("", "").OnP2MessageReceiveV1(func(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
 			go handleLarkMessage(ctx, event, cfg, strictUserIdentity, h, larkClient, logger)
 			return nil
@@ -47,6 +48,7 @@ func runLarkLoop(ctx context.Context, cfg config.RobotLarkConfig, strictUserIden
 		wsClient := larkws.NewClient(cfg.AppID, cfg.AppSecret,
 			larkws.WithEventHandler(eventHandler),
 			larkws.WithLogLevel(larkcore.LogLevelInfo),
+			larkws.WithLogger(larkLog),
 		)
 		logger.Info("飞书长连接正在连接…", zap.String("app_id", cfg.AppID))
 		err := wsClient.Start(ctx)

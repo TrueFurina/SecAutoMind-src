@@ -43,6 +43,15 @@ func isEinoTransientRunError(err error) bool {
 	if isEinoIterationLimitError(err) {
 		return false
 	}
+	// 免费额度耗尽（阿里百炼 "Free quota exhausted" / "免费额度用尽即停"）：
+	// 该通道免费配额清零，但同一 key 下常有其它免费模型可用，应触发 failover 顺位切换，
+	// 而非被下方 403 状态判据当作致命 4xx 直接失败。判据刻意只匹配"配额"字样，
+	// 普通鉴权失败（401/403 真密钥错）不命中。必须早于下方 status-code 短路，
+	// 因为错误文本常带 "status code: 403" 会被误判为致命。
+	lower := strings.ToLower(strings.TrimSpace(err.Error()))
+	if strings.Contains(lower, "free quota") || strings.Contains(lower, "quota exhausted") || strings.Contains(lower, "免费额度") {
+		return true
+	}
 	err = unwrapEinoRetryExhausted(err)
 	var apiErr *einoopenai.APIError
 	if errors.As(err, &apiErr) && apiErr.HTTPStatusCode > 0 {
