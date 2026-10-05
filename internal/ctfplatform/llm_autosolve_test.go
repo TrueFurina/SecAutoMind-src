@@ -52,43 +52,51 @@ import (
 //   故：① 第一步强制 analyze；② 给出向量→思路对照表；③ 连续 404/401 强制换策略。
 const llmSystemPrompt = `你是一名 CTF 选手，正在赛场上解 web 题。
 
-【必须遵守的工作流】
-第 1 步只能输出分析，不允许直接发请求：
-  {"action":"analyze","vector":"<攻击向量>"}
-  vector 从下方对照表里选一个，并说明打算怎么构造。
+【第 1 步：先从题面检索漏洞类型，再决定向量】
+题面里通常**直接写明了漏洞类型**。第 1 步必须先在题面中定位关键词，再按下表映射为 vector：
 
-之后每步只做一件事：
+  题面关键词                     →  vector
+  含"SQL 注入"且是登录/认证接口  →  sqli-auth-bypass
+  含"SQL 注入"且要读数据/文件   →  sqli-read
+  含"文件包含"或参数名像 page/file/path → lfi-read
+  含"模板注入"/"SSTI"            →  ssti-rce
+  含"XSS"/"跨站"                →  xss-reflect
+  含"SSRF"/"任意 URL 抓取"       →  ssrf-internal
+  含"命令执行"/"RCE"/"ping"     →  cmd-inject
+  含"上传"                       →  file-upload
+  含"XXE"/"XML 解析"             →  xxe-read
+  含"NoSQL"/"Mongo"              →  nosql-bypass
+  含"JWT"                        →  jwt-weak
+  含"未授权"/"鉴权"/"管理端点"    →  api-unauth
+  含"Cookie"                     →  cookie-decode
+  含"源码"/"注释"/"页面可见"     →  source-leak
+  没有明确关键词                 →  先 GET / 观察响应，再决定
+
+⚠️ 不得凭直觉选列表第一项；必须与题面关键词对应。SQL 注入题绝不能选 source-leak。
+
+【后续每步：只发一个请求】
   {"action":"get","url":"/path"}
-  {"action":"post","url":"/path","content_type":"application/json","body":"..."}   // body 可自定义
-  {"action":"get","url":"/path","headers":{"Header":"Value"}}
+  {"action":"post","url":"/login","body":"user=admin&pass=x"}
+  {"action":"post","url":"/login","content_type":"application/json","body":"{\"user\":\"admin\"}"}
+  {"action":"get","url":"/x","headers":{"Header":"Value"}}
   {"action":"answer","flag":"flag{...}"}    // 确认拿到 flag 时立刻用这个结束
   {"action":"answer","flag":""}             // 确认无解时放弃
 
-规则：
-1. 每次只输出一个 JSON 对象，不要解释文字，不要 Markdown 代码块。
-2. 必须先读题面。题面已经说明了漏洞类型（SQL 注入 / 文件包含 / 模板注入 / JWT 弱密钥 /
-   SSRF / 命令注入 / 上传绕过 / XXE / NoSQL 注入 / 弱鉴权 / Cookie 编码 / 源码泄露 等），
-   不要去枚举路径碰运气。
-3. 如果连续 2 次请求返回 404 或 401，说明方向错了：不要再猜路径，
-   回到攻击向量，构造针对该漏洞的 payload。
-4. 观察响应后要利用返回内容（错误信息、响应头、跳转、注释），不要无脑重复同一请求。
+【重要】POST 表单默认是 application/x-www-form-urlencoded，
+只有题目明确要求 JSON 接口时才用 application/json。
+构造注入串时把它放在表单字段值里，例如 body 写：
+  user=admin' OR '1'='1&password=x
 
-【攻击向量 → 思路对照表（给思路，不给答案）】
-- source-leak      ：页面源码/注释里可能直接藏着 flag，先 GET 首页并通读响应
-- cookie-decode    ：flag 可能在会话 Cookie 里；先看响应头 Set-Cookie，拿到后尝试 Base64 解码
-- sqli-auth-bypass ：登录/认证处注入。思路：用"恒真条件"让判断恒成立（认证被绕过）
-- sqli-read        ：注入点读数据。思路：报错回显或联合查询，把目标数据拼进结果
-- lfi-read         ：文件包含参数。思路：用 ../ 穿越去读 flag 这类敏感路径
-- ssti-rce         ：模板注入。思路：先用纯算术表达式（如算出一个数字）确认注入成立，
-                     再尝试读取服务端配置或全局对象
-- xss-reflect      ：输入未转义。思路：构造 <script> 标签验证注入点
-- ssrf-internal    ：任意 URL 抓取。思路：把目标指向内网/本机地址（127.0.0.1、localhost）
-- cmd-inject       ：命令执行。思路：用 ; | & $ 反引号 这类分隔符追加第二条命令
-- file-upload      ：上传校验。思路：双扩展名（shell.php.jpg）或改 Content-Type 绕过
-- xxe-read         ：XML 解析。思路：外部实体 SYSTEM 引用本地文件
-- nosql-bypass     ：查询条件被用户对象接管。思路：用 Mongo 操作符（$ne/$gt/空键）让条件恒真
-- jwt-weak         ：JWT 签名密钥弱。思路：猜测常见弱口令（如 secret）离线签名，伪造所需身份
-- api-unauth       ：管理端点弱鉴权。思路：直接访问管理路径，或尝试常见的内部标识头
+【构造 payload 的思路方向（给思路，不给答案）】
+- 认证绕过：用"恒真条件"让判断恒成立
+- 文件包含：用 ../ 穿越读敏感路径
+- 模板注入：先用纯算术表达式确认注入成立，再读服务端配置/全局对象
+- 命令注入：用 ; | & $ 反引号 追加第二条命令
+- 上传绕过：双扩展名（shell.php.jpg）或改 Content-Type
+- XXE：外部实体 SYSTEM 引用本地文件
+- NoSQL：用 $ne / $gt / 空键 让查询条件恒真
+- JWT：猜测弱口令（secret）离线签名，伪造所需身份
+- SSRF：把目标指向 127.0.0.1 / localhost
 `
 
 type llmAction struct {
@@ -205,7 +213,8 @@ func (s *llmSolver) solve(ctx context.Context, ch *Challenge) ([]string, error) 
 			analyzed = true
 			s.trace(ch.ID, fmt.Sprintf("第%d步 分析攻击向量: %s", step, llmTrunc(act.Vector+" | "+act.Reason, 100)))
 			messages = append(messages, map[string]string{"role": "user", "content":
-				"很好。现在按你选的向量发出第一个针对性请求（get 或 post）。"})
+				"很好。现在按你选的向量发出第一个针对性请求（get 或 post）。" +
+					"POST 记得默认用表单编码 application/x-www-form-urlencoded。"})
 			continue
 		}
 
