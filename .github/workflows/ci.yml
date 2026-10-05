@@ -176,6 +176,16 @@ jobs:
           fi
       - name: Finals full-loop rehearsal (simulated platform + poller + solver)
         run: go test -race -count=1 -v -run 'TestRehearsal' ./internal/ctfplatform/ -timeout 300s
+      # 10-05 补：决赛开赛一键上膛脚本 finals_arm.sh 必须在 Linux 上能直接跑
+      #   （现场若连语法错都跑不起来，6 个开关就全漏了）。语法错在本机测不出来 ——
+      #   本地是 Git Bash + Windows，CI 才是真 Linux 目标环境。
+      - name: finals_arm.sh syntax check (day-of one-liner must be runnable on Linux)
+        run: bash -n scripts/finals_arm.sh
+      # 10-05 补：预检脚本的 GO/NO-GO 定级逻辑必须有回归测试。
+      #   预检结论直接决定"是否开赛"，而门禁全绿时没人会去核对那个结论 ——
+      #   定级写反 = 现场拿到与事实相反的 GO（10-04 已栽过同类的门禁失效事故）。
+      - name: Finals preflight self-test (verdict logic must stay provable)
+        run: python3 scripts/finals_preflight_test.py
 
   # 密钥门禁：防止真实凭证被提交进仓库。
   # 历史教训（两次）：

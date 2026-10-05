@@ -10,6 +10,13 @@
   python scripts/finals_preflight.py            # 快速预检（演练 + 门禁 + 开关检查，约 1 分钟）
   python scripts/finals_preflight.py --full     # 追加整包 go test（数分钟）
   python scripts/finals_preflight.py --json     # 机器可读输出（供 CI/复盘）
+  python scripts/finals_preflight.py --phase pre   # 赛前模式：当天才开的开关只提示不阻塞
+
+两个阶段（09-24/10-05 补）：
+  `--phase final`（**默认**，保持严格）：必需开关必须已开，否则 NO-GO。用于"开赛那一刻"的最终确认。
+  `--phase pre`（赛前演练）：必需开关是**开赛当天才设**的，赛前必然是 OFF。
+    若不区分阶段，赛前跑出来永远是 NO-GO，与真实健康度无关 → 极易把"正常"误读成"故障"。
+    该模式下开关只列为「待开」，GO/NO-GO 只由门禁决定。
 
 退出码：0 = GO（可上场）；1 = NO-GO（存在阻塞项）。
 """
@@ -84,10 +91,54 @@ def check_switches():
     return out
 
 
+def evaluate(phase, missing_blocking, hard_failures, warnings):
+    """把「门禁类硬失败」与「开关未开」分开定级，返回 (verdict, blocking, pending)。
+
+    抽成纯函数是为了能单测：这一层若写反，脚本会给出与事实相反的 GO/NO-GO 结论，
+    而门禁全绿时没人会去核对结论 —— 属最危险的"看起来能用"。
+
+    规则：
+      final 阶段（默认）：必需开关未开 = 阻塞（开赛那一刻还没开 = 上场即残废）。
+      pre   阶段：必需开关是当天才设的，赛前 OFF 属正常 → 只列 pending，不阻塞。
+      门禁类硬失败（演练/密钥/口径/证据包/整包测试）**在两个阶段都阻塞**。
+    """
+    blocking = list(hard_failures)
+    pending = []
+    for n in missing_blocking:
+        if phase == "pre":
+            pending.append("当天需开：%s（赛前不阻塞）" % n)
+        else:
+            blocking.append("必需开关未设置：%s" % n)
+    verdict = "GO" if not blocking else "NO-GO"
+    return verdict, blocking, pending
+
+
+def parse_phase(argv):
+    """解析 --phase，返回 (phase, err)。err 非 None 表示调用方应直接以 2 退出。
+
+    单独抽出来是为了能单测：走 main() 会触发 go test（数分钟），不适合做回归测试。
+    未知阶段名必须报错退出，**不静默降级成 final** —— 拼错参数还给出"看起来正常"的
+    结论，是这类工具最坏的失败方式。
+    """
+    if "--phase" not in argv:
+        return "final", None
+    try:
+        phase = argv[argv.index("--phase") + 1]
+    except IndexError:
+        return None, "--phase 缺参数（可选 pre|final）"
+    if phase not in ("pre", "final"):
+        return None, "--phase 只接受 pre|final，收到：%s" % phase
+    return phase, None
+
+
 def main():
     argv = sys.argv[1:]
     want_json = "--json" in argv
     full = "--full" in argv
+    phase, phase_err = parse_phase(argv)
+    if phase_err:
+        print(phase_err, file=sys.stderr)
+        return 2
 
     results = {"checks": [], "switches": check_switches(),
                "wip_untracked_go": untracked_go_files()}
@@ -148,22 +199,23 @@ def main():
         if not ok:
             blocking_fail.append("整包测试未全绿")
 
-    # ⑥ 开关检查结论
+    # ⑥ 开关检查结论（按阶段定级，见 evaluate）
     missing_blocking = [s["name"] for s in results["switches"] if s["blocking"] and not s["on"]]
-    for n in missing_blocking:
-        blocking_fail.append("必需开关未设置：%s" % n)
 
     results["warnings"] = warnings
-    go = not blocking_fail
-    results["verdict"] = "GO" if go else "NO-GO"
+    results["phase"] = phase
+    verdict, blocking_fail, pending = evaluate(phase, missing_blocking, blocking_fail, warnings)
+    results["verdict"] = verdict
     results["blocking"] = blocking_fail
+    results["pending"] = pending
 
     if want_json:
         print(json.dumps(results, ensure_ascii=False, indent=2))
-        return 0 if go else 1
+        return 0 if verdict == "GO" else 1
 
+    phase_desc = "赛前演练（当天才开的开关不阻塞）" if phase == "pre" else "开赛最终确认（必需开关必须已开）"
     print("=" * 74)
-    print("决赛赛前预检 · %s" % results["verdict"])
+    print("决赛赛前预检 · %s  ·  阶段=%s（%s）" % (results["verdict"], phase, phase_desc))
     print("=" * 74)
     print("\n[开关]")
     for s in results["switches"]:
@@ -177,6 +229,10 @@ def main():
         print("\n[警告（不阻塞）]")
         for w in warnings:
             print("  ! %s" % w)
+    if pending:
+        print("\n[待开（%s 阶段不阻塞）]" % phase)
+        for p in pending:
+            print("  ○ %s" % p)
     if blocking_fail:
         print("\n[阻塞项]")
         for f in blocking_fail:
@@ -184,7 +240,7 @@ def main():
     else:
         print("\n  无阻塞项 —— 可上场。")
     print("\n" + "=" * 74)
-    return 0 if go else 1
+    return 0 if verdict == "GO" else 1
 
 
 if __name__ == "__main__":
