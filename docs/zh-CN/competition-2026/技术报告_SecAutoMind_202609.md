@@ -156,7 +156,7 @@ flowchart LR
 | 静态检查 | `go vet ./...` 退出码 0 | `docs/evidence-build-test-20260903.txt` |
 | 单元/集成测试 | 29 个含测试包全部 `ok`；仓库 270 个 `*_test.go`（覆盖 config 环境变量注入、HITL、审计、多代理 typed 栈、知识库、WebShell 流等） | 同上 + `internal/` 各包 |
 | 三平台构建 | linux/darwin/windows 原生 CGo 构建工作流 | `.github/workflows/release.yml` |
-| 代码规模 | Go 738 文件（288 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md | `tools/`、`internal/mcp/builtin/`、`skills/`、`agents/` |
+| 代码规模 | Go 739 文件（289 测试）；143 运行时工具（91 工具 YAML + 52 内置 MCP 工具）；23 技能包；18 agents md | `tools/`、`internal/mcp/builtin/`、`skills/`、`agents/` |
 | 功能验证 | 8 IM 通道软启用与凭据缺失降级、自动多模型 failover、${VAR} env 展开均有测试覆盖 | `internal/config/robots_env_test.go` 等 |
 
 > 注：以上为**工程正确性**证据。智能体"能力基线"的受控靶场实测（E1 服务识别 / E2 闭环 /
