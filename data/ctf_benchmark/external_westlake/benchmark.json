@@ -38,7 +38,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_anxun2020_aes.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_anxun2020_coolboy": {
    "id": "real_crypto_anxun2020_coolboy",
@@ -50,7 +52,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_anxun2020_coolboy.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt"
+   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_changan2021_checkin": {
    "id": "real_crypto_changan2021_checkin",
@@ -62,7 +66,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_changan2021_checkin.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_checkin/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_checkin/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_changan2021_easyrsa": {
    "id": "real_crypto_changan2021_easyrsa",
@@ -74,7 +80,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_changan2021_easyrsa.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_easyrsa/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_easyrsa/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_changan2021_ezpy": {
    "id": "real_crypto_changan2021_ezpy",
@@ -86,7 +94,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_changan2021_ezpy.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_ezpy/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_changan2021_ezpy/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_dnui_keyboard": {
    "id": "real_crypto_dnui_keyboard",
@@ -168,7 +178,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_gaoxiao2024_z3.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gaoxiao2024_z3/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gaoxiao2024_z3/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_gkctf2020_che11y": {
    "id": "real_crypto_gkctf2020_che11y",
@@ -180,7 +192,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_gkctf2020_che11y.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gkctf2020_che11y/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gkctf2020_che11y/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_gkctf2020_rsa": {
    "id": "real_crypto_gkctf2020_rsa",
@@ -192,7 +206,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_gkctf2020_rsa.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gkctf2020_rsa/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_gkctf2020_rsa/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_isctf2024_decrypt": {
    "id": "real_crypto_isctf2024_decrypt",
@@ -204,7 +220,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_isctf2024_decrypt.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_isctf2024_decrypt/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_isctf2024_decrypt/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_longjian2023_hd1": {
    "id": "real_crypto_longjian2023_hd1",
@@ -216,7 +234,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_longjian2023_hd1.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_longjian2023_hd1/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_longjian2023_hd1/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_qiangwang_classic": {
    "id": "real_crypto_qiangwang_classic",
@@ -270,7 +290,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_udomctf2022_aes.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_udomctf2022_aes/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_udomctf2022_aes/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_crypto_umdctf2022_vigenere": {
    "id": "real_crypto_umdctf2022_vigenere",
@@ -282,7 +304,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_umdctf2022_vigenere.json",
-   "attachment": "data/questions_real/_attachments/crypto/real_crypto_umdctf2022_vigenere/flag.txt"
+   "attachment": "data/questions_real/_attachments/crypto/real_crypto_umdctf2022_vigenere/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_anxun2020_722b6d": {
    "id": "real_misc_anxun2020_722b6d",
@@ -294,7 +318,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_anxun2020_722b6d.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt"
+   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_bytectf_flag": {
    "id": "real_misc_bytectf_flag",
@@ -306,7 +332,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_bytectf_flag.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_bytectf_flag/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_bytectf_flag/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_chunqiu2022_checkin": {
    "id": "real_misc_chunqiu2022_checkin",
@@ -318,7 +346,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_chunqiu2022_checkin.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_chunqiu2022_checkin/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_chunqiu2022_checkin/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_chunqiu2022_tiger": {
    "id": "real_misc_chunqiu2022_tiger",
@@ -330,7 +360,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_chunqiu2022_tiger.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_chunqiu2022_tiger/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_chunqiu2022_tiger/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gaoxiao2024_cve41773": {
    "id": "real_misc_gaoxiao2024_cve41773",
@@ -342,7 +374,9 @@
    "difficulty": "HARD",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gaoxiao2024_cve41773.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_cve41773/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_cve41773/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gaoxiao2024_file_extract": {
    "id": "real_misc_gaoxiao2024_file_extract",
@@ -354,7 +388,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gaoxiao2024_file_extract.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_file_extract/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_file_extract/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gaoxiao2024_phish_link": {
    "id": "real_misc_gaoxiao2024_phish_link",
@@ -366,7 +402,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gaoxiao2024_phish_link.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_phish_link/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_phish_link/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gaoxiao2024_phish_sender": {
    "id": "real_misc_gaoxiao2024_phish_sender",
@@ -378,7 +416,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gaoxiao2024_phish_sender.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_phish_sender/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_phish_sender/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gaoxiao2024_xiandian": {
    "id": "real_misc_gaoxiao2024_xiandian",
@@ -390,7 +430,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gaoxiao2024_xiandian.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_xiandian/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gaoxiao2024_xiandian/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_gkctf2020_pokemon": {
    "id": "real_misc_gkctf2020_pokemon",
@@ -402,7 +444,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_gkctf2020_pokemon.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_gkctf2020_pokemon/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_gkctf2020_pokemon/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_hws2022_badpdf": {
    "id": "real_misc_hws2022_badpdf",
@@ -414,7 +458,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_hws2022_badpdf.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_hws2022_badpdf/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_hws2022_badpdf/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_isctf2024_checkin02": {
    "id": "real_misc_isctf2024_checkin02",
@@ -426,7 +472,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_isctf2024_checkin02.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_checkin02/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_checkin02/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_isctf2024_park2": {
    "id": "real_misc_isctf2024_park2",
@@ -438,7 +486,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_isctf2024_park2.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_park2/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_park2/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_isctf2024_pixel": {
    "id": "real_misc_isctf2024_pixel",
@@ -450,7 +500,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_isctf2024_pixel.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_pixel/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_pixel/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_isctf2024_sstv": {
    "id": "real_misc_isctf2024_sstv",
@@ -462,7 +514,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_isctf2024_sstv.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_sstv/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_sstv/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_isctf2024_win_rar": {
    "id": "real_misc_isctf2024_win_rar",
@@ -474,7 +528,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_isctf2024_win_rar.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_win_rar/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_isctf2024_win_rar/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2023_baby_forensics3": {
    "id": "real_misc_longjian2023_baby_forensics3",
@@ -486,7 +542,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2023_baby_forensics3.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_baby_forensics3/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_baby_forensics3/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2023_bf": {
    "id": "real_misc_longjian2023_bf",
@@ -498,7 +556,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2023_bf.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_bf/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_bf/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2023_smallsword3": {
    "id": "real_misc_longjian2023_smallsword3",
@@ -510,7 +570,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2023_smallsword3.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_smallsword3/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2023_smallsword3/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2024_smallsword1": {
    "id": "real_misc_longjian2024_smallsword1",
@@ -546,7 +608,9 @@
    "difficulty": "HARD",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2024_smallsword3.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2024_ssw_redis": {
    "id": "real_misc_longjian2024_ssw_redis",
@@ -582,7 +646,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2025_app_part2.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_app_part2/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_app_part2/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2025_data_security1": {
    "id": "real_misc_longjian2025_data_security1",
@@ -594,7 +660,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2025_data_security1.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_data_security1/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_data_security1/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_longjian2025_siem": {
    "id": "real_misc_longjian2025_siem",
@@ -606,7 +674,9 @@
    "difficulty": "HARD",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_longjian2025_siem.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_siem/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_longjian2025_siem/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_mjuctf_speak": {
    "id": "real_misc_mjuctf_speak",
@@ -618,7 +688,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_mjuctf_speak.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_mjuctf_speak/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_mjuctf_speak/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_mjuctf_this_is_the_flag": {
    "id": "real_misc_mjuctf_this_is_the_flag",
@@ -630,7 +702,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_mjuctf_this_is_the_flag.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_mjuctf_this_is_the_flag/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_mjuctf_this_is_the_flag/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_nactf2020_zip_madness": {
    "id": "real_misc_nactf2020_zip_madness",
@@ -642,7 +716,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_nactf2020_zip_madness.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_nactf2020_zip_madness/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_nactf2020_zip_madness/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_qiangwang2020_cefang": {
    "id": "real_misc_qiangwang2020_cefang",
@@ -654,7 +730,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_qiangwang2020_cefang.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_qiangwang2020_cefang/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_qiangwang2020_cefang/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_qiangwang2020_upload": {
    "id": "real_misc_qiangwang2020_upload",
@@ -666,7 +744,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_qiangwang2020_upload.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_qiangwang2020_upload/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_qiangwang2020_upload/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_sheng2022_traffic_bruteforce_count": {
    "id": "real_misc_sheng2022_traffic_bruteforce_count",
@@ -738,7 +818,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_udomctf2022_morse.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_udomctf2022_morse/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_udomctf2022_morse/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_vnctf_flag": {
    "id": "real_misc_vnctf_flag",
@@ -763,7 +845,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_vnctf_strangeflag.json",
-   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt"
+   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_vnctf_vnloan": {
    "id": "real_misc_vnctf_vnloan",
@@ -775,7 +859,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_vnctf_vnloan.json",
-   "attachment": "data/questions_real/_attachments/misc/real_misc_vnctf_vnloan/flag.txt"
+   "attachment": "data/questions_real/_attachments/misc/real_misc_vnctf_vnloan/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_misc_xuanhun_signin": {
    "id": "real_misc_xuanhun_signin",
@@ -800,7 +886,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/pwn/real_pwn_changan2021_pwn3.json",
-   "attachment": "data/questions_real/_attachments/pwn/real_pwn_changan2021_pwn3/flag.txt"
+   "attachment": "data/questions_real/_attachments/pwn/real_pwn_changan2021_pwn3/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_pwn_hws2022_peach": {
    "id": "real_pwn_hws2022_peach",
@@ -812,7 +900,9 @@
    "difficulty": "HARD",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/pwn/real_pwn_hws2022_peach.json",
-   "attachment": "data/questions_real/_attachments/pwn/real_pwn_hws2022_peach/flag.txt"
+   "attachment": "data/questions_real/_attachments/pwn/real_pwn_hws2022_peach/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_anxun2020_easycm": {
    "id": "real_reverse_anxun2020_easycm",
@@ -824,7 +914,9 @@
    "difficulty": "HARD",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_anxun2020_easycm.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt"
+   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_anxun2020_notright": {
    "id": "real_reverse_anxun2020_notright",
@@ -836,7 +928,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_anxun2020_notright.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt"
+   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_gaoxiao2024_upx": {
    "id": "real_reverse_gaoxiao2024_upx",
@@ -848,7 +942,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_gaoxiao2024_upx.json",
-   "attachment": "data/questions_real/_attachments/reverse/real_reverse_gaoxiao2024_upx/flag.txt"
+   "attachment": "data/questions_real/_attachments/reverse/real_reverse_gaoxiao2024_upx/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_js": {
    "id": "real_reverse_js",
@@ -863,7 +959,9 @@
    "attachments": [
     "data/questions_real/_attachments/reverse/real_reverse_js/coso.js",
     "data/questions_real/_attachments/reverse/real_reverse_js/index.html"
-   ]
+   ],
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_sheng": {
    "id": "real_reverse_sheng",
@@ -901,7 +999,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_vnctf_babymaze.json",
-   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt"
+   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_reverse_vnctf_timeflies": {
    "id": "real_reverse_vnctf_timeflies",
@@ -913,7 +1013,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_vnctf_timeflies.json",
-   "attachment": "data/questions_real/_attachments/reverse/real_reverse_vnctf_timeflies/flag.txt"
+   "attachment": "data/questions_real/_attachments/reverse/real_reverse_vnctf_timeflies/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_anxun2020_welcome": {
    "id": "real_web_anxun2020_welcome",
@@ -925,7 +1027,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_anxun2020_welcome.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt"
+   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_changan2021_soeasy": {
    "id": "real_web_changan2021_soeasy",
@@ -937,7 +1041,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_changan2021_soeasy.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_changan2021_soeasy/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_changan2021_soeasy/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_dicectf2022_knockknock": {
    "id": "real_web_dicectf2022_knockknock",
@@ -949,7 +1055,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_dicectf2022_knockknock.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_dicectf2022_knockknock/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_dicectf2022_knockknock/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_dicectf2022_point": {
    "id": "real_web_dicectf2022_point",
@@ -961,7 +1069,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_dicectf2022_point.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_dicectf2022_point/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_dicectf2022_point/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_gongye_web2": {
    "id": "real_web_gongye_web2",
@@ -976,7 +1086,9 @@
    "attachments": [
     "data/questions_real/_attachments/web/real_web_gongye_web2/index.php",
     "data/questions_real/_attachments/web/real_web_gongye_web2/ac50eec324f2acd7bfb2f5c91c4b62d9.html"
-   ]
+   ],
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_hacktheboo2022_spookifier": {
    "id": "real_web_hacktheboo2022_spookifier",
@@ -988,7 +1100,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_hacktheboo2022_spookifier.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_hacktheboo2022_spookifier/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_hacktheboo2022_spookifier/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_linectf2022_ssti_jwt": {
    "id": "real_web_linectf2022_ssti_jwt",
@@ -1000,7 +1114,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_linectf2022_ssti_jwt.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_linectf2022_ssti_jwt/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_linectf2022_ssti_jwt/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_longjian2023_hard_web1": {
    "id": "real_web_longjian2023_hard_web1",
@@ -1012,7 +1128,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_longjian2023_hard_web1.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_longjian2023_hard_web1/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_longjian2023_hard_web1/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_longjian2023_hard_web2": {
    "id": "real_web_longjian2023_hard_web2",
@@ -1024,7 +1142,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_longjian2023_hard_web2.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_longjian2023_hard_web2/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_longjian2023_hard_web2/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_longjian2025_which_sql": {
    "id": "real_web_longjian2025_which_sql",
@@ -1036,7 +1156,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_longjian2025_which_sql.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_longjian2025_which_sql/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_longjian2025_which_sql/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_udomctf2022_cmdinj": {
    "id": "real_web_udomctf2022_cmdinj",
@@ -1048,7 +1170,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_udomctf2022_cmdinj.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_udomctf2022_cmdinj/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_udomctf2022_cmdinj/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_wgmy2022_christmas_wishlist": {
    "id": "real_web_wgmy2022_christmas_wishlist",
@@ -1060,7 +1184,9 @@
    "difficulty": "EASY",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_wgmy2022_christmas_wishlist.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_wgmy2022_christmas_wishlist/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_wgmy2022_christmas_wishlist/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
   "real_web_wgmy2022_christmas_wishlist2": {
    "id": "real_web_wgmy2022_christmas_wishlist2",
@@ -1072,7 +1198,9 @@
    "difficulty": "MEDIUM",
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_wgmy2022_christmas_wishlist2.json",
-   "attachment": "data/questions_real/_attachments/web/real_web_wgmy2022_christmas_wishlist2/flag.txt"
+   "attachment": "data/questions_real/_attachments/web/real_web_wgmy2022_christmas_wishlist2/flag.txt",
+   "answer_directly_in_attachment": true,
+   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   }
  }
 }
