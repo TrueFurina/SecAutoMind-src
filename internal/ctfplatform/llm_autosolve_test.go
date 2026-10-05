@@ -129,6 +129,8 @@ type llmSolver struct {
 	tokens   int
 	solved   int
 	attempts int
+	retries  int      // LLM 调用重试次数
+	infra    int      // 重试后仍失败（基础设施问题，非模型能力）
 	// traces 记录每题 LLM 的动作序列 —— 失败时必须能看到"它卡在哪一步"，
 	// 否则只有一个"未解出"结论，无法区分"模型不会"与"题目/工具本身不可能解"。
 	traces map[string][]string
@@ -180,9 +182,12 @@ func (s *llmSolver) solve(ctx context.Context, ch *Challenge) ([]string, error) 
 		s.steps++
 		s.mu.Unlock()
 
-		raw, usage, err := s.callLLM(ctx, messages)
+		raw, usage, err := s.callLLMWithRetry(ctx, messages)
 		if err != nil {
-			return nil, fmt.Errorf("调用 LLM 失败（第 %d 步）: %w", step, err)
+			s.mu.Lock()
+			s.infra++
+			s.mu.Unlock()
+			return nil, fmt.Errorf("调用 LLM 失败（第 %d 步，重试 4 次后仍失败）: %w", step, err)
 		}
 		if usage != nil {
 			s.mu.Lock()
@@ -266,6 +271,37 @@ func (s *llmSolver) solve(ctx context.Context, ch *Challenge) ([]string, error) 
 		messages = append(messages, map[string]string{"role": "user", "content": obs})
 	}
 	return nil, nil
+}
+
+// callLLMWithRetry 对网络错误与限流做退避重试。
+//
+// 为什么必须有（实测驱动）：首次用 AMD Token Factory 跑 13 题时，
+// 出现多次 `Post ...` 连接失败与 5 次 `HTTP 429 Model API rate limit`，
+// 导致**大量题目其实是被基础设施打断、并非模型解不出** —— 数字被污染成"能力不足"。
+// 真实赛场网络同样会抖，**把限流/断连记成模型能力差是评测层的严重失真**。
+// 故：重试 4 次、退避 5/10/15/20s；仍失败才判该题"调用失败"，并在统计中单列。
+func (s *llmSolver) callLLMWithRetry(ctx context.Context, messages []map[string]string) (string, *llmUsage, error) {
+	var lastErr error
+	for attempt := 1; attempt <= 4; attempt++ {
+		raw, usage, err := s.callLLM(ctx, messages)
+		if err == nil {
+			return raw, usage, nil
+		}
+		lastErr = err
+		s.mu.Lock()
+		s.retries++
+		s.mu.Unlock()
+		if attempt == 4 {
+			break
+		}
+		wait := time.Duration(attempt) * 5 * time.Second
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return "", nil, ctx.Err()
+		}
+	}
+	return "", nil, fmt.Errorf("LLM 调用重试 4 次仍失败（最后错误：%v）: %w", lastErr, lastErr)
 }
 
 func (s *llmSolver) callLLM(ctx context.Context, messages []map[string]string) (string, *llmUsage, error) {
@@ -539,6 +575,12 @@ func runLLMEval(t *testing.T, cases []liveCase, baseURL, apiKey, model string) {
 	t.Logf("LLM 自主解题：%d/%d（%.0f%%）· 总步数 %d· 靶机请求 %d· tokens %d",
 		solved, len(cases), 100*float64(solved)/float64(len(cases)),
 		solver.steps, solver.requests, solver.tokens)
+	// 基础设施问题必须单列：被限流/断连打断 ≠ 模型解不出，混在一起会低估能力
+	if solver.retries > 0 || solver.infra > 0 {
+		t.Logf("⚠ 基础设施：LLM 调用重试 %d 次（429/网络抖动），"+
+			"其中 %d 次重试耗尽导致该题未完成 —— 这部分**不计入未解出**",
+			solver.retries, solver.infra)
+	}
 
 	// 防止"全部跳过/崩溃也算通过"的假绿：至少要有题被处理
 	if len(records) == 0 {
