@@ -224,6 +224,26 @@ jobs:
   # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
   # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
   # 写死的数字在提交完成的下一秒就可能过期，靠人肉同步永远追不上。
+  # 真值源一致性门禁（2026-10-05 · 西湖论剑 CTF-Agent 跨项目支持引入）。
+  # 背景：本项目曾出现"评测校验器从退役题库取答案表 → 正确 flag 被判幻觉并丢弃"的对齐事故
+  # （外部项目 2026-09-19 实测：当日 1/10 实为冤案，修复后 3~4/10）。该类事故静态看代码
+  # 发现不了（两边都"有哈希校验"），只能机器对账。本门禁把两类注水常态化挡住：
+  #   ① 外部来源题集出现明文答案（答案键与题面同文件 → 求解器可见 → 能力数字失真）；
+  #   ② 同一题 id 在多处登记了不同 flag_sha256（真值分裂）。
+  # 变异验证：把任一检查改成恒不报红，本 job 必然变红（可用 scripts/_audit_truth_sources.py 的
+  # 测试用例反证——测试已覆盖每个检查项的红/绿两态）。
+  truth-source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Truth-source coherence gate (no plaintext answers in external sets / no truth divergence)
+        run: python scripts/_audit_truth_sources.py --target .
+      - name: LLM evaluation pool caliber gate (self-authored vs external-truth denominator)
+        run: python scripts/_audit_llm_pool.py --target .
+
   caliber-gate:
     runs-on: ubuntu-latest
     steps:
