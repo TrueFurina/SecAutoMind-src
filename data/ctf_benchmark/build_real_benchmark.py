@@ -103,20 +103,76 @@ for p in real:
     p['flag_sha256'] = sha256(p['flag'])
     p['presolve_skill'] = 'auto'
 
+OUT = 'data/ctf_benchmark/real_benchmark.json'
+ANSWERS = 'data/answers/real_benchmark_answers.json'
+
+# 真值源纪律（2026-10-05）：产物只留 flag_sha256，明文答案存 data/answers/（不入库）。
+# 两道防呆：
+#   1) 合并而非覆盖——历史上本脚本只含 31 题，直接覆盖会把后来手加的题冲掉（实测 55→31）；
+#   2) 生成时逐题校验 sha256(明文)==flag_sha256，不一致直接报错，杜绝真值分裂。
+existing = {}
+try:
+    with open(OUT, encoding='utf-8') as f:
+        existing = json.load(f).get('problems', {})
+except FileNotFoundError:
+    pass
+
+answers = {}
+try:
+    with open(ANSWERS, encoding='utf-8') as f:
+        answers = json.load(f).get('answers', {})
+except FileNotFoundError:
+    print('[build] 未找到答案键 data/answers/（正常：明文不入库）；'
+          '将只校验已有 flag_sha256，不写入明文')
+
+# 覆盖策略（2026-10-05 实测修正）：**已存在的题一律保留现值**，本脚本只补新题。
+# 原因：本脚本内联的 31 题数据比产物旧（产物 55 题含后续手工维护的题面/提示），
+# 早期"直接覆盖"写法实测把静态确定性从 34.5% 打到 23.6%——用旧数据盖掉了手工维护成果。
+# 因此：existing 里的题绝不覆盖；需要更新题面请手工改产物，或显式传 --force-overwrite。
+merged = dict(existing)
+added, skipped = 0, 0
+for item in real:
+    flag = item.pop('flag', None)
+    truth = sha256(flag) if flag else None
+    if flag and truth != item.get('flag_sha256'):
+        raise SystemExit(f"[build] 真值分裂：{item['id']} 明文哈希 {truth[:12]}… "
+                         f"!= flag_sha256 {str(item.get('flag_sha256'))[:12]}…")
+    if flag:
+        answers.setdefault(item['id'], flag)   # 仅落在本机答案键，不进产物
+    if item['id'] in merged:
+        skipped += 1
+        if not merged[item['id']].get('flag_sha256') and truth:
+            merged[item['id']]['flag_sha256'] = truth   # 仅补真值，不动题面
+        continue
+    if flag and not item.get('flag_sha256'):
+        item['flag_sha256'] = truth
+    merged[item['id']] = item
+    added += 1
+print(f'[build] 新增 {added} 题；跳过已存在 {skipped} 题（不覆盖手工维护内容）')
+
 bench = {
     'version': 'v5_real',
     'created': '2026-09-06',
-    'description': 'CTF真实真题基准集（公开writeup来源，SHA-256验证）',
-    'total': len(real),
-    'problems': {p['id']: p for p in real}
+    'description': 'CTF真实真题基准集（公开writeup来源，SHA-256验证；明文答案见 data/answers/，不入库）',
+    'total': len(merged),
+    'problems': merged,
 }
 
-with open('data/ctf_benchmark/real_benchmark.json', 'w', encoding='utf-8') as f:
+with open(OUT, 'w', encoding='utf-8') as f:
     json.dump(bench, f, indent=2, ensure_ascii=False)
 
-print(f'真实真题基准集: {len(real)}道')
+try:
+    import os
+    os.makedirs('data/answers', exist_ok=True)
+    with open(ANSWERS, 'w', encoding='utf-8') as f:
+        json.dump({'_note': 'real_benchmark.json 的答案键（明文），按约定不入库、禁止进交付包。',
+                   'answers': answers}, f, ensure_ascii=False, indent=1)
+except OSError as e:
+    print(f'[build] 答案键写入失败（不影响产物）: {e}')
+
+print(f'真实真题基准集: {len(merged)}道（合并写入口径；原脚本内联 {len(real)} 道）')
 cats = {}
-for p in real:
-    cats[p['category']] = cats.get(p['category'],0)+1
-for c,n in sorted(cats.items()):
+for it in merged.values():
+    cats[it['category']] = cats.get(it['category'], 0) + 1
+for c, n in sorted(cats.items()):
     print(f'  {c}: {n}道')
