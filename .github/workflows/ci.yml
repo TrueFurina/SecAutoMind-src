@@ -176,6 +176,14 @@ jobs:
           fi
       - name: Finals full-loop rehearsal (simulated platform + poller + solver)
         run: go test -race -count=1 -v -run 'TestRehearsal' ./internal/ctfplatform/ -timeout 300s
+      # 10-05 补：真实靶机端到端。TestRehearsal 的 flag 在题面文本里（静态抽取即得），
+      #   测不到真实靶机；TestLiveTarget 起真 HTTP 靶机（真漏洞），走
+      #   平台投递 → 起靶机 → 地址注入 → 真实 HTTP 探测 → 提交判分 全链路。
+      #   这正是 55 题真题库 36 道未命中里 21 道 web 题的真实形态。
+      #   含反向用例 TestLiveTargetFailsWithoutEnvInjection（关掉注入必须全失败），
+      #   用来证明正向通过确实来自那条链，而非断言写松。
+      - name: Live target end-to-end (real vulnerable HTTP targets, full chain)
+        run: go test -race -count=1 -v -run 'TestLiveTarget' ./internal/ctfplatform/ -timeout 300s
       # 10-05 补：决赛开赛一键上膛脚本 finals_arm.sh 必须在 Linux 上能直接跑
       #   （现场若连语法错都跑不起来，6 个开关就全漏了）。语法错在本机测不出来 ——
       #   本地是 Git Bash + Windows，CI 才是真 Linux 目标环境。
