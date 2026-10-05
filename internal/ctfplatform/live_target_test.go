@@ -339,7 +339,8 @@ func extractJSONString(body, key string) string {
 	return ""
 }
 
-// newLiveCases 组装四种题型（题型与 picoCTF 2024 / BUUCTF 同款）
+// newLiveCases 组装 10 种真实题型。
+// 题型与 55 道真题里 36 道未命中的 sub 分布一一对应（picoCTF 2024/2025、BUUCTF 同款原型）。
 func newLiveCases() []liveCase {
 	return []liveCase{
 		{
@@ -365,6 +366,60 @@ func newLiveCases() []liveCase {
 			desc:      "平台已分配靶机。/index.php?page= 参数存在本地文件包含，读取 flag 文件。",
 			handler:   targetLFI("flag{live_lfi_ok}"),
 			probe:     probeLFI,
+		},
+		{
+			id: "2005", title: "WEB-05", flag: "flag{live_ssti_ok}",
+			desc:      "平台已分配靶机。/search 参数被当作模板源码渲染，尝试构造模板表达式读取服务端配置。",
+			handler:   targetSSTI("flag{live_ssti_ok}"),
+			probe:     probeSSTI,
+		},
+		{
+			id: "2006", title: "WEB-06", flag: "flag{live_jwt_weak_ok}",
+			desc:      "平台已分配靶机。/verify 校验 JWT，签名密钥过弱，可离线爆破后伪造管理员身份。",
+			handler:   targetJWTWeak("flag{live_jwt_weak_ok}"),
+			probe:     probeJWTWeak,
+		},
+		{
+			id: "2007", title: "WEB-07", flag: "flag{live_ssrf_ok}",
+			desc:      "平台已分配靶机。/fetch 可传入任意 URL，未做内网地址限制，尝试访问内网管理服务。",
+			handler:   targetSSRF("flag{live_ssrf_ok}"),
+			probe:     probeSSRF,
+		},
+		{
+			id: "2008", title: "WEB-08", flag: "flag{live_cmdinject_ok}",
+			desc:      "平台已分配靶机。/ping 会对主机名执行系统命令，尝试用分隔符注入第二条命令。",
+			handler:   targetCmdInject("flag{live_cmdinject_ok}"),
+			probe:     probeCmdInject,
+		},
+		{
+			id: "2009", title: "WEB-09", flag: "flag{live_upload_bypass_ok}",
+			desc:      "平台已分配靶机。/upload 只按扩展名校验，尝试上传 .php 文件绕过限制。",
+			handler:   targetUploadBypass("flag{live_upload_bypass_ok}"),
+			probe:     probeUploadBypass,
+		},
+		{
+			id: "2010", title: "WEB-10", flag: "flag{live_xxe_ok}",
+			desc:      "平台已分配靶机。/xml 会解析提交的 XML，尝试利用外部实体读取本地文件。",
+			handler:   targetXXE("flag{live_xxe_ok}"),
+			probe:     probeXXE,
+		},
+		{
+			id: "2011", title: "WEB-11", flag: "flag{live_xss_ok}",
+			desc:      "平台已分配靶机。/search 的 q 参数未转义直接回显，构造脚本注入并观察注入点上下文。",
+			handler:   targetXSS("flag{live_xss_ok}"),
+			probe:     probeXSS,
+		},
+		{
+			id: "2012", title: "WEB-12", flag: "flag{live_nosql_ok}",
+			desc:      "平台已分配靶机。/login 直接把提交的 JSON 当查询条件，用 MongoDB 操作符绕过认证。",
+			handler:   targetNoSQLBypass("flag{live_nosql_ok}"),
+			probe:     probeNoSQLBypass,
+		},
+		{
+			id: "2013", title: "WEB-13", flag: "flag{live_api_authz_ok}",
+			desc:      "平台已分配靶机。/api/v1/admin/keys 未做真正鉴权，尝试直接访问管理端点。",
+			handler:   targetAPIAuthz("flag{live_api_authz_ok}"),
+			probe:     probeAPIAuthz,
 		},
 	}
 }
