@@ -124,3 +124,56 @@ func (i *PresolveAgentIntegrator) SubmitFlag(ctx context.Context, challengeID, f
 	}
 	return i.platform.SubmitFlag(ctx, challengeID, flag)
 }
+
+// PrepareChallenge 为「用户粘贴题面辅助解题」之外的场景准备靶机与附件：
+// 当能从平台拿到 challengeID（如机器人消息里带题号、或主动轮询匹配）时，自动
+// 拉详情 → 起靶机 → 取访问地址 → 下附件，并把靶机地址/附件标记注入返回的 Challenge，
+// 使其可直接交给 presolve/Agent 使用（与 poller 的 buildEnvAndInject/fetchAttachments 等价）。
+//
+// 设计（2026-10-08）：本方法是「可选能力」，不破坏既有 TryPresolve(ctx, message, nil) 行为。
+// challengeID 为空时直接返回 nil（by-design：IM 路径当前无题号来源，默认不激活建靶机）。
+// 是否要让 IM 机器人自动建靶机，是决赛运行模式决策，由调用方（agent.go）是否传入 challengeID 决定。
+func (i *PresolveAgentIntegrator) PrepareChallenge(ctx context.Context, challengeID string) (*Challenge, error) {
+	if i.platform == nil {
+		return nil, fmt.Errorf("平台未接线：无法准备靶机")
+	}
+	if challengeID == "" {
+		return nil, nil // by-design：无题号不激活
+	}
+
+	ch, err := i.platform.GetChallenge(ctx, challengeID)
+	if err != nil || ch == nil {
+		return nil, fmt.Errorf("取题目详情失败: %w", err)
+	}
+
+	// ① 建靶机（需要靶机的题）
+	if ch.HasInstance {
+		if _, cerr := i.platform.CreateInstance(ctx, challengeID); cerr != nil {
+			i.logger.Warn("起靶机失败（继续尝试取地址）",
+				zap.String("challenge_id", challengeID), zap.Error(cerr))
+		}
+		if acc, aerr := i.platform.GetAccess(ctx, challengeID); aerr == nil && acc != nil && acc.URL != "" {
+			if ch.Extra == nil {
+				ch.Extra = map[string]interface{}{}
+			}
+			ch.Extra["target_url"] = acc.URL
+			if !strings.Contains(ch.Description, acc.URL) {
+				ch.Description += "\n靶机地址: " + acc.URL
+			}
+		}
+	}
+
+	// ② 下附件（有附件的题）
+	if ch.HasAttachment {
+		if paths, derr := i.platform.DownloadAttachment(ctx, challengeID); derr == nil && len(paths) > 0 {
+			var b strings.Builder
+			b.WriteString("\n[用户上传的文件]\n")
+			for _, p := range paths {
+				b.WriteString(fmt.Sprintf("- %s\n", p))
+			}
+			ch.Description += b.String()
+		}
+	}
+
+	return ch, nil
+}
