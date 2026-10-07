@@ -267,6 +267,20 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 		p.enrichFromDetail(ctx, ch, rec)
 	}
 
+	// ①-b HasInstance 兜底双保险（防隐藏翻车）：
+	// 若开了 AutoBuildEnv 但题目标记「需要靶机」仍未被任何来源确认
+	// （列表接口不返回 has_instance 字段，且上面 ① 因 AutoFetchDetail 未开没跑过），
+	// 则专门为建靶机目的用独立短超时再拉一次详情补全 HasInstance。
+	// 否则会静默跳过 buildEnvAndInject → web/pwn 题整题 0 分，且全程无任何报错。
+	// 失败/超时一律静默沿用（不阻塞求解），仅记入 rec.Detail。
+	// 收窄：仅对「需要靶机的题型」(web/pwn/reverse) 补全，避免对 MISC/CRYPTO 明文题
+	// 误建靶机（rehearsal 反向对照依赖此语义：build-env 仅对真正需靶机题调用）。
+	if p.config.AutoBuildEnv && !ch.HasInstance && !p.config.AutoFetchDetail && isEnvCategory(ch.Category) {
+		detailCtx, detailCancel := context.WithTimeout(ctx, 15*time.Second)
+		p.enrichFromDetail(detailCtx, ch, rec)
+		detailCancel()
+	}
+
 	// ② 起靶机（决赛关键链，默认关闭；见 PollerConfig.AutoBuildEnv）。
 	// 官方平台把靶机地址放在 challenge_detail.endpoints[].exposeIps[0]，
 	// 而 CreateInstance/GetAccess 此前从未被生产代码调用（09-17 实锤的生产缺口）——
@@ -385,6 +399,15 @@ func (p *Poller) enrichFromDetail(ctx context.Context, ch *Challenge, rec *PollR
 //
 // 失败不致命：记入 rec.Detail 后继续求解（"没有靶机也试一把"好过整题卡死）。
 // ch 是每题一份的副本（RunOnce 里 go func(c Challenge) 传值），这里改它不影响共享状态。
+// isEnvCategory 判断题型是否需要启动靶机实例（web/pwn/reverse 类）。
+func isEnvCategory(cat string) bool {
+	switch strings.ToLower(strings.TrimSpace(cat)) {
+	case "web", "pwn", "reverse":
+		return true
+	}
+	return false
+}
+
 func (p *Poller) buildEnvAndInject(ctx context.Context, ch *Challenge, rec *PollRecord) bool {
 	created := false
 	if inst, err := p.platform.CreateInstance(ctx, ch.ID); err != nil {

@@ -21,6 +21,10 @@ type Challenge struct {
 	Score         int                    `json:"score"`
 	HasInstance   bool                   `json:"has_instance"`   // 是否需要启动容器
 	HasAttachment bool                   `json:"has_attachment"` // 是否有附件
+	// AttachmentURLs 由 parseChallenge 从题目详情提取的附件下载 URL（供 DownloadAttachment 使用）。
+	// 平台把附件 URL 嵌在详情 JSON 的 attachment/attachments/file 字段里（DASCTF 形态），
+	// 不另设独立下载 API，故先提取再 HTTP GET 落盘。
+	AttachmentURLs []string               `json:"attachment_urls,omitempty"`
 	Difficulty    string                 `json:"difficulty"`     // VERY_EASY / EASY / MEDIUM / HARD
 	Extra         map[string]interface{} `json:"extra,omitempty"`
 }

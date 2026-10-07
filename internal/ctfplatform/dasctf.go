@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -413,6 +415,9 @@ func parseChallenge(raw json.RawMessage) Challenge {
 		jsonTruthy(m["file"]) || attachmentHasPayload(m["attachment"]) ||
 		isNonEmptyList(m["attachments"]) || urlRe.MatchString(ch.Description)
 
+	// 提取附件下载 URL（供 DownloadAttachment 使用；DASCTF 把 URL 嵌在详情 JSON 里，无独立下载 API）
+	ch.AttachmentURLs = extractAttachmentURLs(m, ch.Description)
+
 	// 分值：score 优先，其次 points（真源 `_safe_int(score or points or 0)`）。
 	// 官方可能返回 "50.0"/"200" 这类字符串，故走 safeInt 而非直接 Unmarshal 到 int。
 	ch.Score = safeInt(rawTruthy(m, "score", "points"))
@@ -805,18 +810,148 @@ func extractAccess(detail json.RawMessage) *Access {
 
 // DownloadAttachment 下载题目附件，返回本地路径列表。
 //
-// 🔴 **当前是存根**（2026-09-18）：官方平台的附件下载端点尚未确认（本机无凭证、无法联调），
-//    故返回 nil,nil。**实现本存根时必须遵守两条契约**，否则整条附件链路会静默断裂：
-//      ① 文件必须落在 `<cwd>/chat_uploads/` 白名单目录之下 —— Presolve 的
-//         loadChatAttachmentFiles 只读该目录（防任意文件读）；
-//      ② 返回值为本地绝对路径列表（poller 的 AutoFetchAttachment 会把不在白名单内的
-//         复制进 chat_uploads/ctf/<题号>/ 兜底，但最好一步到位）。
-//    链路下游（标记块并入描述 → 执行层求解器吃到内容）已由
-//    TestRehearsalAttachmentChain 演练验证，端点一实现、CTF_AUTO_FETCH_ATTACHMENT=true 即通。
+// 实现（2026-10-08 解存根）：DASCTF 平台把附件 URL 嵌在题目详情 JSON 里（attachment/attachments/file
+// 字段），无独立下载 API。故本函数先经 GetChallenge 取回详情（parseChallenge 已把 URL 抽到
+// Challenge.AttachmentURLs），再逐个 HTTP GET 落到 `<cwd>/chat_uploads/ctf/<题号>/` 白名单之下，
+// 返回本地绝对路径。
+//
+// 契约（与 poller.fetchAttachments 下游一致）：
+//   - 文件落在 chat_uploads/ 之下 —— Presolve 的 loadChatAttachmentFiles 只读该目录（防任意文件读）；
+//   - 返回本地绝对路径列表。
+//
+// 🔴 **诚实标注**：本机无官方凭证、无法真机联调，URL 字段名基于既有 HasAttachment 判定
+//    （attachment/attachments/file + url/downloadUrl/src/file_url/download_url/files）推断。
+//    若决赛真机字段命名不同，需在此微调 extractAttachmentURLs（单测覆盖提取逻辑，整链真机验证留决赛前）。
+//    任何失败一律返回 (nil, nil) —— 保持「无附件」语义，不阻断求解。
 func (p *DasCTFPlatform) DownloadAttachment(ctx context.Context, challengeID string) ([]string, error) {
-	// 附件通常在题目详情中包含下载链接
-	p.Logger.Debug("附件下载（待平台 API 确认具体端点）", zap.String("challenge_id", challengeID))
-	return nil, nil
+	ch, err := p.GetChallenge(ctx, challengeID)
+	if err != nil || ch == nil {
+		p.Logger.Debug("取题目详情失败，无法下载附件", zap.String("challenge_id", challengeID), zap.Error(err))
+		return nil, nil
+	}
+	if len(ch.AttachmentURLs) == 0 {
+		p.Logger.Debug("题目无附件 URL", zap.String("challenge_id", challengeID))
+		return nil, nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		p.Logger.Warn("获取工作目录失败，附件下载跳过", zap.Error(err))
+		return nil, nil
+	}
+	root := filepath.Join(cwd, "chat_uploads", "ctf", challengeID)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		p.Logger.Warn("创建附件目录失败", zap.String("dir", root), zap.Error(err))
+		return nil, nil
+	}
+
+	paths, err := downloadURLsToDir(ctx, p.HTTPClient, ch.AttachmentURLs, root)
+	if err != nil {
+		p.Logger.Warn("附件下载未完成", zap.String("challenge_id", challengeID), zap.Error(err))
+	}
+	return paths, nil
+}
+
+// downloadURLsToDir 把一组 http/https URL 下载到 dir 下，返回成功落盘的本地绝对路径。
+// 安全约束：仅接受 http/https 绝对 URL；文件名只取 URL 的 base name 防路径穿越；
+// 单文件上限 256MB 防失控。任一 URL 失败仅记日志跳过，不影响其余。
+func downloadURLsToDir(ctx context.Context, client *http.Client, urls []string, dir string) ([]string, error) {
+	if client == nil {
+		client = &http.Client{Timeout: 60 * time.Second}
+	}
+	var out []string
+	for _, u := range urls {
+		parsed, perr := url.Parse(u)
+		if perr != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			continue
+		}
+		base := filepath.Base(parsed.Path)
+		if base == "" || base == "." || base == "/" {
+			base = "attachment.bin"
+		}
+		// 防穿越：只用 base name，且最终路径必须仍在 dir 内
+		local := filepath.Join(dir, base)
+		if !strings.HasPrefix(filepath.Clean(local), filepath.Clean(dir)) {
+			continue
+		}
+
+		req, rerr := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if rerr != nil {
+			continue
+		}
+		resp, derr := client.Do(req)
+		if derr != nil {
+			continue
+		}
+		func() {
+			defer resp.Body.Close()
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				return
+			}
+			f, ferr := os.Create(local)
+			if ferr != nil {
+				return
+			}
+			defer f.Close()
+			if _, cerr := io.CopyN(f, resp.Body, 256<<20); cerr != nil && cerr != io.EOF {
+				return
+			}
+		}()
+		if fi, serr := os.Stat(local); serr == nil && fi.Size() > 0 {
+			out = append(out, local)
+		}
+	}
+	return out, nil
+}
+
+// appendAttachmentURLs 把单个详情字段值（字符串 / 对象 / 列表）里的附件 URL 追加到 urls。
+// 字符串直接取；对象取 url/downloadUrl/src/path/file_url/download_url/files 之一；列表递归展开。
+func appendAttachmentURLs(urls *[]string, v json.RawMessage) {
+	if len(v) == 0 {
+		return
+	}
+	var s string
+	if json.Unmarshal(v, &s) == nil && strings.TrimSpace(s) != "" {
+		*urls = append(*urls, strings.TrimSpace(s))
+		return
+	}
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(v, &obj) == nil {
+		for _, k := range []string{"url", "downloadUrl", "src", "path", "file_url", "download_url", "files"} {
+			if sv, ok := obj[k]; ok {
+				var ss string
+				if json.Unmarshal(sv, &ss) == nil && strings.TrimSpace(ss) != "" {
+					*urls = append(*urls, strings.TrimSpace(ss))
+				}
+			}
+		}
+		return
+	}
+	var arr []json.RawMessage
+	if json.Unmarshal(v, &arr) == nil {
+		for _, item := range arr {
+			appendAttachmentURLs(urls, item)
+		}
+	}
+}
+
+// extractAttachmentURLs 从题目详情字段提取附件下载 URL（DASCTF 形态全集）。
+// 覆盖：attachment（对象含 url/downloadUrl/src/file_url/download_url/files 或字符串）、
+// attachments（列表，每项对象/字符串）、file（字符串 URL）、description 里的 URL。
+func extractAttachmentURLs(m map[string]json.RawMessage, description string) []string {
+	var urls []string
+	appendAttachmentURLs(&urls, m["attachment"])
+	appendAttachmentURLs(&urls, m["attachments"])
+	appendAttachmentURLs(&urls, m["file"])
+	if description != "" {
+		for _, u := range urlRe.FindAllString(description, -1) {
+			u = strings.TrimSpace(u)
+			if u != "" {
+				urls = append(urls, u)
+			}
+		}
+	}
+	return urls
 }
 
 // SubmitFlag 提交 flag。
