@@ -32,8 +32,8 @@ func TestUploadSolverRegistered(t *testing.T) {
 
 // TestUploadMultipartBuilder 离线校验：对不可达端点上传必须失败（不假成功）。
 func TestUploadMultipartBuilder(t *testing.T) {
-	if _, ok := uploadMultipart(context.Background(),
-		nil, "http://127.0.0.1:1/none", "a.py", "print(1)"); ok {
+	if _, _, ok := uploadMultipart(context.Background(),
+		nil, "http://127.0.0.1:1/none", "a.py", "print(1)", ""); ok {
 		t.Fatal("对不可达端点上传不应成功")
 	}
 }

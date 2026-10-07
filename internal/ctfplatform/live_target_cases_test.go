@@ -310,13 +310,14 @@ func targetNoSQLBypass(flag string) http.HandlerFunc {
 			io.WriteString(w, "bad json")
 			return
 		}
-		// 漏洞：查询条件被用户对象直接接管，{"$gt":""} 恒真
-		if _, hasGt := doc["$ne"]; hasGt {
-			w.WriteHeader(http.StatusUnauthorized)
-			io.WriteString(w, "password required")
+		// 漏洞：登录查询交给 MongoDB，请求体 JSON 含操作符（$ne/$gt/$nin...）时
+		// 条件恒真 = 绕过认证（题面要求的真实形态）；兼容顶层空键 {"":""} 旧形态。
+		if _, hasEmpty := doc[""]; hasEmpty {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprintf(w, "<html><body><p>logged in</p><!-- %s --></body></html>", flag)
 			return
 		}
-		if _, hasEmpty := doc[""]; hasEmpty {
+		if nosqlOperatorPresent(doc) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			fmt.Fprintf(w, "<html><body><p>logged in</p><!-- %s --></body></html>", flag)
 			return
@@ -324,6 +325,29 @@ func targetNoSQLBypass(flag string) http.HandlerFunc {
 		w.WriteHeader(http.StatusUnauthorized)
 		io.WriteString(w, "invalid")
 	}
+}
+
+// nosqlOperatorPresent 递归检测任意层级是否出现 MongoDB 查询操作符键（以 $ 开头）。
+// 用于 targetNoSQLBypass 判断"请求体含操作符 → 条件恒真 → 绕过认证"。
+func nosqlOperatorPresent(v interface{}) bool {
+	switch m := v.(type) {
+	case map[string]interface{}:
+		for k, val := range m {
+			if strings.HasPrefix(k, "$") {
+				return true
+			}
+			if nosqlOperatorPresent(val) {
+				return true
+			}
+		}
+	case []interface{}:
+		for _, val := range m {
+			if nosqlOperatorPresent(val) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func probeNoSQLBypass(ctx context.Context, base string) ([]string, error) {
