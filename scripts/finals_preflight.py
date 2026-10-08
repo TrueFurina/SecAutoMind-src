@@ -77,8 +77,9 @@ SWITCHES = [
     ("CTF_AUTOSOLVE_SUBMIT", True, "解出即自动提交（不开要人工抄 flag）"),
     ("CTF_AUTO_BUILD_ENV", True, "需要靶机的题自动起靶机（09-17 缺口；不开 = web/pwn 主力 0 分）"),
     ("CTF_AUTO_FETCH_DETAIL", False, "题干用详情补全（列表可能是摘要）；取不到会静默回退，建议开"),
-    ("CTF_AUTO_FETCH_ATTACHMENT", False, "附件题下载（依赖 DownloadAttachment 存根实现；未实现时无害）"),
+    ("CTF_AUTO_FETCH_ATTACHMENT", False, "附件题下载（DownloadAttachment 已实现骨架，附件 URL 字段名待真机校准）"),
     ("CTF_AUTO_RELEASE_ENV", False, "accepted 后回收靶机（省配额，不开不影响得分）"),
+    ("CTF_ROBOT_AUTO_PREPARE", True, "IM 机器人收到题号时自动建靶机+下附件（决赛机器人辅助解题必需；不开则机器人只做本地预解）"),
 ]
 
 
