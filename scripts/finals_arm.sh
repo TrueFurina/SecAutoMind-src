@@ -56,6 +56,7 @@ export CTF_AUTO_BUILD_ENV="${CTF_AUTO_BUILD_ENV:-true}"
 export CTF_AUTO_FETCH_DETAIL="${CTF_AUTO_FETCH_DETAIL:-true}"
 export CTF_AUTO_FETCH_ATTACHMENT="${CTF_AUTO_FETCH_ATTACHMENT:-true}"
 export CTF_AUTO_RELEASE_ENV="${CTF_AUTO_RELEASE_ENV:-true}"
+export CTF_ROBOT_AUTO_PREPARE="${CTF_ROBOT_AUTO_PREPARE:-true}"
 export CTF_POLL_INTERVAL="${CTF_POLL_INTERVAL:-20}"
 
 print_list() {
@@ -71,6 +72,7 @@ print_list() {
   echo "export CTF_AUTO_FETCH_ATTACHMENT=${CTF_AUTO_FETCH_ATTACHMENT}"
   echo "export CTF_AUTO_FETCH_DETAIL=${CTF_AUTO_FETCH_DETAIL}"
   echo "export CTF_AUTO_RELEASE_ENV=${CTF_AUTO_RELEASE_ENV}"
+  echo "export CTF_ROBOT_AUTO_PREPARE=${CTF_ROBOT_AUTO_PREPARE}"
 }
 
 if [ "${1:-}" = "--print" ]; then
@@ -84,7 +86,8 @@ echo "==========================================================================
 printf "  %-28s %s\n" "DASCTF_BASE_URL" "${BASE_URL_HOST:-—}  ${ADDR_STATE}"
 printf "  %-28s %s\n" "CTF_AGENT_PLATFORM_TOKEN" "$([ -n "$TOKEN" ] && echo '已设置（不显示）' || echo '⚠ 未设置 —— 提交会失败')"
 for v in CTF_POLL_ENABLED CTF_AUTOSOLVE_SUBMIT CTF_AUTO_BUILD_ENV \
-         CTF_AUTO_FETCH_DETAIL CTF_AUTO_FETCH_ATTACHMENT CTF_AUTO_RELEASE_ENV; do
+         CTF_AUTO_FETCH_DETAIL CTF_AUTO_FETCH_ATTACHMENT CTF_AUTO_RELEASE_ENV \
+         CTF_ROBOT_AUTO_PREPARE; do
   printf "  %-28s %s\n" "$v" "${!v}"
 done
 printf "  %-28s %s\n" "CTF_POLL_INTERVAL" "${CTF_POLL_INTERVAL}"

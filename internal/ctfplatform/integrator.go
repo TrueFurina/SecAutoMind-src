@@ -9,6 +9,7 @@ package ctfplatform
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -176,4 +177,24 @@ func (i *PresolveAgentIntegrator) PrepareChallenge(ctx context.Context, challeng
 	}
 
 	return ch, nil
+}
+
+// challengeRefPatterns 仅匹配显式标记，避免把题面里的任意数字误判为 challengeID
+// （误判会导致给错误题目建靶机/下附件，是最贵的失败）。
+var challengeRefPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?:题号|编号|题目编号|题目ID|challenge\s+id|exercise[_\s]?id)[:：]?\s*(\d+)`),
+	regexp.MustCompile(`#(\d{3,})`),
+	regexp.MustCompile(`(?:挑战|题目)[:：]?\s*(\d+)`),
+}
+
+// ExtractChallengeRef 从机器人自由文本消息中提取 challengeID（DASCTF 数值 exerciseId）。
+// 仅匹配显式标记（题号/编号/challenge id/#三位数以上/挑战/题目 + 数字），无匹配返回 ""。
+// 返回 "" 时 PrepareChallenge 保持 by-design 不激活（不建靶机、不下附件）。
+func ExtractChallengeRef(message string) string {
+	for _, re := range challengeRefPatterns {
+		if m := re.FindStringSubmatch(message); m != nil && m[1] != "" {
+			return m[1]
+		}
+	}
+	return ""
 }

@@ -193,3 +193,62 @@ func TestIntegratorPrepareChallengeNilPlatform(t *testing.T) {
 		t.Fatal("平台未接线应返回错误")
 	}
 }
+
+// ───────────────────────── 任务3 续：机器人挑战ID提取 + 自动准备流 ─────────────────────────
+
+func TestExtractChallengeRef(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"帮我解题 题号3001", "3001"},
+		{"编号: 3002", "3002"},
+		{"题目编号 3003", "3003"},
+		{"challenge id 3004", "3004"},
+		{"exercise_id 3005", "3005"},
+		{"#3006 这道题", "3006"},
+		{"题目 3007 求旗", "3007"},
+		{"这道题很难但没有编号和题号", ""},
+		{"#12 太短不应匹配", ""}, // 仅 #三位数以上 才匹配
+		{"题号abc 非数字", ""},
+	}
+	for _, c := range cases {
+		if got := ExtractChallengeRef(c.in); got != c.want {
+			t.Errorf("ExtractChallengeRef(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// TestRobotAutoPrepareFlow 模拟 agent.go 机器人钩子：从消息提取 challengeID → PrepareChallenge →
+// 把靶机地址/附件标记注入描述。验证「决赛时机器人自动建靶机 + 下附件」端到端闭环（用 fakePlatform 替身，
+// 不含真实平台调用；真机联调仍待官方凭证）。
+func TestRobotAutoPrepareFlow(t *testing.T) {
+	fp := &fakePlatform{
+		byID: map[string]*Challenge{
+			"3001": {ID: "3001", HasInstance: true, HasAttachment: true, Description: "原始题面"},
+		},
+		accessURL: "http://10.0.0.1:8080",
+	}
+	integ := NewPresolveAgentIntegrator(NewPresolver(zap.NewNop()), NewTaskAnalyzer(), fp, zap.NewNop())
+
+	ref := ExtractChallengeRef("帮我解题 题号3001")
+	if ref != "3001" {
+		t.Fatalf("提取 challengeID 失败: %q", ref)
+	}
+	ch, err := integ.PrepareChallenge(context.Background(), ref)
+	if err != nil {
+		t.Fatalf("PrepareChallenge 失败: %v", err)
+	}
+	if !strings.Contains(ch.Description, "http://10.0.0.1:8080") {
+		t.Errorf("靶机地址未注入描述: %q", ch.Description)
+	}
+	if !strings.Contains(ch.Description, "[用户上传的文件]") {
+		t.Errorf("附件标记未注入描述: %q", ch.Description)
+	}
+	if !contains(fp.created, "3001") {
+		t.Error("未触发建靶机（CreateInstance）")
+	}
+	if !contains(fp.downloaded, "3001") {
+		t.Error("未触发下附件（DownloadAttachment）")
+	}
+}
