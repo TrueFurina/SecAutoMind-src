@@ -881,6 +881,26 @@ func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, platform stri
 		}
 	}
 
+	// ── 决赛运行模式：IM 机器人自动建靶机 + 下附件（需 CTF_ROBOT_AUTO_PREPARE=true）──
+	// 从机器人自由文本提取 challengeID；命中且平台已接线时，经 PrepareChallenge 拉详情→起靶机→
+	// 取地址→下附件，并把靶机地址/附件标记注入 message，使后续 presolve 与 Agent 都拿到真实靶机。
+	// 无 challengeID、开关关闭或平台未接线时保持 by-design 不激活（与 PrepareChallenge 空 ID 默认行为一致）。
+	rawMessage := message
+	if strings.EqualFold(os.Getenv("CTF_ROBOT_AUTO_PREPARE"), "true") && h.ctfPresolveIntegrator != nil && h.ctfPresolveIntegrator.Platform() != nil {
+		if ref := ctfplatform.ExtractChallengeRef(message); ref != "" {
+			if ch, perr := h.ctfPresolveIntegrator.PrepareChallenge(ctx, ref); perr == nil && ch != nil {
+				message = ch.Description
+				h.logger.Info("机器人自动准备靶机/附件成功",
+					zap.String("challenge_id", ref),
+					zap.Bool("has_instance", ch.HasInstance),
+					zap.Bool("has_attachment", ch.HasAttachment))
+			} else if perr != nil {
+				h.logger.Warn("机器人自动准备靶机失败（退回本地预解）",
+					zap.String("challenge_id", ref), zap.Error(perr))
+			}
+		}
+	}
+
 	finalMessage := message
 	var roleTools []string
 	if role != "" && role != "默认" && h.config.Roles != nil {
@@ -892,7 +912,7 @@ func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, platform stri
 		}
 	}
 
-	if _, err = h.db.AddMessage(conversationID, "user", message, nil); err != nil {
+	if _, err = h.db.AddMessage(conversationID, "user", rawMessage, nil); err != nil {
 		return "", "", fmt.Errorf("保存用户消息失败: %w", err)
 	}
 
