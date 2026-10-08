@@ -62,7 +62,9 @@ def main() -> int:
 
     cur = current()
     if args.update:
-        FREEZE.write_text(json.dumps(cur, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # newline="\n" 必须显式指定：否则 Windows 下会把 LF 写成 CRLF，
+        # 与 Linux CI 生成的 golden 产生行尾差异（sha256 已做 LF 归一化，但文件本身不该被改写）。
+        FREEZE.write_text(json.dumps(cur, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
         print("[OK] 已刷新 golden 冻结值：%s" % FREEZE.relative_to(REPO))
         for k, v in cur.items():
             print("     %s  %s" % (v[:16], k))
