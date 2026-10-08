@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-09T06:32:19+08:00",
+  "generated_at": "2026-10-09T06:59:26+08:00",
   "caliber": {
-    "head": "15e83e3",
+    "head": "a4f5d12",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -23,11 +23,11 @@
     "im_adapters": 7,
     "exe": {
       "present": true,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "size_mib": 85.3,
-      "vcs_revision": "344e5bd7ddf6a2bdf42c7e69d57f9d870bc2e8c0",
-      "vcs_time": "2026-09-30T04:47:39Z",
-      "mod_version": "vcs 344e5bd7ddf6 @ 2026-09-30T04:47:39Z"
+      "md5": "1a17ac0a431bf4d8c2a9828fe0e7daec",
+      "size_mib": 85.2,
+      "vcs_revision": "a4f5d125c4ff11e4303091934c6b4c20373a1e22",
+      "vcs_time": "2026-10-08T22:47:58Z",
+      "mod_version": "vcs a4f5d125c4ff @ 2026-10-08T22:47:58Z"
     }
   },
   "benchmark": {
@@ -183,16 +183,16 @@
     "exe_root": {
       "path": "secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89472512,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "sha256": "e528c9e306ae0bf4bb916888ad55e5374a45312daddbf7d35ef9b6e744aabeea"
+      "size_bytes": 89372160,
+      "md5": "1a17ac0a431bf4d8c2a9828fe0e7daec",
+      "sha256": "0197cc9037fa25e08a364c7cf26dfc70b200a2138af215445174f6c69ee864a8"
     },
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89472512,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "sha256": "e528c9e306ae0bf4bb916888ad55e5374a45312daddbf7d35ef9b6e744aabeea"
+      "size_bytes": 89372160,
+      "md5": "1a17ac0a431bf4d8c2a9828fe0e7daec",
+      "sha256": "0197cc9037fa25e08a364c7cf26dfc70b200a2138af215445174f6c69ee864a8"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.25-x64.exe",
@@ -206,7 +206,7 @@
       "present": false
     },
     "exe_build": {
-      "vcs_revision": "344e5bd7ddf6a2bdf42c7e69d57f9d870bc2e8c0",
+      "vcs_revision": "a4f5d125c4ff11e4303091934c6b4c20373a1e22",
       "vcs_modified": "false"
     }
   },

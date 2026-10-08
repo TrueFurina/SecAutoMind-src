@@ -170,7 +170,8 @@ def main() -> int:
         return 1
 
     GOLDEN.parent.mkdir(parents=True, exist_ok=True)
-    GOLDEN.write_text(text + "\n", encoding="utf-8")
+    # newline="\n"：防止 Windows 下写出 CRLF，与 Linux CI 产物行尾不一致。
+    GOLDEN.write_text(text + "\n", encoding="utf-8", newline="\n")
     print(f"已写入 {GOLDEN}（{len(golden['requests'])} 条请求，{len(golden['endpoints'])} 个端点）")
     return 0
 
