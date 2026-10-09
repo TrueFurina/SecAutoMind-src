@@ -1,13 +1,12 @@
 {
  "source_root": "E:\\Program\\西湖论剑\\ctf_agent\\data\\questions_real",
- "generated_at": "2026-10-05T22:45:17",
- "included_count": 87,
- "excluded_count": 6,
+ "generated_at": "2026-10-10T00:14:50",
+ "included_count": 80,
+ "excluded_count": 13,
  "included": [
   "10733",
   "real_crypto_anwang_crypto1",
   "real_crypto_anxun2020_aes",
-  "real_crypto_anxun2020_coolboy",
   "real_crypto_changan2021_checkin",
   "real_crypto_changan2021_easyrsa",
   "real_crypto_changan2021_ezpy",
@@ -26,7 +25,6 @@
   "real_crypto_specialcurve2",
   "real_crypto_udomctf2022_aes",
   "real_crypto_umdctf2022_vigenere",
-  "real_misc_anxun2020_722b6d",
   "real_misc_bytectf_flag",
   "real_misc_chunqiu2022_checkin",
   "real_misc_chunqiu2022_tiger",
@@ -65,20 +63,15 @@
   "real_misc_sheng2022_traffic_telnet_pwd",
   "real_misc_udomctf2022_morse",
   "real_misc_vnctf_flag",
-  "real_misc_vnctf_strangeflag",
   "real_misc_vnctf_vnloan",
   "real_misc_xuanhun_signin",
   "real_pwn_changan2021_pwn3",
   "real_pwn_hws2022_peach",
-  "real_reverse_anxun2020_easycm",
-  "real_reverse_anxun2020_notright",
   "real_reverse_gaoxiao2024_upx",
   "real_reverse_js",
   "real_reverse_sheng",
   "real_reverse_upx",
-  "real_reverse_vnctf_babymaze",
   "real_reverse_vnctf_timeflies",
-  "real_web_anxun2020_welcome",
   "real_web_changan2021_soeasy",
   "real_web_dicectf2022_knockknock",
   "real_web_dicectf2022_point",
@@ -93,6 +86,12 @@
   "real_web_wgmy2022_christmas_wishlist2"
  ],
  "excluded": [
+  {
+   "file": "real_crypto_anxun2020_coolboy.json",
+   "id": "real_crypto_anxun2020_coolboy",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
   {
    "file": "real_taishan2021_crypto_cgroup.json",
    "id": "real_taishan2021_crypto_cgroup",
@@ -124,17 +123,53 @@
    "detail": "缺 flag_sha256，无法机器判定真伪"
   },
   {
+   "file": "real_misc_anxun2020_722b6d.json",
+   "id": "real_misc_anxun2020_722b6d",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
+   "file": "real_misc_vnctf_strangeflag.json",
+   "id": "real_misc_vnctf_strangeflag",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
+   "file": "real_reverse_anxun2020_easycm.json",
+   "id": "real_reverse_anxun2020_easycm",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
+   "file": "real_reverse_anxun2020_notright.json",
+   "id": "real_reverse_anxun2020_notright",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
+   "file": "real_reverse_vnctf_babymaze.json",
+   "id": "real_reverse_vnctf_babymaze",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
    "file": "real_reverse_vnctf_cm1.json",
    "id": "real_reverse_vnctf_cm1",
+   "reason": "payload_missing_on_disk",
+   "detail": "1/1 个附件未落盘"
+  },
+  {
+   "file": "real_web_anxun2020_welcome.json",
+   "id": "real_web_anxun2020_welcome",
    "reason": "payload_missing_on_disk",
    "detail": "1/1 个附件未落盘"
   }
  ],
  "by_category": {
-  "crypto": 22,
-  "misc": 42,
+  "crypto": 21,
+  "misc": 40,
   "pwn": 2,
-  "reverse": 8,
-  "web": 13
+  "reverse": 5,
+  "web": 12
  }
 }
