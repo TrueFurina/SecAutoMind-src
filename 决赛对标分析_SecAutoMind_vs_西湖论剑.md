@@ -6,6 +6,17 @@
 > 锚定当时基线（对手侧数字仍有效，SecAutoMind 侧已大幅扩量）。
 > SecAutoMind 现行数字一律以 `python scripts/count_stats.py --json` 实时输出为准。
 
+> 🔴 **SecAutoMind 侧能力缺口已闭合（2026-10-10 复核，勿再据本文对外表述）**：本文 §2/§3 中标为
+> 「❌ 无 presolve 层」「❌ 无 flag 提交机制」「平台对接 ❌ 完全缺失」「flag 提交闭环 ❌ 缺失」等
+> **SecAutoMind 侧否定结论已被代码推翻**：
+> - **平台对接 + flag 提交**：`internal/ctfplatform/dasctf.go` 已实现提交键 `flag`、数值型 `exerciseId`、
+>   剥 `flag{}`/`DASCTF{}` 外壳、成功判定 `code=="00000"`；且与真源
+>   `西湖论剑/ctf_agent/ctfplatform/dasctf.py` 的正则**逐字对齐**（`(?s)^(?:flag|FLAG|ctf|CTF|DASCTF|dasctf)\{(.+)\}$`）。
+> - **预解 + 求解器分层**：`internal/ctfplatform/` 已有 presolve 相关实现
+>   （`app.go` / `dasctf.go` / `deser_attack.go` / `forensics_binary.go` 等）；求解器分层
+>   `ctf_solvers=176`（= 117 真求解器 + 59 关键词检测器），见 `scripts/count_stats.py --json`。
+> - 其余数字类漂移仍以上方豁免声明与 `count_stats.py` 实时输出为准。
+
 > 生成时间：2026-09-06 凌晨
 > 目标：为决赛「人机协同实战赛」（占总分 60%）找出能力差距与优化路线
 > 方法：逐模块对比 + 决赛赛题适配度评估
