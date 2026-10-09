@@ -1,22 +1,22 @@
 {
- "generated_at": "2026-10-10T00:14:51",
+ "generated_at": "2026-10-06T00:37:41",
  "benchmark": "E:\\Program\\2026挑战杯：SecAutoMind-v1.7.17-share\\data\\ctf_benchmark\\external_westlake\\benchmark.json",
- "total": 80,
+ "total": 87,
  "by_level": {
-  "L2_pure_reasoning": 10,
-  "L0_direct_read": 66,
+  "L2_pure_reasoning": 19,
+  "L0_direct_read": 64,
   "L1_single_candidate": 4
  },
  "by_category": {
-  "crypto": 21,
-  "misc": 40,
+  "crypto": 22,
+  "misc": 42,
   "pwn": 2,
-  "reverse": 5,
-  "web": 12
+  "reverse": 8,
+  "web": 13
  },
  "unseen_pool": {
-  "L2_pure_reasoning": 10,
-  "L0_direct_read": 66,
+  "L2_pure_reasoning": 19,
+  "L0_direct_read": 64,
   "L1_single_candidate": 4
  },
  "rows": [
@@ -24,7 +24,6 @@
    "id": "10733",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -36,7 +35,6 @@
    "id": "real_crypto_anwang_crypto1",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -48,8 +46,18 @@
    "id": "real_crypto_anxun2020_aes",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
+   "id": "real_crypto_anxun2020_coolboy",
+   "category": "crypto",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 9,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -60,8 +68,7 @@
    "id": "real_crypto_changan2021_checkin",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -72,8 +79,7 @@
    "id": "real_crypto_changan2021_easyrsa",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -84,8 +90,7 @@
    "id": "real_crypto_changan2021_ezpy",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -96,7 +101,6 @@
    "id": "real_crypto_dnui_keyboard",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -108,7 +112,6 @@
    "id": "real_crypto_exciting_inverse",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 2,
    "attachment_kinds": {
@@ -120,7 +123,6 @@
    "id": "real_crypto_ezmult",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -132,7 +134,6 @@
    "id": "real_crypto_ezrsa",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 2,
    "attachment_kinds": {
@@ -144,7 +145,6 @@
    "id": "real_crypto_filterrandom",
    "category": "crypto",
    "level": "L1_single_candidate",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -156,8 +156,7 @@
    "id": "real_crypto_gaoxiao2024_z3",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -168,8 +167,7 @@
    "id": "real_crypto_gkctf2020_che11y",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -180,8 +178,7 @@
    "id": "real_crypto_gkctf2020_rsa",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -192,8 +189,7 @@
    "id": "real_crypto_isctf2024_decrypt",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -204,8 +200,7 @@
    "id": "real_crypto_longjian2023_hd1",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -216,7 +211,6 @@
    "id": "real_crypto_qiangwang_classic",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -228,7 +222,6 @@
    "id": "real_crypto_simplelegendre",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 2,
    "attachment_kinds": {
@@ -240,7 +233,6 @@
    "id": "real_crypto_specialcurve2",
    "category": "crypto",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -252,8 +244,7 @@
    "id": "real_crypto_udomctf2022_aes",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -264,8 +255,18 @@
    "id": "real_crypto_umdctf2022_vigenere",
    "category": "crypto",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
+   "id": "real_misc_anxun2020_722b6d",
+   "category": "misc",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 9,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -276,8 +277,7 @@
    "id": "real_misc_bytectf_flag",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -288,8 +288,7 @@
    "id": "real_misc_chunqiu2022_checkin",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -300,8 +299,7 @@
    "id": "real_misc_chunqiu2022_tiger",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -312,8 +310,7 @@
    "id": "real_misc_gaoxiao2024_cve41773",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -324,8 +321,7 @@
    "id": "real_misc_gaoxiao2024_file_extract",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -336,8 +332,7 @@
    "id": "real_misc_gaoxiao2024_phish_link",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -348,8 +343,7 @@
    "id": "real_misc_gaoxiao2024_phish_sender",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -360,8 +354,7 @@
    "id": "real_misc_gaoxiao2024_xiandian",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -372,8 +365,7 @@
    "id": "real_misc_gkctf2020_pokemon",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -384,8 +376,7 @@
    "id": "real_misc_hws2022_badpdf",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -396,8 +387,7 @@
    "id": "real_misc_isctf2024_checkin02",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -408,8 +398,7 @@
    "id": "real_misc_isctf2024_park2",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -420,8 +409,7 @@
    "id": "real_misc_isctf2024_pixel",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -432,8 +420,7 @@
    "id": "real_misc_isctf2024_sstv",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -444,8 +431,7 @@
    "id": "real_misc_isctf2024_win_rar",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -456,8 +442,7 @@
    "id": "real_misc_longjian2023_baby_forensics3",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -468,8 +453,7 @@
    "id": "real_misc_longjian2023_bf",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -480,8 +464,7 @@
    "id": "real_misc_longjian2023_smallsword3",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -491,9 +474,8 @@
   {
    "id": "real_misc_longjian2024_smallsword1",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -503,9 +485,8 @@
   {
    "id": "real_misc_longjian2024_smallsword2",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -516,8 +497,7 @@
    "id": "real_misc_longjian2024_smallsword3",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -527,9 +507,8 @@
   {
    "id": "real_misc_longjian2024_ssw_redis",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -539,9 +518,8 @@
   {
    "id": "real_misc_longjian2024_telnet",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -552,8 +530,7 @@
    "id": "real_misc_longjian2025_app_part2",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -564,8 +541,7 @@
    "id": "real_misc_longjian2025_data_security1",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -576,8 +552,7 @@
    "id": "real_misc_longjian2025_siem",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -588,8 +563,7 @@
    "id": "real_misc_mjuctf_speak",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -600,8 +574,7 @@
    "id": "real_misc_mjuctf_this_is_the_flag",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -612,8 +585,7 @@
    "id": "real_misc_nactf2020_zip_madness",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -624,8 +596,7 @@
    "id": "real_misc_qiangwang2020_cefang",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -636,8 +607,7 @@
    "id": "real_misc_qiangwang2020_upload",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -647,9 +617,8 @@
   {
    "id": "real_misc_sheng2022_traffic_bruteforce_count",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -659,9 +628,8 @@
   {
    "id": "real_misc_sheng2022_traffic_enable_pwd",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -671,9 +639,8 @@
   {
    "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -683,9 +650,8 @@
   {
    "id": "real_misc_sheng2022_traffic_ftp_port",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -695,9 +661,8 @@
   {
    "id": "real_misc_sheng2022_traffic_telnet_pwd",
    "category": "misc",
-   "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 1,
+   "level": "L2_pure_reasoning",
+   "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -708,8 +673,7 @@
    "id": "real_misc_udomctf2022_morse",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -720,7 +684,6 @@
    "id": "real_misc_vnctf_flag",
    "category": "misc",
    "level": "L1_single_candidate",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 195,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -729,11 +692,21 @@
    "trained_in_westlake": true
   },
   {
+   "id": "real_misc_vnctf_strangeflag",
+   "category": "misc",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 6,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
    "id": "real_misc_vnctf_vnloan",
    "category": "misc",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -744,7 +717,6 @@
    "id": "real_misc_xuanhun_signin",
    "category": "misc",
    "level": "L1_single_candidate",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 9,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -756,8 +728,7 @@
    "id": "real_pwn_changan2021_pwn3",
    "category": "pwn",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -768,8 +739,29 @@
    "id": "real_pwn_hws2022_peach",
    "category": "pwn",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
+   "id": "real_reverse_anxun2020_easycm",
+   "category": "reverse",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 9,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
+   "id": "real_reverse_anxun2020_notright",
+   "category": "reverse",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 9,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -780,8 +772,7 @@
    "id": "real_reverse_gaoxiao2024_upx",
    "category": "reverse",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -792,7 +783,6 @@
    "id": "real_reverse_js",
    "category": "reverse",
    "level": "L0_direct_read",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 4,
    "attachments_scanned": 2,
    "attachment_kinds": {
@@ -804,7 +794,6 @@
    "id": "real_reverse_sheng",
    "category": "reverse",
    "level": "L2_pure_reasoning",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 0,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -816,7 +805,6 @@
    "id": "real_reverse_upx",
    "category": "reverse",
    "level": "L1_single_candidate",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 30,
    "attachments_scanned": 1,
    "attachment_kinds": {
@@ -825,11 +813,32 @@
    "trained_in_westlake": true
   },
   {
+   "id": "real_reverse_vnctf_babymaze",
+   "category": "reverse",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 6,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
    "id": "real_reverse_vnctf_timeflies",
    "category": "reverse",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
+   "attachments_scanned": 1,
+   "attachment_kinds": {
+    "text": 1
+   },
+   "trained_in_westlake": false
+  },
+  {
+   "id": "real_web_anxun2020_welcome",
+   "category": "web",
+   "level": "L0_direct_read",
+   "flag_shaped_strings_in_attachments": 9,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -840,8 +849,7 @@
    "id": "real_web_changan2021_soeasy",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -852,8 +860,7 @@
    "id": "real_web_dicectf2022_knockknock",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -864,8 +871,7 @@
    "id": "real_web_dicectf2022_point",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -876,7 +882,6 @@
    "id": "real_web_gongye_web2",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": false,
    "flag_shaped_strings_in_attachments": 2,
    "attachments_scanned": 2,
    "attachment_kinds": {
@@ -888,8 +893,7 @@
    "id": "real_web_hacktheboo2022_spookifier",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -900,8 +904,7 @@
    "id": "real_web_linectf2022_ssti_jwt",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -912,8 +915,7 @@
    "id": "real_web_longjian2023_hard_web1",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -924,8 +926,7 @@
    "id": "real_web_longjian2023_hard_web2",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -936,8 +937,7 @@
    "id": "real_web_longjian2025_which_sql",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -948,8 +948,7 @@
    "id": "real_web_udomctf2022_cmdinj",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -960,8 +959,7 @@
    "id": "real_web_wgmy2022_christmas_wishlist",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1
@@ -972,8 +970,7 @@
    "id": "real_web_wgmy2022_christmas_wishlist2",
    "category": "web",
    "level": "L0_direct_read",
-   "answer_key_attachment": true,
-   "flag_shaped_strings_in_attachments": 2,
+   "flag_shaped_strings_in_attachments": 1,
    "attachments_scanned": 1,
    "attachment_kinds": {
     "text": 1

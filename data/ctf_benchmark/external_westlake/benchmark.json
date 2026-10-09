@@ -42,20 +42,6 @@
    "answer_directly_in_attachment": true,
    "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
-  "real_crypto_anxun2020_coolboy": {
-   "id": "real_crypto_anxun2020_coolboy",
-   "category": "crypto",
-   "title": "安洵杯 2020 (crypto: you_are_a_cool_boy)",
-   "description": "Crypto challenge from 安洵杯 2020. Reconstructed from 安洵杯官方wp (local PDF). Flag from official writeup. (Original challenge script/parameters needed for a fully automated re-solve.)",
-   "flag_sha256": "a1a65ec215e740dfead9be11ad54c534cac6848d1fe49d0b398254255942d0d2",
-   "provenance": "real_past_ctf",
-   "difficulty": "MEDIUM",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_anxun2020_coolboy.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
   "real_crypto_changan2021_checkin": {
    "id": "real_crypto_changan2021_checkin",
    "category": "crypto",
@@ -305,20 +291,6 @@
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/crypto/real_crypto_umdctf2022_vigenere.json",
    "attachment": "data/questions_real/_attachments/crypto/real_crypto_umdctf2022_vigenere/flag.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
-  "real_misc_anxun2020_722b6d": {
-   "id": "real_misc_anxun2020_722b6d",
-   "category": "misc",
-   "title": "安洵杯 2020 (misc: 722b6d90...)",
-   "description": "Misc challenge from 安洵杯 2020. Reconstructed from 安洵杯官方wp (local PDF). Flag from official writeup. (Original challenge file needed for a fully automated re-solve.)",
-   "flag_sha256": "01ef7cc4ea5b32c11bdb148dfb427d06e862d759778423c49aa07a16c112ba08",
-   "provenance": "real_past_ctf",
-   "difficulty": "MEDIUM",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_anxun2020_722b6d.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
    "answer_directly_in_attachment": true,
    "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
@@ -835,20 +807,6 @@
    "attachment": "data/questions_real/_attachments/misc/real_misc_vnctf_flag/flag.png",
    "trained_in_westlake": true
   },
-  "real_misc_vnctf_strangeflag": {
-   "id": "real_misc_vnctf_strangeflag",
-   "category": "misc",
-   "title": "VNCTF 2022 Strange flag",
-   "description": "TEA (Tiny Encryption Algorithm) decrypt. Encrypted data is decrypted with TEA (delta=0x9e3779b9, sum=0xC6EF3720, 32 rounds) to yield the flag. Reconstructed from VNCTF 2022 Official WriteUp (local PDF). Flag taken from the official writeup. (Original ciphertext array needed for a fully automated re-solve; TEA decrypt structure is in the source writeup.)",
-   "flag_sha256": "85ab27107d2a7cfa52f9a1dfd91df1b1d518ec307f531db5ab0421f91e779655",
-   "provenance": "real_past_ctf",
-   "difficulty": "EASY",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/misc/real_misc_vnctf_strangeflag.json",
-   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
   "real_misc_vnctf_vnloan": {
    "id": "real_misc_vnctf_vnloan",
    "category": "misc",
@@ -901,34 +859,6 @@
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/pwn/real_pwn_hws2022_peach.json",
    "attachment": "data/questions_real/_attachments/pwn/real_pwn_hws2022_peach/flag.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
-  "real_reverse_anxun2020_easycm": {
-   "id": "real_reverse_anxun2020_easycm",
-   "category": "reverse",
-   "title": "安洵杯 2020 EasyCM",
-   "description": "Windows exe with SMC (self-modifying code) self-decoding via a section named '.cyzcc'. Two sub-threads: one encrypts a pseudo-flag to a comparison string; the other builds a base table from a data blob then swaps the table after thread sync. Recover the real flag via IDC script on the SMC-decoded code, or by manually decrypting the '.cyzcc' section. Reconstructed from 安洵杯官方wp (local PDF). Flag from official writeup.",
-   "flag_sha256": "888adf3fcf54ae54a11afa86b3056261ab32ce769791b519f0c78fe9ba6100b3",
-   "provenance": "real_past_ctf",
-   "difficulty": "HARD",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_anxun2020_easycm.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
-  "real_reverse_anxun2020_notright": {
-   "id": "real_reverse_anxun2020_notright",
-   "category": "reverse",
-   "title": "安洵杯 2020 (reverse: i_am_not_right)",
-   "description": "Reverse/crypto challenge. The program uses a hash/quicksort-based transform on a string (flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}) and compares against a target; recover the flag by analyzing the sort+hash ordering. Reconstructed from 安洵杯官方wp (local PDF). Flag from official writeup.",
-   "flag_sha256": "fae681a2f211c54a8cd1e626f8876fc659789c0825eee0ce7066c61227208d75",
-   "provenance": "real_past_ctf",
-   "difficulty": "MEDIUM",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_anxun2020_notright.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
    "answer_directly_in_attachment": true,
    "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
@@ -989,20 +919,6 @@
    "attachment": "data/questions_real/_attachments/reverse/real_reverse_upx/helloupx11",
    "trained_in_westlake": true
   },
-  "real_reverse_vnctf_babymaze": {
-   "id": "real_reverse_vnctf_babymaze",
-   "category": "reverse",
-   "title": "VNCTF 2022 BabyMaze",
-   "description": "Python3.8 pyc reverse. A 31x31 maze; solve by DFS (s/w/d/a moves) to recover the flag. Reconstructed from VNCTF 2022 Official WriteUp (local PDF). Flag taken from the official writeup's solved output. (Original BabyMaze.pyc needed for a fully automated re-solve; maze map + DFS technique are in the source writeup.)",
-   "flag_sha256": "25f6112642aa21ac767425d264b7d95690feee4e245860580895e452e970ac28",
-   "provenance": "real_past_ctf",
-   "difficulty": "MEDIUM",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_vnctf_babymaze.json",
-   "attachment": "../_archive/recovered_external/wp_text/vnctf2022.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
   "real_reverse_vnctf_timeflies": {
    "id": "real_reverse_vnctf_timeflies",
    "category": "reverse",
@@ -1014,20 +930,6 @@
    "payload_status": "verified_on_disk",
    "source_ref": "westlake_ctf_agent/data/questions_real/reverse/real_reverse_vnctf_timeflies.json",
    "attachment": "data/questions_real/_attachments/reverse/real_reverse_vnctf_timeflies/flag.txt",
-   "answer_directly_in_attachment": true,
-   "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
-  },
-  "real_web_anxun2020_welcome": {
-   "id": "real_web_anxun2020_welcome",
-   "category": "web",
-   "title": "安洵杯 2020 (web: 原型链污染 Welcome)",
-   "description": "Nodejs web. express-validator 6.6.0 depends on lodash < 4.17.17, which is vulnerable to prototype pollution (CVE-style). By polluting the prototype (e.g. value/options) the sanitizer/filter logic is bypassed to achieve RCE / read the flag. Reconstructed from 安洵杯官方wp (local PDF). Flag from official writeup.",
-   "flag_sha256": "64811b6ef98f537a2eaa72690c9bf259b4fee534c5aeeb16bb7e00e9a3d9dca8",
-   "provenance": "real_past_ctf",
-   "difficulty": "MEDIUM",
-   "payload_status": "verified_on_disk",
-   "source_ref": "westlake_ctf_agent/data/questions_real/web/real_web_anxun2020_welcome.json",
-   "attachment": "../_archive/recovered_external/wp_text/anxun2020_official.txt",
    "answer_directly_in_attachment": true,
    "benchmark_warning": "附件中直接包含答案（答案文件或 writeup 归档），评测时必须剔除或单列，否则测的是读文件而非解题"
   },
