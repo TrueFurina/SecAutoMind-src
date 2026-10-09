@@ -269,8 +269,8 @@ def collect_artifacts(notes):
     arts = {}
     for label, rel in (("exe_root", "secautomind-ai.exe"),
                        ("exe_installer", "installer/secautomind-ai.exe"),
-                       ("setup", "installer/SecAutoMind-Setup-1.7.25-x64.exe"),
-                       ("delivery_package", "dist/SecAutoMind-v1.7.25-share.tar.gz")):
+                       ("setup", "installer/SecAutoMind-Setup-1.7.28-x64.exe"),
+                       ("delivery_package", "dist/SecAutoMind-v1.7.28-share.tar.gz")):
         p = os.path.join(ROOT, rel.replace("/", os.sep))
         if not os.path.isfile(p):
             arts[label] = {"path": rel, "present": False}
