@@ -154,6 +154,11 @@ jobs:
       - name: Freeze gate (reject architecture changes inside freeze window)
         if: github.event_name == 'pull_request'
         run: python scripts/freeze_gate.py --base "${{ github.event.pull_request.base.sha }}"
+      # 决赛交付物上锁（2026-10-10）：压缩包 / 答辩 PPT / 演示视频 的 sha256 记于
+      # docs/final-artifacts.freeze.json，任何改动即 BLOCK。这些产物被 .gitignore 排除，
+      # CI 检出里通常不存在 → 脚本会优雅 SKIP（不会造成恒红）；本地有产物时严格校验。
+      - name: Final artifacts freeze (压缩包/答辩PPT/演示视频 未被改动)
+        run: python scripts/check_final_artifacts_freeze.py
 
   # 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分）。
   # 既有测试是**组件级**的；这一路把「仿真 DASCTF 平台 + 真实 Poller + 真实求解器」串起来跑：

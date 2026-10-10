@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。",
+  "artifacts": {
+    "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
+      "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
+      "sha256": "fcf21cce22ee722f60845518ead2d04b0d0cb1428d430becbcfeb5eca2967e13",
+      "size": 68824
+    },
+    "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
+      "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
+      "sha256": "4005715816cde173d55aeb240160d894f9167439d3f4c8c8ae3a8221bd2c4f0a",
+      "size": 421334
+    },
+    "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
+      "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
+      "sha256": "2a9ab1d9b59b9ea9e4a85f7739a8f76b3c7777dafb90b9ac0e45e761b872f5cb",
+      "size": 78378
+    },
+    "ppt/演示模板版.pptx": {
+      "path": "SecAutoMind_PPT/演示模板版.pptx",
+      "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
+      "size": 54091138
+    }
+  }
+}
