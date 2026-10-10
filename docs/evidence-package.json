@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-10T08:07:32+08:00",
+  "generated_at": "2026-10-10T08:41:18+08:00",
   "caliber": {
-    "head": "84146b0",
+    "head": "94ce99a",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,7 +10,7 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 34,
-    "go_packages": 43,
+    "go_packages": null,
     "test_packages": 37,
     "go_files": 743,
     "test_files": 292,
@@ -22,12 +22,7 @@
     "ctf_detectors": 59,
     "im_adapters": 7,
     "exe": {
-      "present": true,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "size_mib": 85.3,
-      "vcs_revision": "344e5bd7ddf6a2bdf42c7e69d57f9d870bc2e8c0",
-      "vcs_time": "2026-09-30T04:47:39Z",
-      "mod_version": "vcs 344e5bd7ddf6 @ 2026-09-30T04:47:39Z"
+      "present": false
     }
   },
   "benchmark": {
@@ -175,48 +170,32 @@
     "secret_guard_verdict": "PASS",
     "secret_guard_fingerprint_mode": "fingerprint",
     "secret_guard_selftest_rc": 0,
-    "secret_guard_mutation_rc": 1,
+    "secret_guard_mutation_rc": 0,
     "verify_evidence_rc": 0,
     "freeze_gate_selftest_rc": 0
   },
   "artifacts": {
     "exe_root": {
       "path": "secautomind-ai.exe",
-      "present": true,
-      "size_bytes": 89472512,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "sha256": "e528c9e306ae0bf4bb916888ad55e5374a45312daddbf7d35ef9b6e744aabeea"
+      "present": false
     },
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
-      "present": true,
-      "size_bytes": 89472512,
-      "md5": "b339fa5bd2920e310c97344468064f9c",
-      "sha256": "e528c9e306ae0bf4bb916888ad55e5374a45312daddbf7d35ef9b6e744aabeea"
+      "present": false
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
-      "present": true,
-      "size_bytes": 20299011,
-      "md5": "577b0d0138b034ab06e2b984cace102c",
-      "sha256": "33e0e0d8d63edfbf076acb81ee893e66ae11e6b0e06370622db54861a7348791"
+      "present": false
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "present": true,
-      "size_bytes": 213034988,
-      "md5": "64370ec27af777dc7a9e7befd869acf0",
-      "sha256": "7d79ee4e565eb274652ebde5671dc1232c5563127460ef4c9c50dc86a8e46a21"
-    },
-    "exe_build": {
-      "vcs_revision": "344e5bd7ddf6a2bdf42c7e69d57f9d870bc2e8c0",
-      "vcs_modified": "false"
+      "present": false
     }
   },
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
   "notes": [
-    "secret_guard_mutation_check.py 退出码 1："
+    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
   ]
 }
