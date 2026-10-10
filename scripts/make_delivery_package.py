@@ -128,10 +128,26 @@ def is_excluded_dir(rel):
     return any(s in r for s in EXCLUDE_PATH_SUBSTR)
 
 
+_VER_CACHE = None
+
+
+def _current_ver_bare():
+    """当前版本号（去 v 前缀），用于「旧安装包只保留当前版本」的判定。"""
+    global _VER_CACHE
+    if _VER_CACHE is None:
+        _VER_CACHE = read_version().lstrip("vV")
+    return _VER_CACHE
+
+
 def is_excluded_file(rel):
     name = rel.replace("\\", "/").rsplit("/", 1)[-1]
     if name in EXCLUDE_FILE_EXCEPTIONS:
         return False
+    # 2026-10-10（交付包开箱复核发现）：包内若新旧安装包并存，评委打开会困惑
+    # 「到底哪个版本」。故只保留与当前版本同号的 `SecAutoMind-Setup-<当前版本>-x64.exe`，
+    # 其余版本的 Setup 安装包一律排除（版本号与 config.share.yaml 的 version 同源，去 v 前缀比较）。
+    if name.startswith("SecAutoMind-Setup-") and name.endswith(".exe"):
+        return ("Setup-%s-" % _current_ver_bare()) not in name
     r = rel.replace("\\", "/")
     if any(s in r for s in EXCLUDE_PATH_SUBSTR):
         return True
