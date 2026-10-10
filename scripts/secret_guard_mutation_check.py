@@ -71,7 +71,12 @@ def main():
     print("密钥门禁 · 变异验证（证明回归测试真的能杀死退化）")
     print("=" * 62)
 
-    orig = SG.read_text(encoding="utf-8")
+    # 用二进制读入：文本模式 read_text 会做 universal-newlines 转换（CRLF→LF），
+    # 若随后用 write_text 写回，Windows 下会把 LF 再转回 CRLF，等于静默改写换行符。
+    # 而自检同样用 read_text 比较，三重对称转换会让「换行被改」永远检测不出来
+    # （内容逐字相同，只有行尾变了 → line-endings-gate 才发现）。故全程走 bytes。
+    orig_b = SG.read_bytes()
+    orig = orig_b.decode("utf-8")
     missing = [name for name, good, _ in MUTATIONS if good not in orig]
     if missing:
         print("[FAIL] 未在 secret_guard.py 中找到探针原文：")
@@ -94,7 +99,7 @@ def main():
         idx += 1
         try:
             print("\n%s 注入变异：%s" % (step, name))
-            SG.write_text(orig.replace(good, mutant), encoding="utf-8")
+            SG.write_bytes(orig.replace(good, mutant).encode("utf-8"))
             rc_m, out_m = run_test()
             caught = rc_m != 0
             print("  RC=%d  %s" % (rc_m, "FAIL(✅ 变异被捕获)" if caught else "PASS(❌ 变异未被捕获 = 测试无效)"))
@@ -104,7 +109,7 @@ def main():
                 print("\n".join(out_m.splitlines()[-8:]))
         finally:
             print("  恢复原文件（finally 保证）")
-            SG.write_text(orig, encoding="utf-8")
+            SG.write_bytes(orig_b)
 
     print("\n[%d/%d] 恢复后：回归测试应重新 PASS" % (len(MUTATIONS) + 2, len(MUTATIONS) + 2))
     rc_r, _ = run_test()
@@ -113,7 +118,7 @@ def main():
         ok = False
 
     # 完整性自检：文件内容必须与原文逐字节一致
-    if SG.read_text(encoding="utf-8") != orig:
+    if SG.read_bytes() != orig_b:
         print("[FAIL] secret_guard.py 未恢复到原始内容！")
         ok = False
 

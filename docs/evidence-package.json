@@ -1,22 +1,22 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-05T18:08:37+08:00",
+  "generated_at": "2026-10-10T08:07:32+08:00",
   "caliber": {
-    "head": "3f73f65",
+    "head": "84146b0",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
     "agents_md": 18,
     "skills": 23,
     "roles_yaml": 13,
-    "internal_dirs": 33,
-    "go_packages": 42,
-    "test_packages": 36,
-    "go_files": 739,
-    "test_files": 289,
-    "non_test_lines": 127314,
-    "test_lines": 41282,
-    "total_lines": 168596,
+    "internal_dirs": 34,
+    "go_packages": 43,
+    "test_packages": 37,
+    "go_files": 743,
+    "test_files": 292,
+    "non_test_lines": 127871,
+    "test_lines": 41894,
+    "total_lines": 169765,
     "ctf_solvers": 176,
     "ctf_real_solvers": 117,
     "ctf_detectors": 59,
@@ -175,7 +175,7 @@
     "secret_guard_verdict": "PASS",
     "secret_guard_fingerprint_mode": "fingerprint",
     "secret_guard_selftest_rc": 0,
-    "secret_guard_mutation_rc": 0,
+    "secret_guard_mutation_rc": 1,
     "verify_evidence_rc": 0,
     "freeze_gate_selftest_rc": 0
   },
@@ -195,15 +195,18 @@
       "sha256": "e528c9e306ae0bf4bb916888ad55e5374a45312daddbf7d35ef9b6e744aabeea"
     },
     "setup": {
-      "path": "installer/SecAutoMind-Setup-1.7.25-x64.exe",
+      "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
       "present": true,
-      "size_bytes": 20302039,
-      "md5": "ab7ece0cdb9c88d9a69d172ed9ffd3b8",
-      "sha256": "35dad83463fb5a535c06908fea971f9bbe9603b3b95771c0db3c2c92f2827e28"
+      "size_bytes": 20299011,
+      "md5": "577b0d0138b034ab06e2b984cace102c",
+      "sha256": "33e0e0d8d63edfbf076acb81ee893e66ae11e6b0e06370622db54861a7348791"
     },
     "delivery_package": {
-      "path": "dist/SecAutoMind-v1.7.25-share.tar.gz",
-      "present": false
+      "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
+      "present": true,
+      "size_bytes": 213034988,
+      "md5": "64370ec27af777dc7a9e7befd869acf0",
+      "sha256": "7d79ee4e565eb274652ebde5671dc1232c5563127460ef4c9c50dc86a8e46a21"
     },
     "exe_build": {
       "vcs_revision": "344e5bd7ddf6a2bdf42c7e69d57f9d870bc2e8c0",
@@ -213,5 +216,7 @@
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": []
+  "notes": [
+    "secret_guard_mutation_check.py 退出码 1："
+  ]
 }
