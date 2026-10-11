@@ -1,0 +1,456 @@
+# SecAutoMind v1.7.17 工具风险策略（方案B：独立策略文件，不改动现有工具 YAML）
+# 由 datawhale 离线原型校准生成，供 HITL 闸门查询：先查本文件 -> 缺失再查工具 YAML -> 再缺失按 command 关键词默认 medium。
+policy_version: 1
+default_risk: medium
+default_hitl: true
+tools:
+  - name: angr
+    risk: high
+    hitl: true
+    category: binary
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: bloodhound
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: dalfox
+    risk: high
+    hitl: true
+    category: web
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: exec
+    risk: high
+    hitl: true
+    category: agent-native
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: execute-python-script
+    risk: high
+    hitl: true
+    category: agent-native
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: fscan
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: hashcat
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: hashpump
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: hydra
+    risk: high
+    hitl: true
+    category: uncategorized
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: impacket
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: install-python-package
+    risk: high
+    hitl: true
+    category: agent-native
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: john
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: libc-database
+    risk: high
+    hitl: true
+    category: binary
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: linpeas
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: metasploit
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: msfvenom
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: netexec
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: one-gadget
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: pacu
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: pwninit
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: pwntools
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: query-execution-result
+    risk: high
+    hitl: true
+    category: agent-native
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: radare2
+    risk: high
+    hitl: true
+    category: binary
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: responder
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: ropgadget
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: ropper
+    risk: high
+    hitl: true
+    category: exploit
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: sqlmap
+    risk: high
+    hitl: true
+    category: web
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: wpscan
+    risk: high
+    hitl: true
+    category: vuln
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: xsser
+    risk: high
+    hitl: true
+    category: web
+    reason: "高危：可造成破坏/任意代码执行/权限提升"
+  - name: amass
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: api-schema-analyzer
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: arjun
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: arp-scan
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: binwalk
+    risk: medium
+    hitl: true
+    category: binary
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: checkov
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: checksec
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: clair
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: cloudmapper
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: dnsenum
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: dotdotpwn
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: enum4linux-ng
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: exiftool
+    risk: medium
+    hitl: true
+    category: forensic
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: falco
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: feroxbuster
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: ffuf
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: fierce
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: foremost
+    risk: medium
+    hitl: true
+    category: binary
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: gau
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: gdb
+    risk: medium
+    hitl: true
+    category: binary
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: ghidra
+    risk: medium
+    hitl: true
+    category: binary
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: gobuster
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: graphql-scanner
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: http-framework-test
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: jaeles
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: jwt-analyzer
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: katana
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: kube-bench
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: kube-hunter
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: lightx
+    risk: medium
+    hitl: true
+    category: uncategorized
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: masscan
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: nbtscan
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: nikto
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: nmap
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: nuclei
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: objdump
+    risk: medium
+    hitl: true
+    category: binary
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: paramspider
+    risk: medium
+    hitl: true
+    category: uncategorized
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: prowler
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: rpcclient
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: rustscan
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: scout-suite
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: smbmap
+    risk: medium
+    hitl: true
+    category: scan
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: steghide
+    risk: medium
+    hitl: true
+    category: forensic
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: subfinder
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: terrascan
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: trivy
+    risk: medium
+    hitl: true
+    category: vuln
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: volatility3
+    risk: medium
+    hitl: true
+    category: forensic
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: wafw00f
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: waybackurls
+    risk: medium
+    hitl: true
+    category: recon
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: x8
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: zap
+    risk: medium
+    hitl: true
+    category: web
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: zsteg
+    risk: medium
+    hitl: true
+    category: forensic
+    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
+  - name: dirsearch
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: dnslog
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: fofa_search
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: quake_search
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: shodan_search
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: strings
+    risk: low
+    hitl: false
+    category: binary
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: virustotal_search
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: xxd
+    risk: low
+    hitl: false
+    category: binary
+    reason: "低危：被动情报检索/本地只读分析"
+  - name: zoomeye_search
+    risk: low
+    hitl: false
+    category: recon
+    reason: "低危：被动情报检索/本地只读分析"

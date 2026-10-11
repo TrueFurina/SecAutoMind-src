@@ -268,7 +268,7 @@ type HitlToolWhitelistSaver interface {
 }
 
 // NewAgentHandler 创建新的Agent处理器
-func NewAgentHandler(agent *agent.Agent, db *database.DB, cfg *config.Config, logger *zap.Logger) *AgentHandler {
+func NewAgentHandler(agent *agent.Agent, db *database.DB, cfg *config.Config, logger *zap.Logger, configPath string) *AgentHandler {
 	batchTaskManager := NewBatchTaskManager(logger)
 	batchTaskManager.SetDB(db)
 
@@ -300,6 +300,14 @@ func NewAgentHandler(agent *agent.Agent, db *database.DB, cfg *config.Config, lo
 	tm.SetToolCanceler(handler.cancelRunningMCPToolsForConversation)
 	if err := handler.hitlManager.EnsureSchema(); err != nil {
 		logger.Warn("初始化 HITL 表失败", zap.Error(err))
+	}
+	// 加载 tools/risk_policy.yaml 作为每工具 HITL 敏感度权威策略；缺失或解析失败仅告警并回退白名单。
+	if handler.hitlManager != nil && cfg != nil {
+		if td := config.ResolveToolsDir(cfg.Security.ToolsDir, configPath); td != "" {
+			if err := handler.hitlManager.LoadRiskPolicy(td); err != nil {
+				logger.Warn("加载 risk_policy.yaml 失败，HITL 回退至会话级白名单", zap.Error(err))
+			}
+		}
 	}
 	go handler.batchQueueSchedulerLoop()
 	return handler
