@@ -392,7 +392,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	log.Logger.Debug("多代理 Markdown 子 Agent 目录", zap.String("agentsDir", agentsDir))
 
 	// 创建处理器
-	agentHandler := handler.NewAgentHandler(agent, db, cfg, log.Logger)
+	agentHandler := handler.NewAgentHandler(agent, db, cfg, log.Logger, configPath)
 	agentHandler.SetAudit(auditSvc)
 	agentHandler.SetAgentsMarkdownDir(agentsDir)
 	// 如果知识库已启用，设置知识库管理器到AgentHandler以便记录检索日志

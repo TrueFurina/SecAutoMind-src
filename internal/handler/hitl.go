@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 type hitlRuntimeConfig struct {
@@ -53,6 +56,12 @@ type HITLManager struct {
 	pending map[string]*pendingInterrupt
 	// approvedExec 审批通过、待回写 tool_result 的队列（按会话 FIFO）
 	approvedExec map[string][]hitlApprovedExecTrack
+	// riskPolicy 从 tools/risk_policy.yaml 加载的每工具人机协同敏感度策略（可空）
+	riskPolicy *RiskPolicy
+	// riskPolicyMu 保护 riskPolicy / riskPolicyPath / riskPolicyModTime 的并发读写（热重载用）
+	riskPolicyMu      sync.RWMutex
+	riskPolicyPath    string
+	riskPolicyModTime time.Time
 }
 
 func NewHITLManager(db *database.DB, logger *zap.Logger) *HITLManager {
@@ -62,6 +71,107 @@ func NewHITLManager(db *database.DB, logger *zap.Logger) *HITLManager {
 		runtime: make(map[string]hitlRuntimeConfig),
 		pending: make(map[string]*pendingInterrupt),
 	}
+}
+
+// RiskPolicy 从 tools/risk_policy.yaml 加载的每工具人机协同敏感度策略。
+// hitl:true 表示该工具需要人工审批；hitl:false 表示免审批。
+// 它是 shouldInterrupt 的 per-tool 权威判定源（未登记工具回退到会话级白名单）。
+type RiskPolicy struct {
+	DefaultRisk string           `yaml:"default_risk"`
+	DefaultHITL bool             `yaml:"default_hitl"`
+	Tools       []RiskPolicyTool `yaml:"tools"`
+	byName      map[string]bool
+}
+
+// RiskPolicyTool 单条工具风险策略。
+type RiskPolicyTool struct {
+	Name     string `yaml:"name"`
+	Risk     string `yaml:"risk"`
+	HITL     bool   `yaml:"hitl"`
+	Category string `yaml:"category"`
+	Reason   string `yaml:"reason"`
+}
+
+// LoadRiskPolicy 从 toolsDir 加载 risk_policy.yaml；文件缺失时跳过（不影响既有白名单逻辑），解析失败返回错误。
+func (m *HITLManager) LoadRiskPolicy(toolsDir string) error {
+	toolsDir = strings.TrimSpace(toolsDir)
+	if toolsDir == "" {
+		return nil
+	}
+	path := filepath.Join(toolsDir, "risk_policy.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			m.logger.Warn("risk_policy.yaml 不存在，HITL 回退至会话级白名单", zap.String("path", path))
+			return nil
+		}
+		return err
+	}
+	var p RiskPolicy
+	if err := yaml.Unmarshal(data, &p); err != nil {
+		return fmt.Errorf("解析 risk_policy.yaml 失败: %w", err)
+	}
+	byName := make(map[string]bool, len(p.Tools))
+	for _, t := range p.Tools {
+		n := strings.ToLower(strings.TrimSpace(t.Name))
+		if n == "" {
+			continue
+		}
+		byName[n] = t.HITL
+	}
+	p.byName = byName
+	m.riskPolicyMu.Lock()
+	m.riskPolicy = &p
+	m.riskPolicyPath = path
+	if fi, err := os.Stat(path); err == nil {
+		m.riskPolicyModTime = fi.ModTime()
+	}
+	m.riskPolicyMu.Unlock()
+	m.logger.Info("已加载 risk_policy.yaml", zap.Int("tools", len(byName)), zap.Bool("default_hitl", p.DefaultHITL))
+	return nil
+}
+
+// maybeReloadRiskPolicy 在 risk_policy.yaml 的修改时间晚于已加载版本时，原子热重载策略，无需重启进程。
+// 文件缺失/读取失败/解析失败时保留旧策略并告警（不影响线上 HITL 判定）。
+func (m *HITLManager) maybeReloadRiskPolicy() {
+	m.riskPolicyMu.RLock()
+	path := m.riskPolicyPath
+	last := m.riskPolicyModTime
+	m.riskPolicyMu.RUnlock()
+	if path == "" {
+		return
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	if !fi.ModTime().After(last) {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		m.logger.Warn("risk_policy.yaml 热重载读取失败，保留旧策略", zap.String("path", path), zap.Error(err))
+		return
+	}
+	var p RiskPolicy
+	if err := yaml.Unmarshal(data, &p); err != nil {
+		m.logger.Warn("risk_policy.yaml 热重载解析失败，保留旧策略", zap.Error(err))
+		return
+	}
+	byName := make(map[string]bool, len(p.Tools))
+	for _, t := range p.Tools {
+		n := strings.ToLower(strings.TrimSpace(t.Name))
+		if n == "" {
+			continue
+		}
+		byName[n] = t.HITL
+	}
+	p.byName = byName
+	m.riskPolicyMu.Lock()
+	m.riskPolicy = &p
+	m.riskPolicyModTime = fi.ModTime()
+	m.riskPolicyMu.Unlock()
+	m.logger.Info("已热重载 risk_policy.yaml", zap.Int("tools", len(byName)))
 }
 
 func (m *HITLManager) EnsureSchema() error {
@@ -393,6 +503,18 @@ func (m *HITLManager) shouldInterrupt(conversationID, toolName string) (hitlRunt
 	m.mu.RUnlock()
 	if !ok || !cfg.Enabled {
 		return hitlRuntimeConfig{}, false
+	}
+	// 工具级 risk_policy.yaml 策略优先：命中具体工具时以其 hitl 字段为权威判定；
+	// 未命中（内置/元工具等未在策略登记的）回退到下方会话级 SensitiveTools 白名单逻辑。
+	// 热重载：若 risk_policy.yaml 发生变化则原子替换（无需重启进程）。
+	m.maybeReloadRiskPolicy()
+	m.riskPolicyMu.RLock()
+	rp := m.riskPolicy
+	m.riskPolicyMu.RUnlock()
+	if rp != nil {
+		if hitl, ok := rp.byName[strings.ToLower(strings.TrimSpace(toolName))]; ok {
+			return cfg, hitl
+		}
 	}
 	// 语义：SensitiveTools 现在作为“白名单（免审批工具）”
 	// 空白名单 => 全部工具都需要审批
