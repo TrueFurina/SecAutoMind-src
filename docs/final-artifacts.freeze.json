@@ -21,6 +21,11 @@
       "path": "SecAutoMind_PPT/演示模板版.pptx",
       "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
       "size": 54091138
+    },
+    "package/SecAutoMind-v1.7.28-share.tar.gz": {
+      "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
+      "sha256": "5e1f549d42b54c79bb87c1e30cacd9297c23f14f2720622311c57d43f1234897",
+      "size": 192748720
     }
   }
 }
