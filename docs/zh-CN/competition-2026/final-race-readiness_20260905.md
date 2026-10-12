@@ -80,7 +80,7 @@ grep -rIl --exclude-dir=.git --exclude-dir=node_modules -E "sk-[A-Za-z0-9]{16,}|
 
 > 证据：`docs/evidence/tool-dependency-audit-20260905.{json,md}`，一键复跑 `python scripts/experiments/audit_tools.py`
 
-**绝不能只报一个"90 个工具只有 18% 能跑"**——那会把两类完全不同的东西混为一谈，既低估自己，也经不起追问。正确口径是三分类：
+**绝不能只报一个"91 个工具只有 18% 能跑"**——那会把两类完全不同的东西混为一谈，既低估自己，也经不起追问。正确口径是三分类：
 
 | 类型 | 总数 | 本机可跑 | 说明 |
 |---|---|---|---|
@@ -91,7 +91,7 @@ grep -rIl --exclude-dir=.git --exclude-dir=node_modules -E "sk-[A-Za-z0-9]{16,}|
 `pip install chardet charset_normalizer h2 httpx requests` → 自研工具可达 **17/17（100%）**。
 （本机未装，以保持"纯净环境"这一最严格的基线口径；现场环境通常自带 requests 等。）
 
-**答辩答法（"你的 90 个工具都能跑吗？"）**：
+**答辩答法（"你的 91 个工具都能跑吗？"）**：
 1. 17 个是**我们自研的**纯 Python 实现，写在工具定义里，跨平台零二进制依赖；
 2. 73 个是**外部工具契约**，环境装了就用，没装自动降级、不阻塞任务；
 3. 本机纯净环境实测：自研 12/17、外部 3/73 —— **Agent 在 70 个外部工具缺失的条件下，仍完成端到端闭环并达到漏洞召回 5/6**，这正是降级能力的实证；

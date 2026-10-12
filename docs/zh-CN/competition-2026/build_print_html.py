@@ -20,6 +20,11 @@ DOCS = [
 
 MD_EXT = ["tables", "fenced_code", "toc", "sane_lists", "nl2br"]
 
+# 2026-10-13：合订本内容为 2026-09 竞赛期历史快照（四份源材料中三份文件名带
+# 202609 月份日期，门禁按历史档案豁免）。在模板头部输出 CALIBER-SNAPSHOT 标记，
+# 保证重新生成时豁免语义不丢（标记须位于文件前 40 行内门禁才认）。
+SNAPSHOT_NOTE = ('<!-- CALIBER-SNAPSHOT：本合订本由 2026-09 竞赛期四份 markdown 生成（技术报告/方案设计文档/演示视频脚本均为 202609 历史快照），数字锚定当日基线（Go 613 文件 / 226 测试文件 / 90 工具 YAML / 26 测试包），不随代码演进更新 -->')
+
 
 def convert(md_text: str, idx: int) -> str:
     html = markdown.markdown(md_text, extensions=MD_EXT)
@@ -103,6 +108,7 @@ def main():
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"/>
+{SNAPSHOT_NOTE}
 <title>SecAutoMind 参赛材料合订本</title>
 <style>{css}</style>
 </head>

@@ -26,7 +26,7 @@ for classroom and lab evaluation.
   review agents collaborate through a shared fact blackboard.
 - **Autonomous decision making** — the orchestrator can identify the target
   environment, plan next steps, and adapt to findings on the fly.
-- **Tooling library** — 90 YAML-defined security tools (recon, web, cloud,
+- **Tooling library** — 91 YAML-defined security tools (recon, web, cloud,
   binary analysis, forensics, post-exploitation) ready to be invoked by the
   agent layer.
 - **Human-in-the-loop safety** — sensitive operations require explicit user
