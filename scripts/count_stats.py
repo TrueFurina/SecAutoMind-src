@@ -26,7 +26,10 @@ import hashlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 必须排除：.git/.workbuddy 内有 3 万+ 假 .go 副本，不排除会严重高估
-EXCLUDE = {".git", ".workbuddy", "node_modules", "vendor", "dist", "build", "installer"}
+EXCLUDE = {".git", ".workbuddy", "node_modules", "vendor", "dist", "build", "installer",
+           # 提交包目录是 git-ignored 的派生交付物（已编译源码副本来历），非仓库源，
+           # 其 616 个 .go 副本会污染 go_files/test_files/行数真值，必须排除（2026-10-13）。
+           "SecAutoMind_提交包_20260905"}
 
 
 def _sh(cmd):

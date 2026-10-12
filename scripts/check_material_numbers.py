@@ -135,9 +135,9 @@ ANCHORS = [
 # 文件而悄悄失效。加标记时必须同时在文首写明「锚定哪个基线」。
 SNAPSHOT_MARK = "CALIBER-SNAPSHOT"
 
-# 文件名内嵌历史日期（如 xxx_20260905.md）→ 自动视为该日快照。
+# 文件名内嵌历史日期（如 xxx_20260905.md / xxx_202609.md）→ 自动视为该日/当月快照。
 # 用「文件名日期」而非手写清单，新写的材料带新日期，规则不会因新增文件悄悄失效。
-HIST_DATE_RE = re.compile(r"2026(\d{2})(\d{2})")
+HIST_DATE_RE = re.compile(r"2026(\d{2})(\d{2})?")
 
 # ⚠️ 反向例外：名字带旧日期但**仍是现行作战材料**，不得豁免。
 # 判据是「决赛现场还会照着念/照着做」，不是「文件多旧」。
@@ -227,7 +227,11 @@ def is_historical(rpath):
     if base in TOOL_EXEMPT:
         return True   # 修复脚本必须列举旧数字，列举 ≠ 使用
     for m in HIST_DATE_RE.finditer(rpath):
-        mm, dd = int(m.group(1)), int(m.group(2))
+        mm = int(m.group(1))
+        # 2026-10-13 补：6 位日期（xxx_202609.md，只精确到月）同样视为历史快照。
+        # 实测 4 份竞赛历史文档因只写月份被漏检、门禁误红（根因：原正则要求 8 位）。
+        # 缺省取月末(31)兜底：仅当整月都早于今天才豁免，当月文件继续被检查。
+        dd = int(m.group(2)) if m.group(2) else 31
         if (mm, dd) < (date.today().month, date.today().day):
             return True
     return False
