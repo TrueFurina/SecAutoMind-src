@@ -89,6 +89,17 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 4b. XOR 已知明文攻击（模板句库；WolvCTF 2024 "Yors Truly" 结构：
+	//     flag 当时序密钥、明文为公开模板句，key = ct XOR pt 直接恢复）。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryXORKnownPlaintext(text)
+		if len(flags) > 0 {
+			chResult <- result{"xor_known_plaintext", flags}
+		}
+	}()
+
 	// 5. 哈希爆破（匹配常见哈希格式）
 	wg.Add(1)
 	go func() {
@@ -325,6 +336,7 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"modinv_factor":         6,
 		"hash_crack":            7,
 		"xor_single":            8,
+		"xor_known_plaintext":   8,
 		"web_source_audit":      9,
 		"exec_strings":          9,
 		"exec_git_history":      9,
