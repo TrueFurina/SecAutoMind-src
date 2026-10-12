@@ -1,0 +1,28 @@
+# SecAutoMind — 行尾策略单一真值源（single source of truth for line endings）
+#
+# 背景（2026-09-30 交付审计，实锤）：
+#   本仓此前**没有** .gitattributes，行尾完全由各机器的 core.autocrlf 决定，导致
+#   同一份源码在不同机器 / 不同提取方式下行尾互不一致：
+#     · run.sh / upgrade.sh / plugins/*.sh / skills/*/check-env.sh 等工作副本为 CRLF
+#       → 在 Linux 上 bash 直接报 "$'\r': command not found"；
+#       且 scripts/make_delivery_package.py 是**字节级复制**（不走 git 过滤器），
+#       把 CRLF 的 .sh 原样打进了交付包 —— 已对 dist/SecAutoMind-v1.7.25-share.tar.gz
+#       开箱复核确认：包内 run.sh=CRLF(501)、upgrade.sh=CRLF(411)。
+#     · setup_venv.bat 工作副本为 LF（批处理应为 CRLF）。
+#
+#   下面几行把行尾定死，不再受 core.autocrlf / 编辑器 / 解压工具影响。
+#   **只覆盖可执行脚本**，不动 .go/.md/.yaml/.json 等（避免全仓 renormalize 风险）。
+#
+# 机验：python scripts/check_line_endings.py            （仓内跟踪脚本）
+#       python scripts/check_line_endings.py --dir DIR  （任意目录，如交付包 staging）
+#   该门禁已挂：① CI job `line-endings-gate` ② 交付包自验第四红线。
+
+# ── 必须在 Linux/macOS 上直接 bash 执行 → 强制 LF ──────────────
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# ── Windows 批处理 / PowerShell → 强制 CRLF ───────────────────
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf

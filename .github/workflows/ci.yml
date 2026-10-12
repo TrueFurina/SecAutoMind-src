@@ -1,0 +1,330 @@
+name: ci
+
+# PR 门禁：每次 PR / push 到 main 自动跑 vet + 测试 + race 检测
+# 对齐 release.yml 的 test-linux 逻辑，但触发范围更广、响应更快
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# 免费额度吃紧时的第一道止血：连推时取消同分支的旧 run。
+# 本项目是"修完即推"的节奏（09-30 一次会话连推 8 次），若不取消，
+# 8 个 run 会并行各烧一份额度，而单 run 里光 `-race ./...` 就要十几分钟。
+# 被取消的 run 按已消耗的实际分钟计费，所以取消是净省。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # gcc 只是 `go test -race` 的 race 运行时（C 实现）所需；项目 SQLite 驱动是
+      # 纯 Go 的 github.com/glebarez/go-sqlite，不需要 cgo、也不需要 libsqlite3-dev。
+      # GitHub 的 ubuntu runner 镜像本身就带 gcc，无条件 apt-get 会白花 40-60 秒/次；
+      # 改为「有则跳过、无则兜底安装」，既省时又不会在镜像变动时挂掉。
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
+      # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
+      # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
+      # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。
+      - name: Regenerate execution fixtures (nested .git repos not committed by design)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
+      # 跨语言 golden 的冻结校验：CI 无真源仓库（西湖论剑 ctf_agent），
+      # 无法直接跑 gen_protocol_golden.py --check；这里用哈希冻结堵住"手改 golden 不重跑生成器"。
+      # 真源↔golden 的一致性仍需本地 `gen_protocol_golden.py --check`（见脚本内提示）。
+      - name: Cross-language golden freeze check (blocks hand-edited golden)
+        run: python scripts/check_golden_freeze.py
+      - name: Vet
+        run: go vet ./...
+      - name: Test with race detector
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
+      # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
+      # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
+      # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
+      - name: Attachment benchmark diagnostics (verbose, for flaky triage)
+        run: CGO_ENABLED=1 go test -race -count=1 -v -run TestAttachmentForensicsBenchmark ./internal/ctfplatform/ 2>&1 | tail -25
+      - name: Build
+        run: CGO_ENABLED=1 go build -trimpath ./cmd/server
+
+  # 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证。
+  # 防止「求解器注水 / 误报 / 注册表死代码」回归，每次 PR/push 自动拦。
+  capability-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
+      - name: Capability regression gate
+        run: CGO_ENABLED=1 go test -race -count=1 ./internal/ctfplatform/ -run 'TestAllRegisteredSolversActuallyExecute|TestECDSANonceReuse|TestPaddingOracle|TestBlindOOB|TestHashLengthExtension|TestGCMNonceReuse|TestMT19937UntemperIsInverse|TestMT19937PredictNext|TestMT19937SolverParses|TestMT19937SolverRegistered|TestMT19937NoFalsePositive|TestMT19937InsufficientOutputs|TestMT19937RecoverSha256Consistency|TestLFSRBerlekampMasseyBasic|TestLFSRPredictDegree32|TestLFSRSolverParses|TestLFSRSolverRegistered|TestLFSRNoFalsePositive|TestLFSRShortLeakNoPredict|TestLCGAdvanceMatchesNaive|TestLCGRecoverAC|TestLCGRecoverModulus|TestLCGSolverParsesKnownParams|TestLCGSolverParsesRecoverAC|TestLCGSolverParsesRecoverModulus|TestLCGSolverRegistered|TestLCGNoFalsePositive|TestCRC32StdMatchesStdlib|TestCRC32ForgeProducesTarget|TestCRC32ForgeUniqueness|TestCRC32SolverParses|TestCRC32SolverRegistered|TestCRC32NoFalsePositive|TestForensicsNoFalsePositiveOnRandom|TestWebExploitNoFalsePositive|TestPresolveRegistrySweepNoDiagnosticFalsePositive' -timeout 300s
+
+  # 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度。
+  # 防止「求解器注水 / 能力回退 / 口径塌缩」回归，每次 PR/push 自动拦。
+  # 纯 Python（基准套件本体为标准库，仅 padding-oracle judge 需 pycryptodome）；
+  # Go 侧权威机验由上方 capability-gate 覆盖，本 job 不重复跑 Go。
+  evidence-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
+        run: python -m pip install --upgrade pip && pip install pycryptodome
+      # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，依设计不入库，
+      # 重新生成后 judge_exec.py 的 execution 块才能 15/15（否则静默 13/15 漏检）。
+      - name: Regenerate execution fixtures (nested .git repos not committed by design)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
+      - name: Regenerate dual-language benchmark summary
+        run: python data/ctf_benchmark/run_all_benchmarks.py
+      - name: Evidence / caliber consistency gate
+        run: python scripts/verify_evidence.py
+
+  # 冠军证据包门禁（§4.1）：docs/evidence-package.json 里的对外数字必须与活值一致。
+  # 为什么需要：本项目材料数字漂移已出现三次，全靠人肉发现；证据包是"答辩即用"的单一入口，
+  # 一旦与代码脱节，评委按包内数字复核就会对不上。漂移即 BLOCK，刷新只需一条命令。
+  # 同时跑该门禁的**变异验证**（证明它真能杀死漂移，而不是恒 PASS）——
+  # 对齐 AGENTS.md 第四条：门禁自己也要有回归测试。
+  # 注：变异验证首次运行即抓到本门禁自身的 2 个真 bug（golden/gates 比对误用 benchmark 子字典），
+  #     这正是"只跑一次全绿就收工"永远发现不了的那类缺陷。
+  evidence-package-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # 装 Go 是为了让 count_stats.go_packages 能取到真值（否则该字段为 null，比对会自动跳过）
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
+        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Regenerate execution fixtures (nested .git repos not committed by design)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
+      - name: Regenerate dual-language benchmark summary
+        run: python data/ctf_benchmark/run_all_benchmarks.py
+      - name: Championship evidence package consistency (drift => BLOCK)
+        run: python scripts/build_championship_evidence.py --check
+      - name: Evidence package gate mutation check (prove the gate can fail)
+        run: python scripts/evidence_package_mutation_check.py
+
+  # 决赛冻结纪律闸门（规划总纲 §4.3）：决赛前 14 天起拒绝"架构改动"的 PR。
+  # 目的：09-12 定下的停工边界③"距决赛 < 14 天 → 不动架构"此前只写在文档里，
+  # 本 job 把它变成可机验的闸门（改 internal/ agents/ cmd/ 一律 BLOCK）。
+  # 策略由 config.share.yaml 的 freeze 段驱动：未武装（enabled=false）时 SKIP，不阻塞日常开发；
+  # 决赛日期确定后置 enabled=true + final_date 即自动生效。
+  freeze-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 需要 base commit 才能做 base...HEAD 的改动比对
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Freeze gate self-test (prove the gate can actually block)
+        run: python scripts/freeze_gate_test.py
+      - name: Freeze gate status (armed? window?)
+        run: python scripts/freeze_gate.py --status
+      - name: Freeze gate (reject architecture changes inside freeze window)
+        if: github.event_name == 'pull_request'
+        run: python scripts/freeze_gate.py --base "${{ github.event.pull_request.base.sha }}"
+      # 决赛交付物上锁（2026-10-10）：压缩包 / 答辩 PPT / 演示视频 的 sha256 记于
+      # docs/final-artifacts.freeze.json，任何改动即 BLOCK。这些产物被 .gitignore 排除，
+      # CI 检出里通常不存在 → 脚本会优雅 SKIP（不会造成恒红）；本地有产物时严格校验。
+      - name: Final artifacts freeze (压缩包/答辩PPT/演示视频 未被改动)
+        run: python scripts/check_final_artifacts_freeze.py
+
+  # 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分）。
+  # 既有测试是**组件级**的；这一路把「仿真 DASCTF 平台 + 真实 Poller + 真实求解器」串起来跑：
+  # 拉题（含注入 429）→ 并发求解 → 提交（剥离外壳）→ 判分 accepted，并验证
+  # 解不出的题不提交（保护每题约 50 次机会）、每题只提交一次、第二轮去重。
+  # 它同时是冻结期（第七条）"演练"这一项的一键入口，CI 日志里会留一张赛况快照表。
+  finals-rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Ensure gcc for -race (runner image ships one; install only if missing)
+        run: |
+          if command -v gcc >/dev/null 2>&1; then
+            echo "gcc already present: $(gcc --version | head -1)"
+          else
+            sudo apt-get update && sudo apt-get install -y gcc
+          fi
+      - name: Finals full-loop rehearsal (simulated platform + poller + solver)
+        run: go test -race -count=1 -v -run 'TestRehearsal' ./internal/ctfplatform/ -timeout 300s
+      # 10-05 补：真实靶机端到端。TestRehearsal 的 flag 在题面文本里（静态抽取即得），
+      #   测不到真实靶机；TestLiveTarget 起真 HTTP 靶机（真漏洞），走
+      #   平台投递 → 起靶机 → 地址注入 → 真实 HTTP 探测 → 提交判分 全链路。
+      #   这正是 55 题真题库 36 道未命中里 21 道 web 题的真实形态。
+      #   含反向用例 TestLiveTargetFailsWithoutEnvInjection（关掉注入必须全失败），
+      #   用来证明正向通过确实来自那条链，而非断言写松。
+      - name: Live target end-to-end (real vulnerable HTTP targets, full chain)
+        run: go test -race -count=1 -v -run 'TestLiveTarget' ./internal/ctfplatform/ -timeout 300s
+      # 10-05 补：决赛开赛一键上膛脚本 finals_arm.sh 必须在 Linux 上能直接跑
+      #   （现场若连语法错都跑不起来，6 个开关就全漏了）。语法错在本机测不出来 ——
+      #   本地是 Git Bash + Windows，CI 才是真 Linux 目标环境。
+      - name: finals_arm.sh syntax check (day-of one-liner must be runnable on Linux)
+        run: bash -n scripts/finals_arm.sh
+      # 10-05 补：预检脚本的 GO/NO-GO 定级逻辑必须有回归测试。
+      #   预检结论直接决定"是否开赛"，而门禁全绿时没人会去核对那个结论 ——
+      #   定级写反 = 现场拿到与事实相反的 GO（10-04 已栽过同类的门禁失效事故）。
+      - name: Finals preflight self-test (verdict logic must stay provable)
+        run: python3 scripts/finals_preflight_test.py
+
+  # 密钥门禁：防止真实凭证被提交进仓库。
+  # 历史教训（两次）：
+  #   ① 2026-09-08：旧的打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`
+  #      （第 4 位是连字符即断匹配），一把真 key 从洞里漏过而门禁报 CLEAN。
+  #   ② 2026-09-13：`is_placeholder` 把 `...` 当无条件占位特征，于是人工打码后的
+  #      真 key 片段被判为"安全"，随交付包外发给了评委。
+  # 失效的门禁比没有门禁更危险 —— 它会持续给出假的安全感。
+  # 因此本 job 跑三层：门禁本体 → 门禁自测 → 门禁变异验证（证明自测真能杀死退化）。
+  secret-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # ⚠️ CI 容器内既无 config.yaml 明文、也无 User 级环境变量 → 指纹库必然为空。
+      #    门禁默认对此 fail-closed（BLOCK），故此处显式降级为「仅形态匹配」，
+      #    并把"未启用指纹反查"的事实留在日志里。真正的最强防线由本地打包路径强制启用
+      #    （make_delivery_package.py 不传该标志 → 取不到指纹即拒绝打包）。
+      - name: Secret guard (form-pattern only in CI; real fingerprint check is enforced locally)
+        run: python scripts/secret_guard.py --allow-no-fingerprint
+      - name: Secret guard self-test (must still catch the leaks it once missed)
+        run: python scripts/secret_guard_test.py
+      - name: Secret guard mutation check (prove the self-test can kill regressions)
+        run: python scripts/secret_guard_mutation_check.py
+
+  # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
+  # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
+  # 写死的数字在提交完成的下一秒就可能过期，靠人肉同步永远追不上。
+  # 真值源一致性门禁（2026-10-05 · 西湖论剑 CTF-Agent 跨项目支持引入）。
+  # 背景：本项目曾出现"评测校验器从退役题库取答案表 → 正确 flag 被判幻觉并丢弃"的对齐事故
+  # （外部项目 2026-09-19 实测：当日 1/10 实为冤案，修复后 3~4/10）。该类事故静态看代码
+  # 发现不了（两边都"有哈希校验"），只能机器对账。本门禁把两类注水常态化挡住：
+  #   ① 外部来源题集出现明文答案（答案键与题面同文件 → 求解器可见 → 能力数字失真）；
+  #   ② 同一题 id 在多处登记了不同 flag_sha256（真值分裂）。
+  # 变异验证：把任一检查改成恒不报红，本 job 必然变红（可用 scripts/_audit_truth_sources.py 的
+  # 测试用例反证——测试已覆盖每个检查项的红/绿两态）。
+  truth-source-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Truth-source coherence gate (no plaintext answers in external sets / no truth divergence)
+        run: python scripts/_audit_truth_sources.py --target .
+      - name: LLM evaluation pool caliber gate (self-authored vs external-truth denominator)
+        run: python scripts/_audit_llm_pool.py --target .
+
+  caliber-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Material numbers vs single source of truth
+        run: python scripts/check_material_numbers.py
+      # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，
+      # 会出现「修复器说修好了、门禁说还红」的隐蔽失效。10 项含 4 项变异验证
+      # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。
+      - name: Material-number fixer self-test (regression + mutation)
+        run: python scripts/fix_material_numbers_test.py
+      # 产物门禁（读回 .pptx/.docx/.pdf）的回归自检。产物是 .gitignore 的本地件
+      # （几 MB～60 MB 二进制），CI 检出里**根本不存在**，所以 CI 只能守"门禁本体逻辑正确"：
+      # 用 stdlib 手搓的最小 pptx/docx 夹具跑 10 项，含 2 项变异（改错数字必须变红）、
+      # 1 项 fail-closed（损坏产物必须拦下）、2 项跨形状方向判据。
+      # 真实产物的检查落在打包那一刻（make_delivery_package.py 第五条红线）与本地自检。
+      - name: Artifact-number gate self-test (11 cases, incl. mutation + always-exclude)
+        run: python scripts/check_artifact_numbers_test.py
+
+  # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
+  # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。
+  # 只改根 web/ 而不同步 → 前端改动在 exe 里完全不生效且无任何报错。
+  # 历史教训：commit 8805a04「fix: sync wizard frontend into embed source」即一次手工补同步。
+  # 合法差异：.gitignore 全局忽略 vendor/，仅反忽略 internal/app/web/static/vendor/
+  # （故全新 clone 下根 web/ 为 62 个文件、嵌入副本为 71 个，二者交集必须逐字节一致）。
+  # 与 secret-gate 同规格：门禁本体 → 变异验证（证明门禁真能变红）。
+  web-parity-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Web asset copy parity (drift => BLOCK)
+        run: python scripts/check_web_asset_parity.py
+      - name: Web parity gate mutation check (prove the gate can fail)
+        run: python scripts/check_web_asset_parity_test.py
+
+  # 行尾门禁：脚本行尾此前是「各机器 core.autocrlf 说了算」的盲区（本仓无 .gitattributes）。
+  # 实锤缺陷：run.sh / upgrade.sh / plugins/*.sh 等工作副本为 CRLF，而
+  # scripts/make_delivery_package.py 走 shutil.copy2 **字节级复制**（不经 git 过滤器），
+  # 于是 CRLF 的 .sh 被原样打进交付包 —— 已对 dist/SecAutoMind-v1.7.25-share.tar.gz
+  # 开箱复核：包内 run.sh=CRLF(501)、upgrade.sh=CRLF(411)。收件人在 Linux 上
+  # `bash run.sh` 会直接报 `$'\r': command not found`，对「一键部署」是致命的。
+  # 现由仓库根 .gitattributes 定死行尾，本 job 同时校验「仓内脚本行尾」与
+  # 「.gitattributes ↔ 内置规则表 未漂移」，并带变异验证（证明门禁真能变红）。
+  line-endings-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Script line endings (.sh=LF / .bat,.cmd,.ps1=CRLF)
+        run: python scripts/check_line_endings.py
+      - name: Line endings gate mutation check (prove the gate can fail)
+        run: python scripts/check_line_endings_test.py
+
+  # 文档端口一致性门禁：docs/ 里的 curl / 浏览器地址 / nginx `proxy_pass` / docker `-p`
+  # 都是**可执行指令**，读者会直接复制；而交付包开箱的 config.yaml 端口是 18086
+  # （8080 只是 config.example.yaml 的模板值 + cmd/server/main.go:90 的代码兜底）。
+  # 历史上 docs 通篇写 8080，照抄必连不上；根因是一条错误注释
+  # 「未启用 TLS 时为 http://localhost:8080」（端口与 TLS 无关）。
+  # 真值源=config.share.yaml 的 server.port；材料线 competition-2026/ 跳过；
+  # 豁免条目极小且有上限（豁免会腐化）。带变异验证（证明门禁真能变红）。
+  doc-port-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Docs service-port consistency (truth = config.share.yaml)
+        run: python scripts/check_doc_port_consistency.py
+      - name: Doc port gate mutation check (prove the gate can fail)
+        run: python scripts/check_doc_port_consistency_test.py
