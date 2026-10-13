@@ -364,3 +364,20 @@ jobs:
         run: python scripts/check_doc_port_consistency.py
       - name: Doc port gate mutation check (prove the gate can fail)
         run: python scripts/check_doc_port_consistency_test.py
+
+  # 文档静态门禁：代码块围栏闭合 / 本地链接可达 / scripts 引用存在 / 英文文档有中文对应。
+  # 实锤缺陷：①决赛当天 runbook 有一段排查命令缺开头围栏 → 渲染错乱（标题被吞进代码块）；
+  # ②docs 的 contributing-guide（中英文）与 go.mod 注释引用了从未存在的
+  #   scripts/check-docs.py、scripts/bootstrap-go.sh → 读者照做必然失败。
+  # 与 doc-port-gate 互补（那边管端口，这边管引用与结构）；带变异验证（证明门禁真能变红）。
+  docs-lint-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Docs static lint (fences / links / script refs / bilingual parity)
+        run: python scripts/check_docs_lint.py
+      - name: Docs lint gate regression + mutation check
+        run: python scripts/check_docs_lint_test.py
