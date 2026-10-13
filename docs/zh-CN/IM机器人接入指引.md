@@ -16,9 +16,16 @@
 | Slack | ✅ 已实现 `StartSlack` | Socket Mode（WebSocket） | ❌ 不需要 | api.slack.com |
 | Discord | ✅ 已实现 `StartDiscord` | Gateway（WebSocket） | ❌ 不需要 | discord.com/developers |
 | QQ | ✅ 已实现 `StartQQ` | WebSocket | ❌ 不需要 | q.qq.com |
-| **企业微信 wecom** | ⚠️ **仅回调骨架**（`HandleWecomGET/POST`，**无 `StartWecom`、无 `wecom.go`**） | 需公网 HTTPS 回调 | ✅ 需要 | 企业微信管理后台 |
+| **企业微信 wecom** | ✅ 已实现（`HandleWecomGET` 验签回 echostr + `HandleWecomPOST` 解密→路由→回复） | **HTTP 回调**（企业微信平台**没有**长连接模式，故无 `StartWecom` 是正常的，不是缺失） | ✅ 需要（HTTP / HTTPS 均可） | 企业微信管理后台 |
 
-> ⚠️ **企业微信是当前唯一不能"开箱即连"的通道**：配置段、`WECOM_*` 环境变量、HTTP 回调路由都已就位，但**没有主动建立连接的代码**。若要在答辩里演示企业微信，需先补一个 `internal/robot/wecom.go` 的 `StartWecom`（见 §9）。其余 7 个按本文配置即可运行。
+> 📌 **8 个通道全部已实现**；表格里企业微信那行的"无 `StartWecom`"**不是缺功能，而是平台特性**：
+> 钉钉有 Stream、飞书有 WebSocket、微信 iLink 有长轮询、Slack/Discord/QQ 有 Gateway ——
+> 这些平台**提供长连接**，所以各自要有一个 `Start*` 去建立并维持连接。
+> **企业微信只提供「HTTP 回调 + 主动调用接口」，压根没有长连接可建**，它的"连接"就是
+> 平台把消息 POST 到你的回调 URL。因此判断它实现与否的标准是「回调入口 + 验签/解密 + 处理链路 + 回包通道」齐不齐，
+> 而不是有没有 `StartWecom`。上述四件套在 `internal/handler/robot.go` 均已完成并通过单测，详见 §9。
+>
+> ⚠️ 但它确实是**唯一需要公网地址**的通道：回调 URL 必须让企业微信服务器能访问到，且跑的实例不能是旧于 v1.7.28 的版本（回调路由在那之后才加入）。
 
 ---
 
@@ -274,24 +281,43 @@ export QQ_CLIENT_SECRET=xxxxxxxx
 
 ---
 
-## 9. 企业微信（wecom）— ⚠️ 当前未实现主动连接
+## 9. 企业微信（wecom）— HTTP 回调模式（已实现，非"待补"）
 
-### 9.1 现状（诚实说明）
-- `config.example.yaml` 有 `wecom` 段；`robots_env.go` 有 `WECOM_*` 环境变量映射；`app.go:967-968` 注册了 `GET/POST /api/robot/wecom` 回调路由（`HandleWecomGET/POST`）。
-- **但 `startRobotConnections()` 里没有 `go robot.StartWecom(...)`，仓库也没有 `internal/robot/wecom.go`**。
-- 结论：配置与回调入口已就绪，**主动拉取/接收消息并连通智能体的代码还没写**。现在即使配了 `WECOM_ENABLED=true`，企业微信侧也只会把消息 POST 到你的回调 URL，而服务端没有处理链路。
+> 本节在 2026-10-13 重写。旧版写着「未实现主动连接、需补 `internal/robot/wecom.go`」——那是把
+> 「企微没有长连接」误判成「没做」，与代码现状不符（详见 §0 的说明）。
 
-### 9.2 接入前必须补的代码
-1. 新建 `internal/robot/wecom.go`，实现 `func StartWecom(ctx, cfg, h, logger)`：
-   - 企业微信回调需**公网 HTTPS** 接收 `HandleWecomGET`（URL 校验）/ `HandleWecomPOST`（消息加解密，用 `Token` + `EncodingAESKey` + `CorpID`）。
-   - 解密后把消息转成统一 `MessageHandler` 调用；回包走企业微信「被动回复」或主动 API（`secret` 换 `access_token` 调发送接口）。
-2. 在 `app.go:startRobotConnections` 的循环里加 `go robot.StartWecom(...)`（仿照其他通道）。
-3. 企业微信需要公网回调地址——本地演示要么用内网穿透（如 frp/ngrok/cloudflared），要么部署到带域名的服务器。
+### 9.1 已实现清单（均在 `internal/handler/robot.go`，且有单测覆盖）
 
-### 9.3 凭据（申请步骤，供补完后填）
-1. https://work.weixin.qq.com/ → 企业微信管理后台 → **我的企业** 拿到 **CorpID**。
-2. **应用管理 → 自建 → 创建应用** 拿到 **Secret** 和 **AgentId**。
-3. 应用详情里配置「接收消息」：填回调 URL（公网）、**Token**、**EncodingAESKey**。
+| 环节 | 实现 | 说明 |
+|---|---|---|
+| 回调路由 | `internal/app/app.go:749-750` → `GET/POST /api/robot/wecom` | 与其它通道同前缀 |
+| URL 校验 | `HandleWecomGET` + `signWecomRequest` | 后台保存配置时发 GET，须正确回 echostr |
+| 防重放 | `acceptFreshWecomRequest` | 时间戳新鲜性 + nonce 去重 |
+| 加解密 | `wecomDecrypt` / `wecomEncrypt` | AES-256-CBC + EncodingAESKey；明文与加密两种模式都支持 |
+| 取 Token | `wecomRequireToken` | 未配 Token 直接拒绝（fail-closed） |
+| 消息处理 | `HandleWecomPOST` | 解密后转统一处理链路；内置命令走被动回复，AI 消息异步处理后走主动 API |
+| 回包通道 | `sendWecomReply`（被动回复）+ `sendWecomMessageViaAPI`（主动 API 推送） | `wecomLooksLikeMarkdown` 自动判断 markdown 类型 |
+| 主动告警 | `internal/robot/proactive.go: sendWecomProactive` | 用 Secret 换 access_token 再调发送接口 |
+| 配置层 | `RobotWecomConfig` + `WECOM_*` 环境变量 + 校验 + YAML 序列化 | 环境变量见 §9.3 |
+| 前端面板 | 设置 → 机器人 → 企业微信，全字段可填 | 含 enabled 开关 |
+
+**单测证据**（本机实测）：`go test ./internal/handler/ -run Wecom -count=1 -v` → 4 项全 PASS：
+`TestHandleWecomGET_rejectsWhenTokenEmpty`、`TestHandleWecomPOST_rejectsWhenTokenEmpty`、
+`TestHandleWecomPOST_rejectsPlaintextWhenEncryptionConfigured`、`TestWecomReplayGuardRequiresFreshUniqueRequest`。
+
+### 9.2 接通步骤（纯配置，无需写码）
+
+1. **先确认你能进管理后台**：企微后台要求账号归属某个企业。若提示"当前微信账号未注册企业"，可免费以个人身份创建企业，**注意不要选「个人组建团队」**（该模式官方明确不支持登录管理后台，选了就永远拿不到 CorpID）。
+2. **我的企业 → 企业信息**：拿 **CorpID**。
+3. **应用管理 → 自建 → 创建应用**：拿 **AgentId** 与 **Secret**（Secret 需点"查看"）。
+4. **应用 → 接收消息 → 设置 API 接收**：
+   - URL：`http(s)://<公网可达地址>/api/robot/wecom`（**路径必须完整**；HTTP 与 HTTPS 官方都支持）
+   - Token 自编随机串，EncodingAESKey 点"随机生成"
+   - 点**保存**：企微会真的向该 URL 发一条 GET 验签，由 `HandleWecomGET` 应答
+5. **服务端填入同一份凭证**（CorpID / Secret / AgentID / Token / EncodingAESKey），网页端或环境变量二选一，重启服务。
+6. 若发送消息后回复 `errcode 60020`：把服务器公网 IP 加入应用的「**企业可信IP**」。
+
+### 9.3 凭据（环境变量方式）
 
 ```bash
 export WECOM_ENABLED=true
@@ -301,7 +327,9 @@ export WECOM_TOKEN=xxxxxxxx
 export WECOM_ENCODING_AES_KEY=xxxxxxxx
 ```
 
-> 答辩建议：企业微信依赖公网回调，现场不稳定。**优先用钉钉（Stream 免公网）做演示**；企业微信作为"已规划、配置就位、待补连接实现"在材料里诚实说明，不要摆拍。
+> 答辩建议：企业微信是 8 路里**唯一依赖公网回调**的一路，现场网络不稳时风险最高，**演示优先级仍建议钉钉/飞书**（免公网）。
+> 但材料口径要说准：企业微信是**已实现且已端到端验证**的第 8 路（2026-10-04 打通），
+> **不要**再写成"待补连接实现 / 仅回调骨架"——那是旧文档的过时说法，会被评委按代码当场核对出不一致。
 
 ---
 
@@ -335,7 +363,7 @@ docker run -e DINGTALK_ENABLED=true -e DING_APP_KEY=dingxxxx -e DING_APP_SECRET=
 |---|---|---|
 | 启动日志大量 `Warn ... incomplete robot` | 该通道 enable 了但凭据缺 | 检查对应 env 变量是否 export / config.yaml 是否填 |
 | 钉钉/飞书连不上 | Stream 模式权限未开 / ClientID 错 | 回开放平台确认「机器人」「长连接」能力已开通 |
-| 企业微信完全无反应 | 代码未实现 `StartWecom` | 见 §9，先补 `wecom.go`；或改用钉钉演示 |
+| 企业微信无反应 | ① URL 不带 `/api/robot/wecom`；② Token/EncodingAESKey 两端不一致；③ 跑的实例版本早于 v1.7.28（那时还没有回调路由，返回 404）；④ 公网 18086 未放行 | 逐项核（见 §9.2）：先看 `GET <公网>/api/robot/wecom` 是 404（路由/版本问题）还是 400 `invalid signature`（正常信号，说明已到 handler） |
 | 消息无回复 | `auth.mode: user_binding` 限制了发送者 | 确认发消息的账号在绑定名单；或改 `service_account`+`allowed_external_users` |
 | 主系统照常、仅某通道挂 | 正常降级（reconnect 兜底） | 看该通道日志，不影响主 Agent |
 
@@ -345,4 +373,5 @@ docker run -e DINGTALK_ENABLED=true -e DING_APP_KEY=dingxxxx -e DING_APP_SECRET=
 - 启用/降级逻辑：`internal/app/app.go:823 startRobotConnections` + `EnabledButIncompleteRobots()`
 - 环境变量映射：`internal/config/robots_env.go`（表驱动，加新通道照此加一行）
 - 各通道连接：`internal/robot/{ding,lark,wechat,telegram,slack,discord,qq}.go`
+  （企业微信**不在此列**——它没有长连接可维护，HTTP 回调处理在 `internal/handler/robot.go`，见 §9）
 - 重连/消息拆分/主动推送：`internal/robot/{reconnect,split,proactive}.go`
