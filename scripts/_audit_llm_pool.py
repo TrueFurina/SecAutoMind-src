@@ -22,6 +22,14 @@ SecAutoMind 的 LLM 自主解题基线（`internal/ctfplatform/llm_autosolve_tes
   - "自建"判定基于真值是否命中任何外部基准，**不否认**这些题是有效的端到端
     HTTP 靶机测试——它只声明口径。
 
+失败即红（fail-closed，2026-10-13 补）
+------------------------------------
+  池文件缺失 / 解析到 0 题 —— **一律判红**。旧版在池文件缺失时返回空池 →
+  `all_green=True` → 静默报绿（"空洞绿"）：文件被改名/移动，或 CASE_RE 与
+  `newLiveCases()` 形态脱钩时，口径其实**从未被校验**，门禁却一直给绿灯；
+  更糟的是 verdict 仍输出"评测池含自建题…"，与事实相反。
+  现改为：拿不到有效池即红，并明确指出是"文件不存在"还是"解析 0 题"。
+
 用法
 ----
   python scripts/_audit_llm_pool.py --target "E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share"
@@ -95,6 +103,13 @@ def audit(target: Path) -> dict:
     rows, overlap = [], []
     ids, flags = set(), set()
     dup_id, dup_flag = [], []
+    # fail-closed：池文件缺失 / 零题解析 —— 均判红（旧版此处静默报绿，见模块 docstring）。
+    errors: list[str] = []
+    if not (target / POOL_FILE).is_file():
+        errors.append(f"评测池文件不存在：{POOL_FILE}（fail-closed：拒绝空跑报绿）")
+    elif not pool:
+        errors.append(f"评测池解析到 0 题：{POOL_FILE}"
+                      "（CASE_RE 可能与 newLiveCases 形态脱钩 → 口径未被真正校验）")
     for c in pool:
         hits = index.get(c["flag_sha256"], [])
         row = dict(c, sha256=c["flag_sha256"][:12], origin=("overlap" if hits else "self_authored"),
@@ -118,15 +133,17 @@ def audit(target: Path) -> dict:
         "overlap_with_benchmarks": len(overlap),
         "duplicate_ids": dup_id,
         "duplicate_flags": dup_flag,
+        "errors": errors,
         "rows": rows,
         "verdict": {
             "denominator_is_external_truth": bool(n) and len(overlap) == n,
-            "note": ("评测池全部与外部基准同源=外部真题口径" if n and len(overlap) == n
+            "note": ("评测池不存在或为空，口径未被校验（门禁 fail-closed）" if errors
+                     else "评测池全部与外部基准同源=外部真题口径" if len(overlap) == n
                      else "评测池含自建题：该成绩是端到端靶机口径，"
                           "不可与『外部公开真题』数字混用或相加"),
         },
     }
-    report["all_green"] = (not overlap) and (not dup_id) and (not dup_flag)
+    report["all_green"] = (not errors) and (not overlap) and (not dup_id) and (not dup_flag)
     return report
 
 
@@ -147,10 +164,12 @@ def main() -> int:
         print(f"  自建题: {rep['self_authored']}｜与仓库基准重叠: {rep['overlap_with_benchmarks']}")
         print(f"  重复 id: {len(rep['duplicate_ids'])}｜重复 flag: {len(rep['duplicate_flags'])}")
         print(f"  口径判定: {rep['verdict']['note']}")
+        for e in rep.get("errors", []):
+            print(f"  ❌ {e}")
         for r in rep["rows"]:
             print(f"    {r['id']:>6} {r['title']:<8} sha={r['sha256']} {r['origin']}"
                   + (f" {r['matched']}" if r["matched"] else ""))
-        print(f"[audit] 结论: {'全绿' if rep['all_green'] else '存在红线（重叠/重复）'}")
+        print(f"[audit] 结论: {'全绿' if rep['all_green'] else '存在红线（缺失/重叠/重复）'}")
     return 0 if rep["all_green"] else 1
 
 

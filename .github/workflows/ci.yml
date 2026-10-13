@@ -260,6 +260,10 @@ jobs:
   # 门禁改成摆设都会当场变红。
   # 同批修复：检查 #1（duplicate_id_within_file）曾**不可达**（重复 id 在 dict 去重阶段
   # 被静默合并 → 永远 ✅，属装饰性门禁），现改为在去重前按声明顺序扫描。
+  # 姊妹门禁 _audit_llm_pool.py 同批补齐（2026-10-13）：它此前既无自测、又有**空洞绿**
+  # ——池文件缺失/解析 0 题 → 空池 → all_green=True **静默报绿**（口径从未被校验，门禁却
+  # 一直给绿灯），verdict 还输出与事实相反的"评测池含自建题"。现改 fail-closed，
+  # 并落成 scripts/_audit_llm_pool_test.py（11 项，含 M1/M2 因果自变异）由本 job 实跑。
   truth-source-gate:
     runs-on: ubuntu-latest
     steps:
@@ -273,6 +277,8 @@ jobs:
         run: python scripts/_audit_llm_pool.py --target .
       - name: Truth-source gate regression + mutation check (prove it can fail)
         run: python scripts/_audit_truth_sources_test.py
+      - name: LLM pool gate fail-closed + regression + mutation check
+        run: python scripts/_audit_llm_pool_test.py
 
   # 验收第 8 条：对外量化陈述 100% 可指回 —— 真跑命令复现，而非口头声明。
   # 跑 --full（全 6 条：两条真题覆盖率 + 自研集 + 执行/Web/附件层）。
