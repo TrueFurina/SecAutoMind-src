@@ -1,0 +1,58 @@
+name: Deploy 官网 (GitHub Pages)
+
+# 为什么单独一个 workflow：
+# 官网此前被 .gitignore 整目录排除 → 既不受 CI 材料门禁约束、也无法部署，
+# 验收第 7 条（"官网数字与 count_stats 活值 diff = 0"）因此永远只能是
+# "本地看起来对"，无法被第三方复验。本 workflow 把该条变成**硬门禁**：
+# 数字不一致 → 不构建、不部署。
+#
+# ⚠️ 首次启用需在仓库 Settings → Pages → Source 选 "GitHub Actions"。
+#    未开启时本 workflow 会因缺少 github-pages 环境而失败（fail-closed，
+#    不会静默发布旧内容）。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "官网/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 部署串行，避免并发发布互相覆盖
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 与 ci.yml 的 caliber-gate 同一判据、同一脚本，避免两处口径分叉。
+      # 官网入库后即纳入该门禁的检查范围：对外口径与 count_stats 活值必须 diff=0。
+      - name: 官网数字 vs 真值（不一致即停止部署）
+        run: python scripts/check_material_numbers.py
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: 官网
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
