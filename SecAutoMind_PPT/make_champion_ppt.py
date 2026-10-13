@@ -414,7 +414,7 @@ tag(s, Inches(0.7), Inches(0.6), 'VERIFICATION', ACCENT)
 text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('实测验证：工程全绿 + CTF 能力基准双语言机验', {'size': 30, 'bold': True})])
 text(s, Inches(0.7), Inches(1.8), Inches(11.6), Inches(0.5),
      [('（2026-09-28 实测：Go 1.25.0，全部为磁盘实测数据，每个数字均有脚本 + JSON 证据可复跑）', {'size': 13, 'color': MUTED})])
-stats = [('0', '编译错误（128,094 行）', ACCENT), ('176', '预解组件\n118真求解器+59检测器', ACCENT), ('34.5%', '静态 55 真题命中（19 题）', ACCENT2), ('100%', '执行基准 17/17 · Web 10/10', WARN)]
+stats = [('0', '编译错误（128,094 行）', ACCENT), ('177', '预解组件\n118真求解器+59检测器', ACCENT), ('34.5%', '静态 55 真题命中（19 题）', ACCENT2), ('100%', '执行基准 17/17 · Web 10/10', WARN)]
 for i, (v, lb, c) in enumerate(stats):
     stat(s, Inches(0.7 + i * 3.05), Inches(2.4), Inches(2.75), v, lb, color=c)
 rows = [
