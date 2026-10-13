@@ -12,11 +12,11 @@
     "internal_dirs": 34,
     "go_packages": null,
     "test_packages": 37,
-    "go_files": 747,
-    "test_files": 295,
+    "go_files": 748,
+    "test_files": 296,
     "non_test_lines": 128094,
-    "test_lines": 42439,
-    "total_lines": 170533,
+    "test_lines": 42576,
+    "total_lines": 170670,
     "ctf_solvers": 177,
     "ctf_real_solvers": 118,
     "ctf_detectors": 59,
@@ -204,6 +204,8 @@
   "notes": [
     "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对",
     "secret_guard_mutation_check.py 退出码 1：",
-    "2026-10-13 新增平台层 E2E 生命周期测试后刷新 caliber 段（Go 文件 747 / 测试文件 295 / 测试行 42,439 / 合计 170,533）；gates 段沿用 LF 环境采集值，secret_guard_mutation_rc 已由本机 CRLF 假阳性的 1 修正回 0（本机 core.autocrlf=true 会让变异探针失配，CI(Linux) 不受影响）"
-  ]
+    "2026-10-13 新增平台层 E2E 生命周期测试后刷新 caliber 段（Go 文件 747 / 测试文件 295 / 测试行 42,439 / 合计 170,533）；gates 段沿用 LF 环境采集值，secret_guard_mutation_rc 已由本机 CRLF 假阳性的 1 修正回 0（本机 core.autocrlf=true 会让变异探针失配，CI(Linux) 不受影响）",
+    "2026-10-13 新增 cross-bench 立尺测试后刷新 caliber 段（Go 文件 748 / 测试文件 296 / 测试行 42,576 / 合计 170,670）；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会把 secret_guard_mutation_rc 污染为 1，故未整包重生成）"
+  ],
+  "head": "17f00ce"
 }
