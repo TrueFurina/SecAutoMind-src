@@ -257,6 +257,23 @@ jobs:
       - name: LLM evaluation pool caliber gate (self-authored vs external-truth denominator)
         run: python scripts/_audit_llm_pool.py --target .
 
+  # 验收第 8 条：对外量化陈述 100% 可指回 —— 真跑命令复现，而非口头声明。
+  # 跑 --full（全 6 条：两条真题覆盖率 + 自研集 + 执行/Web/附件层）。
+  # 实测全量仅 ~19s，故不拆分档：拆档只会给"少跑几条"留借口。
+  # （脚本仍保留 quick/slow 分档能力，供超大基准集时应急降级。）
+  quant-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 对外量化陈述机验（声明 vs 实测，全量）
+        run: python scripts/check_quant_effect.py --full
+
   caliber-gate:
     runs-on: ubuntu-latest
     steps:
