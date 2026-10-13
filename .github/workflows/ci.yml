@@ -49,6 +49,8 @@ jobs:
       # 跨语言 golden 的冻结校验：CI 无真源仓库（西湖论剑 ctf_agent），
       # 无法直接跑 gen_protocol_golden.py --check；这里用哈希冻结堵住"手改 golden 不重跑生成器"。
       # 真源↔golden 的一致性仍需本地 `gen_protocol_golden.py --check`（见脚本内提示）。
+      - name: Golden freeze gate self-test (empty freeze file must NOT pass)
+        run: python scripts/check_golden_freeze_test.py
       - name: Cross-language golden freeze check (blocks hand-edited golden)
         run: python scripts/check_golden_freeze.py
       - name: Vet
@@ -167,6 +169,8 @@ jobs:
       # 决赛交付物上锁（2026-10-10）：压缩包 / 答辩 PPT / 演示视频 的 sha256 记于
       # docs/final-artifacts.freeze.json，任何改动即 BLOCK。这些产物被 .gitignore 排除，
       # CI 检出里通常不存在 → 脚本会优雅 SKIP（不会造成恒红）；本地有产物时严格校验。
+      - name: Final artifacts freeze gate self-test (empty manifest must NOT pass)
+        run: python scripts/check_final_artifacts_freeze_test.py
       - name: Final artifacts freeze (压缩包/答辩PPT/演示视频 未被改动)
         run: python scripts/check_final_artifacts_freeze.py
 
@@ -302,6 +306,9 @@ jobs:
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: 对外量化陈述机验（声明 vs 实测，全量）
         run: python scripts/check_quant_effect.py --full
+      # 空洞绿自测（2026-10-14 门禁审计）：全 slow / 缺 command 曾让本门禁"零机验却报全绿"
+      - name: Quant gate self-test (all-slow & unverifiable claims must NOT pass)
+        run: python scripts/check_quant_effect_test.py
 
   caliber-gate:
     runs-on: ubuntu-latest

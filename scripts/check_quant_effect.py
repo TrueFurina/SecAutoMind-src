@@ -142,25 +142,50 @@ def main():
                                         c.get("期望", "")))
         return 0
 
+    # 🔴 空洞绿防线（2026-10-14 门禁审计实锤，三种形态逐一封死）：
+    #  1. quick 模式选中 0 条（例如有人把所有声明标成 slow）→ 门禁零机验却报 PASS；
+    #  2. 声明缺 command/pattern → 旧版记 SKIP 且**不计入** fails，还能谎报"N 条全部可复现"；
+    #  3. PASS 文案用 len(selected) 计数，把 SKIP 的也算了进去。
+    # 三者同构于 `_audit_llm_pool.py` 当年的"输入缺失/解析为 0 → 自动全真"。
+    # 纪律：凡"扫声明后汇总"的门禁，**机验条数为 0 本身必须算红**（fail-closed）。
+    if not selected:
+        print()
+        print("结论：FAIL —— 本次机验选中 0 条声明（共解析到 %d 条）。"
+              % len(claims))
+        print("处置：CI 默认跑 quick；若声明全被标成 slow，本门禁在 CI 上等于空转，"
+              "与失效门禁同构。请至少保留 1 条 quick 声明，或让 CI 显式跑 --full。")
+        return 1
+
     fails = []
+    verified = 0
     for c in selected:
         ok, actual, note = run_claim(c, TIMEOUT_SLOW if args.full else TIMEOUT_QUICK)
-        mark = "PASS" if ok else ("SKIP" if ok is None else "FAIL")
+        if ok is None:
+            # 不可机验的对外量化陈述 = 违反验收第 8 条「100% 可指回」，必须计红。
+            mark = "UNVERIFIABLE"
+            fails.append(c["id"])
+        else:
+            mark = "PASS" if ok else "FAIL"
+            if ok:
+                verified += 1
+            else:
+                fails.append(c["id"])
         print("  [%s] %-22s 期望 %-18s 实测 %-12s %s"
               % (mark, c["id"], c.get("期望", ""), actual or "-", note))
-        if not ok and ok is not None:
-            fails.append(c["id"])
 
     for c in skipped:
         print("  [SKIP] %-22s %s（slow，需 --full）" % (c["id"], c.get("期望", "")))
 
     print()
     if fails:
-        print("结论：FAIL —— %d 条陈述与实测不符：%s" % (len(fails), ", ".join(fails)))
+        print("结论：FAIL —— %d 条陈述不可机验或与实测不符：%s" % (len(fails), ", ".join(fails)))
         print("处置：数字漂移应**改材料**；若确属测量口径变更，须在 "
               "`口径修复清单.md` 登记后再改本表期望值。")
+        print("      缺 command/pattern 的陈述应改列到「人工核验表」，"
+              "留在机验表里即为未兑现的对外陈述。")
         return 1
-    print("结论：PASS —— 本次机验的 %d 条量化陈述全部可复现。" % len(selected))
+    print("结论：PASS —— 本次机验的 %d 条量化陈述全部可复现（另有 %d 条 slow 跳过）。"
+          % (verified, len(skipped)))
     return 0
 
 
