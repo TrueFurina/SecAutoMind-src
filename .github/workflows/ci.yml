@@ -54,7 +54,10 @@ jobs:
       - name: Vet
         run: go vet ./...
       - name: Test with race detector
-        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s
+        # -skip：A→B 立尺的「有数据子集」测试（TestCrossBench_AttachmentSubset）本地实测
+        # 29.6s~242s 大幅波动（presolve 扫描超时机制不定时触发），-race 下会顶穿本 job
+        # 的 900s 总预算 → 移至独立 job cross-bench-subset 实跑（不跳过、不降级为不跑）。
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s -skip 'TestCrossBench_AttachmentSubset'
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
@@ -217,6 +220,27 @@ jobs:
       #   定级写反 = 现场拿到与事实相反的 GO（10-04 已栽过同类的门禁失效事故）。
       - name: Finals preflight self-test (verdict logic must stay provable)
         run: python3 scripts/finals_preflight_test.py
+
+  # A→B 同卷立尺 · 有数据子集（12/88 题附件仍在）：从 test job 拆出的独立门禁。
+  # 为什么独立：本地实测 29.6s~242s 波动（presolve 扫描超时不定时触发），并进
+  #   test job 的 -race 900s 总预算会把整 job 顶穿 → 间歇性红灯会训练团队"忽略红"。
+  # 为什么不 -race：presolve 是逐题纯函数调用，测试自身无并发面，race 只增耗不增覆盖；
+  #   超时预算按本地最坏 242s 的 2.5 倍设 600s。
+  # 判定语义（与 test job 内其他测试不同，读码前先读懂）：
+  #   · 命中率只报告不断言——12/88 是部分完整输入，拿命中率问责会逼出"为转绿改阈值"；
+  #   · 但「附件清单与磁盘实物脱节」fail-closed 直接红（非 git 排除文件缺失即 Errorf）——
+  #     本项目死于"声明了却不存在"，这条红线禁止为转绿删除。
+  #   · CI 检出不含 4 个 flag 明文/内嵌答案附件（attachments/.gitignore，PUBLIC 仓交付
+  #     红线），故「含答案口径」在 CI 上自动降级为剔除口径，属预期而非故障。
+  cross-bench-subset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - name: Cross-bench attachment subset (report-only hit rate, fail-closed manifest)
+        run: go test -count=1 -v -run 'TestCrossBench_AttachmentSubset' ./internal/ctfplatform/ -timeout 600s
 
   # 密钥门禁：防止真实凭证被提交进仓库。
   # 历史教训（两次）：

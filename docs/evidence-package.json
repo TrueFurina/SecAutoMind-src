@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-13T13:19:47+08:00",
+  "generated_at": "2026-10-14T00:18:15+08:00",
   "caliber": {
-    "head": "9dab541",
+    "head": "183bfe1",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,13 +10,13 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 34,
-    "go_packages": null,
+    "go_packages": 43,
     "test_packages": 37,
     "go_files": 751,
     "test_files": 299,
     "non_test_lines": 128094,
-    "test_lines": 42971,
-    "total_lines": 171065,
+    "test_lines": 43144,
+    "total_lines": 171238,
     "ctf_solvers": 177,
     "ctf_real_solvers": 118,
     "ctf_detectors": 59,
@@ -207,7 +207,8 @@
     "2026-10-13 新增平台层 E2E 生命周期测试后刷新 caliber 段（Go 文件 747 / 测试文件 295 / 测试行 42,439 / 合计 170,533）；gates 段沿用 LF 环境采集值，secret_guard_mutation_rc 已由本机 CRLF 假阳性的 1 修正回 0（本机 core.autocrlf=true 会让变异探针失配，CI(Linux) 不受影响）",
     "2026-10-13 新增 cross-bench 立尺测试后刷新 caliber 段（Go 文件 748 / 测试文件 296 / 测试行 42,576 / 合计 170,670）；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会把 secret_guard_mutation_rc 污染为 1，故未整包重生成）",
     "2026-10-13 新增安恒网关连通/降级测试（TestAnhengGateway_Connect/_Degrade）后刷新 caliber 段（Go 文件 749 / 测试文件 297 / 测试行 42,709 / 合计 170,803）；gates 段沿用 LF 采集值未动",
-    "2026-10-13 新增 HITL 失效边界回归测试（handler 7 项 + app C2 桥 2 项）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 42,971 / 合计 171,065）；gates 段沿用 LF 采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）"
+    "2026-10-13 新增 HITL 失效边界回归测试（handler 7 项 + app C2 桥 2 项）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 42,971 / 合计 171,065）；gates 段沿用 LF 采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）",
+    "2026-10-14 接入 cross-bench 附件子集口径（PR #22）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 43,144 / 合计 171,238，head 183bfe1）；整包重生成曾把 secret_guard_mutation_rc 污染为 1（本机 CRLF 假象），已按纪律修正回 0 并保留 LF 环境采集的 gates 段"
   ],
-  "head": "df109dd"
+  "head": "183bfe1"
 }
