@@ -271,6 +271,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 必须与其他跑分 job 一样先生成执行层 fixture：其中 2 题是 **git 仓库型**
+      # （`judge_exec.py` 真跑 `git log -p` 挖历史泄露 flag），嵌套 .git 按设计
+      # 不入库。缺这一步 CI 实测只有 15/17（本机因跑过所以 17/17）——
+      # 首次挂门禁就是被这条打红的。
+      - name: Regenerate execution fixtures (git-repo fixtures are not committed)
+        run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: 对外量化陈述机验（声明 vs 实测，全量）
         run: python scripts/check_quant_effect.py --full
 

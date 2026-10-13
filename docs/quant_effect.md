@@ -33,6 +33,17 @@
 
 ## 1. 机验声明表（由 `scripts/check_quant_effect.py` 逐条复跑比对）
 
+> ⚠️ **跑之前先做一步**：执行层 17 题中有 **2 题是 git 仓库型**（`judge_exec.py` 真跑
+> `git log -p` 挖历史泄露的 flag），这类嵌套 `.git` fixture **按设计不入库**，
+> 必须先生成，否则执行层实测只有 **15/17**（本机因跑过所以显示 17/17 ——
+> 首次挂 CI 门禁就是被这条打红的，且极容易被误判为"平台能力差异"）：
+>
+> ```bash
+> python data/ctf_benchmark/regen_exec_fixtures.py
+> ```
+>
+> CI 的 `quant-gate` job 已内置该步骤。
+
 ```yaml
 claims:
   - id: real_static_shipped
