@@ -89,7 +89,9 @@ _archive/
 SecAutoMind_PPT/.slidep/
 SecAutoMind_PPT/.cache/
 SecAutoMind_PPT/__pycache__/
-官网/
+# 注：`官网/` 此前被整目录排除，导致官网既不受 CI 材料门禁约束、也无法部署，
+# 验收第 7 条（官网数字与 count_stats 活值 diff=0）因此永远只能是"本地看起来对"。
+# 现已入库：数字纳入 check_material_numbers.py 机验，并由 pages.yml 部署。
 *.log
 logs/
 rsrc.syso
