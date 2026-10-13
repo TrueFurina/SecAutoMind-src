@@ -58,8 +58,13 @@ jobs:
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
+      # ⚠️ 本步含管道 `... | tail -25`。GitHub 对未写 shell: 的 run 步用
+      #    `bash -e {0}`（**不含** pipefail），管道退出码只取末位命令 tail →
+      #    go test 失败会被吞成绿（哑门禁）。故显式 set -o pipefail。
       - name: Attachment benchmark diagnostics (verbose, for flaky triage)
-        run: CGO_ENABLED=1 go test -race -count=1 -v -run TestAttachmentForensicsBenchmark ./internal/ctfplatform/ 2>&1 | tail -25
+        run: |
+          set -o pipefail   # 没有它，管道左端的 go test 失败不会让本步变红
+          CGO_ENABLED=1 go test -race -count=1 -v -run TestAttachmentForensicsBenchmark ./internal/ctfplatform/ 2>&1 | tail -25
       # 规划 §4.2：HITL 失效边界的**确定性**模式机验（超时挂死 / 落库失败 / 覆盖冲突 /
       # 越界裁决 / 参数篡改），主路径 + C2 桥接路径双跑。human 档（false-approve/block）
       # 需外部导师评测，脚本如实标 OPEN，**不伪造数据**；本步只判定 machine 档。
@@ -248,8 +253,13 @@ jobs:
   # 发现不了（两边都"有哈希校验"），只能机器对账。本门禁把两类注水常态化挡住：
   #   ① 外部来源题集出现明文答案（答案键与题面同文件 → 求解器可见 → 能力数字失真）；
   #   ② 同一题 id 在多处登记了不同 flag_sha256（真值分裂）。
-  # 变异验证：把任一检查改成恒不报红，本 job 必然变红（可用 scripts/_audit_truth_sources.py 的
-  # 测试用例反证——测试已覆盖每个检查项的红/绿两态）。
+  # 变异验证（2026-10-13 补齐）：scripts/_audit_truth_sources_test.py 覆盖**每个可达
+  # 检查项的红/绿两态**，并用「把某条判据改成恒不报红 → 对应用例必须转绿」证明每处红例
+  # 都是因果的、而非恰好为红。此前本条注释声称"测试已覆盖每个检查项的红/绿两态"，但
+  # 该测试文件在仓库里并不存在（不实自证声明）——现已落成实体并由本 job 实跑，任何人把
+  # 门禁改成摆设都会当场变红。
+  # 同批修复：检查 #1（duplicate_id_within_file）曾**不可达**（重复 id 在 dict 去重阶段
+  # 被静默合并 → 永远 ✅，属装饰性门禁），现改为在去重前按声明顺序扫描。
   truth-source-gate:
     runs-on: ubuntu-latest
     steps:
@@ -261,6 +271,8 @@ jobs:
         run: python scripts/_audit_truth_sources.py --target .
       - name: LLM evaluation pool caliber gate (self-authored vs external-truth denominator)
         run: python scripts/_audit_llm_pool.py --target .
+      - name: Truth-source gate regression + mutation check (prove it can fail)
+        run: python scripts/_audit_truth_sources_test.py
 
   # 验收第 8 条：对外量化陈述 100% 可指回 —— 真跑命令复现，而非口头声明。
   # 跑 --full（全 6 条：两条真题覆盖率 + 自研集 + 执行/Web/附件层）。

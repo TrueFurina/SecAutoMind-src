@@ -10,6 +10,9 @@
 
 检查项（每项独立 PASS/FAIL，退出码非 0 即红）
   1. problem 唯一性：同 id 在同文件重复 → FAIL
+     （dict 形态键天然唯一；list 形态可重复。2026-10-13 修复：该判据此前对
+      list 形态**不可达**——重复 id 在 _problems_of 的去重阶段已被静默合并，
+      门禁永远报 ✅，属"装饰性门禁"。现改在去重**之前**按声明顺序扫描。）
   2. 真值可判定：每题 flag_sha256 为 64 位十六进制 → 否则 FAIL（列出）
   3. 明文答案泄露：problems 里出现形如 flag{...} 的明文字段 → FAIL
   4. 真值源分裂：同一 id 出现在多个 benchmark 文件且 flag_sha256 不一致 → FAIL
@@ -55,19 +58,30 @@ def _iter_benchmarks(target: Path) -> list[Path]:
                   if "all_benchmarks_summary" not in p.name)
 
 
-def _problems_of(doc) -> dict:
+def _iter_items(doc) -> list:
+    """按声明顺序产出 (qid, item) 序列，**保留重复 id**。
+
+    dict 形态（"problems": {...}）键天然唯一；list 形态（"problems": [ {...}, ... ]）
+    则可能同 id 出现多次 —— 这正是检查 #1 要抓的形态。若先经 dict 去重再查重复，
+    重复在去重那一刻就被静默合并，检查永远为绿（不可达）。
+    """
     if isinstance(doc, dict):
         for key in ("problems", "cases", "questions", "items"):
             v = doc.get(key)
             if isinstance(v, dict):
-                return v
+                return [(str(k), it) for k, it in v.items()]
             if isinstance(v, list):
-                out = {}
+                out = []
                 for i, item in enumerate(v):
                     if isinstance(item, dict):
-                        out[str(item.get("id") or i)] = item
+                        out.append((str(item.get("id") or i), item))
                 return out
-    return {}
+    return []
+
+
+def _problems_of(doc) -> dict:
+    """去重后的问题表（同 id 后者覆盖前者）——供计数与逐项检查使用。"""
+    return {qid: it for qid, it in _iter_items(doc)}
 
 
 def audit(target: Path) -> dict:
@@ -95,15 +109,18 @@ def audit(target: Path) -> dict:
         except Exception as exc:  # noqa: BLE001
             failures["truth_not_verifiable"].append(f"{path.name}: parse_error {exc}")
             continue
+        items = _iter_items(doc)
         probs = _problems_of(doc)
         report["problems_total"] += len(probs)
-        seen: set[str] = set()
+        # 检查 #1：重复 id 必须在其被 dict 去重**之前**的原序列上判定
+        seen_ids: set[str] = set()
+        for qid, _ in items:
+            if qid in seen_ids:
+                failures["duplicate_id_within_file"].append(f"{path.name}:{qid}")
+            seen_ids.add(qid)
         for qid, p in probs.items():
             if not isinstance(p, dict):
                 continue
-            if qid in seen:
-                failures["duplicate_id_within_file"].append(f"{path.name}:{qid}")
-            seen.add(qid)
             sha = str(p.get("flag_sha256") or "").strip().lower()
             if not HEX64.match(sha):
                 failures["truth_not_verifiable"].append(f"{path.name}:{qid}")

@@ -89,11 +89,29 @@ jobs:
           go-version: "1.25.x"
       - name: Build linux amd64
         run: CGO_ENABLED=0 go build -trimpath -o secautomind-ai-linux-amd64 ./cmd/server
-      - name: Smoke test
+      - name: Smoke test (binary must boot and serve HTTP)
+        # ⚠️ 修复记录（2026-10-13）：旧版唯一断言是 `curl ... || true`，
+        #    而 `|| true` 使本步**永远为绿** —— 二进制启动即崩、18086 根本没监听，
+        #    也照样通过并发布（哑门禁：有门禁之名、无门禁之实）。
+        #    现改为轮询等待端口就绪；"进程活着但服务没起来 / 返回 5xx" 一律 FAIL。
+        #    判定取"能拿到 HTTP 响应且非 5xx"，不锁定具体状态码（避免 302/401 误红）。
         run: |
-          timeout 20 ./secautomind-ai-linux-amd64 --http & sleep 6
-          curl -fsS -o /dev/null -w "GET / -> %{http_code}\n" http://127.0.0.1:18086/ || true
-          pkill -f secautomind-ai-linux-amd64 || true
+          timeout 30 ./secautomind-ai-linux-amd64 --http & pid=$!
+          sleep 6
+          code=""
+          for _ in 1 2 3 4 5; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:18086/ 2>/dev/null || true)
+            if [ -n "$code" ] && [ "$code" != "000" ]; then break; fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          pkill -f secautomind-ai-linux-amd64 2>/dev/null || true
+          echo "GET / -> ${code:-<none>}"
+          case "$code" in
+            5??) echo "::error::smoke FAILED：GET / 返回服务器错误 $code"; exit 1 ;;
+            000|"") echo "::error::smoke FAILED：18086 无任何 HTTP 响应（二进制未起服务）"; exit 1 ;;
+            *) echo "smoke OK: GET / -> $code" ;;
+          esac
       - name: Upload to Release
         env:
           GH_TOKEN: ${{ github.token }}
