@@ -60,6 +60,11 @@ jobs:
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
       - name: Attachment benchmark diagnostics (verbose, for flaky triage)
         run: CGO_ENABLED=1 go test -race -count=1 -v -run TestAttachmentForensicsBenchmark ./internal/ctfplatform/ 2>&1 | tail -25
+      # 规划 §4.2：HITL 失效边界的**确定性**模式机验（超时挂死 / 落库失败 / 覆盖冲突 /
+      # 越界裁决 / 参数篡改），主路径 + C2 桥接路径双跑。human 档（false-approve/block）
+      # 需外部导师评测，脚本如实标 OPEN，**不伪造数据**；本步只判定 machine 档。
+      - name: HITL failure-boundary check (deterministic modes)
+        run: python scripts/run_hitl_boundary.py --check
       - name: Build
         run: CGO_ENABLED=1 go build -trimpath ./cmd/server
 
