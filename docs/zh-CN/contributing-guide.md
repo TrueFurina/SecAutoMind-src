@@ -106,12 +106,12 @@ docs/en-US/
 提交文档变更前运行：
 
 ```bash
-python3 scripts/check-docs.py
+python3 scripts/check_docs_lint.py
 ```
 
-该检查会验证本地链接、代码块闭合、中英文文件名对齐、语言导航覆盖率，以及根 README 中的 Go 版本是否与 `go.mod` 一致。版本化示例应尽量从 `go.mod`、`config.example.yaml` 等权威文件派生，避免手工同步。
+该检查会验证本地 Markdown 链接可达、代码块闭合、文档引用的 `scripts/*` 文件确实存在，以及 `docs/en-US/` 下的英文文档都有同名中文对应。端口类数字以 `config.share.yaml` 为准（由 `scripts/check_doc_port_consistency.py` 校验），规模类数字一律以 `python scripts/count_stats.py` 为准。版本化示例应尽量从 `go.mod`、`config.example.yaml` 等权威文件派生，避免手工同步。
 
-当文档、`go.mod` 或检查脚本变更时，GitHub Actions 中的 `Documentation` 工作流会自动运行同一条命令。
+CI 的 `docs-lint-gate` 会在文档变更时自动运行同一条命令。
 
 ## Review 关注点
 
