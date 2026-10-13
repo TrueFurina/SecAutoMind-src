@@ -105,16 +105,40 @@ claims:
     实测: 2026-10-13 10/10 = 100.0%
     状态: 已验证
     耗时类: slow
+
+  - id: benchmark_suite_green
+    陈述: 基准集套件达标数（对外材料旧称「二十基准集全绿」，当前实测 **22 项**）
+    基准集: 全套件(22)
+    期望: 22/22
+    command: python data/ctf_benchmark/run_all_benchmarks.py
+    pattern: '【汇总】基准集达标 (\d+)/(\d+)'
+    实测: 2026-10-14 22/22
+    状态: 已验证
+    耗时类: slow
 ```
+
+> 🔴 **`benchmark_suite_green` 这条是本表补的最后一块拼图，也是此前最大的虚报入口**：
+> 2026-10-14 之前，`run_all_benchmarks.py` 跑完 22 个基准集后**无论结果如何都 exit 0**，
+> 而对外材料写着「二十基准集全绿」——某项从 3/3 掉到 1/3 时 CI 照样绿、对外陈述照样"全绿"。
+> 现由 `docs/benchmark_baseline.json` 冻结每项达标地板，
+> 跑完逐项比对，**任一项未达标即 exit 1**（缺失/空基线同样计红，见 §4）。
+> 因此本条期望值里的"22"是**当前套件项数**，今后新增基准集必须同步登记基线
+> （未上锁的项按 fail-closed 计红），否则本条会红——这是设计内的。
+
+**项数口径说明**：对外材料（如 `evidence-championship-20260909.md`）写「**二十**基准集」，
+那是 **2026-09-09 时点**的口径（4 基础集 + 16 类利用层）；当前已扩到 **22 项**
+（新增题目感知渗透 `web_hints` 与 CRC32 伪造 `crc32_forge`）。
+历史证据文档保留当时口径（它记录的是当时事实），**对外陈述一律以本表 22 项为准**。
 
 机验命令：
 
 ```bash
 python scripts/check_quant_effect.py            # quick：只跑秒级项（应急降级用）
-python scripts/check_quant_effect.py --full     # 全量 6 条（CI 用这档）
+python scripts/check_quant_effect.py --full     # 全量 7 条（CI 用这档）
 ```
 
-实测全量约 **19s**，因此 CI 直接跑 `--full`：拆档只会给"少跑几条"留借口。
+实测全量：补入 `benchmark_suite_green`（真跑全套基准集，约 88s）后由 19s 升至
+**约 110s**，仍在 CI 单点可接受范围内，故继续跑 `--full`：拆档只会给"少跑几条"留借口。
 脚本保留 quick/slow 分档能力，仅在基准集膨胀到分钟级时应急降级。
 
 ---
@@ -126,7 +150,7 @@ python scripts/check_quant_effect.py --full     # 全量 6 条（CI 用这档）
 | 1 | 工具/技能/Agent 数量 | 91 YAML + 52 内置 = 143 运行时；技能包 23；Agent 18 | `python scripts/count_stats.py` | 已由 `check_material_numbers.py` 覆盖 |
 | 2 | 8 条 IM 通道全部已实现 | 8/8 | `docs/zh-CN/IM机器人接入指引.md`；企微见 `internal/handler/robot.go` | 已订正（09-03 入仓，此前材料误写"7+1"） |
 | 3 | A/B 同卷立尺 | 1/88 = 1.1% | `docs/cross_bench_report.md` | ⚠️ **不具备决策效力**，见 §3 |
-| 4 | 20 项基准集全绿 | 20 项 | `run_all_benchmarks.py` | 待补入机验表 |
+| 4 | 基准集套件达标 | 22/22 | `run_all_benchmarks.py` + `benchmark_baseline.json` | ✅ **2026-10-14 已补入机验表**（`benchmark_suite_green`），且任一项未达标即 exit 1 |
 
 ---
 

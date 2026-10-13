@@ -328,11 +328,17 @@ jobs:
       # 首次挂门禁就是被这条打红的。
       - name: Regenerate execution fixtures (git-repo fixtures are not committed)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
+      # 基准集套件 claim 会真跑 run_all_benchmarks.py，其中 padding-oracle judge 依赖 pycryptodome
+      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
+        run: python -m pip install --upgrade pip && pip install pycryptodome
       - name: 对外量化陈述机验（声明 vs 实测，全量）
         run: python scripts/check_quant_effect.py --full
       # 空洞绿自测（2026-10-14 门禁审计）：全 slow / 缺 command 曾让本门禁"零机验却报全绿"
       - name: Quant gate self-test (all-slow & unverifiable claims must NOT pass)
         run: python scripts/check_quant_effect_test.py
+      # 门禁自身也要有回归测试：证明基准集达标判定真能杀死退化，而不是恒 PASS/恒 FAIL
+      - name: Benchmark baseline gate self-test (prove it can fail)
+        run: python scripts/check_benchmark_baseline_test.py
 
   caliber-gate:
     runs-on: ubuntu-latest

@@ -16,8 +16,17 @@ import os
 import re
 import sys
 
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+try:
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import unpad
+except ImportError as _e:  # 依赖缺失必须可一眼定位，不能崩成裸 Traceback
+    sys.stderr.write(
+        "[DEPS-MISSING] judge_padding_oracle.py 需要 pycryptodome：%s\n"
+        "  安装：pip install pycryptodome\n"
+        "  CI：quant-gate / evidence-gate / evidence-package-gate 三个 job 已内置该安装步骤；\n"
+        "  本机若用非项目 venv 的 python 跑，需自行安装，否则本项判为 0/1（套件达标门禁会红）。\n"
+        % _e)
+    sys.exit(3)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BENCH = os.path.join(HERE, "padding_oracle_benchmark.json")
