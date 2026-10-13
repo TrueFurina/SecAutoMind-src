@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-10T08:41:18+08:00",
+  "generated_at": "2026-10-13T10:43:01+08:00",
   "caliber": {
-    "head": "94ce99a",
+    "head": "f1f7088",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -12,11 +12,11 @@
     "internal_dirs": 34,
     "go_packages": null,
     "test_packages": 37,
-    "go_files": 743,
-    "test_files": 292,
-    "non_test_lines": 127871,
-    "test_lines": 41894,
-    "total_lines": 169765,
+    "go_files": 744,
+    "test_files": 293,
+    "non_test_lines": 128001,
+    "test_lines": 42134,
+    "total_lines": 170135,
     "ctf_solvers": 176,
     "ctf_real_solvers": 117,
     "ctf_detectors": 59,
@@ -196,6 +196,7 @@
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
   "notes": [
-    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
+    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对",
+    "2026-10-13 仅刷新 caliber 段（Go 文件 744 / 测试文件 293 / 非测试行 128,001 / 测试行 42,134 / 合计 170,135），benchmark 段与门禁段沿用 2026-10-10 在 LF 环境采集的值 —— 本机重写会把 secret_guard_mutation_rc 污染为 CRLF 假阳性的 1"
   ]
 }

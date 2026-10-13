@@ -28,6 +28,65 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 必须排除：.git/.workbuddy 内有 3 万+ 假 .go 副本，不排除会严重高估
 EXCLUDE = {".git", ".workbuddy", "node_modules", "vendor", "dist", "build", "installer"}
 
+# ---------------------------------------------------------------------------
+# tools/ 目录下**不是工具声明**的 YAML —— 不得计入 tools_yaml。
+#
+# 2026-10-13 修复（实现与口径不符）：
+#   builtin_tools_count() 的 docstring 自陈口径是「tools/ 目录下的 YAML **安全工具声明**」，
+#   但实现却是 _count_files("tools", ".yaml")，即"数目录下所有 yaml 文件"，两者不符。
+#   commit dcc2226 新增 tools/risk_policy.yaml（456 行 HITL 风险策略：
+#   顶层 policy_version / default_risk / tools: -name+risk+hitl）后，该实现把它
+#   也当成"工具配方"计入，tools_yaml 91 -> 92、runtime_tools 143 -> 144，
+#   caliber-gate 进而要求对外材料改口称「92 个 YAML 安全工具配方」。
+#   而那第 92 个实为策略配置：它既无 command、Agent 也无从编排调用，
+#   对外宣称它是"工具配方"属虚报规模，与本项目「117 真求解器 + 59 检测器」
+#   的反注水口径直接冲突。其文件头注释亦自陈"独立策略文件，不改动现有工具 YAML"。
+#
+#   tools/_shared_args.yaml 虽然同样不是工具（顶层 shared_args:），但它被各工具
+#   以 YAML anchor 引用、属工具配方体系的一部分，且自 09 起就计入并被 BANNED
+#   认可（"旧工具数 90（现 YAML 91）"）—— 此次不变更这段历史口径，只纠新增那一项。
+#
+#   精确文件名而非模糊前缀（沿用 secret_guard 的 SELF_EXEMPT 教训）：
+#   新增非工具 YAML 到 tools/ 时必须同步登记到这里，否则会再次虚报规模。
+# ---------------------------------------------------------------------------
+TOOLS_YAML_EXCLUDE = {"risk_policy.yaml"}
+
+# 计入 tools_yaml 但**确实不是工具**的历史成员：被各工具以 YAML anchor 引用，
+# 属工具配方体系的一部分，09 年起就计入并被 BANNED 规则认可。登记在此只是
+# 让 _warn_unregistered_non_tool_yaml() 不对它报警，不改变计数。
+TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED = {"_shared_args.yaml"}
+
+
+def _warn_unregistered_non_tool_yaml():
+    """防复发守卫（不阻塞，仅 WARN）：tools/ 下若出现「既未登记排除、又不像工具
+    声明」的 YAML，它多半不是工具却被计入 tools_yaml —— 即虚报规模。
+
+    判定"像工具声明"：顶层键同时含 name 与 command（真工具配方如 amass.yaml）。
+    2026-10-13 起因：risk_policy.yaml 就是这样被静默计入导致材料虚报 92。
+    """
+    d = os.path.join(ROOT, "tools")
+    if not os.path.isdir(d):
+        return
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".yaml"):
+            continue
+        if f in TOOLS_YAML_EXCLUDE or f in TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED:
+            continue
+        try:
+            with open(os.path.join(d, f), encoding="utf-8", errors="ignore") as fh:
+                head = fh.read(4096)
+        except Exception:
+            continue
+        keys = set()
+        for line in head.splitlines():
+            m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):", line)
+            if m:
+                keys.add(m.group(1))
+        if not {"name", "command"} <= keys:
+            print("[WARN] tools/%s 顶层未同时含 name/command，疑似不是工具声明却被计入 "
+                  "tools_yaml（虚报规模）；若确非工具，请登记到 count_stats.py 的 "
+                  "TOOLS_YAML_EXCLUDE" % f, file=sys.stderr)
+
 
 def _sh(cmd):
     try:
@@ -38,13 +97,17 @@ def _sh(cmd):
         return ""
 
 
-def _count_files(d, suffix):
-    """统计目录下（非递归）指定后缀文件数。"""
+def _count_files(d, suffix, exclude=frozenset()):
+    """统计目录下（非递归）指定后缀文件数。
+
+    exclude：按**精确文件名**排除非该口径的成员（见 TOOLS_YAML_EXCLUDE 的由来）。
+    """
     p = os.path.join(ROOT, d)
     if not os.path.isdir(p):
         return 0
     return len([f for f in os.listdir(p)
-                if f.endswith(suffix) and os.path.isfile(os.path.join(p, f))])
+                if f.endswith(suffix) and os.path.isfile(os.path.join(p, f))
+                and f not in exclude])
 
 
 def _count_recursive(d, filename):
@@ -358,7 +421,8 @@ def main():
         print("[WARN] 求解器拆分与注册总数不一致：real=%d + detector=%d != total=%d"
               % (real_solvers, solvers_detectors, solvers), file=sys.stderr)
     im_adapters = _regex_count("internal/robot", r"^func Start[A-Za-z]*\(")
-    tools_yaml = _count_files("tools", ".yaml")
+    tools_yaml = _count_files("tools", ".yaml", TOOLS_YAML_EXCLUDE)
+    _warn_unregistered_non_tool_yaml()
     builtin_tools = builtin_tools_count()
     data = {
         "head": _sh("git rev-parse --short HEAD") or "unknown",
