@@ -489,9 +489,163 @@ def run_go():
     return "\n".join(lines[-8:]) if lines else out[-800:]
 
 
+# 基线放 docs/ 而非 data/ctf_benchmark/：后者被 .gitignore 的 `data/*` 目录级忽略覆盖，
+# 单文件否定规则在 git 下无效（无法 re-include），文件会静默不入仓 → CI 上找不到基线 →
+# 门禁按 fail-closed 恒红。与 docs/final-artifacts.freeze.json 同款放法是既有惯例。
+BASELINE_PATH = os.path.join(REPO, "docs", "benchmark_baseline.json")
+
+
+def load_baseline(path=None):
+    """读冻结达标基线，返回 suites 字典；缺失/不可解析/为空一律返回 None（由调用方判红）。"""
+    path = path or BASELINE_PATH
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception as e:
+        print("[BLOCK] 基线文件不可解析: %s (%s)" % (path, e))
+        return None
+    if not isinstance(d, dict):
+        return None
+    suites = d.get("suites")
+    return suites if isinstance(suites, dict) and suites else None
+
+
+def check_baseline(summary, baseline_path=None):
+    """逐项比对冻结基线，返回 (达标数, 基线总项数, 未达标说明列表)。
+
+    🔴 fail-closed 三原则（本项目两次栽在"静默放行"上）：
+      1. 基线文件缺失 / 不可解析 / suites 为空 → 不比对等于没门禁，直接算未达标；
+      2. 实测项不在基线里（新增基准集没上锁）→ 算未达标，逼人显式登记；
+      3. 基线里的项在实测中缺席 → 算未达标（基准集被删/改名同样要显式处理）。
+    """
+    suites = load_baseline(baseline_path)
+    if suites is None:
+        return 0, 0, ["基线文件缺失/为空（%s）——无法判定达标，按 fail-closed 计红。"
+                      "首次启用请跑 --update-baseline 上锁。" % (baseline_path or BASELINE_PATH)]
+
+    bad = []
+    ok_n = 0
+    for name, base in suites.items():
+        if name not in summary:
+            bad.append("%s：基线已上锁但本次实测缺席（基准集被删/改名？）" % name)
+            continue
+        got = summary[name]
+
+        # 题目感知渗透集不是 hit/total 形态，单列判据
+        if name == "web_hints":
+            b_hit = int(got.get("group_b_with_hint", -1))
+            delta = int(got.get("delta", -1))
+            need_b = int(base.get("min_group_b", 0))
+            need_d = int(base.get("min_delta", 0))
+            if b_hit >= need_b and delta >= need_d:
+                ok_n += 1
+            else:
+                bad.append("web_hints：读题组 %d < 基线 %d 或 增量 %d < 基线 %d"
+                           % (b_hit, need_b, delta, need_d))
+            continue
+
+        g_total = int(got.get("total", -1))
+        g_hit = int(got.get("hit", -1))
+        need_total = int(base.get("total", -1))
+        need_hit = int(base.get("min_hit", -1))
+        if g_total != need_total:
+            bad.append("%s：题数漂移 %d → %d（基线锁 %d）" % (name, need_total, g_total, need_total))
+        elif g_hit < need_hit:
+            bad.append("%s：命中退化 %d/%d → %d/%d（基线地板 %d）"
+                       % (name, need_hit, need_total, g_hit, g_total, need_hit))
+        else:
+            ok_n += 1
+            # 附件集另锁反注水：朴素正则不许命中
+            if name == "attachment" and int(got.get("water_filled", 0)) > int(base.get("max_water_filled", 0)):
+                bad.append("attachment：注水题命中 %d > 上限 %d（朴素正则命中即虚报）"
+                           % (int(got.get("water_filled", 0)), int(base.get("max_water_filled", 0))))
+                ok_n -= 1
+
+    for name in summary:
+        if name in ("provenance", "note"):
+            continue
+        if name not in suites:
+            bad.append("%s：本次实测有该基准集但基线未上锁（新增项必须显式登记）" % name)
+    return ok_n, len(suites), bad
+
+
+def update_baseline(summary, baseline_path=None):
+    """用本次实况重写基线地板（能力提升后抬高地板；退化时不许用这个绕过）。"""
+    path = baseline_path or BASELINE_PATH
+    old = {}
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                old = json.load(fh).get("suites", {}) or {}
+        except Exception:
+            old = {}
+    suites = {}
+    for name, got in summary.items():
+        if name in ("provenance", "note"):
+            continue
+        if name == "web_hints":
+            suites[name] = {
+                "min_group_b": int(got.get("group_b_with_hint", 0)),
+                "min_delta": int(got.get("delta", 0)),
+                "why": old.get(name, {}).get("why", "题目感知渗透对照（A组无线索 → B组读题）。"),
+            }
+            continue
+        item = {
+            "total": int(got.get("total", 0)),
+            "min_hit": int(got.get("hit", 0)),
+            "why": old.get(name, {}).get("why", ""),
+        }
+        if name == "attachment":
+            item["max_water_filled"] = 0
+        suites[name] = item
+
+    # 🔴 反绕过：地板只许抬升，不许下降。
+    # 否则「能力退化 → 改基线 → 门禁转绿」会变成一条一键自欺的捷径，
+    # 我加的这个门禁就白加了（与"失败即退出非 0、不提供仅警告模式"同一纪律）。
+    lowered = []
+    for name, item in suites.items():
+        old_item = old.get(name, {})
+        if name == "web_hints":
+            old_b, old_d = int(old_item.get("min_group_b", 0)), int(old_item.get("min_delta", 0))
+            if item["min_group_b"] < old_b or item["min_delta"] < old_d:
+                lowered.append("web_hints：读题组 %d→%d 或 增量 %d→%d" %
+                               (old_b, item["min_group_b"], old_d, item["min_delta"]))
+            continue
+        old_hit = int(old_item.get("min_hit", 0))
+        if item["min_hit"] < old_hit:
+            lowered.append("%s：%d/%d → %d/%d" %
+                           (name, old_hit, item["total"], item["min_hit"], item["total"]))
+    if lowered:
+        print("[BLOCK] 检测到地板下降，拒绝重新上锁（退化应修代码，不是改基线）：")
+        for x in lowered:
+            print("    - " + x)
+        print("   若确属测量口径变更（题目增删/基准集重构），请先手工编辑 "
+              "benchmark_baseline.json 并在 commit message 写明理由。")
+        return False
+
+    doc = {
+        "schema": 1,
+        "created": "2026-10-14",
+        "note": "基准集套件的冻结达标基线（由 --update-baseline 重写）。run_all_benchmarks.py 跑完后逐项比对，任一项未达标即 exit 1。",
+        "usage": "python data/ctf_benchmark/run_all_benchmarks.py            # 跑 + 比对基线（不达标 exit 1）\npython data/ctf_benchmark/run_all_benchmarks.py --update-baseline  # 用本次实况重新上锁",
+        "rule": "① min_hit 是防退化的地板，不是目标；② 能力退化 → 修代码，不许改基线；③ 口径变更 → 改基线并在 commit message 写明。",
+        "suites": suites,
+    }
+    # newline="\n"：与 all_benchmarks_summary.json 同理，Windows 上必须显式写 LF。
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(doc, fh, ensure_ascii=False, indent=2)
+        fh.write("\n")
+    print("基线已重新上锁: %s（%d 项）" % (path, len(suites)))
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--go", action="store_true", help="同时跑 Go 侧权威机验")
+    ap.add_argument("--update-baseline", action="store_true",
+                    help="用本次实况重写 benchmark_baseline.json（能力提升后抬高地板；退化时禁用）")
     args = ap.parse_args()
 
     st_total, st_hit, st_miss, st_pct, st_res = run_static()
@@ -833,6 +987,23 @@ def main():
         fh.write("\n")
     print("汇总已写入: %s" % out_path)
 
+    if args.update_baseline:
+        return 0 if update_baseline(summary) else 1
+
+    # 达标判定：缺了这一步，本脚本无论跑出什么结果都 exit 0，
+    # 对外材料的「基准集全绿」就只是一句无法证伪的修辞（2026-10-14 补齐）。
+    ok_n, total_n, bad = check_baseline(summary)
+    print()
+    print("【汇总】基准集达标 %d/%d" % (ok_n, total_n))
+    if bad:
+        for b in bad:
+            print("    [BLOCK] " + b)
+        print("   处置：确属能力退化 → 修代码（不许改基线）；确属测量口径变更 → "
+              "--update-baseline 重新上锁并在 commit message 写明。")
+        return 1
+    print("   全部达到冻结基线（docs/benchmark_baseline.json）。")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
