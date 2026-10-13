@@ -106,12 +106,12 @@ Update:
 Before submitting documentation changes, run:
 
 ```bash
-python3 scripts/check-docs.py
+python3 scripts/check_docs_lint.py
 ```
 
-The check verifies local links, fenced code blocks, bilingual filename parity, locale index coverage, and the Go version documented by the root READMEs. Keep versioned examples derived from authoritative files such as `go.mod` and `config.example.yaml` whenever possible.
+The check verifies that local Markdown links resolve, fenced code blocks are balanced, every `scripts/*` file referenced by the docs exists, and every English doc under `docs/en-US/` has a same-named Chinese counterpart. Port numbers must match `config.share.yaml` (checked by `scripts/check_doc_port_consistency.py`), and scale numbers must come from `python scripts/count_stats.py`. Keep versioned examples derived from authoritative files such as `go.mod` and `config.example.yaml` whenever possible.
 
-The same command runs automatically in the `Documentation` GitHub Actions workflow when documentation, `go.mod`, or the checker itself changes.
+The same command runs automatically in the `docs-lint-gate` CI workflow when documentation changes.
 
 ## Review Focus
 
