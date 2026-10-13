@@ -101,7 +101,15 @@ def run_claim(c: dict, timeout: int):
 
     actual_txt = "/".join(str(int(g) if g.is_integer() else g) for g in got)
     if got[:n] != exp[:n]:
-        return False, actual_txt, "漂移：期望 %s，实测 %s" % (exp[:n], got[:n])
+        # 值不符时必须给出"哪一题/哪一步"的证据：跨平台的漂移（如本机 Windows
+        # 17/17、CI Linux 15/17）光看"期望/实测"两个数根本无法定位。
+        # 优先抽 MISS/FAIL 行（直接点名），抽不到再退化为输出尾部。
+        bad = [l.strip() for l in out.splitlines()
+               if re.search(r"MISS|FAIL|✗|❌|Timeout|Traceback", l)]
+        diag = " ; ".join(bad[:10]) if bad else \
+            " | ".join(out.strip().splitlines()[-6:])
+        return False, actual_txt, "漂移：期望 %s，实测 %s || %s" % (
+            exp[:n], got[:n], diag[:500])
     return True, actual_txt, "%.1fs" % dt
 
 
