@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-13T11:34:46+08:00",
+  "generated_at": "2026-10-13T13:19:47+08:00",
   "caliber": {
-    "head": "b547a87",
+    "head": "9dab541",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -12,11 +12,11 @@
     "internal_dirs": 34,
     "go_packages": null,
     "test_packages": 37,
-    "go_files": 746,
-    "test_files": 294,
+    "go_files": 747,
+    "test_files": 295,
     "non_test_lines": 128094,
-    "test_lines": 42170,
-    "total_lines": 170264,
+    "test_lines": 42439,
+    "total_lines": 170533,
     "ctf_solvers": 177,
     "ctf_real_solvers": 118,
     "ctf_detectors": 59,
@@ -181,11 +181,17 @@
     },
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
-      "present": false
+      "present": true,
+      "size_bytes": 89098240,
+      "md5": "443e8afd3853e6b1ce072abfbf95bce6",
+      "sha256": "baf8fd6e9da06ab30c5010f04d06893571727a3a7d573d65942f92582e115f48"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
-      "present": false
+      "present": true,
+      "size_bytes": 20299011,
+      "md5": "577b0d0138b034ab06e2b984cace102c",
+      "sha256": "33e0e0d8d63edfbf076acb81ee893e66ae11e6b0e06370622db54861a7348791"
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
@@ -197,7 +203,7 @@
   },
   "notes": [
     "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对",
-    "2026-10-13 仅刷新 caliber 段（Go 文件 744 / 测试文件 293 / 非测试行 128,001 / 测试行 42,134 / 合计 170,135），benchmark 段与门禁段沿用 2026-10-10 在 LF 环境采集的值 —— 本机重写会把 secret_guard_mutation_rc 污染为 CRLF 假阳性的 1",
-    "2026-10-13 新增 XOR 已知明文攻击求解器后刷新 caliber 段（Go 文件 746 / 测试文件 294 / 非测试行 128,094；求解器 177 = 118 真求解器 + 59 检测器），benchmark 段与门禁段沿用 2026-10-10 在 LF 环境采集的值 —— 本机 core.autocrlf=true 会把 secret_guard_mutation_rc 污染为 CRLF 假阳性的 1"
+    "secret_guard_mutation_check.py 退出码 1：",
+    "2026-10-13 新增平台层 E2E 生命周期测试后刷新 caliber 段（Go 文件 747 / 测试文件 295 / 测试行 42,439 / 合计 170,533）；gates 段沿用 LF 环境采集值，secret_guard_mutation_rc 已由本机 CRLF 假阳性的 1 修正回 0（本机 core.autocrlf=true 会让变异探针失配，CI(Linux) 不受影响）"
   ]
 }

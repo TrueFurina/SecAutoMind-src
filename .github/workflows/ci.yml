@@ -189,6 +189,14 @@ jobs:
       #   用来证明正向通过确实来自那条链，而非断言写松。
       - name: Live target end-to-end (real vulnerable HTTP targets, full chain)
         run: go test -race -count=1 -v -run 'TestLiveTarget' ./internal/ctfplatform/ -timeout 300s
+      # 10-13 补：平台层端到端生命周期契约（规划 §7 验收清单第 1 条 `-run E2E`）。
+      #   与 TestRehearsal（多场景演练/压力/并发）分工不同：本 step 串跑单一资格线
+      #   拉题 → 起靶机 → 取访问地址 → 提交 flag → 校验 accepted → 回收靶机，
+      #   并反向断言「错误 flag 不得被判 accepted」——防"假阳性满分"这类最难发现的失信。
+      #   🔴 诚实边界：本用例基于 httptest 模拟平台，**不等于官方仿真平台真机联调**
+      #      （规划 §6：单测不可替代真机实测，真机联调仍是独立待办）。
+      - name: Platform E2E lifecycle contract (qualification chain, anti-false-positive)
+        run: go test -race -count=1 -v -run 'TestPlatformE2E_Lifecycle' ./internal/ctfplatform/ -timeout 300s
       # 10-05 补：决赛开赛一键上膛脚本 finals_arm.sh 必须在 Linux 上能直接跑
       #   （现场若连语法错都跑不起来，6 个开关就全漏了）。语法错在本机测不出来 ——
       #   本地是 Git Bash + Windows，CI 才是真 Linux 目标环境。
