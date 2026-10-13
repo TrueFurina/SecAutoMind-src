@@ -80,6 +80,18 @@ def main() -> int:
         print("[FAIL] 冻结文件解析失败: %s" % exc)
         return 1
 
+    # 🔴 空洞绿防线（2026-10-14 门禁审计）：冻结清单若为空（或不含任何受保护文件），
+    # 上面的循环一次都不进 → problems 为空 → 报 PASS，但**一条都没校验**。
+    # 与 `_audit_llm_pool.py` 当年"池文件缺失 → 全绿"同构：把"防线缺席"当成"防线通过"。
+    # 纪律：冻结清单未覆盖任何受保护文件 = 门禁空转，必须 fail-closed。
+    covered = [n for n in FILES if n in frozen]
+    if not covered:
+        print("[FAIL] 冻结清单 %s 未覆盖任何受保护文件（共 %d 个候选）—— "
+              "冻结门禁此刻等于空转。" % (FREEZE.relative_to(REPO), len(FILES)))
+        print("       正解：本地跑 `python scripts/check_golden_freeze.py --update` 上锁后一起提交；")
+        print("       若清单被误清空，从 git 历史恢复。")
+        return 1
+
     problems = []
     for name in FILES:
         if name not in frozen:
@@ -107,7 +119,8 @@ def main() -> int:
         print("        再跑 `python scripts/check_golden_freeze.py --update` 刷新冻结值，一起提交。")
         print("=" * 62)
         return 1
-    print("[PASS] golden 与冻结值一致（CI 侧可判定：未被手改）。")
+    print("[PASS] golden 与冻结值一致（已校验 %d/%d 个受保护文件；CI 侧可判定：未被手改）。"
+          % (len(covered), len(FILES)))
     print("      注：golden↔真源的一致性需本地跑 gen_protocol_golden.py --check（CI 无真源仓库）。")
     print("=" * 62)
     return 0

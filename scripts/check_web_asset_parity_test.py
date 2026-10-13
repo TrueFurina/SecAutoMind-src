@@ -113,6 +113,41 @@ def t3_content_drift(base):
          json.dumps(data.get("content_mismatch"), ensure_ascii=False))
 
 
+def t9_line_ending_only(base):
+    """行尾差异不算漂移（本机 web/templates/index.html 混合行尾曾让门禁假红）。
+
+    注意方向性：归一化只应用于**纯文本扩展名**，二进制资产仍按原始字节比对（见 T10）。
+    """
+    src, tgt = make_pair(base)
+    rel = os.path.join("static", "js", "chat.js")
+    # newline="" + 显式控制字符：若用 newline="\r\n" 再写字面 "\r\n"，
+    # 翻译会再补一次 \r（实测变成 \r\r\n），用例自己就注入了假漂移。
+    with open(os.path.join(src, rel), "w", encoding="utf-8", newline="") as f:
+        f.write("console.log('chat v1');\r\n")
+    with open(os.path.join(tgt, rel), "w", encoding="utf-8", newline="") as f:
+        f.write("console.log('chat v1');\n")
+    code, _out = run_checker(src, tgt)
+    case("T9 仅行尾不同（CRLF vs LF）→ exit 0", code == 0, "got exit %d" % code)
+
+
+def t10_binary_bytes_matter(base):
+    """二进制资产的字节必须严格比对：归一化不得把真漂移洗成一致。"""
+    src, tgt = make_pair(base)
+    rel = os.path.join("static", "img", "logo.png")
+    os.makedirs(os.path.dirname(os.path.join(src, rel)), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.join(tgt, rel)), exist_ok=True)
+    with open(os.path.join(src, rel), "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\nA")
+    with open(os.path.join(tgt, rel), "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\nB")
+    code, out = run_checker(src, tgt)
+    data = json.loads(out)
+    case("T10 二进制字节漂移 → exit 1", code == 1, "got exit %d" % code)
+    case("T10 正确点名二进制漂移",
+         data.get("content_mismatch") == ["static/img/logo.png"],
+         json.dumps(data.get("content_mismatch"), ensure_ascii=False))
+
+
 def t4_expected_vendor_extra(base):
     src, tgt = make_pair(base)
     os.makedirs(os.path.join(tgt, "static", "vendor"), exist_ok=True)
@@ -190,7 +225,8 @@ def main():
     try:
         for i, fn in enumerate([t1_identical, t2_missing_in_target, t3_content_drift,
                                 t4_expected_vendor_extra, t5_unexpected_extra,
-                                t6_missing_source, t7_sync_repairs, t8_ci_scenario], 1):
+                                t6_missing_source, t7_sync_repairs, t8_ci_scenario,
+                                t9_line_ending_only, t10_binary_bytes_matter], 1):
             sub = os.path.join(tmp, "case%d" % i)
             os.makedirs(sub, exist_ok=True)
             fn(sub)
