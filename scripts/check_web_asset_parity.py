@@ -69,12 +69,31 @@ EXIT_ENV = 2
 # ---------------------------------------------------------------- 工具
 
 
+# 参与行尾归一化的扩展名（纯文本前端资产）。
+# 二进制资产（png/woff/ico…）仍按原始字节比对——它们的 \r\n 就是内容，不能抹。
+TEXT_EXTS = {".html", ".htm", ".css", ".js", ".mjs", ".json", ".map",
+             ".md", ".svg", ".txt", ".yml", ".yaml", ".xml"}
+
+
 def file_hash(path):
-    """返回文件内容的 sha256（原始字节，不做任何归一化）。"""
+    """返回文件内容的 sha256；**纯文本资产按 LF 归一化**后再算。
+
+    为什么必须归一化（2026-10-14 实测，本机 CI 之外的第 4 种行尾假象）：
+        `web/` 与 `internal/app/web/` 两份 `templates/index.html` 在 git 里是
+        **同一个 blob**（提交时 autocrlf 把两者都清洗成 LF），CI（Linux）检出
+        两侧全 LF → 门禁全绿；但本机 `web/templates/index.html` 是 2026-09-03
+        遗留的**混合行尾**工作副本（6763 个 CRLF + 1 个裸 LF），嵌入副本是全 CRLF，
+        逐字节比对因此假红。
+
+    这与 `check_golden_freeze.py` 2026-09-13 踩到的坑同源（同一份文件本地 CRLF、
+    CI LF → 哈希不同 → 无条件失败），那里同样是"先归一化再算哈希"。
+    噪音门禁比没门禁更糟：本机恒红会让真正的漂移被当成"又是环境问题"忽略掉。
+    """
     h = hashlib.sha256()
+    normalize = os.path.splitext(path)[1].lower() in TEXT_EXTS
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
+            h.update(chunk.replace(b"\r\n", b"\n") if normalize else chunk)
     return h.hexdigest()
 
 
