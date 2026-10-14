@@ -1,0 +1,322 @@
+{
+  "summary": {
+    "mode": "llm",
+    "sample_set": "v1",
+    "total": 13,
+    "passed": 12,
+    "pass_rate": 0.9231,
+    "noise_accuracy": 1.0,
+    "attack_accuracy": 0.8889,
+    "missed_attacks": 0,
+    "false_alarms": 0,
+    "llm_usage": {
+      "requests": 8,
+      "failed_requests": 0,
+      "prompt_tokens": 23615,
+      "completion_tokens": 19444,
+      "reasoning_tokens": 14355,
+      "truncated_responses": 0
+    }
+  },
+  "cases": [
+    {
+      "hid": "H-01",
+      "kind": "FP",
+      "title": "文件服务器触发 DLP 外发规则",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 4.7,
+      "error": ""
+    },
+    {
+      "hid": "H-02",
+      "kind": "FP",
+      "title": "运维账号在审计路径内查看共享清单",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 13929.3,
+      "error": ""
+    },
+    {
+      "hid": "H-03",
+      "kind": "FP",
+      "title": "内部扫描器例行端口扫描",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "H-04",
+      "kind": "FP",
+      "title": "对账系统与业务网关的周期性加密通道",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 9328.6,
+      "error": ""
+    },
+    {
+      "hid": "H-05",
+      "kind": "ATK",
+      "title": "Linux 主机反弹 Shell",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "H-06",
+      "kind": "ATK",
+      "title": "Web 目录落地可疑脚本并执行命令",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "H-07",
+      "kind": "ATK",
+      "title": "文件服务器批量文件被加密改名",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 4660.9,
+      "error": ""
+    },
+    {
+      "hid": "H-08",
+      "kind": "ATK",
+      "title": "使用 procdump 转储 lsass 内存",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 8055.8,
+      "error": ""
+    },
+    {
+      "hid": "H-09",
+      "kind": "ATK",
+      "title": "远程连接域控管理共享",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 14054.2,
+      "error": ""
+    },
+    {
+      "hid": "H-10",
+      "kind": "ATK",
+      "title": "终端对已知恶意域名周期性信标",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 12117.5,
+      "error": ""
+    },
+    {
+      "hid": "H-11",
+      "kind": "ATK",
+      "title": "SSH 暴力破解后成功登录",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常登录"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "异常登录",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": false,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": false,
+      "duration_ms": 19917.7,
+      "error": ""
+    },
+    {
+      "hid": "H-12",
+      "kind": "EDGE",
+      "title": "Excel 附件打开后执行无窗口 PowerShell",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 1.1,
+      "error": ""
+    },
+    {
+      "hid": "H-13",
+      "kind": "EDGE",
+      "title": "数据库主机上无交互的编码命令执行",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 11217.3,
+      "error": ""
+    }
+  ]
+}

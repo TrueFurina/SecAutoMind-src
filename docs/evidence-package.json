@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-14T00:18:15+08:00",
+  "generated_at": "2026-10-15T05:54:12+08:00",
   "caliber": {
-    "head": "183bfe1",
+    "head": "06ef9cb",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,15 +10,15 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 34,
-    "go_packages": 43,
+    "go_packages": null,
     "test_packages": 37,
-    "go_files": 751,
-    "test_files": 299,
-    "non_test_lines": 128094,
-    "test_lines": 43144,
-    "total_lines": 171238,
-    "ctf_solvers": 177,
-    "ctf_real_solvers": 118,
+    "go_files": 759,
+    "test_files": 303,
+    "non_test_lines": 128905,
+    "test_lines": 44032,
+    "total_lines": 172937,
+    "ctf_solvers": 180,
+    "ctf_real_solvers": 121,
     "ctf_detectors": 59,
     "im_adapters": 7,
     "exe": {
@@ -208,7 +208,7 @@
     "2026-10-13 新增 cross-bench 立尺测试后刷新 caliber 段（Go 文件 748 / 测试文件 296 / 测试行 42,576 / 合计 170,670）；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会把 secret_guard_mutation_rc 污染为 1，故未整包重生成）",
     "2026-10-13 新增安恒网关连通/降级测试（TestAnhengGateway_Connect/_Degrade）后刷新 caliber 段（Go 文件 749 / 测试文件 297 / 测试行 42,709 / 合计 170,803）；gates 段沿用 LF 采集值未动",
     "2026-10-13 新增 HITL 失效边界回归测试（handler 7 项 + app C2 桥 2 项）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 42,971 / 合计 171,065）；gates 段沿用 LF 采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）",
-    "2026-10-14 接入 cross-bench 附件子集口径（PR #22）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 43,144 / 合计 171,238，head 183bfe1）；整包重生成曾把 secret_guard_mutation_rc 污染为 1（本机 CRLF 假象），已按纪律修正回 0 并保留 LF 环境采集的 gates 段"
-  ],
-  "head": "183bfe1"
+    "2026-10-14 接入 cross-bench 附件子集口径（PR #22）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 43,144 / 合计 171,238，head 183bfe1）；整包重生成曾把 secret_guard_mutation_rc 污染为 1（本机 CRLF 假象），已按纪律修正回 0 并保留 LF 环境采集的 gates 段",
+    "2026-10-15 cross-bench 立尺驱动新增三个真攻击求解器（rsa_phi_pinv / legendre_bit_phi / lfsr_correlation）并修复 flagLikeness 占位符过滤与 Håstad 裸数字指数候选后刷新 caliber 段（Go 文件 759 / 测试文件 303 / 非测试行 128,905 / 测试行 44,032 / 合计 172,937，真求解器 121 / 注册 180，head 06ef9cb 工作树）；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）；cross-bench 附件子集立尺 1/12 → 3/12（exciting_inverse / ezrsa / filterrandom，simplelegendre 因 harness 4KB 截断致数据不完整如实记为不可解）"
+  ]
 }

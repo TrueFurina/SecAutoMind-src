@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "security-agent-starter"
+version = "0.1.0"
+description = "A lightweight AI security agent starter with CLI and local Web UI."
+readme = "README.md"
+requires-python = ">=3.13"
+# 核心运行零第三方依赖（仅 Python 标准库即可跑通 CLI / Web / 评测 / MockLLM 兜底）。
+# langchain / openai 等大模型 SDK 为历史遗留声明，代码从未 import，已移除以免误导部署。
+# 若接入真实 LLM 后端，仅需 httpx（见下方 optional-dependencies.llm）。
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["httpx>=0.27"]
+license = { file = "LICENSE" }
+authors = [
+  { name = "Project Contributors" }
+]
+keywords = ["security", "agent", "llm", "soc", "demo"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["security_agent*"]

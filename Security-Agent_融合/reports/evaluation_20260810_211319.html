@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>评测报告</title>
+  <style>
+    body { font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; margin: 32px; color: #1b1e23; }
+    table { border-collapse: collapse; margin: 12px 0 24px; }
+    th, td { border: 1px solid #d9d1c3; padding: 8px 12px; text-align: left; }
+    th { background: #f3efe5; }
+    h2 { margin-top: 28px; color: #0e6ba8; }
+    pre { background: #161a20; color: #e8ecf3; padding: 14px; border-radius: 10px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>安全事件智能体评测报告</h1>
+  <h2># 评测报告</h2><h2>三模式对比（纯规则 / 纯 LLM / 混合）</h2><table><tr><td>指标</td><td>rules</td><td>llm</td><td>hybrid</td></tr><tr><th>------</th><th>------</th><th>------</th><th>------</th></tr><tr><td>综合通过率</td><td></td><td></td><td></td></tr><tr><td>风险分级准确率</td><td></td><td></td><td></td></tr><tr><td>误报识别准确率</td><td></td><td></td><td></td></tr><tr><td>事件类型准确率</td><td></td><td></td><td></td></tr><tr><td>平均耗时(ms)</td><td></td><td></td><td></td></tr><tr><td>成本估算(元)</td><td></td><td></td><td></td></tr><tr><td>LLM 调用次数</td><td></td><td></td><td></td></tr></table><h2>逐案例明细</h2><table><tr><td>案例</td><td>预筛决策</td><td>实际风险</td><td>预期风险</td><td>误报判定</td><td>事件类型匹配</td></tr><tr><th>------</th><th>---------</th><th>---------</th><th>---------</th><th>---------</th><th>-------------</th></tr><tr><td>EVENT-001</td><td>AUTO_ESCALATE</td><td>critical</td><td>critical</td><td>否</td><td>✅</td></tr><tr><td>EVENT-002</td><td>AUTO_CLOSE</td><td>low</td><td>low</td><td>是</td><td>✅</td></tr><tr><td>EVENT-003</td><td>NEED_LLM</td><td>critical</td><td>high</td><td>否</td><td>❌</td></tr><tr><td>EVENT-004</td><td>AUTO_ESCALATE</td><td>high</td><td>high</td><td>否</td><td>✅</td></tr><tr><td>EVENT-005</td><td>NEED_LLM</td><td>critical</td><td>medium</td><td>否</td><td>❌</td></tr><tr><td>EVENT-006</td><td>AUTO_ESCALATE</td><td>critical</td><td>critical</td><td>否</td><td>✅</td></tr><tr><td>EVENT-007</td><td>AUTO_ESCALATE</td><td>critical</td><td>critical</td><td>否</td><td>✅</td></tr><tr><td>EVENT-008</td><td>AUTO_ESCALATE</td><td>high</td><td>high</td><td>否</td><td>✅</td></tr><tr><td>EVENT-009</td><td>NEED_LLM</td><td>critical</td><td>low</td><td>否</td><td>❌</td></tr><tr><td>EVENT-010</td><td>AUTO_ESCALATE</td><td>high</td><td>high</td><td>否</td><td>✅</td></tr></table><h2>误报判定混淆矩阵</h2><table><tr><td>实际 \ 预期</td><td>预期误报</td><td>预期非误报</td></tr><tr><th>------------</th><th>---------</th><th>-----------</th></tr><tr><td>判定误报</td><td>1</td><td>0</td></tr><tr><td>判定非误报</td><td>0</td><td>9</td></tr></table>
+</body>
+</html>

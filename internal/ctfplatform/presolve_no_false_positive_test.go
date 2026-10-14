@@ -67,6 +67,41 @@ func TestDiagnosticLabelBelowHitThreshold(t *testing.T) {
 	}
 }
 
+// TestPlaceholderFlagBelowHitThreshold 题面「flag 格式声明」占位符必须低于命中门槛。
+//
+// 2026-10-15 实锤（cross-bench FilterRandom，两轮才抓全）：
+//   - 题面写「flag 格式为 DASCTF{init1-init2}」→ scanFlags 刮出 likeness=3 的假 flag；
+//   - 脚本源码写 b'DASCTF{%d-%d}'%(init1,init2) → printf 模板同样 likeness=3。
+// 二者都以 priority 10 的 flag_scan 胜出，压掉 priority 36 的 lfsr_correlation
+// 正确解——占位符与真 flag 外形同分，不显式降级必然挤压真解。
+func TestPlaceholderFlagBelowHitThreshold(t *testing.T) {
+	placeholder := []string{
+		"DASCTF{init1-init2}", // 题面格式声明
+		"DASCTF{%d-%d}",       // 脚本 printf 模板
+		"flag{xxxx}",          // 掩码占位
+		"flag{your_flag_here}",
+		"flag{...}",
+		"picoCTF{****}",
+	}
+	for _, f := range placeholder {
+		if got := flagLikeness([]string{f}); got >= minFlagLikenessForHit {
+			t.Errorf("占位符 %q likeness=%d 不应达到命中门槛 %d", f, got, minFlagLikenessForHit)
+		}
+	}
+	// 正向对照：真 flag（含纯数字内容、连字符、混合大小写）必须仍达门槛，
+	// 防止把过滤器改得过宽误伤真解。
+	for _, f := range []string{
+		"flag{QUITE_S1mpLe_TAsk}",
+		"flag{S0_G00d_J0B_RUA}",
+		"DASCTF{15401137114601469828-11256716742701089092}",
+		"flag{GO0D_J0b_of_TH1s_encrYption}",
+	} {
+		if got := flagLikeness([]string{f}); got < minFlagLikenessForHit {
+			t.Errorf("真 flag %q likeness=%d 应达到门槛 %d", f, got, minFlagLikenessForHit)
+		}
+	}
+}
+
 // TestPresolve_NoDiagnosticHit_OnURLInput 用户实测场景：
 // 含 http URL 的输入不得返回「诊断文本式」命中（若命中，必须是真 flag 外形）。
 func TestPresolve_NoDiagnosticHit_OnURLInput(t *testing.T) {
