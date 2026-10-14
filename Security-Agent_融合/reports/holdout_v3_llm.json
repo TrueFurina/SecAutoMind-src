@@ -1,0 +1,368 @@
+{
+  "summary": {
+    "mode": "llm",
+    "sample_set": "v3",
+    "total": 15,
+    "passed": 15,
+    "pass_rate": 1.0,
+    "noise_accuracy": 1.0,
+    "attack_accuracy": 1.0,
+    "missed_attacks": 0,
+    "false_alarms": 0,
+    "llm_usage": {
+      "requests": 11,
+      "failed_requests": 0,
+      "prompt_tokens": 32747,
+      "completion_tokens": 20150,
+      "reasoning_tokens": 12921,
+      "truncated_responses": 0
+    }
+  },
+  "cases": [
+    {
+      "hid": "W-01",
+      "kind": "FP",
+      "title": "归档节点触发外发审计规则",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 4.8,
+      "error": ""
+    },
+    {
+      "hid": "W-02",
+      "kind": "FP",
+      "title": "运维主机只读盘点目录",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 6848.3,
+      "error": ""
+    },
+    {
+      "hid": "W-03",
+      "kind": "FP",
+      "title": "内部结算通道按周期建立加密连接",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 6505.8,
+      "error": ""
+    },
+    {
+      "hid": "W-04",
+      "kind": "FP",
+      "title": "终端基线巡检未命中危险行为",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 3614.7,
+      "error": ""
+    },
+    {
+      "hid": "W-05",
+      "kind": "ATK",
+      "title": "主机被远程服务下发执行编码命令",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 10106.8,
+      "error": ""
+    },
+    {
+      "hid": "W-06",
+      "kind": "ATK",
+      "title": "Web 目录出现可交互脚本文件",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "W-07",
+      "kind": "ATK",
+      "title": "文件服务器出现勒索说明文件",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 1.6,
+      "error": ""
+    },
+    {
+      "hid": "W-08",
+      "kind": "ATK",
+      "title": "非特权账号读取凭据内存",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 4338.9,
+      "error": ""
+    },
+    {
+      "hid": "W-09",
+      "kind": "ATK",
+      "title": "利用远程服务创建横向移动",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 14657.4,
+      "error": ""
+    },
+    {
+      "hid": "W-10",
+      "kind": "ATK",
+      "title": "主机定期回连可疑控制端",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 14622.9,
+      "error": ""
+    },
+    {
+      "hid": "W-11",
+      "kind": "ATK",
+      "title": "同源 IP 大规模认证失败",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常登录"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常登录",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 7923.9,
+      "error": ""
+    },
+    {
+      "hid": "W-12",
+      "kind": "EDGE",
+      "title": "办公文档宏触发脚本解释器",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 1.1,
+      "error": ""
+    },
+    {
+      "hid": "W-13",
+      "kind": "EDGE",
+      "title": "无线程交互的远程编码命令落地核心库",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 8992.6,
+      "error": ""
+    },
+    {
+      "hid": "W-14",
+      "kind": "EDGE",
+      "title": "夜间批量导出客户表（持变更单）",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "数据渗出"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "数据渗出",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 10518.0,
+      "error": ""
+    },
+    {
+      "hid": "W-15",
+      "kind": "EDGE",
+      "title": "运维审计系统记录的跳板登录",
+      "expected": {
+        "risk": "low",
+        "fp": false,
+        "type": "异常登录"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": false,
+        "type": "异常登录",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 11084.9,
+      "error": ""
+    }
+  ]
+}

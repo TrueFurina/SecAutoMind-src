@@ -1240,95 +1240,132 @@ func tryLowExponentBroadcast(text string, attachments map[string]string) []strin
 
 // tryHastadBroadcastAttack 完整 Hastad 广播攻击：e 组同明文不同 n（e=3 典型），
 // CRT 合成 m^e mod ∏n_i 后开 e 次根还原明文。
+// hastadPair 一组 (n_i, c_i)。
+type hastadPair struct{ n, c *big.Int }
+
+// sortedBigIntKeys 按键序取 map 键（"" 优先视为第 1 组，其余数字键升序）。
+func sortedBigIntKeys(m map[string]*big.Int) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i] == "" {
+			return true
+		}
+		if keys[j] == "" {
+			return false
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// tryHastadBroadcastAttack Håstad 广播攻击：同明文 m 用同一小指数 e 在多组模数下加密，
+// CRT 合成后开 e 次方根。支持两种题面格式：
+//   - 命名格式：n1=/c1=/n2=/c2=…（e 由 "e=" 给出，e≤16）；
+//   - 裸数字格式（玄盾杯 ezRSA，2026-10-15 立尺命中）：output 逐行给出
+//     n1,c1,n2,c2,n3,c3 且不印 e——按 Håstad 全范围 3..99 逐一尝试，
+//     以「精确 e 次根 + flag 外形」为判据（伪解需密文乘积恰为 e 次完全幂，
+//     概率约 N^(1−1/e)，数学上可忽略）。
 func tryHastadBroadcastAttack(text string, attachments map[string]string) []string {
 	fullText := text
 	for _, v := range attachments {
 		fullText += "\n" + v
 	}
-	eRe := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`)
-	eMatch := eRe.FindStringSubmatch(fullText)
-	if eMatch == nil {
-		return nil
-	}
-	e, ok := new(big.Int).SetString(eMatch[1], 10)
-	if !ok || e.Sign() <= 0 || e.Cmp(big.NewInt(16)) > 0 {
-		return nil
-	}
-	// 收集 n_i 与 c_i（n1/n2/... 与 c1/c2/...，纯 n=/c= 亦兼容）
-	pairRe := regexp.MustCompile(`(?i)\bn(\d*)\s*=\s*(\d+)`)
+	// ── 解析 (n_i, c_i) 对：先命名格式，不足 3 组时退化裸数字格式 ──
+	var pairs []hastadPair
 	nMap := map[string]*big.Int{}
-	for _, m := range pairRe.FindAllStringSubmatch(fullText, -1) {
-		v, okv := new(big.Int).SetString(m[2], 10)
-		if okv {
+	for _, m := range regexp.MustCompile(`(?i)\bn(\d*)\s*=\s*(\d+)`).FindAllStringSubmatch(fullText, -1) {
+		if v, ok := new(big.Int).SetString(m[2], 10); ok {
 			nMap[m[1]] = v
 		}
 	}
-	cpairRe := regexp.MustCompile(`(?i)\bc(\d*)\s*=\s*(\d+)`)
 	cMap := map[string]*big.Int{}
-	for _, m := range cpairRe.FindAllStringSubmatch(fullText, -1) {
-		v, okv := new(big.Int).SetString(m[2], 10)
-		if okv {
+	for _, m := range regexp.MustCompile(`(?i)\bc(\d*)\s*=\s*(\d+)`).FindAllStringSubmatch(fullText, -1) {
+		if v, ok := new(big.Int).SetString(m[2], 10); ok {
 			cMap[m[1]] = v
 		}
 	}
-	if len(nMap) < int(e.Int64()) || len(cMap) < int(e.Int64()) {
+	nKeys, cKeys := sortedBigIntKeys(nMap), sortedBigIntKeys(cMap)
+	for i := 0; i < len(nKeys) && i < len(cKeys); i++ {
+		pairs = append(pairs, hastadPair{n: nMap[nKeys[i]], c: cMap[cKeys[i]]})
+	}
+	if len(pairs) < 3 {
+		// 裸数字格式：按出现顺序两两配对（题面打印顺序为 n1,c1,n2,c2,…），
+		// 每对内取大者为 n（c = m^e mod n < n）。
+		nums := extractBigDecimalInts(fullText)
+		pairs = nil
+		for i := 0; i+1 < len(nums); i += 2 {
+			if nums[i].Cmp(nums[i+1]) >= 0 {
+				pairs = append(pairs, hastadPair{n: nums[i], c: nums[i+1]})
+			} else {
+				pairs = append(pairs, hastadPair{n: nums[i+1], c: nums[i]})
+			}
+		}
+	}
+	if len(pairs) < 3 {
 		return nil
 	}
-	// 按键序取前 e 组（键 "" 优先视为第 1 组，其余数字键升序）
-	nKeys := make([]string, 0, len(nMap))
-	for k := range nMap {
-		nKeys = append(nKeys, k)
+	// ── 指数候选：题面印刷的 e（≤16）优先，否则 Håstad 全范围 3..99 ──
+	// ezRSA 实测（2026-10-15 立尺）：task.py 有 assert(e<100) 但不印 e，真实 e=17，
+	// 且仅 3 组 (n,c)。只要 m^e < ∏n_i，CRT 合成后开 e 次根即精确成立——
+	// **与组数无关**，旧实现「need ≤ len(pairs)」的限制会直接漏掉 e=17。
+	// 旧候选 {3,5,7,9,11,13} 同因漏检；伪解需 x 恰为 e 次完全幂（概率可忽略），
+	// 且开根结果须过 flag 外形扫描，全范围试错不会引入假阳性。
+	var exps []*big.Int
+	if m := regexp.MustCompile(`(?i)\be\s*=\s*(\d+)`).FindStringSubmatch(fullText); m != nil {
+		if v, ok := new(big.Int).SetString(m[1], 10); ok && v.Sign() > 0 && v.Cmp(big.NewInt(16)) <= 0 {
+			exps = append(exps, v)
+		}
 	}
-	sort.Slice(nKeys, func(i, j int) bool {
-		if nKeys[i] == "" {
-			return true
-		}
-		if nKeys[j] == "" {
-			return false
-		}
-		return nKeys[i] < nKeys[j]
-	})
-	cKeys := make([]string, 0, len(cMap))
-	for k := range cMap {
-		cKeys = append(cKeys, k)
+	for v := int64(3); v <= 99; v++ {
+		exps = append(exps, big.NewInt(v))
 	}
-	sort.Slice(cKeys, func(i, j int) bool {
-		if cKeys[i] == "" {
-			return true
-		}
-		if cKeys[j] == "" {
-			return false
-		}
-		return cKeys[i] < cKeys[j]
-	})
-	ns := make([]*big.Int, 0, e.Int64())
-	cs := make([]*big.Int, 0, e.Int64())
-	for i := 0; i < int(e.Int64()); i++ {
-		ni, okN := nMap[nKeys[i]]
-		ci, okC := cMap[cKeys[i]]
-		if !okN || !okC {
-			return nil
-		}
-		ns = append(ns, ni)
-		cs = append(cs, ci)
+	// CRT 结果与 e 无关，只算一次（旧实现每试一个 e 重算一遍，白烧 ~97 倍）。
+	N, x := hastadCRT(pairs)
+	if N == nil {
+		return nil
 	}
-	// CRT 合成 x ≡ c_i (mod n_i) → x = m^e mod ∏n_i
+	for _, e := range exps {
+		if flags := hastadRootScan(e, x); len(flags) > 0 {
+			return flags
+		}
+	}
+	return nil
+}
+
+// hastadCRT 对全部 (n_i,c_i) 组执行 CRT 合成，返回 (∏n_i, x≡c_i (mod n_i))。
+// n_i 不互素时返回 nil（攻击前提不成立）。
+func hastadCRT(pairs []hastadPair) (*big.Int, *big.Int) {
 	N := big.NewInt(1)
-	for _, ni := range ns {
-		N.Mul(N, ni)
+	for _, p := range pairs {
+		if new(big.Int).GCD(nil, nil, N, p.n).Cmp(big.NewInt(1)) != 0 {
+			return nil, nil // n_i 必须两两互素
+		}
+		N.Mul(N, p.n)
 	}
 	x := new(big.Int)
-	for i := range ns {
-		Ni := new(big.Int).Div(N, ns[i])
-		inv := new(big.Int).ModInverse(Ni, ns[i])
+	for i := range pairs {
+		Ni := new(big.Int).Div(N, pairs[i].n)
+		inv := new(big.Int).ModInverse(Ni, pairs[i].n)
 		if inv == nil {
-			return nil
+			return nil, nil
 		}
-		t := new(big.Int).Mul(cs[i], Ni)
+		t := new(big.Int).Mul(pairs[i].c, Ni)
 		t.Mul(t, inv)
 		t.Mod(t, N)
 		x.Add(x, t)
 		x.Mod(x, N)
+	}
+	return N, x
+}
+
+// hastadRootScan 尝试对 x 开 e 次方根；精确根且扫出 flag 外形才返回。
+// ⚠️ 判大小必须用 Cmp——Sign() 只有 -1/0/1（见 tryRSAWienerAttack 同款踩坑注释）。
+func hastadRootScan(e *big.Int, x *big.Int) []string {
+	if e.Cmp(big.NewInt(3)) < 0 || e.Cmp(big.NewInt(99)) > 0 {
+		return nil
 	}
 	root := integerNthRoot(x, int(e.Int64()))
 	if root == nil {

@@ -297,6 +297,14 @@ func init() {
 
 	// P22 批次：CRC32 伪造（线性校验 ≠ MAC，追加 4 字节改任意目标，双语言机验）
 	RegisterSolver(SolverEntry{Name: "crc32_forge", Category: CategoryCryptoS, Priority: 71, Solver: solveCRC32Forge})
+
+	// P23 批次：cross-bench 立尺驱动的真攻击（2026-10-15，sha256 真值机验）
+	//   - rsa_phi_pinv：已知 phi+pinv/qinv 二次方程恢复 p,q（玄盾杯 ExcitingInverse）
+	//   - legendre_bit_phi：phi 分解 N 后逐位 Legendre 符号解密（玄盾杯 SimpleLegendre）
+	//   - lfsr_correlation：GF(2) 线性 + ISD 信息集解码恢复双 LFSR 初态（西湖论剑 FilterRandom）
+	RegisterSolver(SolverEntry{Name: "rsa_phi_pinv", Category: CategoryCryptoS, Priority: 34, Solver: solveRSAPhiPinv})
+	RegisterSolver(SolverEntry{Name: "legendre_bit_phi", Category: CategoryCryptoS, Priority: 35, Solver: solveLegendreBitPhi})
+	RegisterSolver(SolverEntry{Name: "lfsr_correlation", Category: CategoryCryptoS, Priority: 36, Solver: solveLFSRCorrelation})
 }
 
 // ── 求解器函数适配器（调用现有 presolve.go 的实现） ──────
@@ -904,6 +912,32 @@ func solveNetworkForensics(ctx context.Context, text string, attachments map[str
 }
 func solveExploitChain(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryExploitChainDetection(text, attachments)
+}
+
+// ── P23 批次适配函数（cross-bench 立尺驱动，2026-10-15） ──────────────────
+
+func solveRSAPhiPinv(ctx context.Context, text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	return tryRSAPhiPinv(fullText)
+}
+
+func solveLegendreBitPhi(ctx context.Context, text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	return tryLegendreBitPhi(fullText)
+}
+
+func solveLFSRCorrelation(ctx context.Context, text string, attachments map[string]string) []string {
+	fullText := text
+	for _, v := range attachments {
+		fullText += "\n" + v
+	}
+	return tryLFSRCorrelation(fullText)
 }
 
 // ── P1 真解题求解器适配函数 ──────────────────────────────────

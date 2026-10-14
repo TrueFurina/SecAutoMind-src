@@ -1,0 +1,68 @@
+[
+  {
+    "id": "A1",
+    "desc": "变更单掩护的数据渗出（真攻击，APT 常用手法）",
+    "fail_type": "漏报(FN)",
+    "expected_fp": false,
+    "actual_fp": false,
+    "expected_risk": "high",
+    "actual_risk": "high",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  },
+  {
+    "id": "A2",
+    "desc": "例行加密备份（正常运维，误报）",
+    "fail_type": "误报(FP)",
+    "expected_fp": true,
+    "actual_fp": true,
+    "expected_risk": "low",
+    "actual_risk": "low",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  },
+  {
+    "id": "A3",
+    "desc": "运维人员 net.exe 查看共享清单（正常运维，误报）",
+    "fail_type": "误报(FP)",
+    "expected_fp": true,
+    "actual_fp": true,
+    "expected_risk": "low",
+    "actual_risk": "low",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  },
+  {
+    "id": "A4",
+    "desc": "凭据转储变体（关键词拆字绕过，真攻击）",
+    "fail_type": "漏报(FN)",
+    "expected_fp": false,
+    "actual_fp": false,
+    "expected_risk": "high",
+    "actual_risk": "high",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  },
+  {
+    "id": "A5",
+    "desc": "HTTPS 加密外联的正常业务（误报）",
+    "fail_type": "误报(FP)",
+    "expected_fp": true,
+    "actual_fp": true,
+    "expected_risk": "low",
+    "actual_risk": "low",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  },
+  {
+    "id": "A6",
+    "desc": "带变更单的恶意宏投递（变更单掩护攻击）",
+    "fail_type": "漏报(FN)",
+    "expected_fp": false,
+    "actual_fp": false,
+    "expected_risk": "high",
+    "actual_risk": "high",
+    "prefilter_decision": "NEED_LLM",
+    "passed": true
+  }
+]

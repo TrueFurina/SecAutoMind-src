@@ -1,0 +1,345 @@
+{
+  "summary": {
+    "mode": "llm",
+    "sample_set": "v2",
+    "total": 14,
+    "passed": 14,
+    "pass_rate": 1.0,
+    "noise_accuracy": 1.0,
+    "attack_accuracy": 1.0,
+    "missed_attacks": 0,
+    "false_alarms": 0,
+    "llm_usage": {
+      "requests": 8,
+      "failed_requests": 0,
+      "prompt_tokens": 23727,
+      "completion_tokens": 16865,
+      "reasoning_tokens": 11734,
+      "truncated_responses": 0
+    }
+  },
+  "cases": [
+    {
+      "hid": "V-01",
+      "kind": "FP",
+      "title": "数据库备份作业触发外传规则",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 4.9,
+      "error": ""
+    },
+    {
+      "hid": "V-02",
+      "kind": "FP",
+      "title": "主机目录清单只读枚举",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 10008.9,
+      "error": ""
+    },
+    {
+      "hid": "V-03",
+      "kind": "FP",
+      "title": "对账平台周期性加密同步",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 9850.4,
+      "error": ""
+    },
+    {
+      "hid": "V-04",
+      "kind": "FP",
+      "title": "资产盘点扫描器例行运行",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 1.5,
+      "error": ""
+    },
+    {
+      "hid": "V-05",
+      "kind": "ATK",
+      "title": "服务器上远程下发编码命令执行",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 8962.4,
+      "error": ""
+    },
+    {
+      "hid": "V-06",
+      "kind": "ATK",
+      "title": "Web 服务器落地 aspx 脚本并被带参调用",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "WebShell 攻击",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "V-07",
+      "kind": "ATK",
+      "title": "共享目录文件被批量加密",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "勒索软件加密",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.7,
+      "error": ""
+    },
+    {
+      "hid": "V-08",
+      "kind": "ATK",
+      "title": "使用系统自带二进制转储 LSASS",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "凭据转储",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 6254.3,
+      "error": ""
+    },
+    {
+      "hid": "V-09",
+      "kind": "ATK",
+      "title": "通过 WMIC 在远端主机创建服务",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "横向移动前置",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 14245.5,
+      "error": ""
+    },
+    {
+      "hid": "V-10",
+      "kind": "ATK",
+      "title": "终端对可疑域名周期外联",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常外联",
+        "decision": "NEED_LLM",
+        "confidence": "medium"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 9075.2,
+      "error": ""
+    },
+    {
+      "hid": "V-11",
+      "kind": "ATK",
+      "title": "外部 IP 高频认证失败后登录成功",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常登录"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "异常登录",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 13199.3,
+      "error": ""
+    },
+    {
+      "hid": "V-12",
+      "kind": "EDGE",
+      "title": "邮件附件打开后触发 PowerShell 下载",
+      "expected": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "high",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "AUTO_ESCALATE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    },
+    {
+      "hid": "V-13",
+      "kind": "EDGE",
+      "title": "核心业务主机上编码命令被远程执行",
+      "expected": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行"
+      },
+      "actual": {
+        "risk": "critical",
+        "fp": false,
+        "type": "恶意脚本执行",
+        "decision": "NEED_LLM",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 11381.7,
+      "error": ""
+    },
+    {
+      "hid": "V-14",
+      "kind": "FP",
+      "title": "例行巡检未发现凭据访问",
+      "expected": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报"
+      },
+      "actual": {
+        "risk": "low",
+        "fp": true,
+        "type": "误报",
+        "decision": "AUTO_CLOSE",
+        "confidence": "high"
+      },
+      "risk_match": true,
+      "fp_match": true,
+      "type_match": true,
+      "pass_": true,
+      "duration_ms": 0.9,
+      "error": ""
+    }
+  ]
+}
