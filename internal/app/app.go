@@ -406,6 +406,23 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN，绝不硬编码），
 	// 取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
 	ctfPlatform := ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	// 抗打击治理配置面（总纲 §2.4）：config.yaml 的 ctf_platform 段 → 客户端。
+	// 不配置即 7 项全开，与接线前逐字节一致；enabled: false（或 env
+	// CTF_AGENT_ANTI_BLOCK=0）一键回退为朴素直连。
+	antiBlockOn := cfg.CTFPlatform.AntiBlockEnabled()
+	ctfPlatform.SetAntiBlock(ctfplatform.AntiBlockOptions{
+		Enabled:      antiBlockOn,
+		MaxRetries:   cfg.CTFPlatform.MaxRetriesEffective(),
+		RetryBackoff: cfg.CTFPlatform.RetryBackoff(),
+		WAFTimeout:   cfg.CTFPlatform.WAFTimeout(),
+		ListCacheTTL: cfg.CTFPlatform.ListCacheTTL(),
+	})
+	if antiBlockOn {
+		log.Logger.Info("CTF 抗打击治理已启用（7 项：退避重试/Retry-After/429 计数/阶梯建议/WAF 冷却/列表缓存/连接复用）")
+	} else {
+		log.Logger.Warn("CTF 抗打击治理已回退：不重试、不计 429、不冷却 WAF、不缓存列表、不复用连接",
+			zap.String("原因", "ctf_platform.enabled=false 或 CTF_AGENT_ANTI_BLOCK=0"))
+	}
 	ctfIntegrator := ctfplatform.NewPresolveAgentIntegrator(ctfPresolve, ctfAnalyzer, ctfPlatform, log.Logger)
 	agentHandler.SetCTFPresolveIntegrator(ctfIntegrator)
 

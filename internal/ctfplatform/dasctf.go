@@ -48,6 +48,12 @@ type DasCTFPlatform struct {
 	listCache       []Challenge   // 列表缓存
 	listCacheAt     time.Time     // 列表缓存写入时刻
 	lastError       string        // 最近一次请求层失败详情（供 SubmitFlag 暴露真实错误）
+
+	// antiBlockDisabled 抗打击治理「一键回退」位（总纲 §2.4）。
+	// 刻意用**反向零值**存储：零值 false = 7 项全开，故直接 `&DasCTFPlatform{...}`
+	// 构造的代码（含既有测试）无需任何改动，行为与接线前完全一致。
+	// 详见 anti_block_config.go 的取舍说明。
+	antiBlockDisabled bool
 }
 
 // defaultUserAgent 与真源（Python 客户端）保持逐字一致。
@@ -122,13 +128,20 @@ func (p *DasCTFPlatform) doRequestURL(ctx context.Context, method, path string, 
 	}
 	url := p.BaseURL + path
 
+	antiBlock := p.antiBlockOn()
+
 	// ⑤ WAF 冷却冻结检查（403 命中后冷却期内所有平台请求直接跳过，避免雪崩）
-	if secs := p.WafBlockedSeconds(); secs > 0 {
-		return nil, 0, fmt.Errorf("WAF 风控冷却中(剩余 %.0fs)，跳过平台请求", secs)
+	if antiBlock {
+		if secs := p.WafBlockedSeconds(); secs > 0 {
+			return nil, 0, fmt.Errorf("WAF 风控冷却中(剩余 %.0fs)，跳过平台请求", secs)
+		}
 	}
 
 	maxRetries := p.MaxRetries
-	if maxRetries <= 0 {
+	if !antiBlock {
+		// 一键回退：不重试，单次请求失败即返回（朴素直连行为）
+		maxRetries = 0
+	} else if maxRetries <= 0 {
 		maxRetries = 5
 	}
 	backoff := p.RetryBackoff
@@ -187,21 +200,30 @@ func (p *DasCTFPlatform) doRequestURL(ctx context.Context, method, path string, 
 		switch resp.StatusCode {
 		case http.StatusOK, http.StatusCreated:
 			// 请求成功 → 重置连续 429 计数（退避阶梯在成功后自然回落）
-			p.resetConsec429()
+			if antiBlock {
+				p.resetConsec429()
+			}
 			return data, resp.StatusCode, nil
 		case http.StatusForbidden:
 			// ⑤ 403 WAF 风控（初赛高频轮询触发「疑似攻击行为」封禁的根因）：冻结请求
-			cooldown := p.wafTimeout()
-			p.mu.Lock()
-			p.wafBlockedUntil = time.Now().Add(cooldown)
-			p.mu.Unlock()
-			msg := fmt.Sprintf("平台 403 WAF 风控（冷却 %s）", cooldown)
+			if antiBlock {
+				cooldown := p.wafTimeout()
+				p.mu.Lock()
+				p.wafBlockedUntil = time.Now().Add(cooldown)
+				p.mu.Unlock()
+				msg := fmt.Sprintf("平台 403 WAF 风控（冷却 %s）", cooldown)
+				p.setLastError(msg)
+				return nil, resp.StatusCode, fmt.Errorf("%s", msg)
+			}
+			// 一键回退：不设 WAF 冷却，但**仍然如实返回错误**——回退的是抗打击
+			// 动作，不是错误可见性；吞掉 403 会让上层把封禁当成正常返回。
+			msg := fmt.Sprintf("平台 403（抗打击治理已回退，未启用 WAF 冷却）: %s", truncate(string(data), 200))
 			p.setLastError(msg)
 			return nil, resp.StatusCode, fmt.Errorf("%s", msg)
 		case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway,
 			http.StatusServiceUnavailable, http.StatusGatewayTimeout:
 			// ② 可重试状态码：指数退避 + 尊重 Retry-After；429 时累加连续计数
-			if resp.StatusCode == http.StatusTooManyRequests {
+			if antiBlock && resp.StatusCode == http.StatusTooManyRequests {
 				p.incConsec429()
 			}
 			retryAfter = resp.Header.Get("Retry-After")
@@ -213,6 +235,9 @@ func (p *DasCTFPlatform) doRequestURL(ctx context.Context, method, path string, 
 			p.setLastError(fmt.Sprintf("HTTP %d: %s", resp.StatusCode, truncate(string(data), 200)))
 			return nil, resp.StatusCode, fmt.Errorf("平台返回 HTTP %d, body=%s", resp.StatusCode, string(data))
 		}
+	}
+	if !antiBlock {
+		return nil, lastStatus, fmt.Errorf("平台请求失败(抗打击治理已回退，未重试): %v", lastErr)
 	}
 	return nil, lastStatus, fmt.Errorf("平台请求重试耗尽(%d次): %v", maxRetries, lastErr)
 }
@@ -569,8 +594,9 @@ func flattenChallenges(data json.RawMessage) (list []Challenge, ok bool) {
 func (p *DasCTFPlatform) ListChallenges(ctx context.Context) ([]Challenge, error) {
 	// ⑥ 列表 TTL 缓存：轮询循环每轮都调 exercise-list，赛时 429 风暴根因之一。
 	// TTL 内直接复用，拉取到 0 道题时也不重复请求。
+	// 一键回退（antiBlockDisabled）时缓存读写一并停用，每轮真实发请求。
 	p.mu.Lock()
-	if p.listCache != nil && time.Since(p.listCacheAt) < p.listCacheTTL {
+	if !p.antiBlockDisabled && p.listCache != nil && time.Since(p.listCacheAt) < p.listCacheTTL {
 		cached := p.listCache
 		p.mu.Unlock()
 		return cached, nil
@@ -624,8 +650,10 @@ func (p *DasCTFPlatform) ListChallenges(ctx context.Context) ([]Challenge, error
 	}
 	p.setLastListOK(true)
 	p.mu.Lock()
-	p.listCache = challenges
-	p.listCacheAt = time.Now()
+	if !p.antiBlockDisabled {
+		p.listCache = challenges
+		p.listCacheAt = time.Now()
+	}
 	p.mu.Unlock()
 	p.Logger.Info("拉取题目列表成功", zap.Int("count", len(challenges)))
 	return challenges, nil
@@ -1141,7 +1169,11 @@ func (p *DasCTFPlatform) Consec429() int {
 
 // BackoffSuggestion ④ 根据连续 429 次数给出建议轮询间隔（秒）；无 429 返回 0（不干预）。
 // 阶梯：≥12→300s；≥8→120s；≥5→60s；≥3→30s；其余→0（由轮询层覆盖当前间隔）。
+// 一键回退（antiBlockDisabled）时恒返回 0，轮询层退回固定间隔。
 func (p *DasCTFPlatform) BackoffSuggestion(base float64) float64 {
+	if !p.antiBlockOn() {
+		return 0
+	}
 	n := p.Consec429()
 	switch {
 	case n >= 12:
@@ -1158,9 +1190,13 @@ func (p *DasCTFPlatform) BackoffSuggestion(base float64) float64 {
 }
 
 // WafBlockedSeconds ⑤ 返回 WAF 冷却剩余秒数（>0 = 封禁中）；到期自动清零。
+// 一键回退时恒返回 0（不冻结请求）。
 func (p *DasCTFPlatform) WafBlockedSeconds() float64 {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.antiBlockDisabled {
+		return 0
+	}
 	if p.wafBlockedUntil.IsZero() {
 		return 0
 	}

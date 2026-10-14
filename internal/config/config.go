@@ -50,6 +50,7 @@ type Config struct {
 	MultiAgent  MultiAgentConfig      `yaml:"multi_agent,omitempty" json:"multi_agent,omitempty"`
 	Project     ProjectConfig         `yaml:"project,omitempty" json:"project,omitempty"`
 	Vision      VisionConfig          `yaml:"vision,omitempty" json:"vision,omitempty"`
+	CTFPlatform CTFPlatformConfig     `yaml:"ctf_platform,omitempty" json:"ctf_platform,omitempty"` // 决赛平台客户端抗打击治理（总纲 §2.4：默认开、一键回退）
 }
 
 type EnsureLocalConfigResult struct {
