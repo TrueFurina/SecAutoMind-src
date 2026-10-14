@@ -350,6 +350,27 @@ def _diff_line(label, want, got):
     return "  - %-46s 包内=%-12s 活值=%-12s" % (label, want, got)
 
 
+def _seg(pkg, key):
+    """取一个段；缺失/非对象一律当空段（后续 fail-closed 判据会把它变成漂移）。"""
+    v = pkg.get(key)
+    return v if isinstance(v, dict) else {}
+
+
+def _cmp_missing(path, saved_blk, live_blk, keys):
+    """「包内有值、活值却取不到」= 采集失败或字段消失，必须算漂移。
+
+    与下面的 cmp(skip_if_none=True) 互补：那个管「两边都取到了但值不同」，
+    这个管「本该取到却没了」。只做前者时，live 侧整段采集失败会被逐字段跳过 → 零漂移 → PASS。
+    """
+    out = []
+    for k in keys:
+        sv = (saved_blk or {}).get(k)
+        lv = (live_blk or {}).get(k)
+        if sv is not None and lv is None:
+            out.append(_diff_line(path + "." + k + "（活值缺失）", sv, "None"))
+    return out
+
+
 def check(pkg_live, pkg_saved):
     """比对"对外数字"子集；返回 (drift_list, notes)。"""
     drift = []
@@ -359,6 +380,51 @@ def check(pkg_live, pkg_saved):
             return
         if want != got:
             drift.append(_diff_line(path, want, got))
+
+    # ------------------------------------------------------------------
+    # 0) 2026-10-14 补（门禁审计 · 空洞绿）：结构性 fail-closed
+    #    cmp() 的 skip_if_none 让「live 侧整段采集失败」被逐字段跳过：
+    #       count_stats 挂了 → caliber={"error":...}；summary 缺失 → benchmark={"error":...}；
+    #       gates 段压根没采集 → 无任何 _rc 键。三种情况下 drift 恒为空，--check 报 PASS。
+    #    证据包存在的意义就是「对外数字与代码不脱节」，采集不到时必须红，不许当"没变化"。
+    # ------------------------------------------------------------------
+    lc, lb0 = _seg(pkg_live, "caliber"), _seg(pkg_live, "benchmark")
+    if "error" in lc or not lc:
+        drift.append(_diff_line("caliber（活值采集失败/为空）", "有值", lc.get("error", "空")))
+    if "error" in lb0 or not lb0:
+        drift.append(_diff_line("benchmark（活值采集失败/为空）", "有值", lb0.get("error", "空")))
+    drift += _cmp_missing("caliber", _seg(pkg_saved, "caliber"), lc, CALIBER_COMPARE)
+    sb0, lb1 = _seg(pkg_saved, "benchmark"), lb0
+    sb_base, lb_base = (sb0.get("base") or {}), (lb1.get("base") or {})
+    for k in BASE_SETS:
+        drift += _cmp_missing("benchmark.base." + k, sb_base.get(k), lb_base.get(k),
+                              ("total", "hit", "miss", "coverage_pct"))
+    drift += _cmp_missing("benchmark.base.static", sb_base.get("static"), lb_base.get("static"),
+                          ("flag_scan_only", "real_solver_hit"))
+    drift += _cmp_missing("benchmark.base.attachment", sb_base.get("attachment"),
+                          lb_base.get("attachment"), ("water_filled",))
+    sb_layers, lb_layers = (sb0.get("layers") or {}), (lb1.get("layers") or {})
+    for k in EXPLOIT_LAYERS:
+        drift += _cmp_missing("benchmark.layers." + k, sb_layers.get(k), lb_layers.get(k),
+                              ("total", "hit", "miss"))
+    drift += _cmp_missing("benchmark.web_hints", sb0.get("web_hints"), lb1.get("web_hints"),
+                          ("total", "group_a_no_hint", "group_b_with_hint", "delta"))
+    drift += _cmp_missing("benchmark.provenance", sb0.get("provenance"), lb1.get("provenance"),
+                          ("real_problems", "synthetic_problems", "total_problems",
+                           "synthetic_ratio_pct"))
+    if sb0.get("summary_sha256") is not None and lb1.get("summary_sha256") is None:
+        drift.append(_diff_line("benchmark.summary_sha256（活值缺失）",
+                                sb0.get("summary_sha256"), "None"))
+    sg0, lg0 = _seg(pkg_saved, "golden"), _seg(pkg_live, "golden")
+    if sg0.get("freeze_check_rc") is not None and lg0.get("freeze_check_rc") is None:
+        drift.append(_diff_line("golden.freeze_check_rc（活值缺失）",
+                                sg0.get("freeze_check_rc"), "None"))
+    for rel, h in (sg0.get("files_sha256") or {}).items():
+        if h is not None and (lg0.get("files_sha256") or {}).get(rel) is None:
+            drift.append(_diff_line("golden.files_sha256." + rel + "（活值缺失）", h, "None"))
+    # 门禁 RC：包里一条都没记 = 证据包从未采集过门禁结果，等于把"门禁结论"整段架空
+    if not any(k.endswith("_rc") for k in _seg(pkg_saved, "gates")):
+        drift.append(_diff_line("gates（包内未记录任何门禁 RC）", "有 _rc", "无"))
 
     # 1) 规模真值
     for k in CALIBER_COMPARE:

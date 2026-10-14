@@ -73,6 +73,11 @@ jobs:
       # 规划 §4.2：HITL 失效边界的**确定性**模式机验（超时挂死 / 落库失败 / 覆盖冲突 /
       # 越界裁决 / 参数篡改），主路径 + C2 桥接路径双跑。human 档（false-approve/block）
       # 需外部导师评测，脚本如实标 OPEN，**不伪造数据**；本步只判定 machine 档。
+      # 门禁自身也要有回归测试（2026-10-14 门禁审计）：`go test` 在测试名对不上时
+      # 照样 exit 0（no tests to run），旧判据把「一条都没跑」判成 PASS，
+      # 模式矩阵全绿而验证覆盖为 0。现从 -v 输出回读每个测试名的判定行，缺一即红。
+      - name: HITL boundary gate self-test (no-tests-to-run must NOT pass)
+        run: python scripts/run_hitl_boundary_test.py
       - name: HITL failure-boundary check (deterministic modes)
         run: python scripts/run_hitl_boundary.py --check
       - name: Build
@@ -116,6 +121,10 @@ jobs:
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Regenerate dual-language benchmark summary
         run: python data/ctf_benchmark/run_all_benchmarks.py
+      # 门禁自身也要有回归测试（2026-10-14 门禁审计）：provenance 零覆盖曾静默报绿
+      # （total_problems<=0 时三条自洽检查自动成立），现 fail-closed 并由本步实跑自测。
+      - name: Evidence gate self-test (zero-coverage provenance must NOT pass)
+        run: python scripts/verify_evidence_test.py
       - name: Evidence / caliber consistency gate
         run: python scripts/verify_evidence.py
 
@@ -143,6 +152,11 @@ jobs:
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Regenerate dual-language benchmark summary
         run: python data/ctf_benchmark/run_all_benchmarks.py
+      # 门禁自身也要有回归测试（2026-10-14 门禁审计）：cmp(skip_if_none=True) 会把
+      # 「live 侧整段采集失败」（count_stats 挂 / summary 缺 / gates 未采）逐字段跳过
+      # → 零漂移报 PASS。现结构性 fail-closed 并由本步实跑自测。
+      - name: Evidence package gate self-test (missing live values must NOT pass)
+        run: python scripts/build_championship_evidence_test.py
       - name: Championship evidence package consistency (drift => BLOCK)
         run: python scripts/build_championship_evidence.py --check
       - name: Evidence package gate mutation check (prove the gate can fail)
@@ -347,6 +361,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 门禁自身也要有回归测试（2026-10-14 门禁审计）：本门禁结论全由「违规项计数」
+      # 构成，扫到 0 个文件（目录名写错 / 被 gitignore / 扩展名被改空）时会无条件全绿。
+      # 现 fail-closed（覆盖数为 0 即红）并由本步实跑自测，同时锁死豁免机制不退化。
+      - name: Material-number gate self-test (zero files scanned must NOT pass)
+        run: python scripts/check_material_numbers_test.py
       - name: Material numbers vs single source of truth
         run: python scripts/check_material_numbers.py
       # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，

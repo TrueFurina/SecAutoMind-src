@@ -129,13 +129,47 @@ NA_MODES = [
 ]
 
 
+def tests_actually_run(out: str, tests: list[str]) -> list[str]:
+    """从 `go test -v` 输出里回读「真正被判定过」的测试名，返回**没跑到的**那些。
+
+    为什么必须有这一步（2026-10-14 门禁审计 · 空洞绿）：
+      `go test -run '^TestX$'` 在 **测试名对不上**（被改名 / 被删 / 包路径写错）时
+      照样 exit 0，只输出 `testing: warning: no tests to run` / `ok ... [no tests to run]`。
+      旧版 `ok = rc==0 and "FAIL" not in out` 于是把「一条都没跑」判成 PASS ——
+      模式矩阵写着 5 个 machine 模式全绿，实际验证覆盖为 0。这是本项目最忌的
+      「声明了却不存在/不跑」（AGENTS.md 第八条同款形态）。
+
+    判据：只有 `--- PASS: <name>` / `--- FAIL: <name>` 才算真跑真判；
+      `--- SKIP` 与「压根没匹配上」都不算（跳过 = 没验证，不能充数）。
+    """
+    ran = set()
+    for line in (out or "").splitlines():
+        s = line.strip()
+        for prefix in ("--- PASS: ", "--- FAIL: "):
+            if s.startswith(prefix):
+                name = s[len(prefix):].split("(")[0].strip().split(" ")[0]
+                ran.add(name)
+                break
+    return [t for t in tests if t not in ran]
+
+
 def run_go_tests(pkg: str, tests: list[str]) -> tuple[bool, str]:
     pattern = "^(" + "|".join(tests) + ")$"
     cmd = ["go", "test", pkg, "-run", pattern, "-count=1", "-v"]
-    p = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
-                       encoding="utf-8", errors="replace")
+    try:
+        p = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        # 环境故障必须与"测试失败"分开报：go 不在 PATH 时崩溃只会给出一头雾水的 traceback
+        return False, "[环境故障] 找不到 `go` 可执行文件：请检查 PATH / Go 工具链安装"
     out = (p.stdout or "") + (p.stderr or "")
     ok = (p.returncode == 0) and ("FAIL" not in out)
+    not_run = tests_actually_run(out, tests)
+    if not_run:
+        # 声明了却没跑 = 门禁失效，等同失败（fail-closed）；不许静默算绿
+        ok = False
+        out += ("\n[fail-closed] 下列测试在 `go test -v` 输出中没有 PASS/FAIL 判定行"
+                "（测试名失效 / 已删 / 包路径写错）：%s" % ", ".join(not_run))
     return ok, out
 
 
@@ -173,6 +207,10 @@ def main():
             fails.append(m["id"])
         results.append((m, status, " || ".join(tails)))
         print("  [%-4s] %-16s %s" % (status, m["id"], m["name"]))
+        # 失败详情必须打出来：只报模式名不报原因 = 掩盖失败细节（AGENTS.md 第一条）。
+        # tails 里含着 [fail-closed] 测试未真跑清单 / 环境故障归因，是修复的唯一线索。
+        for t in tails:
+            print("        ↳ %s" % t)
 
     print("  [%-4s] %-16s (需外部导师 randomized 评测，本脚本不伪造数据)"
           % (OPEN, "false_approve/false_block"))
