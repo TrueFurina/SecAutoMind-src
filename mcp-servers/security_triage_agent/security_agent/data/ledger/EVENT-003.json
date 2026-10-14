@@ -1,0 +1,115 @@
+{
+  "event_id": "EVENT-003",
+  "scenario": "安全事件初步研判 + 误报剔除",
+  "started_at": "2026-10-14T10:19:05.066885Z",
+  "finalized_at": "2026-10-14T10:19:05.070230Z",
+  "steps": [
+    {
+      "phase": "context",
+      "timestamp": "2026-10-14T10:19:05.067341Z",
+      "tool": "asset_lookup",
+      "summary": "已获取 OA-SRV-01 的资产画像",
+      "details": [
+        "资产负责人: it_service",
+        "部门: IT服务",
+        "重要性: middle",
+        "维护窗口: 无",
+        "基线进程: nginx.exe, php-cgi.exe, mysql.exe"
+      ]
+    },
+    {
+      "phase": "context",
+      "timestamp": "2026-10-14T10:19:05.067347Z",
+      "tool": "log_lookup",
+      "summary": "返回 2 条与主机/账号相关的日志",
+      "details": [
+        "2025-03-10 12:00 出站连接 203.0.113.5:443 已建立",
+        "2025-03-10 12:00 进程 nginx.exe 异常外联行为"
+      ]
+    },
+    {
+      "phase": "context",
+      "timestamp": "2026-10-14T10:19:05.067349Z",
+      "tool": "intel_lookup",
+      "summary": "未命中已知外联情报",
+      "details": []
+    },
+    {
+      "phase": "context",
+      "timestamp": "2026-10-14T10:19:05.067352Z",
+      "tool": "history_alert_lookup",
+      "summary": "未检索到历史告警记录",
+      "details": []
+    },
+    {
+      "phase": "context",
+      "timestamp": "2026-10-14T10:19:05.067354Z",
+      "tool": "false_positive_check",
+      "summary": "未发现明确误报线索",
+      "details": []
+    },
+    {
+      "phase": "knowledge",
+      "timestamp": "2026-10-14T10:19:05.067356Z",
+      "summary": "RAG 风格检索返回 3 条高相关知识（含 ATT&CK/CVE 依据）"
+    },
+    {
+      "phase": "prefilter",
+      "timestamp": "2026-10-14T10:19:05.067772Z",
+      "decision": "NEED_LLM",
+      "matched_rules": [],
+      "llm_skipped": false
+    },
+    {
+      "phase": "triage",
+      "timestamp": "2026-10-14T10:19:05.068533Z",
+      "event_type": "异常外联",
+      "risk_level": "high",
+      "confidence": "low",
+      "is_false_positive": false,
+      "verdict": "存在明显异常行为，建议优先研判并限制风险扩散。"
+    },
+    {
+      "phase": "postprocess",
+      "timestamp": "2026-10-14T10:19:05.068565Z",
+      "tool": "playbook_matcher",
+      "summary": "匹配到处置预案: 高风险事件研判与遏制流程",
+      "details": [
+        "适用事件: 安全告警：OA 服务器异常外联",
+        "收敛受影响资产范围",
+        "执行临时访问控制或主机隔离"
+      ]
+    },
+    {
+      "phase": "postprocess",
+      "timestamp": "2026-10-14T10:19:05.068568Z",
+      "tool": "ticket_generator",
+      "summary": "已生成待复核记录 REVIEW-EVENT-003-20261014101905（低置信，未自动开 P 级工单）",
+      "details": [
+        "记录编号: REVIEW-EVENT-003-20261014101905",
+        "优先级: 待人工复核（低置信度，不自动处置）",
+        "处理队列: SOC-L1 / 人工复核"
+      ]
+    },
+    {
+      "phase": "postprocess",
+      "timestamp": "2026-10-14T10:19:05.068571Z",
+      "tool": "host_isolation_simulator",
+      "summary": "已生成模拟处置动作",
+      "details": [
+        "目标主机: OA-SRV-01",
+        "风险等级: high",
+        "动作建议: 建议立即隔离主机并限制外联"
+      ]
+    }
+  ],
+  "final_verdict": {
+    "event_id": "EVENT-003",
+    "event_type": "异常外联",
+    "verdict": "存在明显异常行为，建议优先研判并限制风险扩散。",
+    "risk_level": "high",
+    "confidence": "low",
+    "is_false_positive": false,
+    "prefilter_decision": "NEED_LLM"
+  }
+}
