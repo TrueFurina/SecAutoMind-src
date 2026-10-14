@@ -259,8 +259,10 @@ def main():
         )
     banned_hits, anchor_hits = [], []
     exempted = 0
+    scanned = 0   # 2026-10-14 补：扫描覆盖数（见下方 fail-closed 判据）
 
     for path in iter_files():
+        scanned += 1
         rpath = rel(path)
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as fh:
@@ -293,9 +295,22 @@ def main():
                 if got != int(want):
                     anchor_hits.append((rpath, lineno, label, got, int(want), line.strip()[:120]))
 
+    # 2026-10-14 补（门禁审计 · 空洞绿）：本门禁的全部结论都由「违规项计数」构成，
+    # 因此**扫到 0 个文件时会无条件全绿** —— SCAN_DIRS 写错目录名、目录被 gitignore
+    # （`官网/` 就从未入版本库）、或扫描扩展名被改空，都会让门禁静默失效却报 PASS。
+    # 这正是 _audit_llm_pool.py 当年「池文件缺失 → 空池 → 全绿」的同款失效形态。
+    # 判据：扫描覆盖数为 0 本身必须算红（fail-closed），绝不允许「没扫到 = 没问题」。
+    if scanned == 0:
+        raise SystemExit(
+            "FATAL: 本门禁扫描到 0 个材料文件（SCAN_DIRS=%s，根目录 *.md 亦为空）。\n"
+            "  「一个都没扫到」与「扫了且全部一致」是两回事 —— 后者才是 PASS。\n"
+            "  常见原因：目录名写错 / 目录被 .gitignore 排除 / SCAN_EXT 被改空。\n"
+            "  门禁绝不把「没扫到」当成「没问题」放行。" % (SCAN_DIRS,))
+
     print("=" * 70)
     print("材料口径门禁 · 真值来自 scripts/count_stats.py --json")
     print("  锚定 HEAD: %s" % truth.get("head"))
+    print("  扫描材料文件 %d 个（覆盖数为 0 即 FAIL，见上）" % scanned)
     print("  go_files=%s  test_files=%s  ctf_solvers=%s  runtime_tools=%s  "
           "tools_yaml=%s  builtin_tools=%s  go_packages=%s  test_packages=%s"
           % (truth.get("go_files"), truth.get("test_files"), truth.get("ctf_solvers"),

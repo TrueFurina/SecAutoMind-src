@@ -120,7 +120,7 @@ def check_evidence(summary_path):
     if s["attachment"].get("water_filled", 0) != 0:
         raise AssertionError("附件集反注水门禁触发：water_filled=%s（存在注水命中）" % s["attachment"].get("water_filled"))
 
-    # 冠军差异点十六大利用层：必须全命中，零未命中
+    # 冠军差异点十七大利用层：必须全命中，零未命中
     for k in MUST_FULL:
         blk = s.get(k)
         if not isinstance(blk, dict):
@@ -149,6 +149,16 @@ def check_evidence(summary_path):
         raise AssertionError("provenance 字段不完整：real/synthetic/total_problems/synthetic_ratio_pct 均需为数值")
     if real_n + synth_n != total_n:
         raise AssertionError("provenance 不自洽：real(%s)+synthetic(%s) != total(%s)" % (real_n, synth_n, total_n))
+    # 2026-10-14 补（门禁审计 · 空洞绿）：total_problems<=0 时上面三条**全部自动成立**
+    # （0+0==0、ratio 0.0 vs 0.0），于是「四大基础集明明有题、来源标注却是零覆盖」照样报绿，
+    # 门禁还打印"真题 0 题 / 自产题 0 题"。与 _audit_llm_pool 当年的失效形态同构：
+    # **覆盖条数为 0 本身必须算红**，否则 §2.3 诚信铁律形同虚设。
+    if total_n <= 0:
+        raise AssertionError(
+            "provenance 覆盖为 0（total_problems=%s）：来源标注零覆盖却报绿 = 空洞绿。"
+            "基础集共 %s 题却无任何来源标注，属口径塌缩，禁止放行"
+            % (total_n, sum((s.get(k) or {}).get("total", 0)
+                            for k in ("static", "execution", "web", "attachment"))))
     expect_ratio = round(100.0 * synth_n / total_n, 1) if total_n else 0.0
     if abs(ratio - expect_ratio) > 0.15:
         raise AssertionError("provenance 占比不自洽：记录 %s%% vs 实算 %.1f%%" % (ratio, expect_ratio))
