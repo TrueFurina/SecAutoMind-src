@@ -58,7 +58,9 @@ event（JSON）
 ## 依赖
 
 - Python 3.13+（3.10+ 亦可运行，以仓库实际测试为准）
-- **零第三方依赖**：核心链路只用标准库，不需要 `mcp` 包，也不需要 PyYAML。`pip install` 失败也能跑。
+- **工具层零第三方依赖**：核心链路只用标准库，不需要 `mcp` 包，也不需要 PyYAML——`pip install` 失败也能跑。
+  唯一例外是 `incident_triage` 的 LLM 路径需要 **httpx**（可选依赖，代码内 `try/except` 导入）：
+  未安装时该路径自动降级为规则引擎回退，其余 9 个工具不受影响。
 
 ## 配置
 
@@ -91,7 +93,7 @@ event（JSON）
 }
 ```
 
-   - `command`：项目 venv 中的 Python，或系统 `python3`。本服务零第三方依赖，任意 Python 3.10+ 均可。
+   - `command`：项目 venv 中的 Python，或系统 `python3`。工具层零第三方依赖，任意 Python 3.10+ 均可（LLM 路径需可选依赖 httpx）。
    - `args`：**必须是绝对路径**。
    - `timeout`：建议 120。研判含 LLM 调用时会慢一些；纯规则回退很快。
    - 保存后点击该 MCP 的 **启动**。

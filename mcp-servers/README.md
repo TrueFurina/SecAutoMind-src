@@ -12,7 +12,7 @@ This directory contains **standalone MCP (Model Context Protocol) servers**. The
 |--------|-------------|
 | [reverse_shell](reverse_shell/) | Reverse shell listener: start/stop listener, send commands to connected targets, full interactive workflow. |
 | [pent_claude_agent](pent_claude_agent/) | AI penetration-testing engineer: run pentest tasks, analyze vulnerabilities, perform security diagnosis (the agent runs independently on Claude Agent SDK; 5 tools). |
-| [security_triage_agent](security_triage_agent/) | Defensive alert triage and false-positive elimination: alert in, verdict and response advice out (11 tools, 10 exposed by default; zero third-party dependencies). |
+| [security_triage_agent](security_triage_agent/) | Defensive alert triage and false-positive elimination: alert in, verdict and response advice out (11 tools, 10 exposed by default; zero third-party dependencies in the tool layer). |
 
 ## How to use
 

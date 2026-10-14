@@ -58,7 +58,9 @@ Two ways to supply the event:
 ## Requirements
 
 - Python 3.13+ (3.10+ should work; the repository's actual test target governs)
-- **Zero third-party dependencies**: standard library only. No `mcp` package, no PyYAML. It still runs if `pip install` fails.
+- **Zero third-party dependencies in the tool layer**: the core path is standard library only. No `mcp` package, no PyYAML — it still runs if `pip install` fails.
+  One exception: the LLM path inside `incident_triage` needs **httpx** (optional; imported in a `try/except`).
+  Without it, that path degrades to the rule-engine fallback and the other 9 tools are unaffected.
 
 ## Configuration
 
@@ -91,7 +93,7 @@ Only `command_tool_enabled` changes this service's external behavior:
 }
 ```
 
-   - `command`: the project venv Python, or system `python3`. Zero dependencies, so any Python 3.10+ works.
+   - `command`: the project venv Python, or system `python3`. No dependencies in the tool layer, so any Python 3.10+ works (the LLM path needs the optional httpx).
    - `args`: **absolute paths are required**.
    - `timeout`: 120 recommended. Triage is slower with an LLM call; rule fallback is fast.
    - Save, then click **Start** on that MCP.
