@@ -132,3 +132,18 @@ range_scan/
 
 # 本地运维指南（含明文钉钉凭证，禁止入库）
 dingtalk-setup-guide.html
+
+# ── security_triage_agent MCP 包的运行时产物（不入库）────────────────────────
+# 与上游源项目同口径（上游 .gitignore:11-13 即这三行）。判据三条：
+#  ① README 自述：「每次工具调用都会向 data/ledger/ 追加审计记录……若不需要，
+#     删除该目录即可（会自动重建）」——文档让你随时删的目录不应受版本控制；
+#     实测三个写入器均 mkdir(parents=True, exist_ok=True)，缺目录会自愈。
+#  ② 它们是**运行输出**而非夹具：ledger/*.json 带真实运行时间戳与处置步骤，
+#     triage_history.jsonl 是研判历史，review_feedback.jsonl 是运营复核反馈。
+#  ③ 夹具语料继续入库（alerts/assets/intel/knowledge/logs/history_alerts/
+#     evaluation_cases/prefilter_rules.json）—— 服务靠它启动，不可删。
+# 实测（2026-10-14）：在全新克隆副本上删掉这 6 个文件（并删掉 ledger 目录本身）后，
+# `--selftest` 全工具出口矩阵 164 断言仍 0 失败 → 取消跟踪不影响 CI。
+mcp-servers/security_triage_agent/security_agent/data/ledger/
+mcp-servers/security_triage_agent/security_agent/data/triage_history.jsonl
+mcp-servers/security_triage_agent/security_agent/data/review_feedback.jsonl
