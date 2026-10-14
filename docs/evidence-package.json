@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-15T07:14:09+08:00",
+  "generated_at": "2026-10-15T07:36:59+08:00",
   "caliber": {
-    "head": "740f548",
+    "head": "8085bc6",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -15,8 +15,8 @@
     "go_files": 760,
     "test_files": 304,
     "non_test_lines": 128956,
-    "test_lines": 44205,
-    "total_lines": 173161,
+    "test_lines": 44216,
+    "total_lines": 173172,
     "ctf_solvers": 180,
     "ctf_real_solvers": 121,
     "ctf_detectors": 59,
@@ -210,6 +210,7 @@
     "2026-10-13 新增 HITL 失效边界回归测试（handler 7 项 + app C2 桥 2 项）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 42,971 / 合计 171,065）；gates 段沿用 LF 采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）",
     "2026-10-14 接入 cross-bench 附件子集口径（PR #22）后刷新 caliber 段（Go 文件 751 / 测试文件 299 / 测试行 43,144 / 合计 171,238，head 183bfe1）；整包重生成曾把 secret_guard_mutation_rc 污染为 1（本机 CRLF 假象），已按纪律修正回 0 并保留 LF 环境采集的 gates 段",
     "2026-10-15 cross-bench 立尺驱动新增三个真攻击求解器（rsa_phi_pinv / legendre_bit_phi / lfsr_correlation）并修复 flagLikeness 占位符过滤与 Håstad 裸数字指数候选后刷新 caliber 段（Go 文件 759 / 测试文件 303 / 非测试行 128,905 / 测试行 44,032 / 合计 172,937，真求解器 121 / 注册 180，head 06ef9cb 工作树）；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）；cross-bench 附件子集立尺 1/12 → 3/12（exciting_inverse / ezrsa / filterrandom，simplelegendre 因 harness 4KB 截断致数据不完整如实记为不可解）",
-    "2026-10-15（第二轮）修订 harness 附件截断口径并为 URL 渗透链加题目类别门控后刷新 caliber 段（Go 文件 760 / 测试文件 304 / 非测试行 128,956 / 测试行 44,205 / 合计 173,161，真求解器 121 / 注册 180，head 740f548）；gates 段沿用 LF 环境采集值未动。三处修订：①附件截断上限 4KB/文件、16KB/题 → 512KB/1MB——旧口径把 simplelegendre 的 163KB output（phi+N+264 密文，恢复 264 比特 flag 需全量）砍到数据不完整，属测量管道缺陷（人类选手拿全量 output）而非能力缺口，答案文件排除逻辑不受影响；②Håstad 裸数字回退按 12 数字（6 对）封顶——全量文本下 264 密文全进 CRT 会使模数涨到 ~545k bit，整数 k 次开根为二分（~B/k 次 Exp），全范围 3..99 sweep 的最坏代价按 ~B³/k² 爆炸到小时级；③URL 渗透链九件套（web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser）新增 WebExploitChain 标记并按题目类别门控（仅 web 或未声明启用）——实测 crypto 题 specialcurve2 附件注释里的 writeup 链接（cn-sec.com）令九件套对无关主机发起真实请求并干等满超时（逐 solver 计时 jwt 40s / upload 29.8s / web_exploit 25s / gql 6.8s / deser 6.3s / xxe 4.5s，生产路径单题 60.002s、跨-bench 子集测试 4 遍扫描 267s），且从第三方页面刮回的 body{...} 外形串污染 solved 判定；门控后单题 18ms、子集测试 26.6s（旧实测波动 29.6s~242s 收敛为零网络依赖），web 类别利用链不受影响（空类别放行，生产 handler 兜底）。cross-bench 附件子集立尺 3/12 → 4/12（新增 simplelegendre，生产/注册表 × 含答案/剔除答案四种口径一致；55 题静态基准 20/55 无回归）；全包测试 471s 零失败"
+    "2026-10-15（第二轮）修订 harness 附件截断口径并为 URL 渗透链加题目类别门控后刷新 caliber 段（Go 文件 760 / 测试文件 304 / 非测试行 128,956 / 测试行 44,205 / 合计 173,161，真求解器 121 / 注册 180，head 740f548）；gates 段沿用 LF 环境采集值未动。三处修订：①附件截断上限 4KB/文件、16KB/题 → 512KB/1MB——旧口径把 simplelegendre 的 163KB output（phi+N+264 密文，恢复 264 比特 flag 需全量）砍到数据不完整，属测量管道缺陷（人类选手拿全量 output）而非能力缺口，答案文件排除逻辑不受影响；②Håstad 裸数字回退按 12 数字（6 对）封顶——全量文本下 264 密文全进 CRT 会使模数涨到 ~545k bit，整数 k 次开根为二分（~B/k 次 Exp），全范围 3..99 sweep 的最坏代价按 ~B³/k² 爆炸到小时级；③URL 渗透链九件套（web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser）新增 WebExploitChain 标记并按题目类别门控（仅 web 或未声明启用）——实测 crypto 题 specialcurve2 附件注释里的 writeup 链接（cn-sec.com）令九件套对无关主机发起真实请求并干等满超时（逐 solver 计时 jwt 40s / upload 29.8s / web_exploit 25s / gql 6.8s / deser 6.3s / xxe 4.5s，生产路径单题 60.002s、跨-bench 子集测试 4 遍扫描 267s），且从第三方页面刮回的 body{...} 外形串污染 solved 判定；门控后单题 18ms、子集测试 26.6s（旧实测波动 29.6s~242s 收敛为零网络依赖），web 类别利用链不受影响（空类别放行，生产 handler 兜底）。cross-bench 附件子集立尺 3/12 → 4/12（新增 simplelegendre，生产/注册表 × 含答案/剔除答案四种口径一致；55 题静态基准 20/55 无回归）；全包测试 471s 零失败",
+    "2026-10-15（第三轮）修复 capability-gate CI 失败并刷新立尺报告后刷新 caliber 段（测试行 44,205 → 44,216 / 合计 173,161 → 173,172，head 8085bc6）；gates 段沿用 LF 环境采集值未动（本机整包重生成实测 secret_guard_mutation_rc=0，CRLF 未污染）。归因与修复：URL 渗透链九件套按题目类别门控后，反注水门禁 TestAllRegisteredSolversActuallyExecute 的单路 misc 探针不再触发 9 个 WebExploitChain solver（web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser），被误判为注水（171/180）——单路探针把「按设计门控」误报成注水，那反而是门禁缺陷；改为 misc+web 两路探针（Description 措辞不同防缓存干扰），两路并集的执行覆盖必须等于 Enabled 全集（修复后 180/180，docstring 论证单路缺陷）。docs/cross_bench_report.md 同步第三版：0/12→3/12→4/12 两轮修订全记录、未命中 4 题根因分类表（能力缺口 1 = 10733 二元 Coppersmith；数据不完整 3 = specialcurve2 / reverse_js / reverse_sheng）、三类假不可解归因（测量管道缺陷 / 挤压真解 / 真实能力缺口，不许互相覆盖）"
   ]
 }
