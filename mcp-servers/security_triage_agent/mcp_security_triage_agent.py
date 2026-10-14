@@ -19,8 +19,11 @@
     python mcp_security_triage_agent.py --config /path.yaml  # 指定配置
     python mcp_security_triage_agent.py --selftest           # 本机自检（不走协议）
 
-自检模式会真调一次工具并打印结果，便于在接入前确认「能不能用」，
-避免只在客户端里看到「启动失败」却查不到原因。
+自检模式跑**全工具出口矩阵**：动态遍历 `tools/list`，逐个工具做双向断言（按声明
+的最小必需参数集必须调得通；抽掉声明的必需参数必须失败且点名），并校验
+`required` 与实现同源、observation 还原清单完备。新增工具自动纳入，无需改自检
+代码。这样在接入前就能确认「每个工具都真能用」，而不是只证明某一个能跑，
+也避免只在客户端里看到「启动失败」却查不到原因。
 """
 from __future__ import annotations
 
@@ -121,37 +124,54 @@ def _build_server():
 
 
 def _selftest() -> int:
-    """真调一次工具，确认链路可用（不走 MCP 协议）。"""
+    """本机自检：**逐个工具**确认在 MCP 通道上真实可调用（不走 stdio 协议）。
+
+    为什么不是「真调一次 asset_lookup 就收工」：上游项目已三度踩中同一族缺陷
+    ——能力实现了但出口没接线，或被 fail-open 伪装成成功（工具返回
+    `isError=False` 却一步没做）。单点调用与 `tools/list` 都照不出来：
+    前者覆盖不了其余工具，后者只证明清单存在。
+
+    故改为跑**全工具出口矩阵**：动态遍历 `tools/list`，对每个工具做双向断言
+    ——充分性（按工具自己声明的最小必需参数集必须调得通）+ 必要性（逐个抽掉
+    声明的必需参数必须失败、且提示点名该参数）；另含 `required` 与实现同源、
+    observation 还原清单完备等接线断言。检查逻辑与上游同源，不维护第二份清单，
+    见 `security_agent/mcp/matrix.py`。
+
+    新增工具会自动纳入本自检，无需改这里。
+    """
     server, app = _build_server()
-    names = sorted(app.tool_registry.tools)
+    registry = app.tool_registry
+
+    from security_agent.mcp.server import OBSERVATION_ARGUMENTS
+
+    # 命令工具默认关闭（SECURITY_AGENT_ENABLE_COMMAND_TOOL=0），但它的契约
+    # （required 不含 event、唯一必需入参是 command）仍需被验证，故自检显式打开。
+    if "command_executor" not in registry.tools:
+        from security_agent.mcp import McpServer
+        from security_agent.tools.implementations import (
+            CommandExecutionTool,
+            ToolRegistry,
+        )
+
+        registry = ToolRegistry(list(registry.tools.values()) + [CommandExecutionTool()])
+        server = McpServer(tool_registry=registry)
+
+    names = sorted(registry.tools)
     print(f"工具数: {len(names)}")
     for name in names:
         print(f"  - {name}")
 
-    # 真调一次：按 id 取库内权威事件（不依赖任何上游参数）
-    response = server.handle(
-        {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": "asset_lookup",
-                "arguments": {"event": {"id": "EVENT-001"}},
-            },
-        }
-    )
-    result = (response or {}).get("result", {})
-    preview = ""
-    content = result.get("content") or []
-    if content:
-        preview = str(content[0].get("text", ""))[:200]
-    print(f"\n自检调用 asset_lookup(EVENT-001): isError={result.get('isError')}")
-    print(f"  返回预览: {preview}")
+    from security_agent.mcp.matrix import ToolMatrix
 
-    if result.get("isError"):
-        print("\n[FAIL] 自检未通过：工具调用返回错误。")
+    result = ToolMatrix(server, OBSERVATION_ARGUMENTS).run()
+    print(f"\n出口矩阵: 断言 {result.checked} 条，失败 {len(result.failures)} 条")
+    for line in result.failures[:10]:
+        print(f"  [FAIL] {line}")
+
+    if result.failures:
+        print("\n[FAIL] 自检未通过：工具出口矩阵存在失败项。")
         return 1
-    print("\n[OK] 自检通过。")
+    print("\n[OK] 自检通过：全部工具在 MCP 通道上均真实可调用。")
     return 0
 
 
