@@ -529,3 +529,24 @@ project:
   fact_index_path_max_runes: 10000
   fact_summary_max_runes: 24000
   default_inject_deprecated: false
+# ============================================
+# 决赛平台客户端 · 抗打击治理（总纲 §2.4）
+# ============================================
+# A 初赛被 37 次 429 打爆后沉淀的 7 项机制：①指数退避重试 ②Retry-After 尊重
+# ③连续 429 计数 ④429 阶梯退避建议 ⑤403 WAF 冷却 ⑥列表 TTL 缓存 ⑦HTTP 连接复用。
+#
+# 三段语义：**默认开**（本段整段不写 = 7 项全开，行为与接线前一致）；
+# **可调**（下面各旋钮留空即沿用包内默认值）；**一键回退**（enabled: false
+# 把 7 项一次性退回朴素直连；亦可运维侧用环境变量 CTF_AGENT_ANTI_BLOCK=0，
+# 环境变量优先于本段）。
+#
+# 回退语义（逐项）：单次请求不重试且不解析 Retry-After；不累计连续 429；
+# 阶梯建议恒为 0（轮询层退回固定间隔）；403 不设冷却（但**仍如实返回错误**）；
+# 列表缓存读写停用（每轮真实发请求）；连接不复用（DisableKeepAlives=true，
+# 且只作用于本客户端，不污染全局 http.DefaultTransport）。
+ctf_platform:
+  enabled: true # 一键回退开关；false = 7 项全关
+  # max_retries: 5 # 最大重试次数（包内默认 5）
+  # retry_backoff_seconds: 2 # 指数退避基准秒（包内默认 2，单次上限 15）
+  # waf_timeout_seconds: 300 # 403 冷却秒（包内默认 300）
+  # list_cache_ttl_seconds: 10 # 列表缓存 TTL 秒；显式填 0 = 关闭缓存（包内默认 10）
