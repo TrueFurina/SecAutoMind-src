@@ -323,18 +323,16 @@ func tryHashCrack(text string) []string {
 	return nil
 }
 
-// tryRSATemplate 对 RSA 参数模板尝试多种攻击（费马/小指数/高指数/PKCS#1）。
+// tryRSATemplate 对 RSA 参数模板尝试多种攻击（费马/小指数/高指数）。
 func tryRSATemplate(text string) []string {
 	// 提取 e, n, c 参数
 	eRegex := regexp.MustCompile(`(?i)e\s*=\s*(\d+)`)
 	nRegex := regexp.MustCompile(`(?i)n\s*=\s*(\d+)`)
 	cRegex := regexp.MustCompile(`(?i)c\s*=\s*(\d+)`)
-	hintRegex := regexp.MustCompile(`(?i)hint\s*=\s*(\d+)`)
 
 	eMatch := eRegex.FindStringSubmatch(text)
 	nMatch := nRegex.FindStringSubmatch(text)
 	cMatch := cRegex.FindStringSubmatch(text)
-	hintMatch := hintRegex.FindStringSubmatch(text)
 
 	if nMatch == nil {
 		return nil
@@ -345,16 +343,12 @@ func tryRSATemplate(text string) []string {
 		return nil
 	}
 
-	// hint 型：hint = (e*p + e^2)^q mod n → 解 p
-	if hintMatch != nil && eMatch != nil {
-		hint, okH := new(big.Int).SetString(hintMatch[1], 10)
-		e, okE := new(big.Int).SetString(eMatch[1], 10)
-		if okH && okE {
-			if result := tryPKCS1Hint(n, e, hint); result != "" {
-				return []string{result}
-			}
-		}
-	}
+	// ⚠️ 能力缺口（2026-10-15 立尺如实记录，勿再伪造攻击）：
+	// hint = (e*p + e^2)^q mod n 型（DASCTF CRYPTO-02 / 10733）**没有已实现的
+	// 分解攻击**。原 tryPKCS1Hint 的 GCD(hint - e^2, n) 探针数学上不成立
+	// （hint ≡ e·p+e² mod q、hint ≡ e^(2q) mod p，与 e² 无公因子关系），
+	// 已移除。两条关系式无法在不用二元 Coppersmith（多项式次数为 q，格维度
+	// 量级不可行）的前提下闭合。后续若实现，应先补数值验证再接线。
 
 	if eMatch == nil || cMatch == nil {
 		return nil
@@ -439,30 +433,6 @@ func iroot(n, e *big.Int) *big.Int {
 		guess.Sub(guess, big.NewInt(1))
 	}
 	return guess
-}
-
-// tryPKCS1Hint hint 型：hint = (e*p + e^2)^q mod n，通过 GCD 求 p。
-func tryPKCS1Hint(n, e, hint *big.Int) string {
-	// hint = (e*p + e^2)^q mod n
-	// GCD(hint - e^2, n) 可能泄露 p
-	e2 := new(big.Int).Mul(e, e)
-	diff := new(big.Int).Sub(hint, e2)
-	if diff.Sign() <= 0 {
-		return ""
-	}
-	p := new(big.Int).GCD(nil, nil, diff, n)
-	if p.Cmp(big.NewInt(1)) > 0 && p.Cmp(n) < 0 {
-		q := new(big.Int).Div(n, p)
-		phi := new(big.Int).Mul(
-			new(big.Int).Sub(p, big.NewInt(1)),
-			new(big.Int).Sub(q, big.NewInt(1)),
-		)
-		d := new(big.Int).ModInverse(e, phi)
-		if d != nil {
-			return fmt.Sprintf("PKCS#1分解: p=%s, d=%s", p.String(), d.String())
-		}
-	}
-	return ""
 }
 
 // tryLegendrePhi Legendre 符号攻击（phi 泄露型）：已知 phi 逐位还原明文。

@@ -83,12 +83,38 @@ var flagShapeRegex = regexp.MustCompile(`[A-Za-z0-9_]{2,20}\{[^}\s]{4,}\}`)
 // SHA-256 校验的真实覆盖率，只会消除假阳性短路。
 const minFlagLikenessForHit = 3
 
+// flagPlaceholderRe 题面「flag 格式声明」的占位符形态（非真 flag）。
+//
+// 实测实锤（2026-10-15 cross-bench FilterRandom，两轮才抓全）：
+//   - 题面写「flag 格式为 DASCTF{init1-init2}」→ scanFlags 刮出 likeness=3；
+//   - 脚本源码写 b'DASCTF{%d-%d}'%(init1,init2) → printf 模板同样 likeness=3。
+// 二者都以 priority 10 的 flag_scan 胜出，压掉 priority 36 的 lfsr_correlation
+// 正确解——占位符与真 flag 外形完全同分，只靠优先级裁决必然输。
+//
+// 保守取值：只收**unambiguous 的占位符族**（init1/xxxx/…/your/****/printf 说明符
+// 出现在真 flag 内容里的概率可忽略），避免误伤真 flag 把命中率打下来。
+// ⚠️ your 只带前边界——"your_flag_here" 中 "_" 是单词字符，\byour\b 会漏掉。
+var flagPlaceholderRe = regexp.MustCompile(`(?i)(\binit\d+\b|x{4,}|\.\.\.|\byour|\*{4,}|%[a-z])`)
+
+// isPlaceholderFlag 判断 flag 串是否为「格式声明占位符」而非真 flag。
+// 只检查第一层花括号内的内容，避免前缀/后缀误伤。
+func isPlaceholderFlag(s string) bool {
+	open := strings.Index(s, "{")
+	closing := strings.LastIndex(s, "}")
+	if open < 0 || closing <= open {
+		return false
+	}
+	return flagPlaceholderRe.MatchString(s[open+1 : closing])
+}
+
 // flagLikeness 评估一组候选「有多像真 flag」，用于裁决不同求解器的结果。
 // 这是修复「注册表首命中缺陷」的关键：像 tryAESECB 那样返回
 // "AES ECB 检测：发现 N 个重复块" 的诊断文本只值 1 分，
 // 真正解出 flag 外形的候选值 3 分，绝不会被诊断文本抢走命中。
 //   - 3：命中 flag 正则（品牌前缀 / 大写前缀 / 通用 前缀{内容} 外形）**且**是干净的可打印串
-//   - 1：非空但无 flag 外形（视为诊断提示，不当命中）；或混有不可打印字节的乱码
+//     **且**不是占位符形态（见 flagPlaceholderRe）
+//   - 1：非空但无 flag 外形（视为诊断提示，不当命中）；或混有不可打印字节的乱码；
+//     或是题面格式声明占位符（DASCTF{init1-init2} 型）
 //   - 0：空
 //
 // 「可打印」这一条是实测踩坑补上的：把随机二进制当 base64 解开会产出形如
@@ -107,6 +133,11 @@ func flagLikeness(flags []string) int {
 			score = 3
 		}
 		if score == 3 && !isPrintableFlagCandidate(f) {
+			score = 1
+		}
+		// 占位符形态（题面格式声明，如 DASCTF{init1-init2}）降级为诊断级：
+		// 它与真 flag 同形同分，不过滤就会在优先级裁决中压掉真解。
+		if score == 3 && isPlaceholderFlag(f) {
 			score = 1
 		}
 		if score > best {
