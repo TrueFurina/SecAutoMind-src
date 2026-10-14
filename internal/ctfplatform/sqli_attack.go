@@ -396,7 +396,7 @@ func sqliDedup(in []string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "sqli_extract", Category: CategoryWebS, Priority: 30,
+		Name: "sqli_extract", Category: CategoryWebS, Priority: 30, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return sqliAttackFromText(ctx, text)
 		},

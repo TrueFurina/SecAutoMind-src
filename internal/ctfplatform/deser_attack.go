@@ -284,7 +284,7 @@ func deserAttackFromText(ctx context.Context, text string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "deser_rce", Category: CategoryWebS, Priority: 24,
+		Name: "deser_rce", Category: CategoryWebS, Priority: 24, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return deserAttackFromText(ctx, text)
 		},

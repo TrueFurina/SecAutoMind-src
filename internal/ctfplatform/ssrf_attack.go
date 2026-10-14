@@ -319,7 +319,7 @@ func ssrfDedup(in []string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "ssrf_redis_rce", Category: CategoryWebS, Priority: 29,
+		Name: "ssrf_redis_rce", Category: CategoryWebS, Priority: 29, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return ssrfAttackFromText(ctx, text)
 		},

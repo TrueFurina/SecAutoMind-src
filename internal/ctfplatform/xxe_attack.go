@@ -224,7 +224,7 @@ func xxeAttackFromText(ctx context.Context, text string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "xxe_file_read", Category: CategoryWebS, Priority: 26,
+		Name: "xxe_file_read", Category: CategoryWebS, Priority: 26, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return xxeAttackFromText(ctx, text)
 		},

@@ -75,7 +75,7 @@ func gqlAttackFromText(ctx context.Context, text string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "graphql_probe", Category: CategoryWebS, Priority: 28,
+		Name: "graphql_probe", Category: CategoryWebS, Priority: 28, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return gqlAttackFromText(ctx, text)
 		},

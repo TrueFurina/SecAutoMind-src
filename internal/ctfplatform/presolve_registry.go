@@ -205,6 +205,21 @@ func registrySweepTimeout() time.Duration {
 }
 
 // registrySweepEnabled 是否启用注册表全量扫描（生产 Presolve 会并入）。
+// webExploitApplies URL 渗透链求解器（WebExploitChain）的启用门控：
+// 仅 web 类或未声明类别的题目启用。
+//
+// 2026-10-15 立尺实测（specialcurve2，crypto 题，附件注释含 writeup 链接
+// cn-sec.com）：九件套对该不可达/无关主机发起真实请求并干等满超时——
+// 逐 solver 计时 jwt 40s / upload 29.8s / web_exploit 25s / gql 6.8s /
+// deser 6.3s / xxe 4.5s，生产路径单题 60.002s（跨-bench 子集测试 4 遍
+// 扫描 267s 的主因）；关断后单题 18ms。且 deser/xxe 从第三方页面刮回
+// `body{margin:0;padding:0}` 外形串污染 solved 判定（不匹配 sha256，
+// 但会挤占引擎优先级）。非 web 题文本中的 URL 基本是来源/ writeup 引用，
+// 不是靶机——按题目类别门控是唯一可靠的区分信号。
+func webExploitApplies(category string) bool {
+	return category == "" || category == string(CategoryWebS)
+}
+
 func registrySweepEnabled() bool {
 	v := strings.TrimSpace(os.Getenv("SECAUTOMIND_REGISTRY_SWEEP"))
 	return v != "0"
@@ -231,11 +246,14 @@ func betterSweep(a, b sweepCandidate) bool {
 
 // presolveRegistrySweep 并发跑遍注册表内**所有** Enabled 求解器，
 // 收集全部结果后按 flag 可信度裁决出最优命中。
+// category 为题目类别（web/crypto/misc/reverse/pwn，空=未声明）：
+// WebExploitChain 求解器仅在 webExploitApplies(category) 为真时参与，
+// 避免非 web 题文本中的 URL（writeup/来源注释）触发真实渗透链干等超时。
 //
 // 与旧实现的本质区别：旧版「首个非空即返回」，会把诊断提示当命中，
 // 且同一时刻只跑一个优先级组、高优先级组未命中才轮到下一组
 // （=> 低优先级的正确解可能根本没机会跑）。新版一次跑全量。
-func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, attachments map[string]string) *PresolveResult {
+func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, attachments map[string]string, category string) *PresolveResult {
 	solvers := GetSolvers()
 	if len(solvers) == 0 {
 		return nil
@@ -251,6 +269,10 @@ func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, atta
 	var wg sync.WaitGroup
 	for _, entry := range solvers {
 		if !entry.Enabled {
+			continue
+		}
+		// URL 渗透链九件套按题目类别门控（见 webExploitApplies 注释）。
+		if entry.WebExploitChain && !webExploitApplies(category) {
 			continue
 		}
 		wg.Add(1)
@@ -326,7 +348,7 @@ func (p *Presolver) PresolveWithRegistry(ctx context.Context, ch *Challenge, att
 		p.logger.Warn("注册表为空，回退到原始 Presolve")
 		return p.Presolve(ctx, ch, attachments)
 	}
-	if r := p.presolveRegistrySweep(ctx, text, attachments); r != nil {
+	if r := p.presolveRegistrySweep(ctx, text, attachments, ch.Category); r != nil {
 		p.logger.Info("presolve 命中（注册表驱动）",
 			zap.String("engine", r.Engine), zap.Strings("flags", r.Flags))
 		return r
@@ -346,7 +368,7 @@ func (p *Presolver) PresolveWithRegistry(ctx context.Context, ch *Challenge, att
 // 补齐后注册表成为生产能力的超集。
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "web_exploit", Category: CategoryWebS, Priority: 1,
+		Name: "web_exploit", Category: CategoryWebS, Priority: 1, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return ExploitURLsInText(ctx, text)
 		},

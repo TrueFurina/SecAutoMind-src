@@ -72,7 +72,7 @@ func uploadAttackFromText(ctx context.Context, text string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "upload_rce", Category: CategoryWebS, Priority: 27,
+		Name: "upload_rce", Category: CategoryWebS, Priority: 27, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return uploadAttackFromText(ctx, text)
 		},
