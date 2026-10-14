@@ -11,6 +11,7 @@ This directory contains **standalone MCP (Model Context Protocol) servers**. The
 | Server | Description |
 |--------|-------------|
 | [reverse_shell](reverse_shell/) | Reverse shell listener: start/stop listener, send commands to connected targets, full interactive workflow. |
+| [security_triage_agent](security_triage_agent/) | Defensive alert triage and false-positive elimination: alert in, verdict and response advice out (11 tools, 10 exposed by default; zero third-party dependencies). |
 
 ## How to use
 
