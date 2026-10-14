@@ -455,3 +455,26 @@ jobs:
         run: python scripts/check_docs_lint.py
       - name: Docs lint gate regression + mutation check
         run: python scripts/check_docs_lint_test.py
+  # MCP 服务清单与契约一致性门禁。
+  # 实锤缺陷（2026-10-14 审计，三类）：
+  #   ① 索引漏列：mcp-servers/ 目录里实际有 3 个服务，两个 README 的服务表
+  #      只列了 2 个 —— pent_claude_agent 长期「存在但索引查不到」，
+  #      使用者按索引找服务必然漏掉它。
+  #   ② 依赖谎报：security_triage_agent 文档写「零第三方依赖」，代码里
+  #      却 try/except 导入 httpx —— 只有逐文件扫 AST 才看得见（读注释无用）。
+  #   ③ 声明/实现漂移：README 工具表与 tools/list 可能各说各话，客户端按文档
+  #      调用会打到不存在的工具，且此类错误只在运行时才暴露。
+  # 三层校验：目录 ↔ 索引 ↔ tools/list；纯标准库服务再跑 8 项离线协议自证
+  # （initialize / 通知不响应 / ping / tools/list / 未知工具报错 / 存活性 /
+  # README↔tools/list 对齐 / --selftest）。带回归 + 变异验证。
+  mcp-servers-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: MCP servers inventory / dependency / protocol consistency
+        run: python scripts/check_mcp_servers.py
+      - name: MCP servers gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_mcp_servers_test.py
