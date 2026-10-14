@@ -77,9 +77,22 @@ def main():
     # （内容逐字相同，只有行尾变了 → line-endings-gate 才发现）。故全程走 bytes。
     orig_b = SG.read_bytes()
     orig = orig_b.decode("utf-8")
-    missing = [name for name, good, _ in MUTATIONS if good not in orig]
+
+    # 探针常量按 **文件实际行尾** 归一化（2026-10-14 修复）：
+    # 上面 5 行的探针字面量用 `\n` 书写，但 `.gitattributes` 只锁 *.sh/*.bat/*.ps1，
+    # *.py 不在管辖内 → Windows 检出（core.autocrlf）下 secret_guard.py 是 CRLF，
+    # 探针 `\n` 版本永远匹配不到 → 本脚本在 Windows 本地**恒红**（CI 为 LF 检出，故 CI 绿）。
+    # 这是"本地安全网失效"而非"变异验证空转"：脚本本身是 fail-loud 的，并未静默放行。
+    # 修法：匹配与替换都在"已归一到该文件行尾"的文本上进行；字节级写回语义不变。
+    NL = "\r\n" if "\r\n" in orig else "\n"
+
+    def to_eol(text):
+        return text.replace("\n", NL)
+
+    missing = [name for name, good, _ in MUTATIONS if to_eol(good) not in orig]
     if missing:
-        print("[FAIL] 未在 secret_guard.py 中找到探针原文：")
+        print("[FAIL] 未在 secret_guard.py 中找到探针原文（已按行尾 %s 归一化）："
+              % ("CRLF" if NL == "\r\n" else "LF"))
         for name in missing:
             print("       - %s" % name)
         print("       门禁结构已变，请同步更新本脚本的探针常量。")
@@ -99,7 +112,7 @@ def main():
         idx += 1
         try:
             print("\n%s 注入变异：%s" % (step, name))
-            SG.write_bytes(orig.replace(good, mutant).encode("utf-8"))
+            SG.write_bytes(orig.replace(to_eol(good), to_eol(mutant)).encode("utf-8"))
             rc_m, out_m = run_test()
             caught = rc_m != 0
             print("  RC=%d  %s" % (rc_m, "FAIL(✅ 变异被捕获)" if caught else "PASS(❌ 变异未被捕获 = 测试无效)"))
