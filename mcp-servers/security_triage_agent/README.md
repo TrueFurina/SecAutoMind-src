@@ -114,7 +114,13 @@ Only `command_tool_enabled` changes this service's external behavior:
 python mcp_security_triage_agent.py --selftest
 ```
 
-Lists all tools and makes one real `asset_lookup` call. Use it to tell "the service is broken" apart from "the client config is broken", instead of staring at a bare "startup failed" in the client.
+Runs a **full-tool exit matrix**: it walks `tools/list` dynamically and, for every tool, asserts both directions — that the minimal parameter set the tool itself declares is enough to call it successfully, and that removing any declared-required parameter makes the call fail **with the missing parameter named**. It also checks that `inputSchema.required` matches each tool's own declaration (single source of truth) and that the protocol layer's observation-coercion list is complete.
+
+This replaces the earlier "list the tools, call `asset_lookup` once" self-test, which could not tell a working tool from a broken one — a known failure family in this service (a capability implemented but never wired to its exit, or a fail-open swallowing a contract mismatch and reporting success). New tools are picked up automatically; nothing to update here.
+
+`--selftest` also enables the command tool (11 tools instead of the default 10) so that its contract is verified too; the served `tools/list` still honours `command_tool_enabled` from the config.
+
+Use it to tell "the service is broken" apart from "the client config is broken", instead of staring at a bare "startup failed" in the client.
 
 ## Boundaries and honest disclosures
 
