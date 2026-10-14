@@ -144,10 +144,22 @@ func TestCrossBench_AgainstXihuRealQuestions(t *testing.T) {
 
 const (
 	crossBenchAttachDir      = "attachments"
-	crossBenchAttachMaxByte  = 4 * 1024  // 单文件截断：数值型大 output 对正则扫描是纯成本
-	crossBenchAttachTotalMax = 16 * 1024 // 单题总截断：控制 CI test job（-race 900s 总预算）耗时
-	crossBenchBinaryRatio    = 0.3       // 首 4KB 不可打印字节占比超过此值 → 判二进制跳过
+	crossBenchAttachMaxByte  = 512 * 1024  // 单文件截断：实测库内最大文本附件 163KB（simplelegendre output）
+	crossBenchAttachTotalMax = 1024 * 1024 // 单题总截断：按现实题目体量留 ~3x 余量
+	crossBenchBinaryRatio    = 0.3         // 首 4KB 不可打印字节占比超过此值 → 判二进制跳过
 )
+
+// ⚠️ 截断上限修订记录（2026-10-15，立尺口径修正，勿改回 4KB）：
+// 旧值 4KB/文件、16KB/题，注释理由「数值型大 output 对正则扫描是纯成本」——
+// 该判断对逐位加密题恰好相反：**数字本身就是题目数据**。实测 simplelegendre
+// 的 output 有 163KB（phi + N + 264 个密文，恢复 264 比特 flag 需全部密文），
+// 4KB 截断后只剩个位数密文 → 求解器数据不完整而不可解，被误记为「能力缺口」。
+// 人类选手拿的是全量 output，harness 截断属**测量管道缺陷**（低估能力），
+// 不是保守口径。修正后两种影响：
+//   - simplelegendre 数据完整，legendre_bit_phi 可解（立尺 3/12 → 4/12）；
+//   - 全量文本会进入全部注册求解器，最坏耗时由 solver 侧单独约束
+//     （Håstad 裸数字回退按 12 数字封顶，见 presolve_crypto.go）。
+// 答案文件排除逻辑（AnswerKeyShape/GitExcluded）不受本修订影响，防作弊边界不变。
 
 // looksBinary 按内容判定二进制（presolve 是静态文本分析，喂原始字节无意义）。
 func looksBinary(raw []byte) bool {
@@ -251,8 +263,10 @@ func runCrossBenchSubset(doc crossBenchDoc, includeAnswerKey bool,
 //   - 剔除答案形态附件——衡量真实解题能力。
 //
 // 🔴 该子集命中不得写进对外材料当战果（cross_bench 仅作尺，不并入 KPI 基准）。
-// ⚠️ 附件内容按 4KB/文件、16KB/题 截断，且二进制附件（PE/ELF）跳过——presolve 是
-// 静态文本分析，喂原始字节只会虚增耗时（CI test job 有 -race 900s 总预算）。
+// ⚠️ 附件内容按 512KB/文件、1MB/题 截断（2026-10-15 由 4KB/16KB 上调，
+// 修订理由见 crossBenchAttachMaxByte 上方记录），二进制附件（PE/ELF）跳过——
+// presolve 是静态文本分析，喂原始字节只会虚增耗时（CI cross-bench-subset job
+// 有 600s 预算；求解器侧最坏耗时由 Håstad 裸数字回退的配对数封顶单独约束）。
 // 文本口径对比见 TestCrossBench_AgainstXihuRealQuestions
 // （其中"附件仍存在的题命中 0"即本子集的文本基线）。
 func TestCrossBench_AttachmentSubset(t *testing.T) {
@@ -269,7 +283,7 @@ func TestCrossBench_AttachmentSubset(t *testing.T) {
 		t.Skip("无附件可用的题（先跑 scripts/build_cross_bench.py 复制附件）")
 	}
 
-	t.Logf("=== A→B 同卷立尺 · 有数据子集（附件仍在的 %d 题，description + 文本附件，4KB/文件截断，二进制跳过）===", total)
+	t.Logf("=== A→B 同卷立尺 · 有数据子集（附件仍在的 %d 题，description + 文本附件，512KB/文件截断，二进制跳过）===", total)
 	modes := []struct {
 		label         string
 		includeAnsKey bool

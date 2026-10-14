@@ -251,7 +251,7 @@ func sstiDedup(in []string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "ssti_eval_escape", Category: CategoryWebS, Priority: 31,
+		Name: "ssti_eval_escape", Category: CategoryWebS, Priority: 31, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return sstiAttackFromText(ctx, text)
 		},

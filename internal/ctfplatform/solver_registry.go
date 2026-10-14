@@ -37,6 +37,13 @@ type SolverEntry struct {
 	Priority int               // 优先级（越小越先执行，0=最高）
 	Solver   ContextSolverFunc // 求解函数
 	Enabled  bool              // 是否启用
+	// WebExploitChain 标记「对题目文本中的 URL 发起真实渗透链」的求解器
+	// （web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser 九件套）。
+	// 这类求解器会向文本中提取的主机发真实 HTTP 请求；非 web 题文本里的 URL
+	// 多为 writeup/来源注释（实测 specialcurve2 附件注释含 cn-sec.com 链接），
+	// 对不可达主机干等满超时（单题 60s）且会从第三方页面刮出伪 flag 污染
+	// solved 判定。故仅在题目类别为 web 或未声明时运行，见 webExploitApplies。
+	WebExploitChain bool
 }
 
 // solverRegistry 全局求解器注册表。

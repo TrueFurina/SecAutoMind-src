@@ -1261,6 +1261,11 @@ func sortedBigIntKeys(m map[string]*big.Int) []string {
 	return keys
 }
 
+// hastadBareNumberCap 裸数字格式回退的输入封顶（12 个数字 = 6 对 (n,c)）。
+// 6×2048 bit 模数下全范围 3..99 开根 sweep 的最坏耗时在秒级；
+// 覆盖现实：e=17 时可解 ~722 bit 以内的 flag，e=3 时 ~4096 bit。
+const hastadBareNumberCap = 12
+
 // tryHastadBroadcastAttack Håstad 广播攻击：同明文 m 用同一小指数 e 在多组模数下加密，
 // CRT 合成后开 e 次方根。支持两种题面格式：
 //   - 命名格式：n1=/c1=/n2=/c2=…（e 由 "e=" 给出，e≤16）；
@@ -1295,6 +1300,15 @@ func tryHastadBroadcastAttack(text string, attachments map[string]string) []stri
 		// 裸数字格式：按出现顺序两两配对（题面打印顺序为 n1,c1,n2,c2,…），
 		// 每对内取大者为 n（c = m^e mod n < n）。
 		nums := extractBigDecimalInts(fullText)
+		// 封顶 12 个数字（6 对）——开根 sweep 的最坏耗时约束，2026-10-15 立尺修订：
+		// integerNthRoot 是二分（~B/k 次迭代 × 每次 Exp），CRT 模数 B 从 6k bit
+		// 涨到 268k bit 时（simplelegendre 全量 264 密文），k=3 的代价按 ~B³/k²
+		// 爆炸到小时级，会把 CI cross-bench-subset job（600s 预算）拖死。
+		// 真实裸数字广播题至多印个位数对（ezRSA 3 组）；且逐位加密题的密文
+		// 并非「同明文同指数」结构，数学上不可能命中广播攻击，放行全量纯属烧钱。
+		if len(nums) > hastadBareNumberCap {
+			nums = nums[:hastadBareNumberCap]
+		}
 		pairs = nil
 		for i := 0; i+1 < len(nums); i += 2 {
 			if nums[i].Cmp(nums[i+1]) >= 0 {
