@@ -11,6 +11,7 @@
 | 服务 | 说明 |
 |------|------|
 | [reverse_shell](reverse_shell/) | 反向 Shell：开启/停止监听、与已连接目标交互执行命令，完整交互流程。 |
+| [pent_claude_agent](pent_claude_agent/) | AI 渗透测试工程师：执行渗透任务、分析漏洞、安全诊断（Agent 内部用 Claude Agent SDK 独立运行；5 个工具）。 |
 | [security_triage_agent](security_triage_agent/) | 防御侧安全事件研判与误报剔除：告警进、结论与处置建议出（11 个工具，默认暴露 10 个；零第三方依赖）。 |
 
 ## 使用方式
