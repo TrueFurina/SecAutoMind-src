@@ -646,6 +646,10 @@ def main():
     ap.add_argument("--go", action="store_true", help="同时跑 Go 侧权威机验")
     ap.add_argument("--update-baseline", action="store_true",
                     help="用本次实况重写 benchmark_baseline.json（能力提升后抬高地板；退化时禁用）")
+    ap.add_argument("--summary-out", default=None, metavar="PATH",
+                    help="汇总 JSON 的写出路径（默认 data/ctf_benchmark/all_benchmarks_summary.json；"
+                         "也可用环境变量 CTF_AGENT_BENCH_SUMMARY_OUT 指定）。"
+                         "验证类调用应重定向到临时路径——本汇总受版本管理，是证据包与基线门禁的输入。")
     args = ap.parse_args()
 
     st_total, st_hit, st_miss, st_pct, st_res = run_static()
@@ -979,7 +983,21 @@ def main():
         "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；"
                 "所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。",
     }
-    out_path = os.path.join(HERE, "all_benchmarks_summary.json")
+    # 输出路径三档解析：显式 --summary-out > 环境变量 > 默认（受版本管理的证据产物）。
+    # 为什么必须可重定向（2026-10-14 实锤）：
+    #   scripts/check_quant_effect.py --full 会经 docs/quant_effect.md 的
+    #   `benchmark_suite_green` 声明调用本脚本。此前本脚本**无条件就地写**默认路径，
+    #   于是「验证」跑一次就把受版本管理的汇总覆盖一次；在降级环境（如缺 pycryptodome
+    #   导致 padding_oracle 0/1）下写进去的就是**降级值**，并级联把
+    #   check_benchmark_baseline_test.py 判红——验证动作污染了被验证的产物。
+    #   重定向后：验证可正常比对 stdout，产物不受影响；正式出证据包时仍走默认路径。
+    out_path = (args.summary_out
+                or os.environ.get("CTF_AGENT_BENCH_SUMMARY_OUT")
+                or os.path.join(HERE, "all_benchmarks_summary.json"))
+    out_path = os.path.abspath(out_path)
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     # newline="\n"：显式写 LF。否则 Windows 上 Python 文本模式会写出 CRLF，
     # 与 CI 检出（LF）字节不一致 —— 凡对本文件做哈希比对的门禁都会在 CI 侧炸（2026-09-28 实锤）。
     with open(out_path, "w", encoding="utf-8", newline="\n") as fh:

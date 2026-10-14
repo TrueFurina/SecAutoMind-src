@@ -14,6 +14,9 @@
   `--full` 才跑全部，供本地与赛前复验。分档是为了让门禁跑得动——
   一个没人愿意等、于是被跳过的门禁等于不存在。
 - **失败即退出非 0**：不提供"仅警告"模式。数字漂移必须显式处理。
+- **验证不得有副作用**：机验命令跑完后，任何对受版本管理产物（基准汇总、基线冻结）
+  的改动都会被自动还原（默认告警，`--strict-isolation` 下升级为失败）。
+  基准汇总另做事前重定向，源头就不写受管理路径。
 
 用法:
     python scripts/check_quant_effect.py            # quick（CI 默认）
@@ -24,10 +27,13 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,6 +42,68 @@ DOC = os.path.join(ROOT, "docs", "quant_effect.md")
 # 每条 claim 跑命令的超时（秒）
 TIMEOUT_SLOW = 600
 TIMEOUT_QUICK = 300
+
+# ── 验证不得有副作用：受保护产物的监视范围 ────────────────────────────────
+# 背景（2026-10-14 实锤）：`benchmark_suite_green` 声明会跑
+# data/ctf_benchmark/run_all_benchmarks.py，而该脚本此前**无条件就地写**
+# data/ctf_benchmark/all_benchmarks_summary.json —— 那是受版本管理、且被
+# build_championship_evidence.py / verify_evidence.py / 基线门禁消费的证据产物。
+# 于是「跑验证」= 「改产物」：降级环境下写进降级值并级联判红基线门禁。
+# 两层修复：① 事前重定向（见 REDIRECT_ENV，源头不写受管理路径）
+#           ② 事后守卫（本处：快照 → 跑 → 比对 → 还原 + 告警）
+WATCH_GLOBS = (
+    "data/ctf_benchmark/*.json",
+    "docs/benchmark_baseline.json",
+)
+REDIRECT_ENV = "CTF_AGENT_BENCH_SUMMARY_OUT"
+
+
+def watched_paths():
+    """监视清单：受版本管理、可能被机验命令就地改写的产物。
+
+    用 glob 而不是硬编码文件名——新增基准集产物自动纳入保护，不必改本脚本。
+    只取**快照时已存在**的文件：data/* 在 .gitignore 内（新增文件本就不入仓），
+    若把"新增"也算异常，CI 每次跑基准都会刷出一堆无意义告警。
+    """
+    found = set()
+    for pattern in WATCH_GLOBS:
+        for path in glob.glob(os.path.join(ROOT, pattern)):
+            if os.path.isfile(path):
+                found.add(os.path.relpath(path, ROOT).replace("\\", "/"))
+    return sorted(found)
+
+
+def snapshot(paths):
+    snap = {}
+    for rel in paths:
+        try:
+            with open(os.path.join(ROOT, rel), "rb") as fh:
+                snap[rel] = fh.read()
+        except OSError:
+            pass
+    return snap
+
+
+def restore_if_changed(snap):
+    """把被机验命令改动的受保护产物还原，返回被改动的路径清单。
+
+    只处理快照里**已存在**的文件（改动 / 删除 → 字节级还原）。
+    验证动作本就不该持久化任何状态，故还原是无条件正确的；
+    若确需刷新产物，应显式跑 run_all_benchmarks.py，而不是借道本门禁。
+    """
+    changed = []
+    for rel, blob in sorted(snap.items()):
+        abs_path = os.path.join(ROOT, rel)
+        try:
+            with open(abs_path, "rb") as fh:
+                cur = fh.read()
+        except OSError:
+            cur = None
+        if cur != blob:
+            changed.append(rel)
+            with open(abs_path, "wb") as fh:
+                fh.write(blob)
+    return changed
 
 
 def parse_claims(text: str):
@@ -117,6 +185,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", action="store_true", help="连 slow 项一起跑")
     ap.add_argument("--list", action="store_true", help="只列声明不执行")
+    ap.add_argument("--strict-isolation", action="store_true",
+                    help="把「机验命令改写了受保护产物」由告警升级为失败（CI 收紧用）")
     args = ap.parse_args()
 
     if not os.path.exists(DOC):
@@ -158,31 +228,66 @@ def main():
 
     fails = []
     verified = 0
-    for c in selected:
-        ok, actual, note = run_claim(c, TIMEOUT_SLOW if args.full else TIMEOUT_QUICK)
-        if ok is None:
-            # 不可机验的对外量化陈述 = 违反验收第 8 条「100% 可指回」，必须计红。
-            mark = "UNVERIFIABLE"
-            fails.append(c["id"])
-        else:
-            mark = "PASS" if ok else "FAIL"
-            if ok:
-                verified += 1
-            else:
+
+    # 事前：把基准汇总重定向到临时目录（源头不写受版本管理路径）。
+    # 事后：比对快照，任何改动一律还原 + 告警。
+    guard_paths = watched_paths()
+    guard_snap = snapshot(guard_paths)
+    tmpdir = tempfile.mkdtemp(prefix="qe_isolated_")
+    prev_redirect = os.environ.get(REDIRECT_ENV)
+    os.environ[REDIRECT_ENV] = os.path.join(tmpdir, "all_benchmarks_summary.json")
+
+    try:
+        for c in selected:
+            ok, actual, note = run_claim(c, TIMEOUT_SLOW if args.full else TIMEOUT_QUICK)
+            if ok is None:
+                # 不可机验的对外量化陈述 = 违反验收第 8 条「100% 可指回」，必须计红。
+                mark = "UNVERIFIABLE"
                 fails.append(c["id"])
-        print("  [%s] %-22s 期望 %-18s 实测 %-12s %s"
-              % (mark, c["id"], c.get("期望", ""), actual or "-", note))
+            else:
+                mark = "PASS" if ok else "FAIL"
+                if ok:
+                    verified += 1
+                else:
+                    fails.append(c["id"])
+            print("  [%s] %-22s 期望 %-18s 实测 %-12s %s"
+                  % (mark, c["id"], c.get("期望", ""), actual or "-", note))
+    finally:
+        if prev_redirect is None:
+            os.environ.pop(REDIRECT_ENV, None)
+        else:
+            os.environ[REDIRECT_ENV] = prev_redirect
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        now_write = restore_if_changed(guard_snap)
+
+    if now_write:
+        print()
+        print("[WARN] 机验命令改写了 %d 个受保护产物，已自动还原（验证不得有副作用）："
+              % len(now_write))
+        for rel in now_write:
+            print("       - %s" % rel)
+        print("       若确需刷新这些产物，请显式跑 data/ctf_benchmark/run_all_benchmarks.py，"
+              "不要借道本门禁。")
+        if args.strict_isolation:
+            fails.append("isolation")
 
     for c in skipped:
         print("  [SKIP] %-22s %s（slow，需 --full）" % (c["id"], c.get("期望", "")))
 
     print()
     if fails:
-        print("结论：FAIL —— %d 条陈述不可机验或与实测不符：%s" % (len(fails), ", ".join(fails)))
-        print("处置：数字漂移应**改材料**；若确属测量口径变更，须在 "
-              "`口径修复清单.md` 登记后再改本表期望值。")
-        print("      缺 command/pattern 的陈述应改列到「人工核验表」，"
-              "留在机验表里即为未兑现的对外陈述。")
+        claim_fails = [f for f in fails if f != "isolation"]
+        if claim_fails:
+            print("结论：FAIL —— %d 条陈述不可机验或与实测不符：%s"
+                  % (len(claim_fails), ", ".join(claim_fails)))
+            print("处置：数字漂移应**改材料**；若确属测量口径变更，须在 "
+                  "`口径修复清单.md` 登记后再改本表期望值。")
+            print("      缺 command/pattern 的陈述应改列到「人工核验表」，"
+                  "留在机验表里即为未兑现的对外陈述。")
+        if "isolation" in fails:
+            print("结论：FAIL —— 机验命令改写了受保护产物（--strict-isolation 已开启）。")
+            print("处置：让该命令支持输出重定向（如 run_all_benchmarks.py --summary-out），"
+                  "或在门禁侧追加 REDIRECT_ENV，不得让验证污染被验证的产物。")
         return 1
     print("结论：PASS —— 本次机验的 %d 条量化陈述全部可复现（另有 %d 条 slow 跳过）。"
           % (verified, len(skipped)))
