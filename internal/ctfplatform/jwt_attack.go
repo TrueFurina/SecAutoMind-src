@@ -376,7 +376,7 @@ func jwtAttackFromText(ctx context.Context, text string) []string {
 
 func init() {
 	RegisterSolver(SolverEntry{
-		Name: "jwt_auth_bypass", Category: CategoryWebS, Priority: 25,
+		Name: "jwt_auth_bypass", Category: CategoryWebS, Priority: 25, WebExploitChain: true,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return jwtAttackFromText(ctx, text)
 		},

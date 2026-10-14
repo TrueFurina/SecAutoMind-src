@@ -287,9 +287,17 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	// 12. Web 目标自动利用：题目文本里若给出靶机 URL，即对该目标实打实跑
 	//     渗透链（SQLi/SSTI/LFI/SSRF/命令注入/NoSQL/源码与 Cookie 泄漏）。
 	//     这是 Web 类真题唯一的解法路径（flag 只存在于靶机响应里）。
+	//     ⚠️ 类别门控（2026-10-15 立尺修订）：仅 web 题（或未声明类别）触发。
+	//     非 web 题文本里的 URL 多为 writeup/来源注释（实测 crypto 题
+	//     specialcurve2 附件注释含 cn-sec.com 链接），九件套对无关主机
+	//     发起真实请求会干等满超时——单题 60s、跨-bench 子集测试 4 遍
+	//     扫描 267s，且从第三方页面刮回的伪 flag 外形串污染 solved 判定。
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if !webExploitApplies(ch.Category) {
+			return
+		}
 		if flags := ExploitURLsInText(ctx, text); len(flags) > 0 {
 			chResult <- result{"web_exploit", flags}
 		}
@@ -302,7 +310,7 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 	if registrySweepEnabled() {
 		go func() {
 			defer close(sweepDone)
-			if r := p.presolveRegistrySweep(ctx, text, attachments); r != nil && len(r.Flags) > 0 {
+			if r := p.presolveRegistrySweep(ctx, text, attachments, ch.Category); r != nil && len(r.Flags) > 0 {
 				chSweep <- result{r.Engine, r.Flags}
 			}
 		}()

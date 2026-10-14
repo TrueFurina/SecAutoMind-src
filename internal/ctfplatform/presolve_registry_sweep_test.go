@@ -13,8 +13,17 @@ import (
 // TestAllRegisteredSolversActuallyExecute 反注水门禁：
 // 对外宣称「N 个注册求解器」，就必须证明这 N 个在生产链路真的被执行到。
 // 历史上生产 Presolve 只硬编码调用约 25 个，其余 120 个注册了却永不被调用
-// ——本测试即为该断层的机验：跑一次注册表全量扫描，断言每个 Enabled
+// ——本测试即为该断层的机验：跑注册表全量扫描，断言每个 Enabled
 // 求解器都至少执行 1 次。
+//
+// ⚠️ 2026-10-15 起必须两路探针：WebExploitChain 九件套（web_exploit/ssrf/
+// ssti/sqli/jwt/gql/xxe/upload/deser）仅对 web 类或未声明类别的题目启用
+// （webExploitApplies，presolve_registry.go；非 web 题文本里的 URL 多为
+// writeup 引用，对无关主机发起真实渗透链会干等满超时）。因此反注水证明
+// 拆为两路，**两路并集的执行覆盖必须等于 Enabled 全集**：
+//   - misc 探针：证明其余求解器在非 web 题上真的被调度；
+//   - web 探针：证明九件套同样接进了生产扫描（而非注册了永不执行）。
+// 只用单路 misc 探针会把「按设计门控」误报成注水——那反而是门禁缺陷。
 func TestAllRegisteredSolversActuallyExecute(t *testing.T) {
 	solvers := GetSolvers()
 	if len(solvers) == 0 {
@@ -42,13 +51,15 @@ func TestAllRegisteredSolversActuallyExecute(t *testing.T) {
 	}
 
 	pr := NewPresolver(nil)
-	ch := &Challenge{
-		ID:          "sweep-probe",
-		Title:       "registry sweep probe",
-		Category:    "misc",
-		Description: "Find the flag. Try base64, caesar, rot13, morse, xor, rsa, hex, and look at the HTML source.",
+	probes := []*Challenge{
+		{ID: "sweep-probe-misc", Title: "registry sweep probe (non-web)", Category: "misc",
+			Description: "Find the flag. Try base64, caesar, rot13, morse, xor, rsa, hex, and look at the HTML source."},
+		{ID: "sweep-probe-web", Title: "registry sweep probe (web)", Category: "web",
+			Description: "Find the flag on the web target. Try base64, caesar, rot13, morse, xor, rsa, hex, and inspect the HTML source."},
 	}
-	_ = pr.PresolveWithRegistry(context.Background(), ch, nil)
+	for _, ch := range probes {
+		_ = pr.PresolveWithRegistry(context.Background(), ch, nil)
+	}
 
 	counts := SolverRunCounts()
 	ran := 0
@@ -64,10 +75,10 @@ func TestAllRegisteredSolversActuallyExecute(t *testing.T) {
 		}
 	}
 	sort.Strings(notRun)
-	t.Logf("全量扫描实际执行到的求解器: %d/%d", ran, enabled)
+	t.Logf("两路探针（misc+web）实际执行到的求解器: %d/%d", ran, enabled)
 	if ran != enabled {
 		t.Logf("未执行: %v", notRun)
-		t.Errorf("宣称 %d 个启用求解器，实际只执行了 %d 个——存在注水", enabled, ran)
+		t.Errorf("宣称 %d 个启用求解器，两路探针下只执行了 %d 个——存在注水", enabled, ran)
 	}
 }
 
