@@ -57,12 +57,12 @@ claims:
     耗时类: quick
 
   - id: real_static_registry
-    陈述: 注册表路径 PresolveWithRegistry 真题覆盖率（对外材料"静态 34.5%"取的就是这条）
+    陈述: 注册表路径 PresolveWithRegistry 真题覆盖率（对外材料"静态 36.4%"取的就是这条）
     基准集: 真题集(55)
-    期望: 19/55 = 34.5%
+    期望: 20/55 = 36.4%
     command: go test ./internal/ctfplatform/ -run TestRealBenchmark_RegistryPresolve -v
     pattern: '(\d+)/(\d+) = ([\d.]+)%'
-    实测: 2026-10-13 19/55 = 34.5%
+    实测: 2026-10-15 20/55 = 36.4%
     状态: 已验证
     耗时类: quick
 
