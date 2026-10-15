@@ -506,5 +506,19 @@ jobs:
         run: python scripts/check_benchmark_plaintext_answer.py --check
       - name: Plaintext-answer gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_benchmark_plaintext_answer_test.py
+
+  benchmark-validity-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # 登记基线语义：A 层 <= 4、C 层占比 <= 71.0%（当前实测 70.9%）。
+      # 守住的是「分母不许继续注水」，不是「已合格」——新增无输入的题会让占比越线即红。
+      - name: Real benchmark must stay solvable-in-principle (no worse than baseline)
+        run: python scripts/audit_benchmark_validity.py --check
+      - name: Benchmark validity gate regression + mutation check (prove the gate can fail)
+        run: python scripts/audit_benchmark_validity_test.py
       - name: External payload gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_external_westlake_payload_test.py
