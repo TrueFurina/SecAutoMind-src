@@ -33,9 +33,11 @@
         {
           "name": "task.py",
           "size": 1285,
-          "answer_key_shape": false,
-          "git_excluded": false,
-          "exclude_reason": ""
+          "answer_key_shape": true,
+          "git_excluded": true,
+          "exclude_reason": "附件含本实例 hint/c/n 三元组（task.py 末尾文档字符串内），足以让求解器直接还原 m ⇒ 按答案形态处理并 git 排除（PUBLIC 仓禁答案材料入库）。分类于 2026-10-15：此前误判为『数据不完整、实例真值未留存』，实为归因错误 —— 真值一直在附件里，属读附件不彻底（只读前半段就下结论）。",
+          "sha256": "328d824447dd506d4b1d071aa33cf607d0f9e525f6e14364edd821d4e413a47c",
+          "recovered_from": "本仓库 data/questions_real_bench/attachments/10733/task.py（2026-10-15 重新精读；A 库同源副本另存于 E:/Program/西湖论剑 git 历史 87550e0d）"
         }
       ]
     },
