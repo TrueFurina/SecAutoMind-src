@@ -8,10 +8,21 @@
    两边都验，防止判据恒真或恒假。
 3. **断言彼此独立**：只污染 A 层、或只污染 C 层，各自都能独立触发 FAIL，
    证明两条断言不是被同一条短路掩盖。
+
+判据语义变更（2026-10-16）
+--------------------------
+A 层判据由「正则看着像」改为 **sha256 比对**（题面 flag 串的 sha256 == flag_sha256），
+与 scripts/check_benchmark_plaintext_answer.py 同源。原因是 CRC32 伪造、LCG 参数恢复
+一类题的 flag 是**已知输入**，形态也是 flag{...} 但与答案指纹不等——按外观判会误伤。
+相应地，--check 默认阈值改为**登记基线（不许恶化）**，而非理想阈值（A=0 / C≤20%）。
+
+因此本文件的「当前数据必须报红」用例已改为「当前数据在基线内 PASS」，
+并**新增证明基线模式仍抓得住恶化**的用例——否则"放低阈值"就真的成了放水。
 """
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -79,12 +90,23 @@ class TestRegression(unittest.TestCase):
         self.assertEqual(len(layers["B"]), 12)
         self.assertEqual(len(layers["C"]), 39)
 
-    def test_real_data_check_fails(self):
-        """当前基准确实注水，--check 必须报红（否则门禁形同虚设）。"""
+    def test_real_data_check_passes_within_baseline(self):
+        """当前数据在登记基线内 → PASS。
+
+        注意语义：基线 = 「不许再恶化」，不是「已合格」。理想目标仍是 A=0、C 层尽量低。
+        用理想阈值（--max-a 0 --max-noinput-pct 20）跑则必须报红，见下一个用例。
+        """
         rc, out = run_with(abv.BENCH, abv.REPORT, abv.ATTACH, ["--check"])
+        self.assertEqual(rc, 0, out)
+        self.assertIn("门禁结论：PASS", out)
+
+    def test_real_data_still_fails_ideal_threshold(self):
+        """用理想阈值跑当前数据 → 必须报红（证明基线不是自我安慰）。"""
+        rc, out = run_with(abv.BENCH, abv.REPORT, abv.ATTACH,
+                           ["--check", "--max-a", "0", "--max-noinput-pct", "20"])
         self.assertEqual(rc, 1)
         self.assertIn("门禁结论：FAIL", out)
-        self.assertIn("题面直接含 flag 明文", out)
+        self.assertIn("题面即答案", out)
         self.assertIn("物理不可解却计入分母", out)
 
 
@@ -110,26 +132,73 @@ class TestMutation(unittest.TestCase):
             self.assertEqual(rc, 1)
             self.assertIn("物理不可解却计入分母", out)
 
-    def test_only_flag_plain_fails_independently(self):
-        """只污染 A 层（C 层为 0）→ 仍须 FAIL，证明 A 断言未被 C 断言短路。"""
+    def test_only_a_layer_fails_independently(self):
+        """只污染 A 层（C 层为 0）→ 仍须 FAIL，证明 A 断言未被 C 断言短路。
+
+        fixture 必须为 evil 题配 flag_sha256，否则新判据（sha256 比对）判不出 A 层。
+        """
         prob = dict(CLEAN_PROB)
+        evil_flag = "flag{plain_in_stem}"
         prob["evil"] = {"id": "evil", "category": "web",
-                        "description": "<!-- secret: flag{plain_in_stem} -->"}
+                        "description": "<!-- secret: %s -->" % evil_flag,
+                        "flag_sha256": hashlib.sha256(evil_flag.encode()).hexdigest()}
         res = list(CLEAN_RES) + [
             {"id": "evil", "sha256_match": True, "presolve_engine": "flag_scan"}
         ]
         with tempfile.TemporaryDirectory() as tmp:
             b, r, a = write_fixture(tmp, prob, res, attach=["t_att"])
-            rc, out = run_with(b, r, a, ["--check"])
+            rc, out = run_with(b, r, a, ["--check", "--max-a", "0"])
             self.assertEqual(rc, 1, out)
-            self.assertIn("题面直接含 flag 明文", out)
+            self.assertIn("题面即答案", out)
             self.assertNotIn("物理不可解却计入分母", out, "C 层为 0 时不应报 C 断言")
 
-    def test_flag_plain_detected_regardless_of_hit(self):
-        """题面含 flag 明文即入 A 层，与是否命中无关（分类不靠结果）。"""
-        self.assertTrue(abv.FLAG_PLAIN_RE.search("flag{abc}"))
-        self.assertTrue(abv.FLAG_PLAIN_RE.search("picoCTF{x_y_z}"))
-        self.assertFalse(abv.FLAG_PLAIN_RE.search("YidkM0JxZGtwQlRYdHFhR3g2YUhsZmF6TnFlVGwz"))
+    def test_a_layer_over_baseline_fails(self):
+        """基线模式仍抓得住恶化：A 层 5 题 > 基线 4 → FAIL。
+
+        这条是"放低阈值"后必须补的自证：否则登记基线就等同于放水。
+        """
+        prob = dict(CLEAN_PROB)
+        res = list(CLEAN_RES)
+        for i in range(5):
+            f = "flag{leak_%d}" % i
+            prob["evil%d" % i] = {"id": "evil%d" % i, "category": "web",
+                                  "description": "答案在题面 " + f,
+                                  "flag_sha256": hashlib.sha256(f.encode()).hexdigest()}
+            res.append({"id": "evil%d" % i, "sha256_match": True,
+                        "presolve_engine": "flag_scan"})
+        with tempfile.TemporaryDirectory() as tmp:
+            b, r, a = write_fixture(tmp, prob, res, attach=["t_att"])
+            rc, out = run_with(b, r, a, ["--check"])   # 用默认基线 BASELINE_A=4
+            self.assertEqual(rc, 1, out)
+            self.assertIn("题面即答案", out)
+
+    def test_answer_in_statement_needs_sha256_match(self):
+        """新判据单测：sha256 相等才算答案在题面；仅"形态像"不算。"""
+        f = "flag{real_one}"
+        self.assertTrue(abv.answer_in_statement(
+            {"description": "答案在题面 " + f,
+             "flag_sha256": hashlib.sha256(f.encode()).hexdigest()}))
+        # 已知输入型：形态是 flag{...} 但与答案指纹不等 → 不算【防误伤，关键】
+        self.assertFalse(abv.answer_in_statement(
+            {"description": "给定原文 flag{input_only} 伪造 CRC32",
+             "flag_sha256": hashlib.sha256("flag{the_real_answer}".encode()).hexdigest()}))
+        # 没有 flag_sha256 → 无法裁定，不误伤
+        self.assertFalse(abv.answer_in_statement({"description": "flag{abc}"}))
+
+    def test_input_flag_not_classified_as_a(self):
+        """端到端防误伤：CRC32 式题（flag 是输入）不得落入 A 层。"""
+        prob = dict(CLEAN_PROB)
+        prob["crc"] = {"id": "crc", "category": "misc",
+                       "description": "给定原文 flag{admin_forge} 伪造其 CRC32 碰撞",
+                       "flag_sha256": hashlib.sha256("flag{other_value}".encode()).hexdigest()}
+        res = list(CLEAN_RES) + [{"id": "crc", "sha256_match": True,
+                                  "presolve_engine": "crc32_forge"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            b, r, a = write_fixture(tmp, prob, res, attach=["t_att"])
+            layers = abv.classify(prob, {"t_att"})
+            self.assertNotIn("crc", layers["A"], "输入型 flag 不得判为 A 层")
+            rc, out = run_with(b, r, a, ["--check", "--max-a", "0"])
+            self.assertEqual(rc, 0, out)
 
     def test_report_mode_never_fails(self):
         """仅报数模式恒 0：报数不得因数据差而中断流水线。"""
