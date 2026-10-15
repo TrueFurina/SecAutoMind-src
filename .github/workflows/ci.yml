@@ -494,3 +494,17 @@ jobs:
         run: python scripts/check_external_westlake_payload.py --check
       - name: External payload gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_external_westlake_payload_test.py
+
+  plaintext-answer-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: No benchmark may hide its answer in the problem statement
+        run: python scripts/check_benchmark_plaintext_answer.py --check
+      - name: Plaintext-answer gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_benchmark_plaintext_answer_test.py
+      - name: External payload gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_external_westlake_payload_test.py
