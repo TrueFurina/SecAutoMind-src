@@ -49,6 +49,10 @@ type crossBenchAttachment struct {
 	AnswerKeyShape bool   `json:"answer_key_shape"` // flag.* 前缀或登记的"题目本体含答案"文件
 	GitExcluded    bool   `json:"git_excluded"`     // flag 明文/内嵌答案：只留本地，不进 PUBLIC 仓
 	ExcludeReason  string `json:"exclude_reason"`
+	// SHA256/RecoveredFrom（2026-10-15 补字段）：文件被 git 排除后 CI 检出读不到它，
+	// 指纹+出处成为"登记契约"唯一可机验的锚点（见 TestRecoveredAttachmentHasInstanceTruth）。
+	SHA256        string `json:"sha256"`
+	RecoveredFrom string `json:"recovered_from"`
 }
 
 type crossBenchDoc struct {
