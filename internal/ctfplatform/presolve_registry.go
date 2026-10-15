@@ -231,12 +231,33 @@ type sweepCandidate struct {
 	prio  int
 	flags []string
 	like  int
+	// verbatim 标记该候选的 flags[0] 是否原样出现在输入文本里（即「原文刮中」
+	// 而非变换产出）。用于同分裁决：密文本身常具 flag 外形（如维吉尼亚题面的
+	// OHGF{...}），原文扫描（flag_scan，priority 10）会与真解（解密产出，
+	// priority 20）同 likeness 打平并按优先级胜出——把真解挤出局。生产
+	// huntPresolve 用固定顺序规避（tryVigenereKnownKey 先于 scanFlags，
+	// 见 presolve.go 注释），注册表裁决必须等价表达该语义。
+	verbatim bool
 }
 
-// betterSweep 候选排序：先看「像不像 flag」，再比优先级，最后比名字保证确定性。
+// isVerbatimFlag 候选的 flags[0] 是否原样出现在输入文本中（原文刮中 vs 变换产出）。
+// 判据取 flags[0]——机验口径（sha256 比对）也只认 Flags[0]。
+func isVerbatimFlag(text string, flags []string) bool {
+	if len(flags) == 0 {
+		return false
+	}
+	return strings.Contains(text, flags[0])
+}
+
+// betterSweep 候选排序：先看「像不像 flag」，同等像则**变换产出优先于原文刮中**
+// （verbatim 密文挤真解缺陷的修复，详见 sweepCandidate.verbatim 注释），
+// 再比优先级，最后比名字保证确定性。
 func betterSweep(a, b sweepCandidate) bool {
 	if a.like != b.like {
 		return a.like > b.like
+	}
+	if a.verbatim != b.verbatim {
+		return !a.verbatim
 	}
 	if a.prio != b.prio {
 		return a.prio < b.prio
@@ -288,7 +309,7 @@ func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, atta
 			if cached, ok := p.cache.Get(key); ok {
 				recordSolverRun(s.Name)
 				if cached.Solved && len(cached.Flags) > 0 {
-					res <- sweepCandidate{s.Name, s.Priority, cached.Flags, flagLikeness(cached.Flags)}
+					res <- sweepCandidate{s.Name, s.Priority, cached.Flags, flagLikeness(cached.Flags), isVerbatimFlag(text, cached.Flags)}
 				}
 				return
 			}
@@ -296,7 +317,7 @@ func (p *Presolver) presolveRegistrySweep(ctx context.Context, text string, atta
 			recordSolverRun(s.Name)
 			p.cache.Set(key, &PresolveResult{Solved: len(flags) > 0, Engine: s.Name, Flags: flags})
 			if len(flags) > 0 {
-				res <- sweepCandidate{s.Name, s.Priority, flags, flagLikeness(flags)}
+				res <- sweepCandidate{s.Name, s.Priority, flags, flagLikeness(flags), isVerbatimFlag(text, flags)}
 			}
 		}(entry)
 	}

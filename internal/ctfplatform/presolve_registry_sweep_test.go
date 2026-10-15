@@ -141,6 +141,52 @@ func TestRegistrySweepNoDiagnosticFalsePositive(t *testing.T) {
 	}
 }
 
+// TestRegistrySweepVerbatimTieBreak verbatim 同分裁决门禁：
+// 「密文本身具 flag 外形」会把变换产出的真解挤出局——同一 likeness 下，
+// 原文刮中（verbatim）必须让位于变换产出。
+//
+// 真实案例 ehaxctf2025_morse：题面「维吉尼亚解密(密钥kagi): OHGF{w0ry3_...}」
+// 中 OHGF{...} 是密文（外形像 flag，flagLikeness=3，与真解打平），
+// 而 flag_scan 以 priority 10 先命中并胜出，真解 EHAX{m0rs3_...} 被挤掉。
+// 生产 huntPresolve 用固定调用顺序规避（tryVigenereKnownKey 先于 scanFlags），
+// 注册表裁决必须等价表达该语义，否则同一道题在两条路径上结论不一致。
+func TestRegistrySweepVerbatimTieBreak(t *testing.T) {
+	// 真解：由变换（维吉尼亚/base64）产出，不原样出现在文本中。
+	transformed := sweepCandidate{name: "vigenere", prio: 20, flags: []string{"EHAX{m0rs3_v1g3n3r3_0p3r4t10n}"}, like: 3}
+	// 假解：密文原文刮中，likeness 同为 3，优先级更高（10 < 20）。
+	verbatim := sweepCandidate{name: "flag_scan", prio: 10, flags: []string{"OHGF{w0ry3_d1q3n3x3_0x3b4t10t}"}, like: 3, verbatim: true}
+
+	if !betterSweep(transformed, verbatim) {
+		t.Fatal("同 likeness 下变换产出必须压过原文刮中（verbatim 挤真解缺陷未修复）")
+	}
+	if betterSweep(verbatim, transformed) {
+		t.Fatal("原文刮中不得压过变换产出")
+	}
+
+	// 反向对照：likeness 不同则 verbatim 不参与裁决（高 likeness 仍优先），
+	// 防止本修复退化成「verbatim 永远垫底」而压掉真正的原文命中。
+	strongVerbatim := sweepCandidate{name: "flag_scan", prio: 0, flags: []string{"flag{plain_text_flag}"}, like: 3, verbatim: true}
+	weakTransformed := sweepCandidate{name: "rot13", prio: 30, flags: []string{"flag{low_likeness}"}, like: 2}
+	if !betterSweep(strongVerbatim, weakTransformed) {
+		t.Fatal("likeness 更高者必须胜出，verbatim 不得凌驾 likeness")
+	}
+
+	// 端到端：该题在注册表路径必须返回真解而非密文。
+	pr := NewPresolver(nil)
+	ch := &Challenge{
+		ID:          "ehaxctf2025_morse",
+		Category:    "crypto",
+		Description: "维吉尼亚解密(密钥kagi): OHGF{w0ry3_d1q3n3x3_0x3b4t10t}",
+	}
+	res := pr.PresolveWithRegistry(context.Background(), ch, nil)
+	if !res.Solved {
+		t.Fatal("维吉尼亚题应被解出")
+	}
+	if len(res.Flags) == 0 || res.Flags[0] != "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}" {
+		t.Fatalf("应返回变换产出的真解，实际 %v", res.Flags)
+	}
+}
+
 // TestRegistrySweepDiagnosticOnRealBenchmark 诊断用：对整套真题跑注册表全量扫描，
 // 报告「有输出」与「经 SHA-256 校验为真命中」各多少，用于判断扫描器是否真在
 // 工作、以及还有多少潜在能力可挖。
