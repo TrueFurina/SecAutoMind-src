@@ -478,3 +478,19 @@ jobs:
         run: python scripts/check_mcp_servers.py
       - name: MCP servers gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_mcp_servers_test.py
+
+  # 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着
+  # payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析；
+  # 同目录 judge --self-check 只验字段非空、不验 os.path.exists，照样报「问题=0」。
+  # 当前状态 = 未挂载且未被引用（PASS）；一旦有人把它接进对外汇总，门禁立刻变红。
+  external-payload-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: External benchmark payload must exist on disk once claimed
+        run: python scripts/check_external_westlake_payload.py --check
+      - name: External payload gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_external_westlake_payload_test.py

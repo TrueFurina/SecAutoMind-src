@@ -227,9 +227,43 @@ presolve 用 `flag_scan` 正则一扫即命中，`sha256` 校验确实通过—�
 基线 4（防止继续注水；**修好后须把 `maxAllowedScanHits` 下调为 0**）。
 配套只读审计工具：`scripts/audit_benchmark_validity.py`（A/B/C 三层解构）。
 
-⚠️ **处置未定（需拍板）**：这 4 题本质是「flag 提取」而非 CTF 解题，应从命中里剥离
-或改写题面。剥离会让对外数字 20/55 → 16/55，牵动 `docs/quant_effect.md` 两条机验
-claim 与冻结基线，故未擅自改动。
+✅ **处置已定（2026-10-16，PR #31）**：不删题。删除会让分母 55→51、比例升到
+31.4%——那是**挑题目抬高数字**。采用保守方向：**保留 55 分母，只从分子剔除 4 道伪解**，
+对外主口径改为 **16/55 = 29.1%**；全量 20/55 = 36.4% 保留但标注「不得单独作为能力证据」。
+`docs/quant_effect.md` §1 新增机验 claim `real_static_real_solver`（第 8 条），
+PPT 生成脚本 5 处旧值 34.5%（19 题）同步接线修正——该值经复测已不存在（两路径同为 20/55）。
+
+---
+
+## 4.7 第四种空洞绿：声明齐全 ≠ 实物存在（external_westlake 载荷未落地）
+
+排查「能否用外部真题集补录 C 层题面」时挖出**第四种**空洞绿形态，与前三种（输入缺失算绿、
+机验 0 条报全绿、判据边界恒真）并列：
+
+**`data/ctf_benchmark/external_westlake/benchmark.json` 里 80/80 题标着
+`payload_status = "verified_on_disk"`，但附件路径是导出方仓库的相对路径，
+在本仓库实测 0/80 可解析**（仓库根相对与基准目录相对两种解析都试过）。
+
+而同目录 `judge_external_westlake.py --self-check` **只验字段非空、不验 `os.path.exists`**，
+照样输出 `[self-check] 题数=80 ... 问题=0`、rc=0 —— 声明看起来齐全，实物一个都没有。
+PROVENANCE.md §6 甚至把这条写成了设计（"路径与存在性以 `payload_status` 字段为准"），
+§3 又声称"附件未落盘的题在导出阶段即被排除"，两者叠加极易让人误以为本仓库可直接跑。
+
+**自救性事实**：这套基准**从未出现在对外数字里**（`all_benchmarks_summary.json`
+与 `docs/quant_effect.md` 均无 `westlake` 字样），所以没有产生假成绩。
+但它是一颗定时炸弹——谁把它接进汇总，谁就会得到「缺载荷恒 miss」的假分母。
+
+**已落地防护**：`scripts/check_external_westlake_payload.py`（三态判据 + 10 项自测）
+并**已接 CI**（job `external-payload-gate`）：
+
+| 态 | 条件 | 判据 |
+|---|---|---|
+| 已挂载 | 声称题里至少 1 题附件可解析 | 逐题断言：声称 `verified_on_disk` 必须解析到实物，缺一即红 |
+| **未挂载**（当前） | 声称 N>0、解析数 0 | 允许存在，但**禁止**出现在对外汇总/机验 claim，出现即红 |
+| 空基准 | 题数 0 | 红（fail-closed，防"扫 0 文件 = 0 违规 = 全绿"） |
+
+口径提醒：80 题里 75 题用 `attachment` 单数字段、5 题用 `attachments` 复数，
+**只数单数字段会得到 75 这个错值**。
 
 ---
 
