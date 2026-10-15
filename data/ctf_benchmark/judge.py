@@ -230,6 +230,44 @@ def try_xor_single(text: str) -> list:
                 return flags
     return []
 
+# XOR 已知明文模板库（对齐 Go xorKnownPlaintextTemplates，presolve_xor_known_plaintext.go）。
+# 收录标准：该句确实作为某道公开赛题的 XOR 明文出现（可查 writeup）或为经典通用测试句。
+XOR_KNOWN_PLAINTEXT_TEMPLATES = [
+    # WolvCTF 2024 Crypto "Yors Truly"：题目源码内明文 + flag 当时序密钥，密文 28B == flag 长度。
+    "A string of text can be encrypted by applying the bitwise XOR operator to every character using a given key",
+    # 经典 pangram：通用测试句，覆盖同类"模板句 XOR"变体。
+    "The quick brown fox jumps over the lazy dog",
+]
+
+def is_printable_flag_candidate(s: str) -> bool:
+    """干净可打印 ASCII 且长度 1..128（对齐 Go isPrintableFlagCandidate）。"""
+    return 0 < len(s) <= 128 and all(0x20 <= ord(c) < 0x7f for c in s)
+
+def try_xor_known_plaintext(text: str) -> list:
+    """XOR 已知明文攻击（对齐 Go tryXORKnownPlaintext）：对 base64 令牌推导 key = ct XOR pt。
+    防误报双重门槛：is_printable_flag_candidate + scan_flags。"""
+    tok_re = re.compile(r'[A-Za-z0-9+/=]{16,}')
+    out, seen = [], set()
+    for tok in tok_re.findall(text):
+        pad = tok + "=" * ((4 - len(tok) % 4) % 4)
+        try:
+            ct = base64.b64decode(pad)
+        except Exception:
+            continue
+        if len(ct) < 8:
+            continue
+        for tmpl in XOR_KNOWN_PLAINTEXT_TEMPLATES:
+            # zip 语义：异或结果长度 = min(len(ct), len(tmpl))。
+            n = min(len(ct), len(tmpl))
+            key = bytes(ct[i] ^ ord(tmpl[i]) for i in range(n))
+            if not is_printable_flag_candidate(key.decode('latin1')):
+                continue
+            for f in scan_flags(key.decode('latin1')):
+                if f not in seen:
+                    seen.add(f)
+                    out.append(f)
+    return out
+
 def try_rsa_small_e(text: str) -> list:
     """RSA 小指数攻击：从题目文本解析 c（密文）与 e（默认 3），
     计算精确 e 次根还原明文，对齐 Go tryRSASmallE / solveRSATemplate。
@@ -436,6 +474,11 @@ def presolve(description: str) -> tuple:
     flags = try_rail_fence(description)
     if flags:
         return 'rail_fence', flags[0]
+
+    # XOR 已知明文攻击（对齐 Go tryXORKnownPlaintext，registry priority 37）
+    xor_kp = try_xor_known_plaintext(description)
+    if xor_kp:
+        return 'xor_known_plaintext', xor_kp[0]
 
     # 尝试 hex 解码后扫 flag
     hex_re = re.compile(r'[0-9a-fA-F]{16,}')

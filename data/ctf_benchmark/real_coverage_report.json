@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 19,
-  "miss": 36,
-  "coverage_pct": 34.5,
+  "hit": 20,
+  "miss": 35,
+  "coverage_pct": 36.4,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -49,9 +49,9 @@
       "category": "crypto",
       "sub": "xor",
       "difficulty": "easy",
-      "presolve_engine": null,
-      "presolve_flag": null,
-      "sha256_match": false,
+      "presolve_engine": "xor_known_plaintext",
+      "presolve_flag": "wctf{X0R_i5_f0rEv3r_My_L0Ve}",
+      "sha256_match": true,
       "expected_skill": "auto"
     },
     {
