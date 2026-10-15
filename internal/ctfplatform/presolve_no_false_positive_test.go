@@ -88,13 +88,13 @@ func TestPlaceholderFlagBelowHitThreshold(t *testing.T) {
 			t.Errorf("占位符 %q likeness=%d 不应达到命中门槛 %d", f, got, minFlagLikenessForHit)
 		}
 	}
-	// 正向对照：真 flag（含纯数字内容、连字符、混合大小写）必须仍达门槛，
+	// 正向对照：合成真 flag 样本（含纯数字内容、连字符、混合大小写）必须仍达门槛，
 	// 防止把过滤器改得过宽误伤真解。
 	for _, f := range []string{
-		"flag{QUITE_S1mpLe_TAsk}",
-		"flag{S0_G00d_J0B_RUA}",
-		"DASCTF{15401137114601469828-11256716742701089092}",
-		"flag{GO0D_J0b_of_TH1s_encrYption}",
+		"flag{5ynthet1c-P0s1t1ve-C0ntr0l}",
+		"flag{4n0th3r-5ynthet1c-C0ntr0l}",
+		"DASCTF{1234567890123456789-987654321098765432}",
+		"flag{7h1rd-5ynthet1c-C0ntr0l}",
 	} {
 		if got := flagLikeness([]string{f}); got < minFlagLikenessForHit {
 			t.Errorf("真 flag %q likeness=%d 应达到门槛 %d", f, got, minFlagLikenessForHit)

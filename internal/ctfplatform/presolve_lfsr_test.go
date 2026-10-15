@@ -52,8 +52,8 @@ func fixtureFilterOutput(init1, init2, mask1, mask2, lengthMask uint64, count in
 func buildLFSRFixture(t *testing.T, flagTemplate string, corrupt string) string {
 	t.Helper()
 	const (
-		init1 = uint64(15401137114601469828)
-		init2 = uint64(11256716742701089092)
+		init1 = uint64(1234567890123456789)
+		init2 = uint64(987654321098765432)
 		mask1 = uint64(17638491756192425134)
 		mask2 = uint64(14623996511862197922)
 	)
@@ -81,7 +81,7 @@ assert flag==%s
 
 func TestLFSRCorrelationSynthetic(t *testing.T) {
 	const tmpl = "b'DASCTF{%d-%d}'"
-	const want = "DASCTF{15401137114601469828-11256716742701089092}"
+	const want = "DASCTF{1234567890123456789-987654321098765432}"
 	got := tryLFSRCorrelation(buildLFSRFixture(t, tmpl, ""))
 	if len(got) == 0 || got[0] != want {
 		t.Fatalf("lfsr_correlation 合成用例失手：got=%v want=%q", got, want)
