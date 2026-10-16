@@ -10,10 +10,13 @@
   - 官网长期写「140 运行时工具」，而 140 既不等于 90 也不等于 142，属凭空漂移
 写死的数字在提交完成的下一秒就可能过期，靠人肉同步永远追不上。
 
-它检查两件事
+它检查三件事
 ------------
 1) 黑名单：已作废旧口径复活（带上下文匹配，避免误伤行号/端口等无关数字）
 2) 锚点比对：材料里出现的「Go N 文件」「N 运行时工具」「N 求解器」必须等于真值
+3) 修复清单一致性：`docs/口径修复清单.md` 声明的门禁状态必须与本次一致
+   （2026-10-16 补——它被 TOOL_EXEMPT 豁免扫描，因此此前**无任何判据能发现它过期**，
+   实测其自 09-09 起一直写着「结论：FAIL」而门禁早已 PASS）
 
 退出码：0 = 通过；1 = 口径漂移（禁止合入 / 禁止打包）
 """
@@ -175,7 +178,12 @@ TOOL_EXEMPT = {
     "fix_material_numbers_test.py",  # 自测**必须**故意写一个漂移数字才能验证修复器（列举 ≠ 使用）
     "_qc_final.py",                  # PPT 质检脚本，正则里必须写旧数字才能查它
     "PPT_制作提示词.md",              # 同一份旧数字禁用清单的说明文档
-    "口径修复清单.md",                # 门禁自己产出的修复清单（固定名，覆盖更新）：列举旧数字是它的功能
+    # 历史修复清单（2026-09-09 一次门禁输出的快照）：它的功能就是**列举**当时报出的 94 处
+    # 旧数字/漂移，豁免扫描是必须的。⚠️ 2026-10-16 更正一处不实注释：本门禁**从不写它**
+    # （此前注释称"门禁自己产出、覆盖更新"，实测无任何写入逻辑 → 该清单自 09-09 起无人刷新，
+    # 漂移修完、门禁已 PASS，文件却仍写「结论：FAIL」）。现由 check_ledger() 双向钉死状态，
+    # 过期即红 —— 与 #41「产物↔生成器一致性」同款判据。
+    "口径修复清单.md",
 }
 
 # 规范文档自身（它要列举禁用清单来说明规则，列举 ≠ 使用）
@@ -246,6 +254,41 @@ def is_historical(rpath):
         if (mm, dd) < (date.today().month, date.today().day):
             return True
     return False
+
+
+LEDGER_REL = os.path.join("docs", "口径修复清单.md")
+# 机器可读状态行：清单必须自带且与本次门禁结论一致。格式刻意写得死板，
+# 便于人读、便于机验，也便于测试注入。
+LEDGER_STATUS_RE = re.compile(r"^当前门禁状态：\s*(PASS|FAIL)\s*$", re.MULTILINE)
+
+
+def check_ledger(verdict):
+    """`docs/口径修复清单.md` 若存在，其声明的门禁状态必须与本次一致。
+
+    实锤（2026-10-16）：该文件是 09-09 一次门禁输出的快照，记「结论：FAIL」。
+    此后漂移全部修完、门禁转 PASS，但文件无人刷新 —— 而它被 TOOL_EXEMPT 豁免扫描
+    （要列举旧数字），所以**没有任何判据能发现它已过期**，读者会以为仓库仍在 FAIL。
+    这正是 #41 的「产物 ↔ 真值漂移」同款失效形态，只是对象换成了一份文档。
+
+    判据：文件不存在 → 跳过（可选件，不强制存在）；
+          存在但缺状态行 / 状态与本次结论不符 → 红（fail-closed，过期不许蒙混）。
+    """
+    path = os.path.join(ROOT, LEDGER_REL)
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError as e:
+        return ["%s 无法读取：%s" % (LEDGER_REL, e)]
+    m = LEDGER_STATUS_RE.search(text)
+    if not m:
+        return ["%s 缺少机器可读状态行（应为独占一行「当前门禁状态：PASS|FAIL」）"
+                "—— 过期清单无判据可查" % LEDGER_REL]
+    if m.group(1) != verdict:
+        return ["%s 声明「当前门禁状态：%s」但本次门禁结论为 %s"
+                " —— 清单已过期，须据本次输出刷新" % (LEDGER_REL, m.group(1), verdict)]
+    return []
 
 
 def main():
@@ -336,9 +379,18 @@ def main():
     else:
         print("  [PASS] 材料数字与真值一致")
 
+    verdict = "FAIL" if (banned_hits or anchor_hits) else "PASS"
+    ledger_issues = check_ledger(verdict)
+    if ledger_issues:
+        print("  [FAIL] 口径修复清单状态与本次门禁不符 %d 处：" % len(ledger_issues))
+        for x in ledger_issues:
+            print("    " + x)
+    else:
+        print("  [PASS] 口径修复清单状态与本次门禁一致（或未提供该可选件）")
+
     print("=" * 70)
-    if banned_hits or anchor_hits:
-        print("  结论：FAIL —— 口径漂移，禁止合入/打包。")
+    if banned_hits or anchor_hits or ledger_issues:
+        print("  结论：FAIL —— 口径漂移（或清单过期），禁止合入/打包。")
         if anchor_hits and not banned_hits:
             # 锚点漂移是**纯机械**的：数字本来就该等于 count_stats 真值。
             # 与其让人肉 grep 11 处，不如给一条可执行的修复命令（修复器复用本门禁的
