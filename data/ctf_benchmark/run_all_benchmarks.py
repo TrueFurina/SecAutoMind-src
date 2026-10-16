@@ -715,9 +715,9 @@ def main():
     print("               UTF-16 宽字符串 / base64 与 hex 变体 / 重复密钥 XOR 已知明文恢复")
     print()
     print("【5】Web 题目感知定向渗透 (web_hint_benchmark.json, 真题端点形态靶场)")
-    print("    总数 %2d | A组(无线索只爬链) %2d | B组(读题取线索定向打) %2d | 能力增量 +%d" %
+    print("    总数 %2d | A组(无线索·爬链+类型回退) %2d | B组(读题取线索定向打) %2d | 能力增量 +%d" %
           (wh_total, wh_a, wh_b, wh_b - wh_a))
-    print("    Python judge_web_hints.py == Go TestHintDrivenWebExploit（A/B/C 三组一致）")
+    print("    Python judge_web_hints.py == Go TestHintDrivenWebExploit（B 组逐题一致；A 组两侧基线口径不同、『增量』不跨语言互证，见 parity_registry.json【5】脚注）")
     print("    能力维度：从 description 提取端点/参数名/载荷/漏洞类型 → 定向投递；")
     print("               首页链接抓取补全未知端点；真实靶机端点不叫 /ssti//cmd 也能打中")
     print()
@@ -941,8 +941,11 @@ def main():
         _fmt = lambda xs: "、".join("【%d】%s" % (s["id"], s["key"]) for s in xs)  # noqa: E731
         print("【双语言机验覆盖（台账驱动 parity_registry.json）】")
         print("    ✅ 已接线逐题机验（%d 集）：%s" % (len(_wired), _fmt(_wired)))
-        print("    ⚠️ 未接线（%d 集）—— 「Python == Go」仅为措辞，不得当作已核验证据引用：%s"
-              % (len(_unwired), _fmt(_unwired)))
+        if _unwired:
+            print("    ⚠️ 未接线（%d 集）—— 「Python == Go」仅为措辞，不得当作已核验证据引用：%s"
+                  % (len(_unwired), _fmt(_unwired)))
+        else:
+            print("    ✅ 未接线：0 集（全部 %d 集均已接线逐题机验）" % len(_wired))
         print("    门禁：scripts/check_suite_parity.py（台账须覆盖本汇总全部【N】集，否则红）")
         print()
     except Exception as _e:  # noqa: BLE001

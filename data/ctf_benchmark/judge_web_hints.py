@@ -12,6 +12,13 @@ A/B 对照（与 Go TestHintDrivenWebExploit 同口径）：
   B 组：给题目描述，解析端点/参数/载荷/漏洞类型后定向打
 两组各自独立实现，与 Go 侧结果互证。
 
+跨语言 parity 口径（2026-10-16 接线，见 parity_registry.json【5】）：
+  跨语言互证的对象是 **B 组逐题命中集**：本脚本对每题 B 组命中时打印 `✅ HIT <pid>`，
+  与 Go 侧同构，由 scripts/check_suite_parity.py 逐题比对（实测两侧均 6/6 一致）。
+  **A 组（无线索基线）两侧实现口径不同**（本侧 = 首页爬链 + 全类型回退，实测 3/6；
+  Go 侧 = ExploitWebTarget 硬编码端点猜测，实测 4/6），故「增量」数字**不跨语言互证**，
+  只在各侧内部作对照。本脚本对 A 组只要求「增量严格为正」（fail-closed）。
+
 用法： python judge_web_hints.py
 """
 import hashlib
@@ -234,10 +241,17 @@ def main():
             a_hit += 1 if a else 0
             b_hit += 1 if b else 0
             print(f"  {pid:<12} A组(无线索)={'HIT' if a else 'MISS'}  B组(有线索)={'HIT' if b else 'MISS'}")
+            if b:
+                print(f"✅ HIT  {pid}")  # 逐题机验口径，供 check_suite_parity.py 抽取
         n = len(probs)
         print(f"=== Python 侧线索定向渗透: A组 {a_hit}/{n} | B组 {b_hit}/{n} "
               f"| 增量 +{b_hit - a_hit} ===")
-        return 0 if b_hit == n else 1
+        if b_hit != n:
+            return 1
+        if a_hit >= b_hit:
+            print(f"[fail-closed] 对照基线失效：无线索 {a_hit} >= 有线索 {b_hit}，线索增量非正")
+            return 1
+        return 0
     finally:
         proc.kill()
 
