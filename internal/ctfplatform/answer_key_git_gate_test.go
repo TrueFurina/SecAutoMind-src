@@ -19,6 +19,16 @@ package ctfplatform
 //  1. .gitignore 命中：该路径确实被规则匹配（规则本身有效）；
 //  2. 未被跟踪：`git ls-files` 不含该路径（历史遗留的跟踪已清理）。
 // 只查第1 层会漏掉本例（.gitignore 一直是"对"的）；只查第 2 层则对新文件无约束。
+//
+// ⚠️ 2026-10-16 留痕（本例的后续）：`10733/task.py` 经复核**撤销排除**——它不含 flag
+// （`flag = b'******'` 遮蔽态），内容只是加密脚本 + hint/c/n 实例参数，属**题目输入**，
+// 与同批已入库的 ezrsa 等附件同类。本文件注释所引的旧事件仍然是真实的（**已跟踪文件不受
+// .gitignore 影响**这条教训一字未改），但"该文件是答案材料"这一当时判断已被证伪，
+// 故它现在既不在此清单、也不在 `.gitignore` 里。钉死方向由
+// data_incomplete_claim_test.go::TestInstanceTruthNailHolds 与
+// scripts/check_cross_bench_manifest.py::FORBIDDEN_EXCLUDED 反向把守（不得再被排除）。
+// 判定"是否答案材料"的权威口径仍是本文件的 `flagPlaintextRe`（flag 明文形态）——
+// **裸参数/数字是题目输入，不算答案**。
 
 import (
 	"os"

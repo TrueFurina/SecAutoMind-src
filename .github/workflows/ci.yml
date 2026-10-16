@@ -393,6 +393,10 @@ jobs:
   #   ③ honesty 自报计数停在 4 而实物是 5。
   # 本 job 把「产物 / .gitignore / 生成器契约表」三方钉成机器判据（含红线钉），
   # 并跑变异自测证明判据真能变红（含"生成器漏登记 10733"的真实回归形态）。
+  # 2026-10-16 口径再审（本仓门禁自述"裸参数是题目输入"为仲裁）：10733/task.py 的
+  # flag 是 b'******' 遮蔽态、与同批 ezrsa/filterrandom 等附件同类 → 属**题目输入**，
+  # 排除已撤销、按输入入库，题面同步中性化。据此新增**反向钉** C9（须"不排除"，被重排除即红）
+  # 与 C10（题面中性化覆盖）；自测扩到 21 例。正向钉（须排除）与反向钉同等为硬判据。
   cross-bench-manifest-gate:
     runs-on: ubuntu-latest
     steps:
@@ -400,7 +404,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Cross-bench manifest gate self-test (18 cases, incl. mutation)
+      - name: Cross-bench manifest gate self-test (21 cases, incl. mutation)
         run: python scripts/check_cross_bench_manifest_test.py
       - name: Cross-bench manifest consistency (artifacts vs .gitignore vs generator)
         run: python scripts/check_cross_bench_manifest.py

@@ -12,6 +12,8 @@ CI 里跑 → 漂移静默存在。实跑生成器（A 库 `E:/Program/西湖论
 
   1. **P0 红线被静默摘除**：生成器不知道 `10733/task.py` 要排除 → 重跑会写出只含 4 条的
      `.gitignore`，此后任何 `git add -A` 都会把该 P0 文件重新纳入 PUBLIC 仓。
+     （2026-10-16 复核后 `10733/task.py` 已改按**题目输入**入库，排除集本就是 4 条；
+     该判据不变，另加 C9 反向钉专门守它**不得再被排除**。）
   2. **flag 明文被重新引入**：A 库 `description` 里抄了 writeup 的真 flag
      （`d0g3{71b2…}` / `flag{i_am_not_right…}`，二者 sha256 == 本题 flag_sha256），
      `a87b812` 已把产物里的明文遮蔽成 `前缀{****}`；生成器不遮蔽 → **重跑一次 = 再泄一次**。
@@ -32,6 +34,8 @@ git 排除"三方钉成可复跑的机器判据，**任一方漂移即报红**�
      不是"看着像 flag"（CRC32/LCG 类题面里的已知明文是合法输入，不得误伤）
   C7 `.gitignore` 每条都被 `git check-ignore` 命中（rc=0）且不在 `git ls-files` 中
   C8 红线钉：`PINNED_REDLINE` 里的文件必须仍在排除集内（见常量处说明）
+  C9 反向钉：`FORBIDDEN_EXCLUDED` 里的文件必须**不在**排除集内（题目输入误排除 → 红）
+  C10 题面中性化：产物 description 必须等于生成器 `DESCRIPTION_OVERRIDES` 的覆盖值
 
 用法：python scripts/check_cross_bench_manifest.py [--repo-root .]
 退出码：0 = 全过；1 = 有违规。
@@ -57,15 +61,23 @@ ATT_BASE = "data/questions_real_bench/attachments/"
 # 题数基线地板：防止清单被截断/清空后"零覆盖也显示通过"。
 MIN_PROBLEMS = 88
 
-# 🔴 红线钉：这些文件必须**始终**在 git 排除集内。它们是 2026-10-15 P0 交付红线事件的
-# 直接主角（答案/实例真值明文）。**若经用户拍板决定把其中某个改为入库**，必须显式改本处
-# 并同步 docs/cross_bench_report.md —— 刻意做成"响的"红线，不给静默摘除留通道。
+# 🔴 红线钉：这些文件必须**始终**在 git 排除集内。它们是含 flag 明文/内嵌答案的附件
+# （2026-10-15 P0 交付红线事件的直接主角）。**若经用户拍板决定把其中某个改为入库**，必须显式
+# 改本处并同步 docs/cross_bench_report.md —— 刻意做成"响的"红线，不给静默摘除留通道。
 PINNED_REDLINE = {
-    "10733/task.py": "2026-10-15 P0 事件主角：附件末尾文档字符串含本实例 hint/c/n 三元组",
     "real_crypto_anxun2020_aes/flag.txt": "整文件即 flag 明文",
     "real_misc_longjian2024_smallsword3/flag.txt": "整文件即 flag 明文",
     "real_reverse_upx/helloupx11": "二进制内嵌答案 flag 明文",
     "real_web_gongye_web2/index.php": "源码注释内含 flag 真值",
+}
+
+# 🔴 反向钉（2026-10-16 新增）：这些文件是**题目输入**（无 flag），必须**不得**被排除。
+# 判据 = 文件里 flag 为遮蔽态/仅含实例参数，与同批已入库附件同类。
+# 排除它会让该题在 CI 侧不可评价（有数据子集口径 local/CI 数字分叉）——
+# 这正是 10733/task.py 在 2026-10-15 被从严排除后暴露的问题，2026-10-16 复核后撤销。
+# 若为有意回退（重新排除），须显式改本处并留痕。
+FORBIDDEN_EXCLUDED = {
+    "10733/task.py": "题目输入（加密脚本 + hint/c/n 实例参数，flag 为 b'******' 遮蔽态，无 flag 串）",
 }
 
 
@@ -141,12 +153,18 @@ def response_in_statement(doc):
 
 
 def manifest_violations(doc, gi_lines, gen_excluded, gen_recovered,
-                        pinned=None, min_problems=MIN_PROBLEMS):
-    """纯判据（C1~C6、C8）——返回违规消息列表，空=通过。
+                        pinned=None, min_problems=MIN_PROBLEMS, forbidden=None,
+                        overrides=None):
+    """纯判据（C1~C6、C8~C10）——返回违规消息列表，空=通过。
 
     抽成纯函数是为了让变异自测与主门禁**共用同一套判据**，避免"测试过了但判的是别的东西"。
+    `pinned`/`forbidden`/`overrides` 默认取模块常量（真实契约）；变异自测可显式传入，
+    否则合成用例会因为目录里没有 10733 而被 C10 误伤。
     """
     pinned = PINNED_REDLINE if pinned is None else pinned
+    forbidden = FORBIDDEN_EXCLUDED if forbidden is None else forbidden
+    if overrides is None:
+        overrides = getattr(BC, "DESCRIPTION_OVERRIDES", {})
     bad = []
     problems = doc.get("problems") or {}
 
@@ -214,6 +232,23 @@ def manifest_violations(doc, gi_lines, gen_excluded, gen_recovered,
             bad.append("C8 🔴 红线钉失效：%s 不在 git 排除集中（%s）"
                        "—— 若为有意放开，须显式修改本门禁 PINNED_REDLINE 并留痕"
                        % (key, why))
+
+    # ---- C9 反向钉：明确**不得**排除的题目输入 ----
+    for key, why in forbidden.items():
+        if key in sets["excluded"]:
+            bad.append("C9 🔴 反向钉失效：%s 被重新纳入 git 排除集（%s）"
+                       "—— 它是题目输入（无 flag），排除会让该题在 CI 侧不可评价、"
+                       "令有数据子集口径 local/CI 分叉；若为有意回退，"
+                       "须显式修改本门禁 FORBIDDEN_EXCLUDED 并留痕" % (key, why))
+
+    # ---- C10 题面中性化覆盖：产物必须已应用生成器覆盖表 ----
+    for pid, text in overrides.items():
+        p = problems.get(pid)
+        if not p:
+            bad.append("C10 生成器 DESCRIPTION_OVERRIDES 里的 %s 不在产物中" % pid)
+        elif p.get("description") != text:
+            bad.append("C10 %s 题面未应用中性化覆盖——产物与生成器契约不一致"
+                       "（须重跑 scripts/build_cross_bench.py 回写产物）" % pid)
     return bad
 
 
@@ -271,6 +306,9 @@ def main(argv=None) -> int:
     print("  题数 %d | 附件条目 %d | git 排除 %d | 答案形态 %d | 找回附件 %d"
           % (len(doc.get("problems") or {}), sets["examined"],
              len(sets["excluded"]), len(sets["answer_key"]), len(sets["recovered"])))
+    print("  红线钉 %d（须排除）｜反向钉 %d（须不排除）｜题面覆盖 %d"
+          % (len(PINNED_REDLINE), len(FORBIDDEN_EXCLUDED),
+             len(getattr(BC, "DESCRIPTION_OVERRIDES", {}))))
     if bad:
         # 报红后**不打**"全部通过"日志（避免日志与结论自相矛盾）
         print("🔴 违规 %d 条：" % len(bad))

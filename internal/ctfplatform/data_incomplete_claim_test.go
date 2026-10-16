@@ -30,10 +30,15 @@ package ctfplatform
 //     题登记过任一 answer_key_shape 附件，归因直接作废（元数据兜底，不依赖读文件）。
 //     这两题已按报告既有的第三类改归「口径性不可解」（附件即答案，设计上不计入
 //     解题能力），由 TestCaliberUnsolvableAreRegisteredAnswerKeys 对称钉死。
-//  2. **红线 vs 钉子冲突**：10733 的钉子旧版要求 CI 能读到含真值的附件，与
-//     "答案不进 PUBLIC 仓"直接冲突（6e7bb72 后 CI 必红）。修法：双层验证——
-//     CI 验登记契约（answer_key_shape/git_excluded/原因/sha256 指纹），开发机
-//     验实物指纹与内容形态。详见 TestRecoveredAttachmentHasInstanceTruth 注释。
+//  2. **红线 vs 钉子冲突**（已于 2026-10-16 三次修订中消解）：10733 的钉子旧版要在
+//     「答案不进 PUBLIC 仓」的前提下机验附件真值，只能退化为双层方案——CI 验登记契约
+//     （answer_key_shape/git_excluded/原因/sha256 指纹），开发机验实物形态。
+//     三次修订证伪了该前提的另一半：`task.py` **不含 flag**（`flag = b'******'` 遮蔽态，
+//     经 grep + sha256 双验），内容只有加密脚本 + hint/c/n 实例参数，即**题目输入**，
+//     与同批已入库的 ezrsa/exciting_inverse/simplelegendre/filterrandom 附件同类 ⇒
+//     改按输入入库。冲突随之消失，钉子可直接在 CI 读文件验内容（比"验指纹"更强）。
+//     见 TestInstanceTruthNailHolds 注释、门禁 FORBIDDEN_EXCLUDED 与
+//     docs/cross_bench_report.md §四「第六版」。
 //
 // 维护纪律：
 //   · 新增「数据不完整」归因题 → 写进 dataIncompleteClaimed（否则本门禁零覆盖）；
@@ -42,8 +47,6 @@ package ctfplatform
 //     （只写判据不做变异自测 = 不能证明它真能红，本仓已两次栽在这类"声明了但不跑"上）。
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -80,8 +83,6 @@ var (
 	instanceAssignRe = regexp.MustCompile(`(?i)\b(hint|c|n|p|q|e|m|ct|cp)\s*=\s*\d{40,}`)
 	// 通用形态：连续 80 位以上十进制数字（参数指纹，比赋值形态更宽）。
 	longDecimalRe = regexp.MustCompile(`\d{80,}`)
-	// sha256 指纹形态（git 排除文件的登记契约）。
-	sha256HexRe = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	// 二进制可打印串（>=6 连续可打印 ASCII），用于在 ELF/PE 里搜内嵌答案。
 	printableRunRe = regexp.MustCompile(`[\x20-\x7e]{6,}`)
 )
@@ -196,10 +197,17 @@ func caliberRegistrationViolations(doc crossBenchDoc, id string) []string {
 	return v
 }
 
-// recoveredNailViolations 检查 10733 反例钉子的**登记契约层**：
-// task.py 必须登记为 answer_key_shape + git_excluded + 非空原因 + 合法 sha256，
-// 且 10733 不得回到 dataIncompleteClaimed。空 = 契约完好。
-func recoveredNailViolations(doc crossBenchDoc) []string {
+// instanceTruthNailViolations 检查 10733 反例钉子的**登记契约层**（2026-10-16 三次修订）：
+//   · 10733 必须登记 task.py 附件；
+//   · 该附件必须**不是**答案形态 / 未被 git 排除 —— 它是题目输入（加密脚本 + hint/c/n
+//     实例参数，flag 为 b'******' 遮蔽态），按答案形态排除会让该题在「有数据子集」口径中
+//     不可评价、令本地/CI 数字分叉（这正是撤销排除的理由）；
+//   · 10733 不得回到 dataIncompleteClaimed（其真值在附件里，属能力缺口）。
+//
+// 2026-10-16 之前该钉子要求 answer_key_shape + git_excluded + 合法 sha256 指纹
+// （因为文件被排除、CI 读不到）。复核证伪「实例参数 = 答案材料」的从严口径后改断言相反方向；
+// 门禁 `FORBIDDEN_EXCLUDED` 与之同向钉死，两处不一致即报红。空 = 契约完好。
+func instanceTruthNailViolations(doc crossBenchDoc) []string {
 	p, ok := doc.Problems["10733"]
 	if !ok {
 		return []string{"10733 不在 cross_bench.json 里——「归因修正（数据不完整→能力缺口）」的依据不再成立，须重新归因"}
@@ -209,15 +217,13 @@ func recoveredNailViolations(doc crossBenchDoc) []string {
 	switch {
 	case att == nil:
 		v = append(v, "10733 未登记 task.py 附件——归因依据（真值在附件里）失去着落")
-	case !att.AnswerKeyShape:
-		v = append(v, "task.py 的 answer_key_shape 登记丢失——它含本实例 hint/c/n 真值，必须按答案形态登记")
-	case !att.GitExcluded:
-		v = append(v, "task.py 的 git_excluded 登记丢失——PUBLIC 仓禁答案材料入库，排除登记必须保持")
-	case strings.TrimSpace(att.ExcludeReason) == "":
-		v = append(v, "task.py 的 exclude_reason 为空——排除必须带原因，禁止静默排除")
-	case !sha256HexRe.MatchString(att.SHA256):
-		v = append(v, fmt.Sprintf("task.py 未登记合法 sha256 指纹（got %q）——git 排除后 CI 读不到文件，"+
-			"指纹是唯一可机验的契约", att.SHA256))
+	case att.AnswerKeyShape:
+		v = append(v, "10733/task.py 被标为答案形态——它是题目输入（加密脚本 + hint/c/n 实例参数，"+
+			"flag 为 b'******' 遮蔽态，无 flag 串），不是答案材料；按答案形态排除会让该题在"+
+			"「有数据子集」口径中不可评价（本地/CI 数字分叉），须改回 answer_key_shape=false")
+	case att.GitExcluded:
+		v = append(v, "10733/task.py 登记 git_excluded——它不含 flag，不属答案形态，"+
+			"按 PUBLIC 仓红线排除是误伤（红线只覆盖含 flag 明文/内嵌答案的文件）")
 	}
 	for _, id := range dataIncompleteClaimed {
 		if id == "10733" {
@@ -366,54 +372,46 @@ func TestCaliberUnsolvableAreRegisteredAnswerKeys(t *testing.T) {
 		checked, len(caliberUnsolvableClaimed))
 }
 
-// TestRecoveredAttachmentHasInstanceTruth 是上面那条规则的**反例钉子**：
+// TestInstanceTruthNailHolds 是上面那条规则的**反例钉子**：
 // 明确断言 `10733` 的附件里**确实含** hint=/c=/n= 实例输出，
 // 且它已被正确归类为「能力缺口」而非「数据不完整」。
 //
 // 这条测试存在的意义：10733 的归因曾被写反，若只保留"数据不完整不得含真值"
-// 那条正向规则，未来有人把 10733 改回错误分类时不会被发现。
-// 双向钉死才防得住。
+// 那条正向规则，未来有人把 10733 改回错误分类时不会被发现。双向钉死才防得住。
 //
-// 🔴 2026-10-15 二次修订（PUBLIC 仓红线 vs 钉子可验性的冲突解法）：
-// 6e7bb72 把 task.py `git rm --cached` 后，CI 检出不含该文件——旧版
-// "读附件搜实例输出"的断言在 CI 上必然 Fatalf（文件不在），与红线直接冲突
-// （答案材料禁入 PUBLIC 仓）。解法分两层，缺一不可：
-//
-//	① 登记契约层（CI 可验，fail-closed）：cross_bench.json 必须把 task.py 登记为
-//	   answer_key_shape + git_excluded + 非空 exclude_reason + 合法 sha256 指纹。
-//	   有人摘掉排除登记 / 清空原因 / 改分类 → 立刻红。
-//	② 实物交叉验层（开发机可验）：本地未跟踪副本若在，sha256 必须命中登记指纹、
-//	   且内容必须匹配实例输出形态；不在（CI）则记录"本环境验登记层"后返回。
-//
-// 这样"答案不进 PUBLIC 仓"与"归因依据必须可机验"同时成立：
-// CI 证明"登记说它是答案且被正确排除"，开发机证明"登记的文件确实是那个文件"。
-func TestRecoveredAttachmentHasInstanceTruth(t *testing.T) {
+// 🔴 2026-10-16 三次修订（钉子从"验指纹"升级为"验内容"）：
+// 前两版钉子的前提是「task.py 属答案材料、必须 git 排除」，于是 CI 读不到文件，
+// 只能退化成验登记契约（answer_key_shape/git_excluded/原因/sha256 指纹）。
+// 三次修订证伪了该前提：文件里 flag 是 `b'******'` 遮蔽态、内容是题目输入
+// （加密脚本 + hint/c/n 实例参数，与同批 ezrsa 等的附件同类）⇒ 改按输入入库。
+// **文件既已入库，CI 就能直接读它** —— 钉子随之升级为最强形态：
+//   ① 登记契约层：10733 登记 task.py、且**不是**答案形态 / 未被排除；
+//   ② 实物内容层（CI + 开发机同验）：文件必须存在，且确实含 hint=/c=/n= 实例输出。
+// 任一层不成立即红：契约层防"重新排除误伤"，内容层防"附件被换成不含真值的文件"。
+func TestInstanceTruthNailHolds(t *testing.T) {
 	doc := loadCrossBench(t)
 
-	// ① 登记契约层（CI 可验）
-	for _, msg := range recoveredNailViolations(doc) {
+	// ① 登记契约层
+	for _, msg := range instanceTruthNailViolations(doc) {
 		t.Fatalf("🔴 %s", msg)
 	}
-	att := findAttachment(doc.Problems["10733"], "task.py")
 
-	// ② 实物交叉验层（开发机）：本地未跟踪副本应在；CI 上按红线不在检出中。
+	// ② 实物内容层：自 2026-10-16 起该附件已入库，CI 与开发机都应读得到。
 	path := filepath.Join("..", "..", "data", "questions_real_bench", crossBenchAttachDir, "10733", "task.py")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Logf("CI 环境：task.py 按红线不在检出中（err=%v）——本环境验登记契约层（①已通过）；"+
-			"实物指纹交叉验请在开发机执行（本地未跟踪副本应在）", err)
-		return
-	}
-	sum := sha256.Sum256(raw)
-	if got := hex.EncodeToString(sum[:]); got != att.SHA256 {
-		t.Fatalf("🔴 本地 task.py 与登记指纹不符——登记 %s，实物 %s；"+
-			"若附件被换过，「归因修正（数据不完整→能力缺口）」的依据须重新复核", att.SHA256, got)
+		t.Fatalf("🔴 读不到 10733/task.py（%v）——该附件已按题目输入入库，CI 应当能读到；"+
+			"读不到意味着清单与实物脱节，或它又被误排除了", err)
 	}
 	if !instanceAssignRe.MatchString(string(raw)) {
-		t.Fatalf("🔴 本地 task.py 搜不到实例输出赋值—— 若 A 库副本已被移除或附件被换掉，" +
+		t.Fatalf("🔴 10733/task.py 搜不到实例输出赋值—— 若附件被换成不含真值的文件，" +
 			"则上一轮「归因修正（数据不完整→能力缺口）」的依据不再成立，须重新归因")
 	}
-	t.Logf("10733 实物交叉验通过：sha256 命中登记指纹且含 hint=/c=/n= 实例输出 ⇒ 能力缺口归因坐实")
+	if flagPlaintextRe.Match(raw) {
+		t.Fatalf("🔴 10733/task.py 含 flag 明文——它本该是无 flag 的题目输入，" +
+			"含真值则必须立即回到 git 排除集（红线）并重新归类")
+	}
+	t.Logf("10733 钉子通过：附件已按输入入库（非答案形态、未排除），且实物含 hint=/c=/n= 实例输出、无 flag 明文")
 }
 
 // TestAttributionGateMutationsGoRed 是三条归因判据的**变异自测**：
@@ -424,13 +422,13 @@ func TestRecoveredAttachmentHasInstanceTruth(t *testing.T) {
 //
 //	A. git 排除通道复发（reverse_upx 回退进「数据不完整」清单）——6e7bb72 前 CI 静默放行那条；
 //	B. 归类洗白（gongye_web2 的 answer_key_shape 登记被摘）——把"附件含答案"洗成普通题；
-//	C. 红线登记被摘（10733 task.py 的 git_excluded 被置 false）——PUBLIC 仓红线破防；
-//	D. 指纹契约被清（10733 task.py 的 sha256 置空）——CI 唯一可机验锚点丢失。
+//	C. 红线误伤回退（10733 的题目输入被重新标成答案形态 + git 排除）——2026-10-15 的过度从严口径重演；
+//	D. 附件登记被摘（10733 的 task.py 从 attachment_files 里消失）——归因依据失去着落。
 func TestAttributionGateMutationsGoRed(t *testing.T) {
 	doc := loadCrossBench(t)
 
 	// 反向基线：真值源上三个判据必须全绿。
-	if v := recoveredNailViolations(doc); len(v) != 0 {
+	if v := instanceTruthNailViolations(doc); len(v) != 0 {
 		t.Fatalf("🔴 反向基线失败：未变异的 10733 登记契约应无违禁，实得 %v", v)
 	}
 	for _, id := range caliberUnsolvableClaimed {
@@ -470,29 +468,33 @@ func TestAttributionGateMutationsGoRed(t *testing.T) {
 			"把'附件含答案'洗成普通题的通道敞开")
 	}
 
-	// 变异 C：摘掉 10733 task.py 的 git_excluded 登记（红线破防）。
+	// 变异 C：把 10733 的题目输入重新标成答案形态 + git 排除（过度从严口径重演）。
 	mutC := cloneCrossBenchDoc(doc)
 	pc := mutC.Problems["10733"]
 	for i := range pc.AttachmentFiles {
 		if pc.AttachmentFiles[i].Name == "task.py" {
-			pc.AttachmentFiles[i].GitExcluded = false
+			pc.AttachmentFiles[i].AnswerKeyShape = true
+			pc.AttachmentFiles[i].GitExcluded = true
 		}
 	}
 	mutC.Problems["10733"] = pc
-	if v := recoveredNailViolations(mutC); len(v) == 0 {
-		t.Error("🔴 变异 C 未报红：git_excluded 登记被摘后，10733 钉子没抓住——PUBLIC 仓红线失去机验")
+	if v := instanceTruthNailViolations(mutC); len(v) == 0 {
+		t.Error("🔴 变异 C 未报红：题目输入被重新排除后，10733 钉子没抓住——" +
+			"该题会退回「有数据子集」口径下不可评价的状态（本地/CI 数字分叉）")
 	}
 
-	// 变异 D：清掉 10733 task.py 的 sha256 指纹（CI 唯一锚点丢失）。
+	// 变异 D：摘掉 10733 的 task.py 附件登记（归因依据失去着落）。
 	mutD := cloneCrossBenchDoc(doc)
 	pd := mutD.Problems["10733"]
-	for i := range pd.AttachmentFiles {
-		if pd.AttachmentFiles[i].Name == "task.py" {
-			pd.AttachmentFiles[i].SHA256 = ""
+	var kept []crossBenchAttachment
+	for _, af := range pd.AttachmentFiles {
+		if af.Name != "task.py" {
+			kept = append(kept, af)
 		}
 	}
+	pd.AttachmentFiles = kept
 	mutD.Problems["10733"] = pd
-	if v := recoveredNailViolations(mutD); len(v) == 0 {
-		t.Error("🔴 变异 D 未报红：sha256 指纹被清后，10733 钉子没抓住——git 排除文件的登记契约失去锚点")
+	if v := instanceTruthNailViolations(mutD); len(v) == 0 {
+		t.Error("🔴 变异 D 未报红：task.py 附件登记被摘后，10733 钉子没抓住——归因依据（真值在附件里）失去着落")
 	}
 }

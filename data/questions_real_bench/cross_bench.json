@@ -12,8 +12,8 @@
     "attachment_available": 12,
     "attachment_missing": 76,
     "attachment_files_copied": 15,
-    "attachment_answer_key_files": 5,
-    "attachment_files_git_excluded": 5,
+    "attachment_answer_key_files": 4,
+    "attachment_files_git_excluded": 4,
     "git_exclude_reason": "flag 明文/内嵌答案文件按 PUBLIC 仓交付红线只留本地（见 attachments/.gitignore 与逐文件 exclude_reason）；CI 检出不含这些文件，「含答案口径」在 CI 上自动降级为剔除口径。",
     "attachment_subset_note": "附件仍在的题另有「有数据子集」口径（TestCrossBench_AttachmentSubset），含/不含 flag.* 答案文件分别报告；该子集不得写进对外材料当战果。",
     "flag_truth": "沿用 A 的 flag 字段(sha256)，命中判定用 sha256 比对"
@@ -23,7 +23,7 @@
       "id": "10733",
       "category": "crypto",
       "sub": "crypto",
-      "description": "给定 hint = (e*p + e^2)^q mod n、c = m^e mod n、n，e=65536=2^16。由 hint 可分解 n 得 p、q（p≡q≡3 mod 4）；在奇数阶子群求逆使 2^15·inv≡1，得 c^inv≡m^2，CRT+一轮 Rabin 还原 m。明文为 ROT13 编码（题名 \"How many rot\" 即提示），ROT13 解码得规范 flag。",
+      "description": "附件 task.py 是加密脚本（文件末尾给出本实例的 hint、c、n）。解密还原明文 flag。",
       "title": "DASCTF CRYPTO-02 · How many rot are there（高偶指数 RSA + hint 泄露 p + ROT13）",
       "flag_sha256": "ac232bd941738e22cfcdd6585ae478c19cffbea15d713c00a70ac157485ca6a4",
       "difficulty": "MEDIUM",
@@ -33,11 +33,9 @@
         {
           "name": "task.py",
           "size": 1285,
-          "answer_key_shape": true,
-          "git_excluded": true,
-          "exclude_reason": "附件含本实例 hint/c/n 三元组（task.py 末尾文档字符串内），足以让求解器直接还原 m ⇒ 按答案形态处理并 git 排除（PUBLIC 仓禁答案材料入库）。分类于 2026-10-15：此前误判为『数据不完整、实例真值未留存』，实为归因错误 —— 真值一直在附件里，属读附件不彻底（只读前半段就下结论）。",
-          "sha256": "328d824447dd506d4b1d071aa33cf607d0f9e525f6e14364edd821d4e413a47c",
-          "recovered_from": "本仓库 data/questions_real_bench/attachments/10733/task.py（2026-10-15 重新精读；A 库同源副本另存于 E:/Program/西湖论剑 git 历史 87550e0d）"
+          "answer_key_shape": false,
+          "git_excluded": false,
+          "exclude_reason": ""
         }
       ]
     },
