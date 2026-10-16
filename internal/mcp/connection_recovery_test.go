@@ -185,7 +185,9 @@ func TestTryReconnect_SkipsWhenConnecting(t *testing.T) {
 func TestStartClientAutoReconnect_SkipsWhenDisabled(t *testing.T) {
 	logger := zap.NewNop()
 	m := NewExternalMCPManager(logger)
-	m.stopRefresh = make(chan struct{})
+	// 注意：不要再写 m.stopRefresh —— NewExternalMCPManagerWithStorage 已初始化该字段
+	// 并启动了 startToolCountRefresh 的 goroutine，此处重新赋值会与该 goroutine 读取
+	// m.stopRefresh 构成 data race（CI -race 会以 DATA RACE 失败，2026-10-16 实测）。
 
 	name := "stopped"
 	m.mu.Lock()

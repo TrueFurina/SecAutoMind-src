@@ -7,8 +7,10 @@
   "_reason_enum": {
     "static_three_way": "静态集走三路逐题（Go shipped / Go registry / Python 镜像），由独立脚本负责",
     "live_subset_needs_range": "含 live_* 实时靶机子集，需 python 拉起靶场，尚未建分层 parity",
-    "range_needs_python": "Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场，逐题 parity 尚未接线",
-    "go_side_unit_tests_only": "Go 侧只有合成单元测试、不读基准 json，无逐题集合可比 —— 该集『双语言镜像』只能指算法镜像，不能表述为逐题 ==（须改措辞）"
+    "range_needs_python": "Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场，逐题 parity 尚未接线"
+  },
+  "_reason_retired": {
+    "go_side_unit_tests_only": "（2026-10-16 证伪并废弃）曾误判『Go 侧只有合成单元测试、不读基准 json，无逐题集合可比』——实测 7 集（blind_oob/hash_ext/gcm_nonce_reuse/mt19937/lfsr/lcg/crc32）Go 侧均有生产求解器（web_blind_oob/hash_length_extension/gcm_nonce_reuse/mt19937_recover/lfsr_predict/lcg_predict/crc32_forge），6 个 crypto 集 json description 自包含、blind_oob 两侧硬编码秘密 sha256 == json flag_sha256，已全部接线（见 internal/ctfplatform/suite_parity_test.go）。教训同『办不到本身也要证伪』：下『无逐题可比』结论前须先穷尽路径。"
   },
   "suites": [
     {
@@ -95,38 +97,59 @@
     },
     {
       "id": 16, "key": "blind_oob", "benchmark": "blind_oob_benchmark.json", "python_judge": "judge_blind_oob.py",
-      "go_tests": ["TestBlindOOBTimeBased", "TestBlindOOBOOB", "TestBlindOOBSolverRegistered", "TestBlindOOBNoFalsePositiveOnRandom"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestBlindOOBAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+HIT\\b",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "json 无 description（需实时靶机交互）；两侧硬编码秘密的 sha256 == json flag_sha256，逐题机验用内建靶机分派"
     },
     {
       "id": 17, "key": "hash_ext", "benchmark": "hash_ext_benchmark.json", "python_judge": "judge_hash_ext.py",
-      "go_tests": ["TestHashLengthExtensionMD5", "TestHashLengthExtensionSHA1", "TestHashLengthExtensionSolverParses", "TestHashLengthExtensionSolverRegistered"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestHashExtSuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     },
     {
       "id": 18, "key": "gcm_nonce_reuse", "benchmark": "gcm_nonce_reuse_benchmark.json", "python_judge": "judge_gcm_nr.py",
-      "go_tests": ["TestGCMNonceReuseBasic", "TestGCMNonceReuseBlobFormat", "TestGCMNonceReusePartialKnown", "TestGCMNonceReuseSolverParses", "TestGCMNonceReuseSolverRegistered"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestGCMNonceReuseSuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     },
     {
       "id": 19, "key": "mt19937", "benchmark": "mt19937_benchmark.json", "python_judge": "judge_mt19937.py",
-      "go_tests": ["TestMT19937UntemperIsInverse", "TestMT19937PredictNext", "TestMT19937SolverParses", "TestMT19937SolverRegistered", "TestMT19937NoFalsePositive", "TestMT19937InsufficientOutputs", "TestMT19937RecoverSha256Consistency"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestMT19937SuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     },
     {
       "id": 20, "key": "lfsr", "benchmark": "lfsr_benchmark.json", "python_judge": "judge_lfsr.py",
-      "go_tests": ["TestLFSRBerlekampMasseyBasic", "TestLFSRPredictDegree32", "TestLFSRSolverParses", "TestLFSRSolverRegistered", "TestLFSRNoFalsePositive", "TestLFSRStreamUnit", "TestLFSRCorrelationSynthetic", "TestLFSRCorrelationMutationFailClosed", "TestLFSRShortLeakNoPredict"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestLFSRSuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     },
     {
       "id": 21, "key": "lcg", "benchmark": "lcg_benchmark.json", "python_judge": "judge_lcg.py",
-      "go_tests": ["TestLCGAdvanceMatchesNaive", "TestLCGRecoverAC", "TestLCGRecoverModulus", "TestLCGSolverParsesKnownParams", "TestLCGSolverParsesRecoverAC", "TestLCGSolverParsesRecoverModulus", "TestLCGSolverRegistered", "TestLCGNoFalsePositive"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestLCGSuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     },
     {
       "id": 22, "key": "crc32", "benchmark": "crc32_benchmark.json", "python_judge": "judge_crc32.py",
-      "go_tests": ["TestCRC32StdMatchesStdlib", "TestCRC32ForgeProducesTarget", "TestCRC32ForgeUniqueness", "TestCRC32SolverParses", "TestCRC32SolverRegistered", "TestCRC32NoFalsePositive"],
-      "parity": "unwired", "reason": "go_side_unit_tests_only"
+      "go_tests": ["TestCRC32SuiteParityAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；json description 自包含"
     }
   ]
 }
