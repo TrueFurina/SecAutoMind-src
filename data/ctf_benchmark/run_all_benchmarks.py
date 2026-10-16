@@ -928,16 +928,28 @@ def main():
     print("       对外引用任何 100% 必须标注「自产题」或「自建靶场」。")
     print()
 
-    # 诚实化（2026-10-16）：上面【1】～【8】各自打印了一句「Python xxx == Go xxx」的对应关系，
-    # 但**只有【1】静态集**真的接了逐题机验（scripts/check_benchmark_parity.py，CI job
-    # benchmark-parity-gate）。其余各集的同类表述此前纯粹是措辞 —— 本基线比对只查下限
-    # （hit < min_hit 才红），Python 侧上漂与 Go 两路径的逐题差异都无人看。
-    # 与 AGENTS.md 第八条「宣称 ≠ 接线」同一纪律：没接线的不许当已核验证据引用。
-    print("【双语言机验覆盖（哪些「==」已接线）】")
-    print("    ✅ 已接线：【1】静态集 —— Go shipped / Go registry / Python judge.py 三路逐题一致")
-    print("              （scripts/check_benchmark_parity.py，CI job benchmark-parity-gate）")
-    print("    ⚠️ 未接线：【2】～【8】的「Python == Go」表述尚未逐题机验，不得当作已核验证据引用。")
-    print()
+    # 诚实化（2026-10-16 起**台账驱动**）：上面【1】～【22】各自打印了一句「Python xxx == Go xxx」
+    # 的对应关系。哪些真的接了逐题机验，由 data/ctf_benchmark/parity_registry.json 决定，
+    # **不再手写范围** —— 旧手写版只写「【2】～【8】未接线」，实测未接线的其实是【2】～【22】，
+    # 漏报 14 集（连「未接线的范围」都靠手写漂移，正是 AGENTS.md 第八条「宣称 ≠ 接线」）。
+    # 门禁：scripts/check_suite_parity.py（覆盖度自证：台账必须登记本汇总全部【N】集，否则红）。
+    try:
+        with open(os.path.join(HERE, "parity_registry.json"), encoding="utf-8") as _fh:
+            _suites = json.load(_fh).get("suites", [])
+        _wired = [s for s in _suites if s.get("parity") == "wired"]
+        _unwired = [s for s in _suites if s.get("parity") != "wired"]
+        _fmt = lambda xs: "、".join("【%d】%s" % (s["id"], s["key"]) for s in xs)  # noqa: E731
+        print("【双语言机验覆盖（台账驱动 parity_registry.json）】")
+        print("    ✅ 已接线逐题机验（%d 集）：%s" % (len(_wired), _fmt(_wired)))
+        print("    ⚠️ 未接线（%d 集）—— 「Python == Go」仅为措辞，不得当作已核验证据引用：%s"
+              % (len(_unwired), _fmt(_unwired)))
+        print("    门禁：scripts/check_suite_parity.py（台账须覆盖本汇总全部【N】集，否则红）")
+        print()
+    except Exception as _e:  # noqa: BLE001
+        print("【双语言机验覆盖】⚠️ parity_registry.json 不可读：%r" % (_e,))
+        print("    → 未接线范围未知，**全部按『未接线』保守处理**，不得引用任何『==』为已核验证据。")
+        print()
+
 
     # 落盘汇总
     summary = {
