@@ -3,8 +3,9 @@
 """check_cross_bench_manifest.py 的变异自测。
 
 门禁只写测试不证明"真能失败"= 不实自证（AGENTS.md 第四条）。本测试把判据
-`manifest_violations()` 直接喂**变异后的输入**，逐条断言必须报红；并含一条
-**真实回归用例**：把生成器契约表里的 10733 摘掉（正是本次修的那个真 bug）→ 必红。
+`manifest_violations()` 直接喂**变异后的输入**，逐条断言必须报红；并含**真实产物回归**：
+①生成器契约表漏掉一个仍在排除集的答案文件 → C3 必红；②把题目输入 10733/task.py
+重新塞回排除集 → C9 反向钉必红。
 
 用法：python scripts/check_cross_bench_manifest_test.py
 """
@@ -53,8 +54,12 @@ def case(name, fn):
     CASES.append((name, fn))
 
 
-def _run(doc, gi, gen_ex, gen_rec, pinned, min_problems=2):
-    return M.manifest_violations(doc, gi, gen_ex, gen_rec, pinned, min_problems)
+def _run(doc, gi, gen_ex, gen_rec, pinned, min_problems=2, forbidden=None, overrides=None):
+    # 合成用例默认用空契约表：真实契约（含 10733 反向钉 / 题面覆盖）由 real_regression
+    # 与下面的 C9/C10 用例显式传入，避免"目录里没有 10733"把合成用例误伤成红。
+    return M.manifest_violations(doc, gi, gen_ex, gen_rec, pinned, min_problems,
+                                 {} if forbidden is None else forbidden,
+                                 {} if overrides is None else overrides)
 
 
 case("基线：合法输入 → 无违规", lambda: _run(*base()) == [])
@@ -222,8 +227,46 @@ def c8_consistent_removal():
 case("变异 C8：一致地摘除红线文件（一致性判据拦不住）→ 红", c8_consistent_removal)
 
 
+def c9_forbidden_excluded():
+    """题目输入被重新排除 → C9 反向钉必红（10733/task.py 的 2026-10-15 错误重演）。"""
+    doc = {"problems": {
+        "p1": mkprob("p1", [("a.bin", True, True, False)]),
+    }}
+    return any("C9" in v for v in _run(doc, ["p1/a.bin"], {"p1/a.bin"},
+                                       set(), {}, 1,
+                                       forbidden={"p1/a.bin": "题目输入"}))
+
+
+case("变异 C9：题目输入被排除（反向钉）→ 红", c9_forbidden_excluded)
+
+
+def c9_forbidden_ok():
+    """题目输入未被排除 → C9 不误伤。"""
+    doc, gi, ge, gr, pin = base()
+    return _run(doc, gi, ge, gr, pin, forbidden={"p2/b.py": "题目输入"}) == []
+
+
+case("反例 C9：题目输入正常入库 → 绿", c9_forbidden_ok)
+
+
+def c10_desc_override():
+    """产物题面没应用生成器覆盖表 → C10 必红。"""
+    doc = {"problems": {"p1": mkprob("p1", [("a.bin", True, True, False)],
+                                     desc="原解法走查题面")}}
+    red = _run(doc, ["p1/a.bin"], {"p1/a.bin"}, set(), {"p1/a.bin": "x"}, 1,
+               forbidden={}, overrides={"p1": "中性题面"})
+    doc["problems"]["p1"]["description"] = "中性题面"
+    green = _run(doc, ["p1/a.bin"], {"p1/a.bin"}, set(), {"p1/a.bin": "x"}, 1,
+                 forbidden={}, overrides={"p1": "中性题面"})
+    return any("C10" in v for v in red) and green == []
+
+
+case("变异 C10：题面未应用中性化覆盖 → 红；已应用 → 绿", c10_desc_override)
+
+
 def real_regression():
-    """真实回归：把生成器契约表里的 10733 摘掉（真 bug 形态）→ 必红。"""
+    """真实产物回归：①生成器契约漏一个仍在排除集的答案文件 → C3 红；
+    ②把题目输入 10733/task.py 重新排除 → C9 反向钉红；③修好后 → 绿。"""
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
     cb = os.path.join(root, "data", "questions_real_bench", "cross_bench.json")
     gi_path = os.path.join(root, "data", "questions_real_bench", "attachments", ".gitignore")
@@ -237,14 +280,23 @@ def real_regression():
     full_ex = {"%s/%s" % (pid, f["name"])
                for pid, p in doc["problems"].items()
                for f in (p.get("attachment_files") or []) if f.get("git_excluded")}
-    ok = M.manifest_violations(doc, gi, full_ex,
-                               {"10733/task.py"}, M.PINNED_REDLINE) == []
-    broken = M.manifest_violations(doc, gi, full_ex - {"10733/task.py"},
-                                   {"10733/task.py"}, M.PINNED_REDLINE)
-    return ok and any("C3" in v for v in broken)
+    # ③ 基线：产物 + 生成器契约一致 → 绿
+    ok = M.manifest_violations(doc, gi, set(full_ex), set()) == []
+    # ① 生成器漏登记一个仍在排除集的答案文件 → C3 红
+    leak = sorted(full_ex)[0]
+    broken_c3 = M.manifest_violations(doc, gi, set(full_ex) - {leak}, set())
+    # ② 把题目输入 10733/task.py 重新排除（答案形态 + git 排除）→ C9 红
+    mut = json.loads(json.dumps(doc))
+    for f in mut["problems"]["10733"]["attachment_files"]:
+        if f["name"] == "task.py":
+            f["answer_key_shape"] = True
+            f["git_excluded"] = True
+    ex2 = set(full_ex) | {"10733/task.py"}
+    broken_c9 = M.manifest_violations(mut, gi + ["10733/task.py"], ex2, set())
+    return ok and any("C3" in v for v in broken_c3) and any("C9" in v for v in broken_c9)
 
 
-case("真实回归：生成器漏 10733（真 bug）→ 红；修好后 → 绿", real_regression)
+case("真实产物回归：生成器漏登记 → C3 红；题目输入被重排除 → C9 红；基线 → 绿", real_regression)
 
 
 def main() -> int:

@@ -343,12 +343,12 @@ func tryRSATemplate(text string) []string {
 		return nil
 	}
 
-	// ⚠️ 能力缺口（2026-10-15 立尺如实记录，勿再伪造攻击）：
-	// hint = (e*p + e^2)^q mod n 型（DASCTF CRYPTO-02 / 10733）**没有已实现的
-	// 分解攻击**。原 tryPKCS1Hint 的 GCD(hint - e^2, n) 探针数学上不成立
-	// （hint ≡ e·p+e² mod q、hint ≡ e^(2q) mod p，与 e² 无公因子关系），
-	// 已移除。两条关系式无法在不用二元 Coppersmith（多项式次数为 q，格维度
-	// 量级不可行）的前提下闭合。后续若实现，应先补数值验证再接线。
+	// ⚠️ 2026-10-15 立尺如实记录的旧能力缺口，**已于 2026-10-16 闭合**（留痕更正，不静默改写）：
+	// hint = (e*p + e^2)^q mod n 型（DASCTF CRYPTO-02 / 10733）的攻击现由
+	// tryRSAHighExpHint（presolve_rsa_hint.go）实现，**无需二元 Coppersmith/格**：
+	// 由 n ≡ q (mod p−1) 得 W = e^n mod n 满足 W ≡ e^q (mod p)，故 p = gcd(W²−hint, n)。
+	// 本函数内旧的 GCD(hint − e², n) 探针数学上仍**不成立**（hint ≡ e·p+e² mod q、
+	// hint ≡ e^(2q) mod p，与 e² 无公因子关系），已移除，勿再恢复。
 
 	if eMatch == nil || cMatch == nil {
 		return nil

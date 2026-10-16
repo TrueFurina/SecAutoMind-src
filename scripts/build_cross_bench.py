@@ -44,32 +44,40 @@ SAFE_ID_RE = re.compile(r"[^0-9A-Za-z._-]+")
 #（整文件即答案 / 源码注释内 flag 真值 / 二进制内嵌答案），只复制到本地供
 # 「含答案口径」跑分，经 attachments/.gitignore 排除出 git；并在 cross_bench.json
 # 逐文件登记 git_excluded + 原因——杜绝"清单声明了但 CI 检出没有"的静默不一致。
+# 「答案形态」的判据 = **含 flag 明文 / 内嵌答案**（与
+# internal/ctfplatform/answer_key_git_gate_test.go::flagPlaintextRe 同源）。
+# ⚠️ 裸数字/参数是「题目输入」，**不属答案形态**，不得登记在此（该注释原文即如此规定）。
 GIT_EXCLUDED_ATTACHMENTS = {
     ("real_misc_longjian2024_smallsword3", "flag.txt"): "整文件即 flag 明文",
     ("real_crypto_anxun2020_aes", "flag.txt"): "整文件即 flag 明文",
     ("real_web_gongye_web2", "index.php"): "源码注释内含 flag 真值",
     ("real_reverse_upx", "helloupx11"): "二进制内嵌答案 flag 明文",
-    # 2026-10-16 补登记：见下方 RECOVERED_ATTACHMENTS 与 docs/cross_bench_report.md §四。
-    # 本条目此前只存在于产物（cross_bench.json + attachments/.gitignore），**未回填生成器**。
-    # 后果：生成器一旦重跑（A 库仍在本机 E:/Program/西湖论剑，并非如
-    # register_recovered_attachment.py 旧注释所称"已不存在"），会写出只含 4 条的
-    # .gitignore —— **静默摘掉本 P0 红线文件**，此后任何 `git add -A` 都会把它重新
-    # 纳入 PUBLIC 仓。补登记后生成器可幂等复现本排除，且由
-    # scripts/check_cross_bench_manifest.py 把该契约钉死进 CI。
-    ("10733", "task.py"): (
-        "附件含本实例 hint/c/n 三元组（task.py 末尾文档字符串内），足以让求解器直接还原 m "
-        "⇒ 按答案形态处理并 git 排除（PUBLIC 仓禁答案材料入库）。"
-        "分类于 2026-10-15：此前误判为『数据不完整、实例真值未留存』，实为归因错误 —— "
-        "真值一直在附件里，属读附件不彻底（只读前半段就下结论）。"
-    ),
+    # 2026-10-16 **撤销登记**：("10733", "task.py") 曾在 2026-10-15 P0 事件后按
+    # 「实例真值 = 答案材料」的从严口径登记在此。该口径经复核被证伪：
+    #   ① 文件里 flag 是 `b'******'` **遮蔽态**，全文只有加密脚本 + hint/c/n 实例参数
+    #      （即**题目输入**），不含任何 flag 串（grep + sha256 双重确认）；
+    #   ② 与同批已入库的 ezrsa/exciting_inverse/simplelegendre/filterrandom 附件同类
+    #      （它们同样带实例参数，登记 answer_key_shape=false）；
+    #   ③ 本仓门禁注释原文即规定"裸数字/参数形态（那些是题目输入）"不算答案。
+    # 故改按题目输入入库，使「有数据子集」口径在 CI 侧可复现（原排除令该题在 CI 不可评价，
+    # 且 local/CI 数字分叉）。红线未变：真正含 flag 的 4 个文件仍在上方排除集内。
 }
 
 # 从 A 库 git 历史（而非工作树）找回的附件：生成器额外登记 sha256 + 来源标注，
 # 使「重跑生成器」与已提交产物逐字一致（否则 sha256/recovered_from 会被静默抹掉）。
-RECOVERED_ATTACHMENTS = {
-    ("10733", "task.py"): (
-        "本仓库 data/questions_real_bench/attachments/10733/task.py（2026-10-15 重新精读；"
-        "A 库同源副本另存于 E:/Program/西湖论剑 git 历史 87550e0d）"
+# 2026-10-16：原登记项 ("10733","task.py") 已撤销——该文件改按题目输入入库后，
+# 生成器直接从 A 库工作树正常复制（A 库副本与本仓 sha256 一致 328d8244…），
+# 不再需要"找回"通道。表保留为空以维持门禁 C5（生成器契约 ↔ 产物 recovered_from）。
+RECOVERED_ATTACHMENTS = {}
+
+# 题面中性化覆盖表：A 库个别题目的 description 抄了 writeup 的**解法走查**
+# （非答案明文，故 sanitize_text 的 sha256 判据抓不到；但它把解答步骤写进了题面，
+# 削弱该题作为能力证据的独立性）。此表把这类题面替换为与同批一致的**中性题面**。
+# 判据：覆盖后题面不得含解法步骤，且生成器重跑与产物逐字一致（门禁 C10 钉死）。
+DESCRIPTION_OVERRIDES = {
+    "10733": (
+        "附件 task.py 是加密脚本（文件末尾给出本实例的 hint、c、n）。"
+        "解密还原明文 flag。"
     ),
 }
 
@@ -148,7 +156,10 @@ def load_source(src: str):
             "id": qid,
             "category": d.get("category") or "misc",
             "sub": d.get("category") or "misc",
-            "description": sanitize_text(d.get("description") or "", flag.lower()),
+            # 题面：先取（可选）中性化覆盖，再过 flag 明文遮蔽器——单一漏斗，
+            # 保证「覆盖后仍不含 sha256 等于本题 flag 的明文」由同一判据把关。
+            "description": sanitize_text(
+                DESCRIPTION_OVERRIDES.get(qid, d.get("description") or ""), flag.lower()),
             "title": sanitize_text(d.get("title") or "", flag.lower()),
             "flag_sha256": flag.lower(),
             "difficulty": d.get("difficulty") or "",

@@ -49,8 +49,11 @@ type crossBenchAttachment struct {
 	AnswerKeyShape bool   `json:"answer_key_shape"` // flag.* 前缀或登记的"题目本体含答案"文件
 	GitExcluded    bool   `json:"git_excluded"`     // flag 明文/内嵌答案：只留本地，不进 PUBLIC 仓
 	ExcludeReason  string `json:"exclude_reason"`
-	// SHA256/RecoveredFrom（2026-10-15 补字段）：文件被 git 排除后 CI 检出读不到它，
-	// 指纹+出处成为"登记契约"唯一可机验的锚点（见 TestRecoveredAttachmentHasInstanceTruth）。
+	// SHA256/RecoveredFrom（2026-10-15 补字段，2026-10-16 起现为空）：用于登记"从 A 库
+	// git 历史找回、不进 PUBLIC 仓"的附件——彼时 CI 读不到文件，指纹+出处是唯一可机验的锚点。
+	// 现存排除集只剩 4 个含 flag 的答案文件（无指纹登记）；10733/task.py 已改按题目输入入库，
+	// 钉子升级为直接读文件验内容（见 internal/ctfplatform/data_incomplete_claim_test.go
+	// 的 TestInstanceTruthNailHolds）。字段保留以支持生成器的 RECOVERED_ATTACHMENTS 通道。
 	SHA256        string `json:"sha256"`
 	RecoveredFrom string `json:"recovered_from"`
 }

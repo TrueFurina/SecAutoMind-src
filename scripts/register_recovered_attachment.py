@@ -1,6 +1,16 @@
-"""把从 A 库找回的 10733 附件登记进 cross_bench.json。
+"""把「不在 A 库工作树、只在 git 历史里」的附件补登记进 cross_bench.json（幂等，--dry-run 预演）。
 
-为什么需要本脚本（而不是手改 JSON）：
+🔴 **2026-10-16 第三次修订：本脚本已无调用对象（留痕，不静默改写）。**
+它当初唯一服务的是 `10733/task.py`；该文件经复核已改按**题目输入**正常入库
+（不含 flag，见 `build_cross_bench.py` 的 `GIT_EXCLUDED_ATTACHMENTS` 顶部注释），
+生成器直接从 A 库工作树复制即可，**不再需要"找回"通道**，故 `RECOVERED_ATTACHMENTS` 已清空。
+本文件保留以记录该事件、并提供 `resync_honesty()`（派生计数一律重算）；
+`RECOVERED_FROM` / `RECOVERED_REASON` 两项默认值已是**历史样例**，不再对应当前产物状态。
+
+纪律不变（PR #41 教训）：任何手工登记产物都必须**同步回填生成器契约表**，
+否则 `scripts/check_cross_bench_manifest.py` 的 C3 判据会在 CI 上直接报红。
+
+（以下为历史说明，保留原文）为什么需要本脚本（而不是手改 JSON）：
   cross_bench.json 是构建产物，手改会在下次 `build_cross_bench.py --src` 重跑时
   被覆盖，故这里做成**幂等**的一次性登记工具（`--dry-run` 可预演）。
 
@@ -12,9 +22,9 @@
 文件；且生成器不遮蔽题面 flag 明文 → 会把 `a87b812` 清掉的 2 条真 flag 重新写回
 产物。这两条已在 `build_cross_bench.py` 里修（补 `GIT_EXCLUDED_ATTACHMENTS` /
 `RECOVERED_ATTACHMENTS` / `sanitize_text`），并由 `scripts/check_cross_bench_manifest.py`
-把三方一致性钉进 CI。**本脚本保留为幂等补登记工具**，不再是"唯一可行路径"。
+把三方一致性钉进 CI。
 
-用法：python scripts/register_recovered_attachment.py --id 10733 --file task.py
+用法（历史）：python scripts/register_recovered_attachment.py --id 10733 --file task.py
 """
 import argparse
 import hashlib
