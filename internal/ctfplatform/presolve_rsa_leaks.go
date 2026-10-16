@@ -6,10 +6,11 @@
 //   - legendre_bit_phi：phi 泄露 + 逐位 Legendre 符号加密（玄盾杯 SimpleLegendre）。
 //   - hastad_broadcast 的裸数字解析扩展见 presolve_crypto.go（玄盾杯 ezRSA）。
 //
-// 诚实记账：10733（DASCTF CRYPTO-02，hint=(e*p+e^2)^q mod n 型）的攻击**未实现**——
-// 已推导出 hint ≡ e·p+e² (mod q) 与 hint ≡ e^(2q) (mod p) 两条关系，但二者
-// 无法在不用二元 Coppersmith（指数 q 作多项式次数，格维数量级不可行）的前提下
-// 闭合成分解；原 tryPKCS1Hint 的 GCD(hint-e², n) 探针数学上不成立，已移除。
+// 10733（DASCTF CRYPTO-02，hint=(e*p+e^2)^q mod n 型）的攻击**已于 2026-10-16 实现**，
+// 见 presolve_rsa_hint.go::tryRSAHighExpHint。此前本条记为「能力缺口，须二元 Coppersmith」——
+// **该归因被本轮证伪**：无需格。关键是 hint ≡ e^{2q} (mod p)（mod p 下 e·p 项消失），
+// 而 W=e^n mod n 满足 W ≡ e^q (mod p)（因 n≡q mod p-1），故 W²≡hint (mod p)，
+// 直接 gcd(W²−hint, n)=p。解密侧 e=2^k 且 p≡q≡3 (mod 4) 时走奇数阶子群求逆 + 一轮 Rabin。
 package ctfplatform
 
 import (

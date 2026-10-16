@@ -109,6 +109,8 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "rsa_template", Category: CategoryCryptoS, Priority: 40, Solver: solveRSATemplate})
 	RegisterSolver(SolverEntry{Name: "legendre_phi", Category: CategoryCryptoS, Priority: 41, Solver: solveLegendrePhi})
 	RegisterSolver(SolverEntry{Name: "modinv_factor", Category: CategoryCryptoS, Priority: 42, Solver: solveModInvFactor})
+	// rsa_hint_high_exp：hint=(e·p+e²)^q mod n 泄露 + 高偶指数 e=2^k（DASCTF/西湖论剑 10733）。
+	RegisterSolver(SolverEntry{Name: "rsa_hint_high_exp", Category: CategoryCryptoS, Priority: 43, Solver: solveRSAHintHighExp})
 	RegisterSolver(SolverEntry{Name: "aes_ecb", Category: CategoryCryptoS, Priority: 50, Solver: solveAESECB})
 	RegisterSolver(SolverEntry{Name: "lattice", Category: CategoryCryptoS, Priority: 51, Solver: solveLattice})
 	RegisterSolver(SolverEntry{Name: "keyboard_path", Category: CategoryCryptoS, Priority: 52, Solver: solveKeyboardPath})
