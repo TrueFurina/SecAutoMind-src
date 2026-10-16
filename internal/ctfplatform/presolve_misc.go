@@ -192,6 +192,16 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 8b. hint=(e·p+e²)^q mod n 泄露 + 高偶指数 e=2^k（DASCTF/西湖论剑 10733 型）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryRSAHighExpHint(text, attachments)
+		if len(flags) > 0 {
+			chResult <- result{"rsa_hint_high_exp", flags}
+		}
+	}()
+
 	// 9. RSA 共享素数分解（gcd(n1,n2)=p 型）
 	wg.Add(1)
 	go func() {
@@ -342,6 +352,7 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"b64_caesar_alphabet":   4,
 		"legendre_phi":          5,
 		"modinv_factor":         6,
+		"rsa_hint_high_exp":     6,
 		"hash_crack":            7,
 		"xor_single":            8,
 		"xor_known_plaintext":   8,
