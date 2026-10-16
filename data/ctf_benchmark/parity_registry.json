@@ -1,0 +1,132 @@
+{
+  "_schema": "跨集双语言 parity 台账（单一真值源）。run_all_benchmarks.py 的『双语言机验覆盖』脚注与 scripts/check_suite_parity.py 门禁均读本文件，杜绝脚注范围靠手写漂移（2026-10-16 实测：旧脚注手写『【2】～【8】』，实际未接线的是【2】～【22】，低估 14 集）。",
+  "_parity_enum": {
+    "wired": "已接线逐题机验（脚本见 wired_by）",
+    "unwired": "未接线 —— 汇总里的『Python == Go』仅为措辞，不得当已核验证据引用"
+  },
+  "_reason_enum": {
+    "static_three_way": "静态集走三路逐题（Go shipped / Go registry / Python 镜像），由独立脚本负责",
+    "live_subset_needs_range": "含 live_* 实时靶机子集，需 python 拉起靶场，尚未建分层 parity",
+    "range_needs_python": "Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场，逐题 parity 尚未接线",
+    "go_side_unit_tests_only": "Go 侧只有合成单元测试、不读基准 json，无逐题集合可比 —— 该集『双语言镜像』只能指算法镜像，不能表述为逐题 ==（须改措辞）"
+  },
+  "suites": [
+    {
+      "id": 1, "key": "static", "benchmark": "real_benchmark.json", "python_judge": "judge.py",
+      "go_tests": ["TestRealBenchmark_ShippedPresolve", "TestRealBenchmark_RegistryPresolve"],
+      "parity": "wired", "wired_by": "scripts/check_benchmark_parity.py",
+      "reason": "static_three_way"
+    },
+    {
+      "id": 2, "key": "execution", "benchmark": "execution_benchmark.json", "python_judge": "judge_exec.py",
+      "go_tests": ["TestExecSolversAgainstBenchmark", "TestLiveExploitation"],
+      "parity": "unwired", "reason": "live_subset_needs_range"
+    },
+    {
+      "id": 3, "key": "web", "benchmark": "web_benchmark.json", "python_judge": "judge_web.py",
+      "go_tests": ["TestWebExploitAgainstRange", "TestPresolveAutoExploitsWebTarget"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 4, "key": "attachment", "benchmark": "attachment_benchmark.json", "python_judge": "judge_attachment.py",
+      "go_tests": ["TestAttachmentForensicsBenchmark"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 5, "key": "web_hint", "benchmark": "web_hint_benchmark.json", "python_judge": "judge_web_hints.py",
+      "go_tests": ["TestHintDrivenWebExploit"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 6, "key": "jwt", "benchmark": "jwt_benchmark.json", "python_judge": "judge_jwt.py",
+      "go_tests": ["TestJWTAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 7, "key": "deser", "benchmark": "deser_benchmark.json", "python_judge": "judge_deser.py",
+      "go_tests": ["TestDeserAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 8, "key": "xxe", "benchmark": "xxe_benchmark.json", "python_judge": "judge_xxe.py",
+      "go_tests": ["TestXXEAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 9, "key": "upload", "benchmark": "upload_benchmark.json", "python_judge": "judge_upload.py",
+      "go_tests": ["TestUploadAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 10, "key": "graphql", "benchmark": "graphql_benchmark.json", "python_judge": "judge_graphql.py",
+      "go_tests": ["TestGraphQLAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 11, "key": "ssrf", "benchmark": "ssrf_benchmark.json", "python_judge": "judge_ssrf.py",
+      "go_tests": ["TestSSRFAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 12, "key": "sqli", "benchmark": "sqli_benchmark.json", "python_judge": "judge_sqli.py",
+      "go_tests": ["TestSQLiAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 13, "key": "ssti", "benchmark": "ssti_benchmark.json", "python_judge": "judge_ssti.py",
+      "go_tests": ["TestSSTIAttackAgainstRange"],
+      "parity": "unwired", "reason": "range_needs_python"
+    },
+    {
+      "id": 14, "key": "ecdsa", "benchmark": "ecdsa_benchmark.json", "python_judge": "judge_ecdsa.py",
+      "go_tests": ["TestECDSANonceReuseAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^\\s*(\\S+)\\s+HIT\\b",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；两侧逐题命中行同构"
+    },
+    {
+      "id": 15, "key": "padding_oracle", "benchmark": "padding_oracle_benchmark.json", "python_judge": "judge_padding_oracle.py",
+      "go_tests": ["TestPaddingOracleAgainstBenchmark"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^\\s*(\\S+)\\s+HIT\\b",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "离线确定性；两侧逐题命中行同构"
+    },
+    {
+      "id": 16, "key": "blind_oob", "benchmark": "blind_oob_benchmark.json", "python_judge": "judge_blind_oob.py",
+      "go_tests": ["TestBlindOOBTimeBased", "TestBlindOOBOOB", "TestBlindOOBSolverRegistered", "TestBlindOOBNoFalsePositiveOnRandom"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 17, "key": "hash_ext", "benchmark": "hash_ext_benchmark.json", "python_judge": "judge_hash_ext.py",
+      "go_tests": ["TestHashLengthExtensionMD5", "TestHashLengthExtensionSHA1", "TestHashLengthExtensionSolverParses", "TestHashLengthExtensionSolverRegistered"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 18, "key": "gcm_nonce_reuse", "benchmark": "gcm_nonce_reuse_benchmark.json", "python_judge": "judge_gcm_nr.py",
+      "go_tests": ["TestGCMNonceReuseBasic", "TestGCMNonceReuseBlobFormat", "TestGCMNonceReusePartialKnown", "TestGCMNonceReuseSolverParses", "TestGCMNonceReuseSolverRegistered"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 19, "key": "mt19937", "benchmark": "mt19937_benchmark.json", "python_judge": "judge_mt19937.py",
+      "go_tests": ["TestMT19937UntemperIsInverse", "TestMT19937PredictNext", "TestMT19937SolverParses", "TestMT19937SolverRegistered", "TestMT19937NoFalsePositive", "TestMT19937InsufficientOutputs", "TestMT19937RecoverSha256Consistency"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 20, "key": "lfsr", "benchmark": "lfsr_benchmark.json", "python_judge": "judge_lfsr.py",
+      "go_tests": ["TestLFSRBerlekampMasseyBasic", "TestLFSRPredictDegree32", "TestLFSRSolverParses", "TestLFSRSolverRegistered", "TestLFSRNoFalsePositive", "TestLFSRStreamUnit", "TestLFSRCorrelationSynthetic", "TestLFSRCorrelationMutationFailClosed", "TestLFSRShortLeakNoPredict"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 21, "key": "lcg", "benchmark": "lcg_benchmark.json", "python_judge": "judge_lcg.py",
+      "go_tests": ["TestLCGAdvanceMatchesNaive", "TestLCGRecoverAC", "TestLCGRecoverModulus", "TestLCGSolverParsesKnownParams", "TestLCGSolverParsesRecoverAC", "TestLCGSolverParsesRecoverModulus", "TestLCGSolverRegistered", "TestLCGNoFalsePositive"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    },
+    {
+      "id": 22, "key": "crc32", "benchmark": "crc32_benchmark.json", "python_judge": "judge_crc32.py",
+      "go_tests": ["TestCRC32StdMatchesStdlib", "TestCRC32ForgeProducesTarget", "TestCRC32ForgeUniqueness", "TestCRC32SolverParses", "TestCRC32SolverRegistered", "TestCRC32NoFalsePositive"],
+      "parity": "unwired", "reason": "go_side_unit_tests_only"
+    }
+  ]
+}
