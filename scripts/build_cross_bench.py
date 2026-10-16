@@ -49,6 +49,28 @@ GIT_EXCLUDED_ATTACHMENTS = {
     ("real_crypto_anxun2020_aes", "flag.txt"): "整文件即 flag 明文",
     ("real_web_gongye_web2", "index.php"): "源码注释内含 flag 真值",
     ("real_reverse_upx", "helloupx11"): "二进制内嵌答案 flag 明文",
+    # 2026-10-16 补登记：见下方 RECOVERED_ATTACHMENTS 与 docs/cross_bench_report.md §四。
+    # 本条目此前只存在于产物（cross_bench.json + attachments/.gitignore），**未回填生成器**。
+    # 后果：生成器一旦重跑（A 库仍在本机 E:/Program/西湖论剑，并非如
+    # register_recovered_attachment.py 旧注释所称"已不存在"），会写出只含 4 条的
+    # .gitignore —— **静默摘掉本 P0 红线文件**，此后任何 `git add -A` 都会把它重新
+    # 纳入 PUBLIC 仓。补登记后生成器可幂等复现本排除，且由
+    # scripts/check_cross_bench_manifest.py 把该契约钉死进 CI。
+    ("10733", "task.py"): (
+        "附件含本实例 hint/c/n 三元组（task.py 末尾文档字符串内），足以让求解器直接还原 m "
+        "⇒ 按答案形态处理并 git 排除（PUBLIC 仓禁答案材料入库）。"
+        "分类于 2026-10-15：此前误判为『数据不完整、实例真值未留存』，实为归因错误 —— "
+        "真值一直在附件里，属读附件不彻底（只读前半段就下结论）。"
+    ),
+}
+
+# 从 A 库 git 历史（而非工作树）找回的附件：生成器额外登记 sha256 + 来源标注，
+# 使「重跑生成器」与已提交产物逐字一致（否则 sha256/recovered_from 会被静默抹掉）。
+RECOVERED_ATTACHMENTS = {
+    ("10733", "task.py"): (
+        "本仓库 data/questions_real_bench/attachments/10733/task.py（2026-10-15 重新精读；"
+        "A 库同源副本另存于 E:/Program/西湖论剑 git 历史 87550e0d）"
+    ),
 }
 
 
@@ -67,6 +89,34 @@ def source_descriptor(src: str) -> str:
 
 def safe_id(qid: str) -> str:
     return SAFE_ID_RE.sub("_", qid) or "unknown"
+
+
+# 题面里任何「前缀{内容}」形态的候选（用于 flag 明文遮蔽）。
+FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n]{4,80}\}")
+
+
+def sanitize_text(text: str, flag_sha256: str) -> str:
+    """把题面里**与本题 flag_sha256 逐字相等**的 flag 明文遮蔽为 `前缀{****}`。
+
+    为什么必须做：A 库部分题目的 description 直接抄了 writeup 里的真 flag，
+    直接搬进本 PUBLIC 仓就是答案明文入库，会把 2026-10-15 的 P0 清理
+    （commit a87b812「清除 PUBLIC 仓 7 条真题真 flag」）重新破防。
+    实测：`d0g3{71b2…}` / `flag{i_am_not_right…}` 的 sha256 与本题 flag_sha256 相等，
+    正是被清掉的明文——生成器不遮蔽就等于"重跑一次 = 再泄一次"。
+
+    判据是 **sha256 相等**，不是"看着像 flag"：CRC32/LCG 等题面里的已知明文是
+    合法输入（见 docs/cross_bench_report.md 关于 A 层判据的教训），不得误伤。
+    """
+    if not text or not flag_sha256:
+        return text
+
+    def _sub(m: "re.Match[str]") -> str:
+        cand = m.group(0)
+        if hashlib.sha256(cand.encode("utf-8")).hexdigest() == flag_sha256:
+            return m.group(1) + "{****}"
+        return cand
+
+    return FLAG_CAND_RE.sub(_sub, text)
 
 
 def load_source(src: str):
@@ -98,8 +148,8 @@ def load_source(src: str):
             "id": qid,
             "category": d.get("category") or "misc",
             "sub": d.get("category") or "misc",
-            "description": d.get("description") or "",
-            "title": d.get("title") or "",
+            "description": sanitize_text(d.get("description") or "", flag.lower()),
+            "title": sanitize_text(d.get("title") or "", flag.lower()),
             "flag_sha256": flag.lower(),
             "difficulty": d.get("difficulty") or "",
             "attachment_declared": bool(atts),
@@ -123,7 +173,7 @@ def copy_attachments_for(p: dict, src_json: str, base: str) -> int:
         name = os.path.basename(a)
         shutil.copyfile(full, os.path.join(dest_dir, name))
         excluded = (p["id"], name) in GIT_EXCLUDED_ATTACHMENTS
-        p["attachment_files"].append({
+        entry = {
             "name": name,
             "size": os.path.getsize(full),
             # flag.* 前缀或显式登记的"题目本体但含答案"文件，均按答案形态处理：
@@ -131,7 +181,15 @@ def copy_attachments_for(p: dict, src_json: str, base: str) -> int:
             "answer_key_shape": bool(ANSWER_KEY_RE.match(name)) or excluded,
             "git_excluded": excluded,
             "exclude_reason": GIT_EXCLUDED_ATTACHMENTS.get((p["id"], name), ""),
-        })
+        }
+        # 找回附件（来自 A 库 git 历史的实物）：补 sha256 + 来源标注，使重跑生成器与
+        # 已提交产物逐字一致。键序刻意与 register_recovered_attachment.py 保持一致。
+        recovered_from = RECOVERED_ATTACHMENTS.get((p["id"], name))
+        if recovered_from:
+            with open(full, "rb") as fh:
+                entry["sha256"] = hashlib.sha256(fh.read()).hexdigest()
+            entry["recovered_from"] = recovered_from
+        p["attachment_files"].append(entry)
         n += 1
     return n
 

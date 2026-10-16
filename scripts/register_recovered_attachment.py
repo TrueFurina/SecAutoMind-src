@@ -1,13 +1,18 @@
-"""把从 A 库 git 历史找回的 10733 附件登记进 cross_bench.json。
+"""把从 A 库找回的 10733 附件登记进 cross_bench.json。
 
 为什么需要本脚本（而不是手改 JSON）：
-  cross_bench.json 是构建产物，手改会在下次 build_cross_bench.py --src 重跑时
-  被覆盖。构建器无法运行（A 库 questions_real 目录已不存在），故本次为
-  「一次性补登记」，但必须：
-    1. 幂等（重复执行结果一致）；
-    2. 显式标注 recovered_from（来源可审计）；
-    3. 判定 answer_key_shape / git_excluded —— task.py 含本实例 hint/c/n，
-       足以让求解器直接还原 m，属实质答案材料，PUBLIC 仓必须排除。
+  cross_bench.json 是构建产物，手改会在下次 `build_cross_bench.py --src` 重跑时
+  被覆盖，故这里做成**幂等**的一次性登记工具（`--dry-run` 可预演）。
+
+🔴 **2026-10-16 更正（留痕，不静默改写）**：本脚本旧注释称"构建器无法运行
+（A 库 questions_real 目录已不存在）"——**这是伪前提，实测不成立**：
+`E:/Program/西湖论剑/ctf_agent/data/questions_real` 本机仍在，构建器可跑。
+由此产生的真实风险（当时未察觉，2026-10-16 实跑生成器才发现）：生成器**不知道**
+10733 要排除，重跑会把 `attachments/.gitignore` 写成只含 4 条 → 静默摘掉本 P0 红线
+文件；且生成器不遮蔽题面 flag 明文 → 会把 `a87b812` 清掉的 2 条真 flag 重新写回
+产物。这两条已在 `build_cross_bench.py` 里修（补 `GIT_EXCLUDED_ATTACHMENTS` /
+`RECOVERED_ATTACHMENTS` / `sanitize_text`），并由 `scripts/check_cross_bench_manifest.py`
+把三方一致性钉进 CI。**本脚本保留为幂等补登记工具**，不再是"唯一可行路径"。
 
 用法：python scripts/register_recovered_attachment.py --id 10733 --file task.py
 """
@@ -32,6 +37,20 @@ RECOVERED_REASON = (
 def sha256_of(path):
     with open(path, "rb") as fh:
         return hashlib.sha256(fh.read()).hexdigest()
+
+
+def resync_honesty(doc):
+    """按实物重算 honesty 里的派生计数（不许手工 +1/-1）。
+
+    2026-10-16 实测：产物里 `attachment_answer_key_files` / `attachment_files_git_excluded`
+    停在 4，而实物已是 5 —— 正是本脚本某次登记后没同步派生计数造成的"自报数字与实物脱节"。
+    派生的数字一律重算。
+    """
+    files = [f for p in (doc.get("problems") or {}).values()
+             for f in (p.get("attachment_files") or [])]
+    h = doc.setdefault("honesty", {})
+    h["attachment_answer_key_files"] = sum(1 for f in files if f.get("answer_key_shape"))
+    h["attachment_files_git_excluded"] = sum(1 for f in files if f.get("git_excluded"))
 
 
 def main() -> int:
@@ -82,6 +101,7 @@ def main() -> int:
             if args.dry_run:
                 print("DRY-RUN：将更新 %s/%s 的答案形态标注" % (args.id, args.file))
                 return 0
+            resync_honesty(doc)
             with io.open(CB, "w", encoding="utf-8", newline="") as fh:
                 json.dump(doc, fh, ensure_ascii=False, indent=2)
             gi = io.open(CB_GITIGNORE, encoding="utf-8").read().splitlines()
@@ -118,6 +138,7 @@ def main() -> int:
               (args.id, args.file, size, digest[:16]))
         return 0
 
+    resync_honesty(doc)
     with io.open(CB, "w", encoding="utf-8", newline="") as fh:
         json.dump(doc, fh, ensure_ascii=False, indent=2)
 

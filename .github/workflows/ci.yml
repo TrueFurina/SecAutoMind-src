@@ -381,6 +381,30 @@ jobs:
       - name: Artifact-number gate self-test (11 cases, incl. mutation + always-exclude)
         run: python scripts/check_artifact_numbers_test.py
 
+  # cross-bench 产物清单一致性门禁（2026-10-16 实锤三条漂移后新增）。
+  # `data/questions_real_bench/` 的 cross_bench.json 与 attachments/.gitignore 是
+  # `scripts/build_cross_bench.py` 的产物，却曾被手工改过两轮（PR #22 建清单、
+  # `a87b812` 清理题面 flag 明文）而生成器没同步，且生成器不在 CI 里跑 → 漂移静默。
+  # 实跑生成器（A 库本机仍在，旧注释所称"已不存在"是伪前提）暴露三条：
+  #   ① 生成器不知道要排除 P0 红线文件 10733/task.py → 重跑会把该行从 .gitignore
+  #      摘掉，此后任何 `git add -A` 都会把它重新纳入 PUBLIC 仓；
+  #   ② 生成器不遮蔽题面里的真 flag 明文 → 重跑会把 a87b812 已清掉的 2 条真 flag
+  #      重新写回产物（重跑一次 = 再泄一次）；
+  #   ③ honesty 自报计数停在 4 而实物是 5。
+  # 本 job 把「产物 / .gitignore / 生成器契约表」三方钉成机器判据（含红线钉），
+  # 并跑变异自测证明判据真能变红（含"生成器漏登记 10733"的真实回归形态）。
+  cross-bench-manifest-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cross-bench manifest gate self-test (18 cases, incl. mutation)
+        run: python scripts/check_cross_bench_manifest_test.py
+      - name: Cross-bench manifest consistency (artifacts vs .gitignore vs generator)
+        run: python scripts/check_cross_bench_manifest.py
+
   # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
   # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。
   # 只改根 web/ 而不同步 → 前端改动在 exe 里完全不生效且无任何报错。
