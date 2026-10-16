@@ -567,6 +567,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # padding_oracle judge 需 pycryptodome（与 quant-gate / evidence-gate / evidence-package-gate 同）。
+      # 后续若接线更多集，按各 judge 的 [DEPS-MISSING] 提示补齐这里。
+      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
+        run: python -m pip install --upgrade pip && pip install pycryptodome
       - name: Cross-suite dual-language parity (ledger-driven, all 【N】 suites enumerated)
         run: python scripts/check_suite_parity.py --check
       - name: Suite parity gate regression + mutation check (prove the gate can fail)
