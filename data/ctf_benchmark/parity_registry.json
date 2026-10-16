@@ -6,11 +6,12 @@
   },
   "_reason_enum": {
     "static_three_way": "静态集走三路逐题（Go shipped / Go registry / Python 镜像），由独立脚本负责",
-    "live_subset_needs_range": "含 live_* 实时靶机子集，需 python 拉起靶场，尚未建分层 parity",
-    "range_needs_python": "Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场，逐题 parity 尚未接线"
+    "ab_contrast_semantics": "A/B 对照实验语义（无线索 vs 有线索），衡量『线索增量』而非逐题命中；两侧均只有 A/B 汇总、非逐题集合，不适用『逐题集合一致』判据 —— 属语义不同，非技术不可行"
   },
   "_reason_retired": {
-    "go_side_unit_tests_only": "（2026-10-16 证伪并废弃）曾误判『Go 侧只有合成单元测试、不读基准 json，无逐题集合可比』——实测 7 集（blind_oob/hash_ext/gcm_nonce_reuse/mt19937/lfsr/lcg/crc32）Go 侧均有生产求解器（web_blind_oob/hash_length_extension/gcm_nonce_reuse/mt19937_recover/lfsr_predict/lcg_predict/crc32_forge），6 个 crypto 集 json description 自包含、blind_oob 两侧硬编码秘密 sha256 == json flag_sha256，已全部接线（见 internal/ctfplatform/suite_parity_test.go）。教训同『办不到本身也要证伪』：下『无逐题可比』结论前须先穷尽路径。"
+    "go_side_unit_tests_only": "（2026-10-16 证伪并废弃）曾误判『Go 侧只有合成单元测试、不读基准 json，无逐题集合可比』——实测 7 集（blind_oob/hash_ext/gcm_nonce_reuse/mt19937/lfsr/lcg/crc32）Go 侧均有生产求解器（web_blind_oob/hash_length_extension/gcm_nonce_reuse/mt19937_recover/lfsr_predict/lcg_predict/crc32_forge），6 个 crypto 集 json description 自包含、blind_oob 两侧硬编码秘密 sha256 == json flag_sha256，已全部接线（见 internal/ctfplatform/suite_parity_test.go）。教训同『办不到本身也要证伪』：下『无逐题可比』结论前须先穷尽路径。",
+    "range_needs_python": "（2026-10-16 证伪并废弃）曾误判『Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场、故无法逐题 parity』——实测靶场脚本 live_target/*.py 全部入库（CI 可见）、judge 与 Go 测试各自 subprocess 拉起**本地** 127.0.0.1 靶场（不依赖外部网络），两侧用**不同端口**串行跑无冲突；9 个 range 集（web/jwt/deser/xxe/upload/graphql/ssrf/sqli/ssti）两侧逐题命中集实测一致，已全部接线。",
+    "live_subset_needs_range": "（2026-10-16 证伪并废弃）曾误判『含 live_* 实时靶机子集须 python 靶场、无法建 parity』——实测 execution 集 17 题 = 15 离线（Go TestExecSolversAgainstBenchmark，跳过 live_ 前缀）+ 2 live（Go TestLiveExploitation 自拉本地 vuln_app.py），两侧对同一 17 题集逐题一致，已接线。"
   },
   "suites": [
     {
@@ -22,62 +23,95 @@
     {
       "id": 2, "key": "execution", "benchmark": "execution_benchmark.json", "python_judge": "judge_exec.py",
       "go_tests": ["TestExecSolversAgainstBenchmark", "TestLiveExploitation"],
-      "parity": "unwired", "reason": "live_subset_needs_range"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+(\\S+)",
+      "go_hit_re": "✅\\s+(\\S+)\\s+->",
+      "note": "17 题 = 15 离线 + 2 live（live_sqli/live_ssti）；Go 侧两测试各覆盖离线/live 子集，并集 == Python 全集"
     },
     {
       "id": 3, "key": "web", "benchmark": "web_benchmark.json", "python_judge": "judge_web.py",
-      "go_tests": ["TestWebExploitAgainstRange", "TestPresolveAutoExploitsWebTarget"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "go_tests": ["TestWebExploitAgainstRange"],
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "range 自包含靶场（Go 端口 18098 / Python 18088）；Go 侧同构打印 ✅ HIT <scene>。<TestPresolveAutoExploitsWebTarget 为单题生产路径冒烟（仅 1 行、语义不同），不纳入逐题集合>"
     },
     {
       "id": 4, "key": "attachment", "benchmark": "attachment_benchmark.json", "python_judge": "judge_attachment.py",
       "go_tests": ["TestAttachmentForensicsBenchmark"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+(\\S+)",
+      "go_hit_re": "✅\\s+(\\S+)\\s+engine=",
+      "note": "**离线确定性**（judge 网络调用=0，读本地 artifacts/*）；两侧各 10 题一致。旧 reason『range_needs_python』对它失真（无靶场需求）"
     },
     {
       "id": 5, "key": "web_hint", "benchmark": "web_hint_benchmark.json", "python_judge": "judge_web_hints.py",
       "go_tests": ["TestHintDrivenWebExploit"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "unwired", "reason": "ab_contrast_semantics"
     },
     {
       "id": 6, "key": "jwt", "benchmark": "jwt_benchmark.json", "python_judge": "judge_jwt.py",
       "go_tests": ["TestJWTAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+HIT\\b",
+      "go_hit_re": "✅\\s+(\\S+)\\s+绕过成功",
+      "note": "range 自包含靶场（Go 端口 18090 / Python 18088）；两侧 3 题一致"
     },
     {
       "id": 7, "key": "deser", "benchmark": "deser_benchmark.json", "python_judge": "judge_deser.py",
       "go_tests": ["TestDeserAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+(\\S+)\\s+命中=",
+      "go_hit_re": "✅\\s+(\\S+)\\s+反序列化利用命中",
+      "note": "range 自包含靶场（Go 端口 portBase+i / Python 动态端口）；两侧 3 题一致"
     },
     {
       "id": 8, "key": "xxe", "benchmark": "xxe_benchmark.json", "python_judge": "judge_xxe.py",
       "go_tests": ["TestXXEAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+(\\S+)\\s+命中=",
+      "go_hit_re": "✅\\s+(\\S+)\\s+XXE 利用命中",
+      "note": "range 自包含靶场；两侧 3 题一致"
     },
     {
       "id": 9, "key": "upload", "benchmark": "upload_benchmark.json", "python_judge": "judge_upload.py",
       "go_tests": ["TestUploadAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+✅\\s+SHA-256",
+      "go_hit_re": "✅\\s+(\\S+)：上传",
+      "note": "range 自包含靶场；两侧 3 题一致（打印格式含全角冒号）"
     },
     {
       "id": 10, "key": "graphql", "benchmark": "graphql_benchmark.json", "python_judge": "judge_graphql.py",
       "go_tests": ["TestGraphQLAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+✅\\s+SHA-256",
+      "go_hit_re": "✅\\s+(\\S+)：GraphQL",
+      "note": "range 自包含靶场；两侧 3 题一致"
     },
     {
       "id": 11, "key": "ssrf", "benchmark": "ssrf_benchmark.json", "python_judge": "judge_ssrf.py",
       "go_tests": ["TestSSRFAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
+      "go_hit_re": "✅\\s+(\\S+)：SSRF",
+      "note": "range 自包含靶场；两侧 3 题一致。⚠️ Python 侧命中行**无 ✅/HIT 标记**（纯 `SHA-256 校验通过`，MISS 行为 `MISS`），故正则按短语锚定"
     },
     {
       "id": 12, "key": "sqli", "benchmark": "sqli_benchmark.json", "python_judge": "judge_sqli.py",
       "go_tests": ["TestSQLiAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
+      "go_hit_re": "✅\\s+(\\S+)：SQL",
+      "note": "range 自包含靶场；两侧 3 题一致。Python 命中行同 ssrf（无 ✅/HIT）"
     },
     {
       "id": 13, "key": "ssti", "benchmark": "ssti_benchmark.json", "python_judge": "judge_ssti.py",
       "go_tests": ["TestSSTIAttackAgainstRange"],
-      "parity": "unwired", "reason": "range_needs_python"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
+      "go_hit_re": "✅\\s+(\\S+)：SSTI",
+      "note": "range 自包含靶场；两侧 3 题一致。Python 命中行同 ssrf（无 ✅/HIT）"
     },
     {
       "id": 14, "key": "ecdsa", "benchmark": "ecdsa_benchmark.json", "python_judge": "judge_ecdsa.py",
