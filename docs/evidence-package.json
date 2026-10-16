@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-16T16:17:32+08:00",
+  "generated_at": "2026-10-16T16:44:28+08:00",
   "caliber": {
-    "head": "b552eb6",
+    "head": "df99a3e",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -15,8 +15,8 @@
     "go_files": 766,
     "test_files": 309,
     "non_test_lines": 129233,
-    "test_lines": 45861,
-    "total_lines": 175094,
+    "test_lines": 45863,
+    "total_lines": 175096,
     "ctf_solvers": 181,
     "ctf_real_solvers": 122,
     "ctf_detectors": 59,
@@ -216,6 +216,6 @@
     "2026-10-15 新增分子侧反注水门禁（TestRealBenchmarkHitNotInflatedByPlaintextFlag + TestHitInflationMutationCases，miss_attribution_test.go +247 行）后刷新 caliber 段：Go 文件 763 / 测试文件 307 / 测试行 45,385 / 合计 174,362。gates 段沿用 LF 环境采集值（secret_guard_mutation_rc=0 为 CI(Linux) 真值）。",
     "2026-10-16 新增双语言基准 parity 门禁（scripts/check_benchmark_parity.py + 变异自测 20 用例，CI job benchmark-parity-gate，jobs 19→20）后刷新 caliber 段（测试行 45,385 → 45,477 / 合计 174,362 → 174,454，head e5a1dd0）。动机：run_all_benchmarks.py 汇总里【1】～【8】**硬编码打印**的「Python == Go」宣称却无人校验，基线比对只查下限（hit<min_hit 才红），Python 侧上漂（镜像宣称生产做不到的命中 = 注水方向）与 Go 两条路径的**逐题**差异都无人看——AGENTS.md 第八条「宣称≠接线」的又一实例。判据 = Go shipped / Go registry / Python judge.py 三路**逐题集合**一致 + 非空 fail-closed + id 不越界 + 不低于基线地板（无硬编码命中数，数字变好不会漂绿）。同时：①修哑门禁 —— TestRealBenchmark_RegistryPresolve 原只有 t.Logf 无断言（永远 PASS 的装饰品门禁），补 shipped ⊆ registry 不变量，判据抽 benchParityGap 并配 TestBenchParityGapDetection 变异用例；②基线地板 static.min_hit 19→20（按基线档规则①能力提升后 --update-baseline 抬高地板，by-the-book，唯一字段变更）；③修复 run_all_benchmarks.update_baseline **静默吃掉手写 header** 的缺陷（旧实现用硬编码文案整份覆盖 note/rule/usage，实测一次重新上锁就删掉 location_note 与两条长说明、diff 从 1 字段膨胀到 91 增 24 删 → 改 setdefault 保留既有手写内容，check_benchmark_baseline_test.py 加第 11 用例锁死）。gates 段本机重生成实测 secret_guard_mutation_rc=0 等全 0，LF 环境未污染。",
     "2026-10-16（第五轮）实现 10733（DASCTF CRYPTO-02）攻击后刷新 caliber 段（Go 文件 763→765 / 测试文件 307→308 / 非测试行 128,977→129,233 / 测试行 45,477→45,621 / 合计 174,454→174,854，真求解器 121→122 / 注册 180→181，head 30feb19）。新增 internal/ctfplatform/presolve_rsa_hint.go::tryRSAHighExpHint（注册项 rsa_hint_high_exp，优先级 43；生产 fanout 8b 步 + 注册表 181 项覆盖，反注水门禁 180/181→181/181）。攻击（**无需格**，纯模幂+gcd）：hint=(e·p+e²)^q mod n ⇒ mod p 下 e·p 项消失、hint≡e^{2q}；W=e^n mod n 因 n≡q (mod p-1) 满足 W≡e^q (mod p)，故 W²≡hint (mod p) ⇒ p=gcd(W²−hint, n)；解密侧 e=2^k 且 p≡q≡3 (mod 4) 走奇数阶子群 s=(p−1)/2 求逆 + 一轮 Rabin（4 根），明文为 rot13 编码（QNFPGS{=rot13(DASCTF{)）时返回规范 flag。**同时证伪旧归因**：presolve_rsa_leaks.go 曾记该题「不用二元 Coppersmith 不闭合」，实为推导未穷尽（两次误归因：先「数据不完整」后「须 Coppersmith」）。立尺：cross-bench 含答案口径 4/12→**5/12**（规范 flag sha256 ac232bd941738e22… 机验通过，生产=注册表），**能力缺口归零**；剔除外口径仍 4/12（10733 唯一附件 task.py 被登记 answer_key_shape 而剔除，属口径分类问题非能力缺口）；55 题静态基准 20/55 无回归；全包 go test rc=0（399.1s）。**两处数据口径异常已登记待用户拍板**（① task.py 被误标 answer_key_shape——同批 crypto 题的 task.py/output 全是 false，且该文件无 flag、装的是题目输入 hint/c/n；② 该题 description 是解法走查而非中性题面），未擅自处置（触及 P0 红线文件 6e7bb72 + 核心口径）。gates 段本机重生成实测全 0（secret_guard_mutation_rc=0，LF 未污染）。",
-    "2026-10-16（第七轮）接线【16】～【22】跨集 parity（新增 internal/ctfplatform/suite_parity_test.go，7 集 16 题逐题全中；data/ctf_benchmark/parity_registry.json 的 wired 3→10）后刷新 caliber 段（Go 文件 765→766 / 测试文件 308→309 / 测试行 45,621→45,861 / 合计 174,854→175,094；非测试行 129,233 不变，真求解器 122 / 注册 181 不变）。同轮证伪并废弃台账旧 reason『go_side_unit_tests_only（Go 侧无逐题可比）』—— 实测 7 集 Go 侧均有生产求解器，盲注/OOB 侧硬编码秘密 sha256 == json flag_sha256。"
+    "2026-10-16（第七轮）接线【16】～【22】跨集 parity（新增 internal/ctfplatform/suite_parity_test.go，7 集 16 题逐题全中；data/ctf_benchmark/parity_registry.json 的 wired 3→10）后刷新 caliber 段（Go 文件 765→766 / 测试文件 308→309 / 测试行 45,621→45,863 / 合计 174,854→175,096；非测试行 129,233 不变，真求解器 122 / 注册 181 不变）。同轮证伪并废弃台账旧 reason『go_side_unit_tests_only（Go 侧无逐题可比）』——实测 7 集 Go 侧均有生产求解器，盲注/OOB 侧硬编码秘密 sha256 == json flag_sha256；并顺带修 internal/mcp 一处真 data race（测试多余重赋值 m.stopRefresh，+2 行）。"
   ]
 }
