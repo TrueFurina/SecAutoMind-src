@@ -5,10 +5,10 @@
     "unwired": "未接线 —— 汇总里的『Python == Go』仅为措辞，不得当已核验证据引用"
   },
   "_reason_enum": {
-    "static_three_way": "静态集走三路逐题（Go shipped / Go registry / Python 镜像），由独立脚本负责",
-    "ab_contrast_semantics": "A/B 对照实验语义（无线索 vs 有线索），衡量『线索增量』而非逐题命中；两侧均只有 A/B 汇总、非逐题集合，不适用『逐题集合一致』判据 —— 属语义不同，非技术不可行"
+    "static_three_way": "静态集走三路逐题（Go shipped / Go registry / Python 镜像），由独立脚本负责"
   },
   "_reason_retired": {
+    "ab_contrast_semantics": "（2026-10-16 证伪并废弃）曾误判『A/B 对照实验语义、两侧均只有 A/B 汇总、非逐题集合，不适用逐题一致判据』——实测两侧**都逐题**：Python judge_web_hints.py 逐题比对每题 flag_sha256、Go TestHintDrivenWebExploit 逐题 hitOf(B 组)==flag_sha256，B 组逐题命中集两侧 6/6 一致，已完成接线。接线过程还**顺带证伪了『A/B/C 三组一致』这条对外宣称**：A 组（无线索基线）两侧实现口径不同——Go 走 ExploitWebTarget 硬编码端点猜测（实测 4/6）、Python 走 parse_hints(\"\") 首页爬链+全类型回退（实测 3/6）——故『增量』数字两侧打架（+2 vs +3），不跨语言互证；已收窄为『B 组逐题一致』并为两侧补 fail-closed 的『增量必须为正』断言。教训重申：『语义不同』这类理由本身也要机验，否则会掩盖两侧真实漂移。",
     "go_side_unit_tests_only": "（2026-10-16 证伪并废弃）曾误判『Go 侧只有合成单元测试、不读基准 json，无逐题集合可比』——实测 7 集（blind_oob/hash_ext/gcm_nonce_reuse/mt19937/lfsr/lcg/crc32）Go 侧均有生产求解器（web_blind_oob/hash_length_extension/gcm_nonce_reuse/mt19937_recover/lfsr_predict/lcg_predict/crc32_forge），6 个 crypto 集 json description 自包含、blind_oob 两侧硬编码秘密 sha256 == json flag_sha256，已全部接线（见 internal/ctfplatform/suite_parity_test.go）。教训同『办不到本身也要证伪』：下『无逐题可比』结论前须先穷尽路径。",
     "range_needs_python": "（2026-10-16 证伪并废弃）曾误判『Go 侧 TestXxxAgainstRange 需 python 拉起本地靶场、故无法逐题 parity』——实测靶场脚本 live_target/*.py 全部入库（CI 可见）、judge 与 Go 测试各自 subprocess 拉起**本地** 127.0.0.1 靶场（不依赖外部网络），两侧用**不同端口**串行跑无冲突；9 个 range 集（web/jwt/deser/xxe/upload/graphql/ssrf/sqli/ssti）两侧逐题命中集实测一致，已全部接线。",
     "live_subset_needs_range": "（2026-10-16 证伪并废弃）曾误判『含 live_* 实时靶机子集须 python 靶场、无法建 parity』——实测 execution 集 17 题 = 15 离线（Go TestExecSolversAgainstBenchmark，跳过 live_ 前缀）+ 2 live（Go TestLiveExploitation 自拉本地 vuln_app.py），两侧对同一 17 题集逐题一致，已接线。"
@@ -47,7 +47,10 @@
     {
       "id": 5, "key": "web_hint", "benchmark": "web_hint_benchmark.json", "python_judge": "judge_web_hints.py",
       "go_tests": ["TestHintDrivenWebExploit"],
-      "parity": "unwired", "reason": "ab_contrast_semantics"
+      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "range 自包含靶场（Go 端口 18099 / Python 18097）；跨语言互证对象 = **B 组（读题取线索）逐题命中集**，两侧 6/6 一致。A 组（无线索基线）两侧口径不同（Go 硬编码端点猜测 4/6 vs Python 首页爬链+类型回退 3/6），故『增量』不跨语言互证、只作各侧内部对照；两侧均以 fail-closed 断言『增量必须为正』（无此断言时 A 组漂到全中也不报红）"
     },
     {
       "id": 6, "key": "jwt", "benchmark": "jwt_benchmark.json", "python_judge": "judge_jwt.py",
