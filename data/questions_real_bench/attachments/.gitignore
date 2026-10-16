@@ -1,8 +1,8 @@
 # 由 scripts/build_cross_bench.py 自动生成，请勿手改。
 # 含 flag 明文/内嵌答案的附件按交付红线只保留在本地（供「含答案口径」跑分），
 # 不进入 PUBLIC 仓库；CI 检出不含这些文件，含答案口径在 CI 上自动降级。
+10733/task.py
 real_crypto_anxun2020_aes/flag.txt
 real_misc_longjian2024_smallsword3/flag.txt
 real_reverse_upx/helloupx11
 real_web_gongye_web2/index.php
-10733/task.py

@@ -12,8 +12,8 @@
     "attachment_available": 12,
     "attachment_missing": 76,
     "attachment_files_copied": 15,
-    "attachment_answer_key_files": 4,
-    "attachment_files_git_excluded": 4,
+    "attachment_answer_key_files": 5,
+    "attachment_files_git_excluded": 5,
     "git_exclude_reason": "flag 明文/内嵌答案文件按 PUBLIC 仓交付红线只留本地（见 attachments/.gitignore 与逐文件 exclude_reason）；CI 检出不含这些文件，「含答案口径」在 CI 上自动降级为剔除口径。",
     "attachment_subset_note": "附件仍在的题另有「有数据子集」口径（TestCrossBench_AttachmentSubset），含/不含 flag.* 答案文件分别报告；该子集不得写进对外材料当战果。",
     "flag_truth": "沿用 A 的 flag 字段(sha256)，命中判定用 sha256 比对"

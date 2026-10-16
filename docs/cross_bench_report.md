@@ -190,6 +190,37 @@
 - 异常 2 修法候选：把 description 改回中性题面（与同批一致）。属**保守方向**（去掉剧透，
   不改数字，且求解器只用附件里的 hint/c/n，不依赖 description）。
 
+### 第五版新增：生成器↔产物漂移（2026-10-16 实锤并已修，留痕不静默改写）
+
+补 `10733` 攻击时顺带**实跑了构建器**，发现产物（`cross_bench.json` +
+`attachments/.gitignore`）与生成器 `scripts/build_cross_bench.py` **长期漂移**。前置事实更正：
+旧注释 `register_recovered_attachment.py` 称"构建器无法运行（A 库 `questions_real` 目录已不存在）"
+——**是伪前提**，A 库 `E:/Program/西湖论剑/ctf_agent/data/questions_real` 本机仍在（16 个线程目录、
+88 题 json 齐全），生成器可跑。正因为以为跑不了，没人防过"跑一次会怎样"。
+
+| # | 漂移（实跑生成器实测） | 后果 |
+|---|---|---|
+| 1 | 生成器 `GIT_EXCLUDED_ATTACHMENTS` **不含** `10733/task.py` | 重跑写出的 `.gitignore` 只有 4 条 → 该 P0 红线条目被**静默摘除**，此后任何 `git add -A` 都会把 `task.py` 重新纳入 PUBLIC 仓 |
+| 2 | 生成器**不遮蔽**题面 flag 明文 | A 库 `description` 抄了 writeup 真 flag（`d0g3{71b2…}` / `flag{i_am_not_right…}`，二者 **sha256 == 本题 `flag_sha256`**）；`a87b812` 已把产物里这两处遮蔽成 `前缀{****}`，生成器重跑会**把 2 条真 flag 再写回产物** —— 重跑一次 = 再泄一次 |
+| 3 | `honesty.attachment_answer_key_files` / `attachment_files_git_excluded` 停在 **4** | 实物已是 **5**（登记 10733 时没同步派生计数）→ 自报数字与实物脱节 |
+
+**已修（不改任何安全姿态、不改解题数字）**：
+
+- 生成器补两条**契约表** `GIT_EXCLUDED_ATTACHMENTS`（+10733 及其原因）/ `RECOVERED_ATTACHMENTS`，
+  并加 `sanitize_text()` —— 遮蔽判据是 **sha256 相等**（与 `audit_benchmark_validity.py::answer_in_statement`、
+  `answer_key_git_gate_test.go::flagPlaintextRe` 同源），**不误伤** CRC32/LCG 类题面里的合法已知输入。
+  验证：重跑生成器与已提交产物**逐字一致**（`cross_bench.json` 结构差异 0 条）。
+- 产物按生成器重算回写：`.gitignore` 条目顺序规范化、`honesty` 计数 4→5、`sha256_of_doc` 同步。
+- `register_recovered_attachment.py`：更正伪前提 docstring + 加 `resync_honesty()`（派生计数一律重算，不许手工 +1）。
+- 新增门禁 `scripts/check_cross_bench_manifest.py`：7 组判据（覆盖度自证 / `.gitignore`↔产物 /
+  生成器契约↔产物 / 答案形态↔排除 / 找回附件↔产物 / 题面无 flag 明文 / git 层 check-ignore+未跟踪）
+  + **红线钉 `PINNED_REDLINE`**，配 18 例变异自测（含"生成器漏登记 10733"的真实回归形态），
+  已接 CI job `cross-bench-manifest-gate`。
+
+⚠️ **本节不改变 §四"两处数据口径异常"的待拍板状态**：那两条问的是「`task.py` *该不该*按答案形态
+排除」（**政策口径**）；本节修的是「生成器 *能不能* 忠实复现产物」（**工程一致性**）。
+本节刻意选择**维持现状**（10733 继续排除）；若 §四 拍板改为入库，须同步改门禁 `PINNED_REDLINE`。
+
 > 🔴 **本汇总在 2026-10-15 被修正过一次（留痕，不静默改写）**：`10733` 原记为
 > 「数据不完整（实例真值未留存）」，复核发现**真值一直在附件 `task.py` 末尾的文档字符串里**
 > （`hint`/`c`/`n` 三元组），原归因错误的根因是**只读附件前半段就下结论**。
@@ -395,7 +426,7 @@ go test -run TestCrossBench -v ./internal/ctfplatform/
 - [x] 基准已搬入 `data/questions_real_bench/`（88 题，含 sha256 外部真值）
 - [x] 跑分链路已入 CI（只报告不断言，避免为转绿而改阈值）
 - [x] **附件子集口径已接入**（12 题 15 文件；含/剔答案形态分别报告；
-      4 个 flag 明文/内嵌答案文件按 PUBLIC 仓红线 git 排除，CI 含答案口径自动降级）
+      5 个答案形态附件（4 个 flag 明文/内嵌答案 + `10733` 的实例真值 `task.py`）按 PUBLIC 仓红线 git 排除，CI 含答案口径自动降级）
 - [x] **10-14 修正**：题目本体内嵌答案（index.php 注释/helloupx11 字符串）纳入答案形态
       → 剔除口径 1/12 → **0/12**，"1.1% 是数据缺失假象"的说法已作废
 - [x] 子集测试拆为独立 CI job `cross-bench-subset`（规避 -race 900s 总预算被顶穿）
