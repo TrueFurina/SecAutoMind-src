@@ -189,13 +189,43 @@ def main():
     if not ok:
         failures.append("地板抬升被拒绝（返回 %s）——门禁被修成永远无法上锁" % wrote)
 
+    # ---- 11. 留痕：--update-baseline 不许吃掉手写 header 元数据 ----
+    # 2026-10-16 实锤：旧 update_baseline() 用硬编码文案整份覆盖 header，
+    # 一次重新上锁就**静默删掉** location_note 与两条长说明（diff 从 1 字段膨胀到 91 增 24 删）。
+    print("\n[11/11] 留痕 · --update-baseline 必须保留手写 header（location_note / note / rule）")
+    p11 = os.path.join(tmp, "baseline_hdr.json")
+    hdr = {
+        "schema": 1,
+        "created": "2026-10-14",
+        "location_note": "手写留痕，重新上锁不得删除",
+        "note": "手写长说明",
+        "rule": "手写规则",
+        "suites": copy.deepcopy(baseline["suites"]),
+    }
+    hdr["suites"]["jwt"]["min_hit"] = 2  # 旧值较低 → 本次应被抬升为 3（证明 suites 确实被重写）
+    write_json(p11, hdr)
+    mut = copy.deepcopy(suites)
+    wrote = R.update_baseline(mut, p11)
+    after = load_json(p11)
+    ok = (wrote is True
+          and after.get("location_note") == hdr["location_note"]
+          and after.get("note") == hdr["note"]
+          and after.get("rule") == hdr["rule"]
+          and after.get("created") == hdr["created"]
+          and after.get("suites", {}).get("jwt", {}).get("min_hit") == 3)
+    print("  %s 返回 %s；location_note=%r；jwt.min_hit 2 → %s（期望：留痕保留且 suites 重写）"
+          % ("PASS" if ok else "FAIL", wrote, after.get("location_note"),
+             after.get("suites", {}).get("jwt", {}).get("min_hit")))
+    if not ok:
+        failures.append("--update-baseline 吃掉了手写 header（留痕丢失）或被误修成不再重写 suites")
+
     print("\n" + "=" * 66)
     if failures:
         print("FAIL —— %d 项不达标：" % len(failures))
         for f in failures:
             print("  - " + f)
         return 1
-    print("PASS —— 基线门禁 10/10 用例通过"
+    print("PASS —— 基线门禁 11/11 用例通过"
           "（空洞绿、恒红、改低基线三个方向都锁住）。")
     return 0
 

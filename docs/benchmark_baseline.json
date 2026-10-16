@@ -8,8 +8,8 @@
   "suites": {
     "static": {
       "total": 55,
-      "min_hit": 19,
-      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。34.5% 是当前水位，不是 100%——剩余 36 道需真实工具执行/实时靶机/二进制/隐写。这里只锁『不低于 19』防退化，不假装它是满分。"
+      "min_hit": 20,
+      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。20/55 = 36.4% 是当前水位（其中 4 道为题面即答案伪解，真求解器口径 16/55 = 29.1%，见 check_benchmark_plaintext_answer.py）——剩余 35 道需真实工具执行/实时靶机/二进制/隐写。这里只锁『不低于 20』防退化，不假装它是满分。"
     },
     "execution": {
       "total": 17,
@@ -24,30 +24,98 @@
     "attachment": {
       "total": 10,
       "min_hit": 10,
-      "max_water_filled": 0,
-      "why": "附件集 attachment_benchmark.json（自产题）。另锁 water_filled=0：朴素正则不许命中，否则是注水题虚报。"
+      "why": "附件集 attachment_benchmark.json（自产题）。另锁 water_filled=0：朴素正则不许命中，否则是注水题虚报。",
+      "max_water_filled": 0
     },
     "web_hints": {
       "min_group_b": 6,
       "min_delta": 3,
       "why": "题目感知渗透对照：A 组(无线索只爬链) 3 → B 组(读题取线索定向打) 6，增量 +3。该集不是 hit/total 形态，判据是『读题组不低于 6 且增量不低于 3』——证明『读题取线索定向打』是实打实能力。"
     },
-    "jwt": {"total": 3, "min_hit": 3, "why": "利用层：JWT 伪造/算法混淆。"},
-    "deser": {"total": 3, "min_hit": 3, "why": "利用层：反序列化 RCE。"},
-    "xxe": {"total": 3, "min_hit": 3, "why": "利用层：XXE（含 Blind OOB）。"},
-    "upload": {"total": 3, "min_hit": 3, "why": "利用层：上传 RCE。"},
-    "graphql": {"total": 3, "min_hit": 3, "why": "利用层：GraphQL 内省/注入。"},
-    "ssrf": {"total": 3, "min_hit": 3, "why": "利用层：SSRF 链（gopher Redis / 云凭证 / 内网服务）。"},
-    "sqli_deep": {"total": 3, "min_hit": 3, "why": "利用层：SQLi 三族深度提取。"},
-    "ssti_deep": {"total": 3, "min_hit": 3, "why": "利用层：SSTI 三态逃逸。"},
-    "ecdsa_nonce_reuse": {"total": 1, "min_hit": 1, "why": "利用层：ECDSA nonce 复用私钥复原。"},
-    "padding_oracle": {"total": 1, "min_hit": 1, "why": "利用层：CBC padding oracle 明文还原（需 pycryptodome）。"},
-    "blind_oob": {"total": 2, "min_hit": 2, "why": "利用层：时间盲注 / 带外回连 OOB。"},
-    "hash_ext": {"total": 2, "min_hit": 2, "why": "利用层：Hash Length Extension。"},
-    "gcm_nonce_reuse": {"total": 2, "min_hit": 2, "why": "利用层：AES-GCM nonce 复用 keystream 复原。"},
-    "mt19937_recover": {"total": 2, "min_hit": 2, "why": "利用层：MT19937 状态恢复预测。"},
-    "lfsr_predict": {"total": 2, "min_hit": 2, "why": "利用层：LFSR Berlekamp–Massey 流预测。"},
-    "lcg_predict": {"total": 3, "min_hit": 3, "why": "利用层：LCG 三形态参数恢复与预测。"},
-    "crc32_forge": {"total": 3, "min_hit": 3, "why": "利用层：CRC32 线性校验伪造。"}
+    "jwt": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：JWT 伪造/算法混淆。"
+    },
+    "deser": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：反序列化 RCE。"
+    },
+    "xxe": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：XXE（含 Blind OOB）。"
+    },
+    "upload": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：上传 RCE。"
+    },
+    "graphql": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：GraphQL 内省/注入。"
+    },
+    "ssrf": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：SSRF 链（gopher Redis / 云凭证 / 内网服务）。"
+    },
+    "sqli_deep": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：SQLi 三族深度提取。"
+    },
+    "ssti_deep": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：SSTI 三态逃逸。"
+    },
+    "ecdsa_nonce_reuse": {
+      "total": 1,
+      "min_hit": 1,
+      "why": "利用层：ECDSA nonce 复用私钥复原。"
+    },
+    "padding_oracle": {
+      "total": 1,
+      "min_hit": 1,
+      "why": "利用层：CBC padding oracle 明文还原（需 pycryptodome）。"
+    },
+    "blind_oob": {
+      "total": 2,
+      "min_hit": 2,
+      "why": "利用层：时间盲注 / 带外回连 OOB。"
+    },
+    "hash_ext": {
+      "total": 2,
+      "min_hit": 2,
+      "why": "利用层：Hash Length Extension。"
+    },
+    "gcm_nonce_reuse": {
+      "total": 2,
+      "min_hit": 2,
+      "why": "利用层：AES-GCM nonce 复用 keystream 复原。"
+    },
+    "mt19937_recover": {
+      "total": 2,
+      "min_hit": 2,
+      "why": "利用层：MT19937 状态恢复预测。"
+    },
+    "lfsr_predict": {
+      "total": 2,
+      "min_hit": 2,
+      "why": "利用层：LFSR Berlekamp–Massey 流预测。"
+    },
+    "lcg_predict": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：LCG 三形态参数恢复与预测。"
+    },
+    "crc32_forge": {
+      "total": 3,
+      "min_hit": 3,
+      "why": "利用层：CRC32 线性校验伪造。"
+    }
   }
 }

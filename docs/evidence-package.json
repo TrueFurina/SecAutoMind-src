@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-15T23:41:28+08:00",
+  "generated_at": "2026-10-16T14:04:53+08:00",
   "caliber": {
-    "head": "aa86e2b",
+    "head": "e5a1dd0",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -15,8 +15,8 @@
     "go_files": 763,
     "test_files": 307,
     "non_test_lines": 128977,
-    "test_lines": 45385,
-    "total_lines": 174362,
+    "test_lines": 45477,
+    "total_lines": 174454,
     "ctf_solvers": 180,
     "ctf_real_solvers": 121,
     "ctf_detectors": 59,
@@ -213,6 +213,7 @@
     "2026-10-15（第二轮）修订 harness 附件截断口径并为 URL 渗透链加题目类别门控后刷新 caliber 段（Go 文件 760 / 测试文件 304 / 非测试行 128,956 / 测试行 44,205 / 合计 173,161，真求解器 121 / 注册 180，head 740f548）；gates 段沿用 LF 环境采集值未动。三处修订：①附件截断上限 4KB/文件、16KB/题 → 512KB/1MB——旧口径把 simplelegendre 的 163KB output（phi+N+264 密文，恢复 264 比特 flag 需全量）砍到数据不完整，属测量管道缺陷（人类选手拿全量 output）而非能力缺口，答案文件排除逻辑不受影响；②Håstad 裸数字回退按 12 数字（6 对）封顶——全量文本下 264 密文全进 CRT 会使模数涨到 ~545k bit，整数 k 次开根为二分（~B/k 次 Exp），全范围 3..99 sweep 的最坏代价按 ~B³/k² 爆炸到小时级；③URL 渗透链九件套（web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser）新增 WebExploitChain 标记并按题目类别门控（仅 web 或未声明启用）——实测 crypto 题 specialcurve2 附件注释里的 writeup 链接（cn-sec.com）令九件套对无关主机发起真实请求并干等满超时（逐 solver 计时 jwt 40s / upload 29.8s / web_exploit 25s / gql 6.8s / deser 6.3s / xxe 4.5s，生产路径单题 60.002s、跨-bench 子集测试 4 遍扫描 267s），且从第三方页面刮回的 body{...} 外形串污染 solved 判定；门控后单题 18ms、子集测试 26.6s（旧实测波动 29.6s~242s 收敛为零网络依赖），web 类别利用链不受影响（空类别放行，生产 handler 兜底）。cross-bench 附件子集立尺 3/12 → 4/12（新增 simplelegendre，生产/注册表 × 含答案/剔除答案四种口径一致；55 题静态基准 20/55 无回归）；全包测试 471s 零失败",
     "2026-10-15（第三轮）修复 capability-gate CI 失败并刷新立尺报告后刷新 caliber 段（测试行 44,205 → 44,216 / 合计 173,161 → 173,172，head 8085bc6）；gates 段沿用 LF 环境采集值未动（本机整包重生成实测 secret_guard_mutation_rc=0，CRLF 未污染）。归因与修复：URL 渗透链九件套按题目类别门控后，反注水门禁 TestAllRegisteredSolversActuallyExecute 的单路 misc 探针不再触发 9 个 WebExploitChain solver（web_exploit/ssrf/ssti/sqli/jwt/gql/xxe/upload/deser），被误判为注水（171/180）——单路探针把「按设计门控」误报成注水，那反而是门禁缺陷；改为 misc+web 两路探针（Description 措辞不同防缓存干扰），两路并集的执行覆盖必须等于 Enabled 全集（修复后 180/180，docstring 论证单路缺陷）。docs/cross_bench_report.md 同步第三版：0/12→3/12→4/12 两轮修订全记录、未命中 4 题根因分类表（能力缺口 1 = 10733 二元 Coppersmith；数据不完整 3 = specialcurve2 / reverse_js / reverse_sheng）、三类假不可解归因（测量管道缺陷 / 挤压真解 / 真实能力缺口，不许互相覆盖）",
     "2026-10-15（第四轮）修复 main CI 三红（P0 修复 6e7bb72 的连带未刷新材料）后刷新 caliber+benchmark 段（Go 文件 763 / 测试文件 307 / 非测试行 128,977 / 测试行 45,138 / 合计 174,115，真求解器 121 / 注册 180，head 6e7bb72 工作树）；gates 段沿用 LF 环境采集值未动（本机整包重生成实测 secret_guard_mutation_rc=0，CRLF 未污染）。三处修复：①quant_effect.md real_static_registry 19/55=34.5% → 20/55=36.4%（PR #26/#27 新增三求解器后本地 go test 实测 20/55 = 36.4% / MISS 35，与 CI 活值一致，claim 更新有据）；②benchmark 段随 run_all_benchmarks.py 重跑刷新——static 19→20、real_solver_hit 15→16、coverage_pct 34.5→36.4、summary_sha256 换新（此前本地 summary 停在第 #26 前，CI 先重跑故活值 20 而包内 19）；③归因门禁二次修订（git 排除通道 fail-open 洞）：reverse_upx/gongye_web2 的唯一附件即答案文件，按红线 git rm --cached 后 CI 检出无其目录，门禁走「目录不存在⇒归因成立」分支静默放行——真值在被排除的附件里却记「数据不完整」，是 10733「看起来查过了」的同族复发。修法：登记契约先行（凡归因题登记过 answer_key_shape 附件即判红，元数据兜底不依赖读文件）+ 两题改归「口径性不可解」（八题表现为 能力缺口 1 / 数据不完整 3 / 口径性不可解 4）并由 TestCaliberUnsolvableAreRegisteredAnswerKeys 对称钉死 + TestRecoveredAttachmentHasInstanceTruth 改双层验证（CI 验登记契约含 sha256 指纹，开发机验实物指纹与内容形态，化解「答案不进 PUBLIC 仓」与「归因依据可机验」的冲突）+ TestAttributionGateMutationsGoRed 四方向变异自测。基准集达标 22/22 全达冻结基线（C 线门禁实跑通过）",
-    "2026-10-15 新增分子侧反注水门禁（TestRealBenchmarkHitNotInflatedByPlaintextFlag + TestHitInflationMutationCases，miss_attribution_test.go +247 行）后刷新 caliber 段：Go 文件 763 / 测试文件 307 / 测试行 45,385 / 合计 174,362。gates 段沿用 LF 环境采集值（secret_guard_mutation_rc=0 为 CI(Linux) 真值）。"
+    "2026-10-15 新增分子侧反注水门禁（TestRealBenchmarkHitNotInflatedByPlaintextFlag + TestHitInflationMutationCases，miss_attribution_test.go +247 行）后刷新 caliber 段：Go 文件 763 / 测试文件 307 / 测试行 45,385 / 合计 174,362。gates 段沿用 LF 环境采集值（secret_guard_mutation_rc=0 为 CI(Linux) 真值）。",
+    "2026-10-16 新增双语言基准 parity 门禁（scripts/check_benchmark_parity.py + 变异自测 20 用例，CI job benchmark-parity-gate，jobs 19→20）后刷新 caliber 段（测试行 45,385 → 45,477 / 合计 174,362 → 174,454，head e5a1dd0）。动机：run_all_benchmarks.py 汇总里【1】～【8】**硬编码打印**的「Python == Go」宣称却无人校验，基线比对只查下限（hit<min_hit 才红），Python 侧上漂（镜像宣称生产做不到的命中 = 注水方向）与 Go 两条路径的**逐题**差异都无人看——AGENTS.md 第八条「宣称≠接线」的又一实例。判据 = Go shipped / Go registry / Python judge.py 三路**逐题集合**一致 + 非空 fail-closed + id 不越界 + 不低于基线地板（无硬编码命中数，数字变好不会漂绿）。同时：①修哑门禁 —— TestRealBenchmark_RegistryPresolve 原只有 t.Logf 无断言（永远 PASS 的装饰品门禁），补 shipped ⊆ registry 不变量，判据抽 benchParityGap 并配 TestBenchParityGapDetection 变异用例；②基线地板 static.min_hit 19→20（按基线档规则①能力提升后 --update-baseline 抬高地板，by-the-book，唯一字段变更）；③修复 run_all_benchmarks.update_baseline **静默吃掉手写 header** 的缺陷（旧实现用硬编码文案整份覆盖 note/rule/usage，实测一次重新上锁就删掉 location_note 与两条长说明、diff 从 1 字段膨胀到 91 增 24 删 → 改 setdefault 保留既有手写内容，check_benchmark_baseline_test.py 加第 11 用例锁死）。gates 段本机重生成实测 secret_guard_mutation_rc=0 等全 0，LF 环境未污染。"
   ]
 }

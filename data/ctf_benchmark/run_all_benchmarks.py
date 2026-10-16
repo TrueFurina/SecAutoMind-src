@@ -625,14 +625,26 @@ def update_baseline(summary, baseline_path=None):
               "benchmark_baseline.json 并在 commit message 写明理由。")
         return False
 
-    doc = {
-        "schema": 1,
-        "created": "2026-10-14",
-        "note": "基准集套件的冻结达标基线（由 --update-baseline 重写）。run_all_benchmarks.py 跑完后逐项比对，任一项未达标即 exit 1。",
-        "usage": "python data/ctf_benchmark/run_all_benchmarks.py            # 跑 + 比对基线（不达标 exit 1）\npython data/ctf_benchmark/run_all_benchmarks.py --update-baseline  # 用本次实况重新上锁",
-        "rule": "① min_hit 是防退化的地板，不是目标；② 能力退化 → 修代码，不许改基线；③ 口径变更 → 改基线并在 commit message 写明。",
-        "suites": suites,
-    }
+    # 🔴 只重写 suites，保留既有文件里的手写元数据（note / rule / usage / location_note …）。
+    # 旧实现每次重新上锁都拿下面这坨硬编码文案整份覆盖 header —— 2026-10-16 实测：
+    # 一次 --update-baseline 就**静默删掉** location_note 与两条长说明，且把紧凑排版的
+    # suites 打散成多行，diff 从「1 个字段」膨胀成 91 增 24 删。留痕丢失不可接受，
+    # 故改为 setdefault 只在缺字段时兜底，已存在的手写内容一律保留。
+    doc = {}
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                doc = json.load(fh)
+        except Exception:
+            doc = {}
+    if not isinstance(doc, dict):
+        doc = {}
+    doc.setdefault("schema", 1)
+    doc.setdefault("created", "2026-10-14")
+    doc.setdefault("note", "基准集套件的冻结达标基线（由 --update-baseline 重写）。run_all_benchmarks.py 跑完后逐项比对，任一项未达标即 exit 1。")
+    doc.setdefault("usage", "python data/ctf_benchmark/run_all_benchmarks.py            # 跑 + 比对基线（不达标 exit 1）\npython data/ctf_benchmark/run_all_benchmarks.py --update-baseline  # 用本次实况重新上锁")
+    doc.setdefault("rule", "① min_hit 是防退化的地板，不是目标；② 能力退化 → 修代码，不许改基线；③ 口径变更 → 改基线并在 commit message 写明。")
+    doc["suites"] = suites
     # newline="\n"：与 all_benchmarks_summary.json 同理，Windows 上必须显式写 LF。
     with open(path, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, ensure_ascii=False, indent=2)
@@ -914,6 +926,17 @@ def main():
     print("    → **自产题占比 %.1f%%**（总 %d 题）" % (synth_ratio, all_total))
     print("    ⚠️ 自产题的高覆盖率只证明「工程链路可跑通」，**不构成真实赛场竞争力证据**；")
     print("       对外引用任何 100% 必须标注「自产题」或「自建靶场」。")
+    print()
+
+    # 诚实化（2026-10-16）：上面【1】～【8】各自打印了一句「Python xxx == Go xxx」的对应关系，
+    # 但**只有【1】静态集**真的接了逐题机验（scripts/check_benchmark_parity.py，CI job
+    # benchmark-parity-gate）。其余各集的同类表述此前纯粹是措辞 —— 本基线比对只查下限
+    # （hit < min_hit 才红），Python 侧上漂与 Go 两路径的逐题差异都无人看。
+    # 与 AGENTS.md 第八条「宣称 ≠ 接线」同一纪律：没接线的不许当已核验证据引用。
+    print("【双语言机验覆盖（哪些「==」已接线）】")
+    print("    ✅ 已接线：【1】静态集 —— Go shipped / Go registry / Python judge.py 三路逐题一致")
+    print("              （scripts/check_benchmark_parity.py，CI job benchmark-parity-gate）")
+    print("    ⚠️ 未接线：【2】～【8】的「Python == Go」表述尚未逐题机验，不得当作已核验证据引用。")
     print()
 
     # 落盘汇总

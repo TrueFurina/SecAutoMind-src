@@ -522,3 +522,29 @@ jobs:
         run: python scripts/audit_benchmark_validity_test.py
       - name: External payload gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_external_westlake_payload_test.py
+
+  # 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」
+  # 这句**写在对外汇总里的宣称**真正接上线。
+  # 为什么需要：run_all_benchmarks.py 的汇总里【1】～【8】各打印一句「Python == Go」的
+  # 硬编码宣称（如「Python judge.py 镜像 == Go TestRealBenchmark_ShippedPresolve」），
+  # 但没有任何代码校验；而它的基线比对只查
+  # **下限**（hit < min_hit 才红），Python 侧**上漂**（镜像宣称生产做不到的命中 = 注水方向）
+  # 与 Go 两条路径的**逐题**差异都无人看。这正是本项目反复吃亏的「宣称写进了对外汇总，
+  # 却没人接线」（AGENTS.md 第八条）。
+  # 判据：Go shipped / Go registry / Python 镜像 三路**逐题集合**一致 + 非空 fail-closed
+  #       + id 不越界 + 不低于基线地板。门禁自测（含 7 向变异）在下一步证明其判别力。
+  # 需 go + python 双工具链：跨语言 parity 无法只在一侧完成。
+  benchmark-parity-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dual-language benchmark parity (Go shipped == Go registry == Python mirror)
+        run: python scripts/check_benchmark_parity.py --check
+      - name: Parity gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_benchmark_parity_test.py
