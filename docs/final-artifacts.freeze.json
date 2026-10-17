@@ -4,18 +4,18 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "037ae8ab4988d0ad3b20a036cafbb6a88d05e477c68fae44566e51c893aeada6",
-      "size": 68590
+      "sha256": "6811544bbc4c01577e0f859b1d84a4c48cae573e3734ed0b4f7b42de8f0bce78",
+      "size": 68591
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "e3f8a8614e6a3f83211daa340ad3bf7bf698800c17fd8b00f853fac2bedb3c91",
+      "sha256": "55731bacfb1f8a1d3bf304a5819a4d9b3cb2358da4a8b998d85e014fa6aff0c4",
       "size": 421329
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "86bdf5136663c480ce90beb213cb28fa3e310ed9281af025ec92b1b8ee0a2810",
-      "size": 78336
+      "sha256": "bb0d1bea9150ea554dbaa3e5fd2e323a13d4c08e53f409e7eddd17ce6dc8f676",
+      "size": 78335
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
@@ -29,8 +29,8 @@
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "86bdf5136663c480ce90beb213cb28fa3e310ed9281af025ec92b1b8ee0a2810",
-      "size": 78336
+      "sha256": "9cbd3b3f73b5a3200a5e61998fbce8005fcb7ad9621ce7b2198f72936e253267",
+      "size": 78335
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
       "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
@@ -39,15 +39,8 @@
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "0862d93d606baf1af1bcef0e139ccde8ae800d2bb19e96f4778e08b5df7b61d1",
-      "size": 279165104,
-      "revived_at": "2026-10-18T05:23:51",
-      "previous_retirement": {
-        "sha256": "5e1f549d42b54c79bb87c1e30cacd9297c23f14f2720622311c57d43f1234897",
-        "size": 192748720,
-        "retired_at": "2026-10-17T09:17:55",
-        "reason": "本机 dist/ 目录整体不存在（192,748,720B 分享包从未在本机生成或已被清理）；dist/ 被 .gitignore 排除，git 历史无副本，无法从版本控制恢复。**待办**：打包时由 scripts/make_delivery_package.py 重新生成，随后显式 --update 纳回冻结。"
-      }
+      "sha256": "d042dd46a048018f1c2af361494df4b6878af84ee3617de9e64a196f94d97ed1",
+      "size": 279168727
     }
   },
   "retired": {}
