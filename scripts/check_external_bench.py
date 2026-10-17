@@ -48,6 +48,7 @@ KPI_DIR = os.path.join("data", "ctf_benchmark")
 KPI_SUMMARY = os.path.join(KPI_DIR, "all_benchmarks_summary.json")
 
 REPORT_DOC = os.path.join("docs", "external_bench_report.md")
+FREEZE = os.path.join(BENCH_DIR, "external_bench.freeze.json")
 AUTO_CHECK_RE = re.compile(r"<!--\s*AUTO-CHECK:\s*total=(\d+)\s+payload_complete=(\d+)\s*-->")
 
 FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n]{4,80}\}")
@@ -61,6 +62,76 @@ def fail(msg: str, out: list) -> None:
 def load_json(path: str):
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def sha256_of(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def check_freeze(doc_path: str) -> list:
+    """C10 产物冻结判据：堵住「只改题面/附件、不动台账」的篡改通道。
+
+    为什么必须有（2026-10-17 实测证伪）：
+      C8（生成器↔产物一致性）在 CI 上因无 A 库而 SKIP，于是把某题题面换成"可解"形态
+      （0/40 → 1/40）或反向把简单题改难（让对照尺显得没那么差），门禁在 CI 上照样
+      PASS。quant_effect 的 claim 只对"命中数变好"敏感，对"变差"完全失效。
+    故产物须像 golden 一样冻结：`build_external_bench.py --freeze` 在生成后立即冻结。
+    """
+    out = []
+    if not os.path.isfile(os.path.join(ROOT, FREEZE)):
+        fail("C10 缺失产物冻结清单 %s——CI 上无法发现产物被手改" % FREEZE, out)
+        return out
+    try:
+        fz = load_json(os.path.join(ROOT, FREEZE))
+    except Exception as e:  # noqa: BLE001
+        fail("C10 冻结清单解析失败: %s" % e, out)
+        return out
+
+    files = fz.get("files") or {}
+    on_disk_all = set()
+    for dirpath, dirnames, filenames in os.walk(os.path.join(ROOT, BENCH_DIR, "_attachments")):
+        dirnames.sort()
+        for n in filenames:
+            full = os.path.join(dirpath, n)
+            on_disk_all.add(os.path.relpath(full, os.path.join(ROOT, BENCH_DIR)).replace("\\", "/"))
+    if not files and on_disk_all:
+        # 与 check_golden_freeze 同源：磁盘上有附件而清单为空 = 未上锁 = fail-closed
+        # （否则"把 files 清空"就能让冻结判据静默放行）。
+        # ⚠️ 只在磁盘确有附件时判红：磁盘也空时说明整把尺未落地，那由 C3 判红，
+        # 两条判据各司其职，不重复也不留洞。
+        fail("C10 冻结清单 files 为空但磁盘上有 %d 个附件——未冻结任何附件，等于没有冻结"
+             % len(on_disk_all), out)
+        return out
+
+    # ① 产物本体
+    want_doc = fz.get("doc_sha256") or ""
+    got_doc = sha256_of(os.path.join(ROOT, doc_path))
+    if want_doc != got_doc:
+        fail("C10 external_bench.json 已被改动（冻结 %s…，现值 %s…）——"
+             "手改产物须重跑生成器 + --freeze" % (want_doc[:12], got_doc[:12]), out)
+
+    # ② 附件逐文件（含反向钉：清单里多出的文件 = 磁盘上没有）
+    for rel, want in sorted(files.items()):
+        path = os.path.join(ROOT, BENCH_DIR, rel)
+        if not os.path.isfile(path):
+            fail("C10 冻结附件 %s 在磁盘上不存在" % rel, out)
+            continue
+        got = sha256_of(path)
+        if got != want:
+            fail("C10 附件 %s 已被改动（冻结 %s…，现值 %s…）" % (rel, want[:12], got[:12]), out)
+    on_disk = set()
+    for dirpath, dirnames, filenames in os.walk(os.path.join(ROOT, BENCH_DIR, "_attachments")):
+        dirnames.sort()
+        for n in filenames:
+            full = os.path.join(dirpath, n)
+            on_disk.add(os.path.relpath(full, os.path.join(ROOT, BENCH_DIR)).replace("\\", "/"))
+    for rel in sorted(on_disk - set(files)):
+        fail("C10 磁盘上有未冻结附件 %s——新增文件须重跑生成器 + --freeze" % rel, out)
+    return out
 
 
 def check(problems: dict, honesty: dict, stats: dict, src: str | None) -> list:
@@ -189,6 +260,7 @@ def main() -> int:
         return 1
 
     problems_out = check(problems, doc.get("honesty") or {}, stats, args.src)
+    problems_out += check_freeze(DOC)
     reds = [x for x in problems_out if x.startswith("🔴")]
 
     print("=" * 62)
