@@ -88,13 +88,55 @@ const minFlagLikenessForHit = 3
 // 实测实锤（2026-10-15 cross-bench FilterRandom，两轮才抓全）：
 //   - 题面写「flag 格式为 DASCTF{init1-init2}」→ scanFlags 刮出 likeness=3；
 //   - 脚本源码写 b'DASCTF{%d-%d}'%(init1,init2) → printf 模板同样 likeness=3。
+//
 // 二者都以 priority 10 的 flag_scan 胜出，压掉 priority 36 的 lfsr_correlation
 // 正确解——占位符与真 flag 外形完全同分，只靠优先级裁决必然输。
 //
 // 保守取值：只收**unambiguous 的占位符族**（init1/xxxx/…/your/****/printf 说明符
 // 出现在真 flag 内容里的概率可忽略），避免误伤真 flag 把命中率打下来。
 // ⚠️ your 只带前边界——"your_flag_here" 中 "_" 是单词字符，\byour\b 会漏掉。
-var flagPlaceholderRe = regexp.MustCompile(`(?i)(\binit\d+\b|x{4,}|\.\.\.|\byour|\*{4,}|%[a-z])`)
+//
+// 2026-10-18 扩表（外部真题尺 40 题实锤，见 externalbench_false_positive_test.go）：
+// 上表只覆盖「Python 格式化占位符」一族，漏掉了**上游仓库把真 flag 抹成占位词**的另一族：
+//   - `ext_gctf2025_bpfbox/flag.txt`、`numerology/flag.txt` 内容就是 `CTF{flag}`；
+//   - `ext_gctf2021_h1/chall.py` 的 f-string 模板 `f'...here is the flag: {flag}'`；
+//   - 变形产物 `ZPA{????}`（问号串）。
+//
+// 后果不是"少解一道题"，而是**假阳性短路**：Presolve 返回 Solved=true →
+// integrator 置 SkipAgent=true → handler 直接把这串占位符当答案回给用户，
+// 整条 Agent 推理被跳过（40 题里 6 题如此，见测试）。
+// 故新增 `\?{2,}` 与「整词占位符」表；判据只作用于花括号内内容，前缀不参与。
+var flagPlaceholderRe = regexp.MustCompile(`(?i)(\binit\d+\b|x{4,}|\.\.\.|\byour|\*{4,}|%[a-z]|\?{2,})`)
+
+// flagPlaceholderWords 内容**整串**就是占位词（忽略大小写与分隔符）——上游脱敏仓库的
+// 典型产物：`flag.txt` 里留一行 `CTF{flag}` / `flag{test}`。map 键为小写、去分隔符形态。
+//
+// 判定方向的不对称性（有意为之）：误判占位符 ⇒ likeness 降到 1 ⇒ 不短路 ⇒ 退回 LLM 真推理
+// （只是少一次 0-token 命中）；漏判占位符 ⇒ 短路 ⇒ 用户拿到假答案。
+// 故此处宁可宽，只排除「本身就是占位语义」的词，不含任何随机串。
+var flagPlaceholderWords = map[string]bool{
+	"flag": true, "flags": true, "flaghere": true, "yourflag": true,
+	"yourflaghere": true, "insertflag": true, "insertflaghere": true,
+	"putflaghere": true, "test": true, "testflag": true, "example": true,
+	"placeholder": true, "redacted": true, "dummy": true, "sample": true,
+	"changeme": true, "todo": true, "tbd": true, "filler": true,
+}
+
+// isLowInformationContent 花括号内是否「低信息量」：去掉分隔符后只剩 ≤1 种字符
+// （`????` / `aaaa` / `0000` / `----`）——真 flag 不可能只有一个字符种类。
+func isLowInformationContent(s string) bool {
+	distinct := map[rune]bool{}
+	for _, r := range s {
+		if r == '_' || r == '-' || r == ' ' || r == '.' {
+			continue
+		}
+		distinct[r] = true
+		if len(distinct) > 1 {
+			return false
+		}
+	}
+	return len(distinct) == 1
+}
 
 // isPlaceholderFlag 判断 flag 串是否为「格式声明占位符」而非真 flag。
 // 只检查第一层花括号内的内容，避免前缀/后缀误伤。
@@ -104,7 +146,20 @@ func isPlaceholderFlag(s string) bool {
 	if open < 0 || closing <= open {
 		return false
 	}
-	return flagPlaceholderRe.MatchString(s[open+1 : closing])
+	content := s[open+1 : closing]
+	if flagPlaceholderRe.MatchString(content) {
+		return true
+	}
+	if isLowInformationContent(content) {
+		return true
+	}
+	var key strings.Builder
+	for _, r := range strings.ToLower(content) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			key.WriteRune(r)
+		}
+	}
+	return flagPlaceholderWords[key.String()]
 }
 
 // flagLikeness 评估一组候选「有多像真 flag」，用于裁决不同求解器的结果。

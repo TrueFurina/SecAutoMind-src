@@ -25,6 +25,14 @@
 2. **必须按段落定位、再落回单个 run**：PowerPoint 常把 `90个` 与 `YAML` 拆成两个 run，
    run 级正则（`90(?=\\s*个?\\s*YAML)`）在 run 里**永远不命中**——这叫假绿。
 
+第三个坑（2026-10-18 第二次踩，已重构）
+--------------------------------------
+首版把"旧值→新值"硬编码成元组（`121,786/111,058 → 新版`）。真值再走一步（129,233 → 129,286）后
+**一条都匹配不上**，脚本打印"命中 0 处 / 模式=APPLY"看着成功，门禁照旧报红。
+根因：我在门禁（`check_material_numbers.ANCHORS`，它才是判红依据）之外另立了一套规则表。
+现规则**直接复用 ANCHORS**，替换值取自 count_stats —— 与门禁同源，不可能再"改完还红"。
+门禁未锚定的产物专有写法（`N/N 测试包`、`N 个 internal 包`）才单列，且只用真值、不写死旧值。
+
 用法
 ----
     python SecAutoMind_PPT/fix_artifact_numbers.py --dry-run
@@ -68,34 +76,47 @@ def load_truth():
 
 
 def build_rules(truth):
-    """(正则, 替换, 说明)。新旧字符串等长——保版式。"""
-    rules = []
-    tools = truth.get("tools_yaml")
-    if tools:
-        rules.append((r"(?<![\d.])90(?=\s*个?\s*YAML)", str(tools), "工具 YAML 数 90→%s" % tools))
-        rules.append((r"(?<![\d.])90(?=\s*工具)", str(tools), "工具数 90→%s" % tools))
+    """规则 = 门禁自己的 ANCHORS 表（单一规则源）+ 少量门禁看不见的产物专有形态。
 
-    lines = truth.get("non_test_lines")
-    if lines:
-        new = "{:,}".format(lines)
-        for old in ("121,786", "111,058"):
-            rules.append((re.escape(old), new, "非测试代码行 %s→%s" % (old, new)))
+    为什么必须复用 `check_material_numbers.ANCHORS` 而不是各写一份：
+    交付门禁 `check_artifact_numbers.py` 判红时用的就是这张表，逐字相同；如果我这里
+    另立一套"旧值→新值"硬编码表，就会出现 2026-10-18 那次实测的退化——
+    上次只硬编码了 `121,786/111,058 → 新版`，这次真值从 129,233 走到 129,286 时
+    **一条都匹配不上**（dry-run 命中 0 处），门禁照旧报红，而脚本却打印"完成"。
+    规则只有一份，才不会与门禁渐行渐远。
 
-    tfiles = truth.get("test_files")
-    if tfiles:
-        rules.append((r"(?<![\d.])237(?=\s*个?\s*测试)", str(tfiles), "测试文件数 237→%s" % tfiles))
+    返回 [(pat, kind, payload, label)]：
+      · kind="cast" → payload 是 count_stats 真值，替换**捕获组 n**那一段（保留千分位风格）；
+      · kind="span" → payload 是替换整段匹配的字符串（门禁看不见的产物专有写法）。
+    """
+    sys.path.insert(0, str(REPO / "scripts"))
+    import check_material_numbers as cmn
 
+    rules, missing = [], []
+    for pat, key, label in cmn.ANCHORS:
+        want = truth.get(key)
+        if want is None:
+            missing.append("%s(%s)" % (label, key))
+            continue
+        rules.append((pat, "cast", want, label))
+
+    # ── 门禁看不见的产物专有形态（门禁未锚定 ⇒ 只能靠本脚本自证，改错没有第二道闸）──
+    # ① 「N/N 测试包全绿」：数字对，且两数必须相等（真值 = 有测试的包数）。
     pkgs = truth.get("test_packages")
-    if pkgs and truth.get("go_packages"):
-        for old in ("26/26", "28/28"):
-            rules.append((re.escape(old), "%d/%d" % (pkgs, pkgs), "测试包 %s→%d/%d" % (old, pkgs, pkgs)))
-
+    if pkgs:
+        rules.append((r"(?<![\d.])(?P<n>\d+)(?<![\d])/\d+(?=\s*(?:个)?(?:测试)?包)",
+                      "cast_pair", pkgs, "测试包（N/N）"))
+    # ② 「N 个 internal 包」：门禁只锚定后置写法（internal 目录 34），前置写法看不见。
+    #    注意口径：internal 子目录数(34) ≠ go list ./internal/... 的包数(37)，PPT 说"包"取后者。
     ipkgs = truth.get("internal_go_packages")
     if ipkgs:
-        for old in ("32", "33"):
-            rules.append((r"(?<![\d.])" + old + r"(?=\s*个\s*internal)",
-                          str(ipkgs), "internal 包数 %s→%s" % (old, ipkgs)))
+        rules.append((r"(?<![\d.])(?P<n>\d+)(?=\s*(?:个\s*)?internal)",
+                      "cast", ipkgs, "internal 包数"))
+
+    if missing:
+        print("  [WARN] 真值缺字段，跳过这些锚点（禁止写入未验证值）：%s" % ", ".join(missing))
     return rules
+
 
 
 # ── 遍历（递归组合 + 表格）────────────────────────────────────────────
@@ -123,6 +144,39 @@ def iter_paragraphs(prs):
 
 
 # ── 段落级定位 → 单 run 落点 ──────────────────────────────────────────
+def rule_hits(full, rules):
+    """把规则跑在段落文本上，返回 [(start, end, new, desc)]（同一 span 只保留一条）。
+
+    「cast」类只替换捕获组 n 那一段 —— 这样既保住周围单位的字形，
+    又保证写进去的值**必定**来自 count_stats（不存在"硬编码旧值匹配不上"的退化）。
+    """
+    hits, seen = [], set()
+    for pat, kind, payload, label in rules:
+        for m in re.finditer(pat, full):
+            if kind == "cast":
+                s, e = m.span("n")
+                got = m.group("n")
+                new = "{:,}".format(payload) if "," in got else str(payload)
+                desc = "%s %s→%s" % (label, got, new)
+            elif kind == "cast_pair":
+                # "N/M 测试包" 只有 N==M 才是「全绿」写法；不等就不猜（宁可不改）
+                seg = m.group(0)
+                a, b = seg.split("/")
+                if a != b:
+                    continue
+                s, e = m.start(), m.end()
+                new = "%d/%d" % (payload, payload)
+                desc = "%s %s→%s" % (label, seg, new)
+            else:
+                s, e = m.start(), m.end()
+                new, desc = str(payload), label
+            if new == full[s:e] or (s, e) in seen:
+                continue
+            seen.add((s, e))
+            hits.append((s, e, new, desc))
+    return hits
+
+
 def plan_paragraph(para, rules):
     """返回 (edits, unresolved)。edits=[(run, old, new, desc, sidx)]；unresolved=[(desc, full)]"""
     full = para.text
@@ -135,81 +189,149 @@ def plan_paragraph(para, rules):
         off += len(r.text)
     if off != len(full):
         # 段落文本 ≠ runs 拼接（含字段/换行符等）→ 结构不确定，保守放弃而不是瞎改
-        for pat, _repl, desc in rules:
-            if re.search(pat, full):
-                return [], [(desc, full)]
-        return [], []
+        return [], [("段落文本与 run 拼不一致", full)] if rule_hits(full, rules) else []
 
-    hits = []
-    for pat, repl, desc in rules:
-        for m in re.finditer(pat, full):
-            hits.append((m.start(), m.end(), repl, desc))
+    hits = rule_hits(full, rules)
     if not hits:
         return [], []
 
     edits, unresolved = [], []
+    last_start = len(full) + 1
     # 从右往左改，保证左侧偏移不受影响
-    for start, end, repl, desc in sorted(hits, key=lambda x: -x[0]):
+    for start, end, new, desc in sorted(hits, key=lambda x: -x[0]):
+        if end > last_start:
+            unresolved.append((desc + "（与前一处重叠）", full))
+            continue
         host = [b for b in bounds if b[0] <= start and end <= b[1]]
         if len(host) != 1:
             unresolved.append((desc, full))
             continue
         s0, _e0, run = host[0]
         cur = run.text
-        run.text = cur[:start - s0] + repl + cur[end - s0:]
+        run.text = cur[:start - s0] + new + cur[end - s0:]
+        last_start = start
+        edits.append((run, cur, run.text, desc, 0))
     return edits, unresolved
 
 
 def scan(prs, rules):
-    """只读扫描：返回 (待改处数, [(sid, old, new, desc)], unresolved)"""
+    """只读扫描：返回 ([(sid, 段落原文, [(old, new, desc)])], unresolved)"""
     changes, unresolved = [], []
     for sidx, para in iter_paragraphs(prs):
-        before = para.text
-        # 干跑不落盘：在副本上试算
-        plan, unres = _simulate(para, rules)
-        unresolved.extend(unres)
-        if plan:
-            changes.append((sidx, before, plan))
+        hits = rule_hits(para.text, rules)
+        if hits:
+            changes.append((sidx, para.text,
+                            [(para.text[s:e], new, desc) for s, e, new, desc in hits]))
     return changes, unresolved
 
 
 def _simulate(para, rules):
     """不改真对象：用文本推算将被替换的相邻片段（仅用于 dry-run 报告）。"""
-    full = para.text
-    plan = []
-    for pat, repl, desc in rules:
-        for m in re.finditer(pat, full):
-            plan.append((m.group(0), repl, desc))
-    return plan, []
+    return [(para.text[s:e], new, desc) for s, e, new, desc in rule_hits(para.text, rules)], []
+
+
+
+def neighbor_stat_edits(prs, rules, apply):
+    """按**空间邻接**修正「大数字 + 下方标签」卡片（数据卡布局）。
+
+    为什么必须做这一步（2026-10-18 实测）：数据卡把「数值」与「单位」拆成两个独立
+    TextBox（同一 left、标签在数字正下方 0.56"），门禁读回时按 SEP=" " 拼成
+    「312 测试文件」，于是报「测试文件数=312，真值=313」；而**段落级**视图里
+    "312" 与 "测试文件" 谁也不认识谁 → 段内正则永远不命中，改完仍是红。
+
+    判据不新发明语义：把「数字 + 空格 + 标签」按门禁同一 SEP 拼起来，喂给**同一套
+    rules**；只有当匹配到的数字段正是开头那段（即这确实是"数字+单位"结构）才改。
+    多个标签给出互相矛盾的字段时一律不动并 WARN——那是猜。
+    """
+    def text_shapes(slide):
+        out = []
+        for sh in slide.shapes:            # 只取顶层：组内坐标系是子空间，混算会错位
+            if not (getattr(sh, "has_text_frame", False) and sh.has_text_frame):
+                continue
+            txt = sh.text_frame.text.strip()
+            if not txt or sh.left is None or sh.top is None:
+                continue
+            out.append((sh, txt, sh.left, sh.top, sh.width or 0, sh.height or 0))
+        return out
+
+    def num_of(txt):
+        if re.fullmatch(r"\d{1,3}(?:,\d{3})*|\d+", txt):
+            return txt
+        return None
+
+    changed, warn = 0, []
+    for sidx, slide in enumerate(prs.slides, 1):
+        shapes = text_shapes(slide)
+        for sh, txt, left, top, width, height in shapes:
+            num = num_of(txt)
+            if not num:
+                continue
+            cands = []
+            for sh2, txt2, l2, t2, w2, _h2 in shapes:
+                if sh2 is sh or num_of(txt2):
+                    continue
+                dy = (t2 - top)
+                if not (0 <= dy <= 1000000):   # ≤1 英寸，标签在数字下方
+                    continue
+                overlap = min(left + width, l2 + w2) - max(left, l2)
+                if overlap <= 0.6 * min(width, w2):
+                    continue
+                combined = num + " " + txt2
+                for s, e, new, desc in rule_hits(combined, rules):
+                    if s == 0 and e == len(num) and new != num:
+                        cands.append((new, desc, txt2))
+            fields = {c[0] for c in cands}
+            if len(fields) > 1:
+                warn.append((sidx, num, "邻接标签给出矛盾字段：%s" % "; ".join(c[1] for c in cands)))
+                continue
+            if not cands:
+                continue
+            new, desc, label = cands[0]
+            for para in sh.text_frame.paragraphs:
+                for run in para.runs:
+                    if run.text.strip() == num:
+                        if apply:
+                            run.text = run.text.replace(num, new)
+                        changed += 1
+                        print("  s%02d 邻接数据卡 %r ⇒ %r（标签 %r｜%s）"
+                              % (sidx, num, new, label[:16], desc))
+                        break
+    return changed, warn
 
 
 def bare_stat_edits(prs, truth, apply):
     """处理「裸数字统计卡」：`90` / `237` 这类数字单独一个文本框，语义全靠同页的标签形状
     （如旁边的 `YAML 工具配方`、`测试文件`）。**必须有同页标签佐证才改**，否则宁可报 WARN——
-    孤立数字没有上下文，盲改就是猜。"""
-    KEYWORD = {
-        "90": ("YAML", "工具"),
-        "237": ("测试文件",),
-        "121,786": ("行",),
-        "111,058": ("行",),
+    孤立数字没有上下文，盲改就是猜。
+
+    LEGACY_BARE 是**历史值台账**：键 = 曾经写错过的字面量，值 = 它对应的 count_stats 字段。
+    台账而非"任意裸数字"是刻意的：裸数字没有语义，只有"这个旧值当年确实代表这个口径"
+    才允许改。新增漂移值须先确认它代表哪个字段再登记（登记错 = 把别的指标改坏）。
+    """
+    LEGACY_BARE = {
+        "90": ("tools_yaml", ("YAML", "工具")),
+        "237": ("test_files", ("测试文件",)),
+        "121,786": ("non_test_lines", ("行",)),
+        "111,058": ("non_test_lines", ("行",)),
     }
-    NEW = {
-        "90": str(truth.get("tools_yaml") or ""),
-        "237": str(truth.get("test_files") or ""),
-        "121,786": "{:,}".format(truth["non_test_lines"]) if truth.get("non_test_lines") else "",
-        "111,058": "{:,}".format(truth["non_test_lines"]) if truth.get("non_test_lines") else "",
-    }
+    NEW = {}
+    for lit, (key, _kw) in LEGACY_BARE.items():
+        want = truth.get(key)
+        if want is None:
+            continue
+        NEW[lit] = "{:,}".format(want) if "," in lit else str(want)
     changed, warn = 0, []
     for sidx, slide in enumerate(prs.slides, 1):
         paras = [p for tf in iter_text_frames(slide.shapes) for p in tf.paragraphs]
         texts = [p.text.strip() for p in paras]
         for para in paras:
             bare = para.text.strip()
-            if bare not in KEYWORD or not NEW.get(bare):
+            if bare not in LEGACY_BARE or not NEW.get(bare):
                 continue
+            keywords = LEGACY_BARE[bare][1]
             labels = [t for t in texts if t and t != bare]
-            if not any(k in t for k in KEYWORD[bare] for t in labels):
-                warn.append((sidx, bare, "同页无 %s 标签佐证" % "/".join(KEYWORD[bare])))
+            if not any(k in t for k in keywords for t in labels):
+                warn.append((sidx, bare, "同页无 %s 标签佐证" % "/".join(keywords)))
                 continue
             for run in para.runs:
                 if run.text.strip() == bare:
@@ -219,6 +341,7 @@ def bare_stat_edits(prs, truth, apply):
                     print("  s%02d 裸数字卡 %r ⇒ %r（同页标签佐证）" % (sidx, bare, NEW[bare]))
                     break
     return changed, warn
+
 
 
 def main():
@@ -263,13 +386,16 @@ def main():
             total += bare_n
             for sidx, bare, why in bare_warn:
                 print("  s%02d 裸数字卡 %r 未改：%s" % (sidx, bare, why))
+            nb_n, nb_warn = neighbor_stat_edits(prs, rules, apply=False)
+            total += nb_n
+            for sidx, bare, why in nb_warn:
+                print("  s%02d 邻接数据卡 %r 未改：%s" % (sidx, bare, why))
             continue
 
         # apply
         # 先判定该文件是否真有命中——无命中就不写盘（否则 python-pptx 重存会白白改动字节/哈希）
-        has_hit = any(re.search(pat, para.text)
-                      for _s, para in iter_paragraphs(prs)
-                      for pat, _r, _d in rules)
+        has_hit = any(rule_hits(para.text, rules)
+                      for _s, para in iter_paragraphs(prs))
         file_unres = []
         if has_hit:
             for _sidx, para in iter_paragraphs(prs):
@@ -280,19 +406,18 @@ def main():
         for sidx, bare, why in bare_warn:
             print("  s%02d 裸数字卡 %r 未改：%s" % (sidx, bare, why))
         total += bare_n
-        if not has_hit and bare_n == 0:
+        nb_n, nb_warn = neighbor_stat_edits(prs, rules, apply=True)
+        total += nb_n
+        for sidx, bare, why in nb_warn:
+            print("  s%02d 邻接数据卡 %r 未改：%s" % (sidx, bare, why))
+        if not has_hit and bare_n == 0 and nb_n == 0:
             continue
         prs.save(str(f))
         if has_hit:
             total += 1
         # 回读自证（写入类工具必须证落盘）
         chk = Presentation(str(f))
-        left = 0
-        for _sidx, para in iter_paragraphs(chk):
-            for pat, _repl, _desc in rules:
-                if re.search(pat, para.text):
-                    left += 1
-                    break
+        left = sum(1 for _s, para in iter_paragraphs(chk) if rule_hits(para.text, rules))
         if file_unres:
             print("\n%s  [WARN] 跨 run 无法安全改写 %d 处（需人工）：" % (f.name, len(file_unres)))
             for desc, full in file_unres[:6]:
