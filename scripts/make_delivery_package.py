@@ -12,7 +12,7 @@
     1) 构建干净 staging：按排除清单复制，并用 config.share.yaml（纯 ${ENV} 占位、零真 key）
        顶替 config.yaml，保证接收方开箱即用
     2) 打包为 tar.gz
-    3) 解包复核五条硬红线：
+    3) 解包复核六条硬红线：
        - 包内不得出现 data/ · logs/ · .env · *.db · chat_uploads/ 等运行数据
          （例外：data/ctf_benchmark/ 属可机验的**测试资产**而非运行数据，默认纳入）
        - 包内 config.yaml 必须与 config.share.yaml 逐字节一致（即确认顶替生效）
@@ -22,6 +22,11 @@
        - 对 staging 跑 check_artifact_numbers.py → 必须 PASS(rc=0)：**读回**包内
          .pptx/.docx/.pdf 的可见文本，比对 count_stats 真值。文本门禁看不见这类漂移
          （数字与单位常被拆成两个字符串字面量），只有读回渲染产物才暴露。
+       - 对 staging 跑 check_binary_version.py --require-binaries --strict-unchecked
+         → 必须 PASS(rc=0)：从 exe 内嵌的 Go buildinfo 读出构建来源，断言 commit ==
+         当前 HEAD、无 `+dirty`，并解开 NSIS 安装包对内嵌 payload 再判一遍。
+         实测教训：包里曾同时有三份构建（09-04 dirty / 09-07 / 09-30），没有一份
+         是当时源码的产物，而文件名与体积完全看不出差别。
     4) 任一红线失败 → 删除成品包并 rc=1（宁可不出包，不可出事）
 
 用法：
@@ -31,7 +36,7 @@
     python scripts/make_delivery_package.py --keep-staging   # 保留 staging 目录以便排查
 
 退出码：
-    0 = 包已生成且五项自验全过
+    0 = 包已生成且六项自验全过
     1 = 自验失败（含真凭证 / 含禁区数据 / 产物数字漂移），成品包已删除
 """
 import argparse
@@ -54,6 +59,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_GUARD = os.path.join(ROOT, "scripts", "secret_guard.py")
 LINE_ENDINGS_CHECK = os.path.join(ROOT, "scripts", "check_line_endings.py")
 ARTIFACT_NUMBERS_CHECK = os.path.join(ROOT, "scripts", "check_artifact_numbers.py")
+BINARY_VERSION_CHECK = os.path.join(ROOT, "scripts", "check_binary_version.py")
 CLEAN_CONFIG = os.path.join(ROOT, "config.share.yaml")
 
 # ── 构建输入件的排除口径 ─────────────────────────────────────────────
@@ -235,7 +241,7 @@ def sha256(path):
 
 
 def verify(package, staging):
-    """四条硬红线；返回 (ok, issues, notes)。"""
+    """六条硬红线；返回 (ok, issues, notes)。"""
     issues, notes = [], []
     with tarfile.open(package, "r:gz") as tf:
         names = tf.getnames()
@@ -335,6 +341,36 @@ def verify(package, staging):
     else:
         issues.append("未找到 scripts/check_artifact_numbers.py，无法自验产物数字")
 
+    # 红线 6：交付二进制的来源（2026-10-18 新增，实锤事故驱动）
+    # 实测：打包前 installer/ 下同时存在三份不同构建的主程序，没有一份是当前 HEAD 的
+    # （09-04 dirty / 09-07 / 09-30），而源码这期间修掉了 7 critical + 8 high 依赖漏洞
+    # 与 presolve 占位符短路。文件名与体积都看不出来 —— 只有读 exe 内嵌的 Go buildinfo
+    # 才能判定。故对 **staging（真正要发出去的字节）** 跑二进制来源门禁，
+    # 并且 --require-binaries：包里一个 exe 都没有也算红（评委拿什么跑？）。
+    if os.path.exists(BINARY_VERSION_CHECK):
+        # ⚠️ staging 是临时目录、**不是 git 仓库** —— 门禁在里面 `git rev-parse HEAD`
+        # 会失败。这不是它该自己猜的事：HEAD 必须由调用方显式传入（本次首跑就踩到，
+        # 门禁 fail-closed 报 BLOCK，而非静默放过 —— 行为正确，接线要补）。
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                              capture_output=True, text=True).stdout.strip()
+        cmd = [sys.executable, BINARY_VERSION_CHECK, "--root", staging,
+               "--require-binaries", "--strict-unchecked"]
+        if head:
+            cmd += ["--head", head]
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="ignore")
+        if r.returncode == 0:
+            notes.append("check_binary_version -> PASS（包内 exe 均由当前 HEAD 构建）")
+        else:
+            issues.append("check_binary_version -> BLOCK（rc=%d），包内程序不是当前源码"
+                          "构建 / 无法核验" % r.returncode)
+            for line in (r.stdout or "").splitlines():
+                s = line.strip()
+                if s.startswith("·") or "[BLOCK]" in s or "[WARN]" in s:
+                    notes.append("  | " + s)
+    else:
+        issues.append("未找到 scripts/check_binary_version.py，无法自验程序材料来源")
+
     return (not issues), issues, notes
 
 
@@ -397,8 +433,8 @@ def main():
     for n in notes:
         print("  · %s" % n)
     if ok:
-        print("  [PASS] 五项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0 · "
-              "脚本行尾合规 · 产物数字与真值一致")
+        print("  [PASS] 六项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0 · "
+              "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建")
         print("  交付包就绪：%s" % out)
     else:
         print("  [BLOCK] 自验失败，已删除成品包：")

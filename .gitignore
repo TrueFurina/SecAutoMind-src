@@ -86,7 +86,17 @@ desktop.ini
 
 # Build artifacts (distributed via GitHub Releases, not in source repo)
 *.exe
-installer/
+# 安装包目录：**配方入库、产物不入库**（2026-10-18 修）
+# 旧写法是整目录 `installer/` 忽略 —— 后果：NSIS 脚本 SecAutoMind-Setup.nsi、
+# LICENSE/README-INSTALL、构建脚本全都不在版本库，安装包只有这台机器能重做，
+# 于是"包里那个 exe 是哪次提交编的"无人可查，三份不同构建躺了两个月。
+# 用 `installer/*`（而非 `installer/`）才能对其中的源码做反忽略：
+# Git 规定父目录被排除时，子项的反忽略无效。
+installer/*
+!installer/SecAutoMind-Setup.nsi
+!installer/build_installer.py
+!installer/README-INSTALL.txt
+!installer/LICENSE.txt
 # PPT 源码纳入版本控制（slides/ 源 + 构建脚本 + 设计文档 + 图片资源）；
 # 生成的 .pptx 二进制与工具缓存不入库（可从源码重建）
 SecAutoMind_PPT/*.pptx
