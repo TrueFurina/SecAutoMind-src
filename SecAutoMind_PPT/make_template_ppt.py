@@ -556,7 +556,7 @@ text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('总结与展望', 
 summary = [
     ('做了什么', '3 层编排 × 91 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
     ('技术创新', '按复杂度自动选型的三模式编排 · 事实黑板上下文共享 · C2-HITL 审批桥 · 离线自主决策'),
-    ('工程证明', '129,288 行 Go · 313 测试文件 · 0 panic · 33 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
+    ('工程证明', '129,288 行 Go · 313 测试文件 · 0 panic · 37 包分层 · 安全基线（CORS/参数化/审计脱敏）'),
     ('未来展望', '接入更多国内模型 · 扩工具生态（社区 YAML）· 多靶场联动 · 智能体自学习（攻击链记忆）'),
 ]
 for i, (t, body) in enumerate(summary):
@@ -584,7 +584,10 @@ text(s, Inches(1), Inches(4.9), Inches(11), Inches(0.5),
 footer(s, 18)
 
 # ── 保存 ──
-OUT = r'E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx'
+# 🔴 输出必须落在**本文件所在目录**（= 仓库内 SecAutoMind_PPT/）。旧值指向已不存在的
+# `E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/…`（2026-10-18 实测 FileNotFoundError），
+# 且即便存在也落在冻结清单/交付包之外 → 仓库内产物永不更新、数字漂移静默复发。
+OUT = Path(__file__).resolve().parent / 'SecAutoMind_参赛答辩_模板版.pptx'
 prs.save(OUT)
 print(f'✅ 已生成: {OUT}')
 print(f'   幻灯片数: {len(prs.slides)}')

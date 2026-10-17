@@ -230,6 +230,139 @@ EXTRACTORS = {".pptx": extract_pptx, ".docx": extract_docx, ".pdf": extract_pdf}
 
 
 # ---------------------------------------------------------------------------
+# 生成器 → 产物 的路径链路（2026-10-18 新增）
+# ---------------------------------------------------------------------------
+# 为什么必须查这个（这是「数字漂移反复复发」的结构性根因，不是洁癖）：
+#   三个 PPT 生成器的 `OUT` 原本都指向
+#       E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/SecAutoMind_PPT/…
+#   实测该目录**早已不存在** —— 于是：
+#     ① 生成器一跑就 FileNotFoundError，等于「看着有生成器、其实跑不了」（假齐备）；
+#     ② 即便目录还在，产物也落在仓库/冻结清单/交付包**之外**：仓库内那份 pptx 永不更新，
+#        而所有门禁检查的正是仓库内那份 → 数字改了、产物没动，静默漂移；
+#     ③ 手工改产物的人以为「重跑生成器就好」，实际跑出来的是另一个文件 →
+#        只好继续手改产物，生成器越来越落后（#41 同款：产物↔生成器契约断裂）。
+#   故把「OUT 必须在仓库内、且必须是冻结清单里的交付件、且实物存在」写成判据。
+GENERATOR_DIR = "SecAutoMind_PPT"
+FREEZE_MANIFEST = os.path.join("docs", "final-artifacts.freeze.json")
+
+
+def _assign_out_value(tree):
+    """取模块级最后一次 `OUT = …` 的 AST 值节点（多次赋值取最后一次，与运行时一致）。"""
+    import ast
+    last = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for t in node.targets:
+                if isinstance(t, ast.Name) and t.id == "OUT":
+                    last = node.value
+    return last
+
+
+def _parse_generator_out(path):
+    """解析某个生成脚本的 `OUT` → (文件名, 是否锚定 __file__, 绝对路径字面量列表, 错误)。
+
+    与 check_generator_out_paths 共用同一解析，避免"门禁说的 OUT"和"冻结清单记的 OUT"
+    各解各的（同族教训：修复器曾另立规则表，真值一动就整条失效）。
+    """
+    import ast
+    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+        src = fh.read()
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as exc:
+        return "", False, [], "语法错误，无法核验 OUT：%s" % exc
+    node = _assign_out_value(tree)
+    if node is None:
+        return "", False, [], "没有模块级 `OUT = …` —— 无法机验产物落点"
+    lits = [n.value for n in ast.walk(node)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str)]
+    abs_lit = [s for s in lits
+               if re.match(r"^[A-Za-z]:[\\/]", s) or s.startswith("/") or s.startswith("\\\\")]
+    anchored = "__file__" in ast.unparse(node)
+    return (lits[-1] if lits else ""), anchored, abs_lit, ""
+
+
+def generator_map(repo_root):
+    """→ {产物文件名: 生成脚本相对路径}。只认能解析出 OUT 文件名的脚本。"""
+    import glob
+    out = {}
+    gen_dir = os.path.join(repo_root, GENERATOR_DIR)
+    if not os.path.isdir(gen_dir):
+        return out
+    for path in sorted(glob.glob(os.path.join(gen_dir, "make_*.py"))):
+        name, _anch, _abs, err = _parse_generator_out(path)
+        if not err and name.lower().endswith(tuple(ARTIFACT_EXT)):
+            out[name] = os.path.relpath(path, repo_root).replace("\\", "/")
+    return out
+
+
+def check_generator_out_paths(repo_root, require_artifacts=True):
+    """→ [(脚本相对路径, 原因)]，空列表 = 通过。
+
+    判据（全部 fail-closed，缺一条就报）：
+      1. 脚本里必须存在模块级 `OUT = …`；
+      2. OUT 的表达式必须锚定 `__file__`（即"落在脚本自己所在目录"），
+         不允许出现盘符绝对路径字面量（如 `r'E:/…'`）；
+      3. OUT 的文件名必须能在**冻结清单** artifacts 里找到同名项（产物↔交付面必须挂上）；
+      4. 该文件必须真实存在于仓库 `SecAutoMind_PPT/` 下。
+
+    为什么 4 要可关（require_artifacts）：产物是 `.gitignore` 的本地二进制，
+    **CI 检出里不存在**（几 MB～60 MB）。若 CI 也查"实物存在"，本判据会恒红 →
+    反向变成"一致地误杀"。故 CI 只钉 1~3（纯静态、对 git 跟踪文件成立），
+    本地/打包时钉满 4 条（`--generators-only --require-artifacts` 或裸跑门禁）。
+    """
+    import glob
+    import json
+
+    bad, scripts = [], []
+    gen_dir = os.path.join(repo_root, GENERATOR_DIR)
+    if not os.path.isdir(gen_dir):
+        return [("%s/" % GENERATOR_DIR, "生成器目录不存在")]
+    for path in sorted(glob.glob(os.path.join(gen_dir, "make_*.py"))):
+        rel = os.path.relpath(path, repo_root).replace("\\", "/")
+        scripts.append(rel)
+        name, anchored, abs_lit, err = _parse_generator_out(path)
+        if err:
+            bad.append((rel, err))
+            continue
+
+        # ② 绝对路径字面量一律禁止（盘符 / 正斜杠绝对 / UNC）
+        if abs_lit:
+            bad.append((rel, "OUT 使用绝对路径字面量 %r —— 换机器/目录删了就断，"
+                             "必须写成 `Path(__file__).resolve().parent / '…'`" % abs_lit[0]))
+            continue
+        if not anchored:
+            bad.append((rel, "OUT 未锚定 `__file__` —— 产物落点不确定"))
+            continue
+
+        # ③④ 文件名必须是交付物扩展名（`… / 'x.pptx'` 形态）
+        if not name.lower().endswith(tuple(ARTIFACT_EXT)):
+            bad.append((rel, "OUT 末尾不是 %s 文件名（取到 %r）"
+                        % ("/".join(ARTIFACT_EXT), name)))
+            continue
+        manifest = os.path.join(repo_root, FREEZE_MANIFEST)
+        if not os.path.isfile(manifest):
+            bad.append((rel, "缺冻结清单 %s —— 无法核验产物↔交付面" % FREEZE_MANIFEST))
+            continue
+        try:
+            with open(manifest, "r", encoding="utf-8") as fh:
+                arts = (json.load(fh) or {}).get("artifacts") or {}
+        except Exception as exc:
+            bad.append((rel, "冻结清单无法解析：%s" % exc))
+            continue
+        if not any(os.path.basename(k) == name for k in arts):
+            bad.append((rel, "OUT 产物 %r 不在冻结清单 artifacts 里 —— "
+                             "生成出来的东西没人保护（先入清单再谈交付）" % name))
+            continue
+        if require_artifacts and not os.path.isfile(os.path.join(gen_dir, name)):
+            bad.append((rel, "OUT 声明的产物 %r 在 %s/ 下不存在（生成器跑不出来？）"
+                        % (name, GENERATOR_DIR)))
+    if not scripts:
+        bad.append(("%s/make_*.py" % GENERATOR_DIR, "一个生成器都没找到 —— 判据空转"))
+    return bad
+
+
+# ---------------------------------------------------------------------------
 # 扫描
 # ---------------------------------------------------------------------------
 def is_skipped_dir(rel):
@@ -309,7 +442,26 @@ def main():
     ap.add_argument("--exclude", action="append", default=[],
                     help="追加排除 glob（按相对路径或文件名匹配，可重复）")
     ap.add_argument("--list", action="store_true", help="只列出将被检查的产物，不做比对")
+    ap.add_argument("--generators-only", action="store_true",
+                    help="只查「生成器 OUT → 产物」路径链路（可在 CI 跑，不需要产物文件）")
+    ap.add_argument("--require-artifacts", action="store_true",
+                    help="配合 --generators-only：额外要求 OUT 指向的产物实物存在（本地/打包用）")
     args = ap.parse_args()
+
+    # 只查生成器链路：不读产物、不需要 pypdf，纯 AST 静态判据 → 可直接进 CI。
+    if args.generators_only:
+        require_art = bool(args.require_artifacts)
+        gen_bad = check_generator_out_paths(cmn.ROOT, require_artifacts=require_art)
+        print("=" * 74)
+        print("生成器 → 产物 路径链路检查（%s/make_*.py）" % GENERATOR_DIR)
+        if gen_bad:
+            for rel, why in gen_bad:
+                print("  [FAIL] %s —— %s" % (rel, why))
+            print("  结论：FAIL —— %d 处断裂" % len(gen_bad))
+            return 1
+        print("  结论：PASS —— 生成器的 OUT 均锚定 __file__、落在仓库内、在冻结清单里%s"
+              % ("、实物存在" if require_art else "（未查实物存在：CI 检出里没有产物）"))
+        return 0
 
     # 恒久排除（构建输入件）与调用方追加排除合并，统一生效。
     excludes = list(ALWAYS_EXCLUDE) + list(args.exclude)
@@ -346,6 +498,11 @@ def main():
 
     print("  锚定 HEAD: %s" % truth.get("head"))
     hits, files, problems = scan(root, truth, excludes)
+
+    # 生成器 → 产物的路径链路（只在扫仓库根时做：打包暂存目录里没有生成器脚本）
+    gen_bad = []
+    if os.path.abspath(root) == os.path.abspath(cmn.ROOT):
+        gen_bad = check_generator_out_paths(root)
     print("-" * 74)
     for rel, n in files:
         print("  · %-72s %d 个文本单元" % (rel, n))
@@ -362,6 +519,13 @@ def main():
                 print("    %s (%s)  %s=%s，真值=%s" % (rel, unit, label, got, want))
             print("        上下文…%s…" % snip)
 
+    if gen_bad:
+        print("-" * 74)
+        print("  [FAIL] 生成器 → 产物 路径链路断裂 %d 处（改产物也改了数字，重跑却落到别处）："
+              % len(gen_bad))
+        for rel, why in gen_bad:
+            print("    %s —— %s" % (rel, why))
+
     if problems:
         print("-" * 74)
         print("  [FAIL-CLOSED] %d 个产物无法核验（宁可拦下，不可放过）：" % len(problems))
@@ -369,9 +533,12 @@ def main():
             print("    %s —— %s" % (rel, why))
 
     print("=" * 74)
-    if hits or problems:
-        print("  结论：FAIL —— 产物口径漂移或无法核验，禁止打包/提交。")
-        if hits and not problems:
+    if hits or problems or gen_bad:
+        if gen_bad:
+            print("  结论：FAIL —— 生成器 OUT 不在可交付链路内（仓库内 + 冻结清单 + 实物存在）。")
+        else:
+            print("  结论：FAIL —— 产物口径漂移或无法核验，禁止打包/提交。")
+        if hits and not problems and not gen_bad:
             print("  修复：改生成脚本里的数字 → 重新生成产物 → 复跑本门禁。")
         return 1
     print("  结论：PASS —— %d 个产物的可见文本与单一真值源一致。" % len(files))

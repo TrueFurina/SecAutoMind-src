@@ -1,21 +1,33 @@
 {
   "schema": 2,
-  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），删它等于抹掉保护面变化的历史，勿手删。退役项复活的正确姿势：把实物放回原位后跑 --update —— 该条目会从 retired 摘出、重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。",
+  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），删它等于抹掉保护面变化的历史，勿手删。退役项复活的正确姿势：把实物放回原位后跑 --update —— 该条目会从 retired 摘出、重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。artifacts.*.generator 记录产出该件的生成脚本及其上锁时的 sha256：生成器一改而产物没重跑，--check 即红（只锁产物 sha 查不出「产物是旧生成器的输出」）。",
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "6811544bbc4c01577e0f859b1d84a4c48cae573e3734ed0b4f7b42de8f0bce78",
-      "size": 68591
+      "sha256": "c7de3aa0ffb97dcb57f3560fd62583821106458e533b1a9432d323f978e22f71",
+      "size": 68894,
+      "generator": {
+        "path": "SecAutoMind_PPT/make_champion_ppt.py",
+        "sha256": "e50a22efa555a2e35c2d06ea2fae037506f51fcf4fc5ef84aabb3257c561bb25"
+      }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "55731bacfb1f8a1d3bf304a5819a4d9b3cb2358da4a8b998d85e014fa6aff0c4",
-      "size": 421329
+      "sha256": "c1478838f5d21fab0a19ab78903e96265500778dc22f7730377c6560973c3a40",
+      "size": 421330,
+      "generator": {
+        "path": "SecAutoMind_PPT/make_template_ppt.py",
+        "sha256": "868d68679d741304025462a3579d2e2d57b13dd5c5fe5c4162d57faea39c18ec"
+      }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "bb0d1bea9150ea554dbaa3e5fd2e323a13d4c08e53f409e7eddd17ce6dc8f676",
-      "size": 78335
+      "sha256": "9c935b0861c837032382af4b250e6ed422b90966581129f9ee7e459972462482",
+      "size": 78377,
+      "generator": {
+        "path": "SecAutoMind_PPT/make_final_ppt.py",
+        "sha256": "a9ec40c94a30f46c2114c3323c7132948997794701bcf89711a19e410b921d3b"
+      }
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
@@ -39,8 +51,8 @@
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "d042dd46a048018f1c2af361494df4b6878af84ee3617de9e64a196f94d97ed1",
-      "size": 279168727
+      "sha256": "9a6a8aad39d211bfae34d5768bdab4be8d7b7df331803b810867e7efae0f4704",
+      "size": 279180235
     }
   },
   "retired": {}

@@ -381,8 +381,16 @@ jobs:
       # 用 stdlib 手搓的最小 pptx/docx 夹具跑 10 项，含 2 项变异（改错数字必须变红）、
       # 1 项 fail-closed（损坏产物必须拦下）、2 项跨形状方向判据。
       # 真实产物的检查落在打包那一刻（make_delivery_package.py 第五条红线）与本地自检。
-      - name: Artifact-number gate self-test (11 cases, incl. mutation + always-exclude)
+      - name: Artifact-number gate self-test (16 cases, incl. mutation + always-exclude)
         run: python scripts/check_artifact_numbers_test.py
+      # 生成器 → 产物 的**落点**链路（2026-10-18 新增，可直接在 CI 跑：纯 AST 静态判据，
+      # 不需要那位 60 MB 的产物）。实测三个 PPT 生成器的 OUT 全都指向
+      # `E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/…` —— 该目录早已不存在：
+      # 生成器一跑就崩（假齐备），即便存在产物也落在冻结清单/交付包之外 → 仓库内那份
+      # 永不更新，数字漂移静默复发。判据：OUT 必须锚定 __file__、落在仓库
+      # SecAutoMind_PPT/ 内、是该目录下的冻结清单交付件、且实物存在。
+      - name: PPT generator OUT must stay inside repo + frozen manifest
+        run: python scripts/check_artifact_numbers.py --generators-only
 
   # cross-bench 产物清单一致性门禁（2026-10-16 实锤三条漂移后新增）。
   # `data/questions_real_bench/` 的 cross_bench.json 与 attachments/.gitignore 是
