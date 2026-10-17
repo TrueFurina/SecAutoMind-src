@@ -13,6 +13,7 @@ from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+from pathlib import Path
 
 # ── 主题色（与冲击冠军版一致） ──
 BG = RGBColor(0x0A, 0x11, 0x28)
@@ -684,6 +685,9 @@ footer(s, 24)
 # ═══════════════════════════════════════════════
 # 保存
 # ═══════════════════════════════════════════════
-OUT = r'E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx'
+# 🔴 输出必须落在**本文件所在目录**（= 仓库内 SecAutoMind_PPT/）。旧值指向已不存在的
+# `E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/…`（2026-10-18 实测 FileNotFoundError），
+# 且即便存在也落在冻结清单/交付包之外 → 仓库内产物永不更新、数字漂移静默复发。
+OUT = Path(__file__).resolve().parent / 'SecAutoMind_参赛答辩_集大成版.pptx'
 prs.save(OUT)
 print(f'✅ 全部 24 页生成完成 → {OUT}')

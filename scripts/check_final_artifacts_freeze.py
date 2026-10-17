@@ -50,6 +50,18 @@ def sha256(path):
     return h.hexdigest()
 
 
+def sha256_text_normalized(path):
+    """文本（生成脚本）的哈希：**先把 CRLF 归一成 LF**，再哈希。
+
+    为什么不能直接哈希磁盘字节（2026-10-18 实测踩到）：本机 `core.autocrlf=true`，
+    工作树是 CRLF，而 git blob 与 CI 检出是 LF。若清单记的是本机 CRLF 的 sha256，
+    CI 用 LF 文件去比 → **恒红**；反过来在本机也比不上 blob。归一后三处一致。
+    只用于 .py/.md 这类文本；产物（pptx/tar.gz）仍用原始字节哈希。
+    """
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def collect():
     """收集受保护对象 → {逻辑名: 绝对路径}。"""
     out = {}
@@ -73,6 +85,30 @@ def collect():
             if n.lower().endswith(".mp4") and "演示视频" in n:
                 out["video/" + n] = os.path.join(r, n)
     return out
+
+
+def _generator_map():
+    """→ {产物文件名: 生成脚本相对路径}（复用产物门禁的 AST 解析，单一规则源）。
+
+    为什么冻结清单要记生成器（2026-10-18 实锤）：
+      实测三份答辩 PPT 的**冻结产物与生成器内容不一致** —— 生成器早已改成「91 个 YAML 配方 /
+      纯 Go sqlite / 29.1% 真求解器」，冻结产物却还写着「100+ YAML 配方 / cgo sqlite /
+      33.6 MB 安装包（实物 20 MB）」。产物不在 git 里，生成器在 git 里 → 没人对账，
+      于是产物带着 3 处失真表述一路躺到交付包。只锁产物 sha 是锁不住这种漂移的：
+      sha 一致只说明"没人动过产物"，说明不了"产物还是生成器的输出"。
+    """
+    try:
+        import sys as _sys
+        here = os.path.dirname(os.path.abspath(__file__))
+        if here not in _sys.path:
+            _sys.path.insert(0, here)
+        import check_artifact_numbers as can
+        return can.generator_map(ROOT)
+    except Exception as exc:
+        # 不能静默降级成 {}：那会让「已有生成器但清单没记哈希」这条判据静默失效
+        print("[WARN] 生成器映射不可用（%s: %s）——本轮只能靠清单里已记录的哈希核对，"
+              "「缺 generator 字段」的缺口查不出来" % (type(exc).__name__, exc), file=sys.stderr)
+        return {}
 
 
 def build_manifest(old=None):
@@ -102,6 +138,18 @@ def build_manifest(old=None):
         for name, p in arts.items()
     }
 
+    # 记下「产出该产物的生成脚本」的 sha256：日后生成器一改，--check 立刻报
+    # 「生成器已变但产物没重新生成/上锁」。这是"产物↔生成器契约"的可机验型式；
+    # 只锁产物 sha 查不出"产物是旧生成器的输出"（两者都不变也能 sha 一致）。
+    gmap = _generator_map()
+    for name, entry in art_entries.items():
+        gen_rel = gmap.get(os.path.basename(name))
+        if not gen_rel:
+            continue
+        gen_abs = os.path.join(ROOT, gen_rel)
+        if os.path.isfile(gen_abs):
+            entry["generator"] = {"path": gen_rel, "sha256": sha256_text_normalized(gen_abs)}
+
     # 🔴 退役项「复活」的收口（2026-10-18 实测缺陷修复）：
     # 旧实现只做「artifacts → retired」单向迁移，实物回来后 --update 会把它重新纳入 artifacts
     # 却**不摘掉 retired 条目** → --check 的「复活必报」判据从此永久红，无任何合法出路。
@@ -126,7 +174,9 @@ def build_manifest(old=None):
                 "retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），"
                 "删它等于抹掉保护面变化的历史，勿手删。"
                 "退役项复活的正确姿势：把实物放回原位后跑 --update —— 该条目会从 retired 摘出、"
-                "重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。",
+                "重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。"
+                "artifacts.*.generator 记录产出该件的生成脚本及其上锁时的 sha256：生成器一改而产物"
+                "没重跑，--check 即红（只锁产物 sha 查不出「产物是旧生成器的输出」）。",
         "artifacts": art_entries,
         "retired": retired,
     }, demoted, revived
@@ -188,10 +238,40 @@ def main(argv):
     # 受保护对象（PPT / 压缩包 / 视频）均被 .gitignore 排除或尚未产出时，CI 检出里一个都不存在。
     # 此时不是"被改动"，应优雅跳过，否则本门禁在 CI 上恒红（噪音门禁比没门禁更糟）。
     # 注意：走到这里说明清单已锁了 %d 项，跳过的是"实物不在本检出"，不是"清单没锁"。
+    # ⚠️ 但「生成器↔产物契约」必须在**跳过之前**判 —— 生成器是 git 跟踪文件，CI 里有；
+    #    产物没有。若一起跳过，CI 就永远发现不了「生成器改了、产物没重跑」这种漂移。
+    gmap = _generator_map()
+    for name in sorted(exp):
+        base = os.path.basename(name)
+        rec = (exp[name] or {}).get("generator") or {}
+        if gmap.get(base) and not rec:
+            problems.append("%s：已有生成器 %s 但清单未记录其哈希（无法判产物是否陈旧）"
+                            "—— 请 --update 重新上锁" % (name, gmap[base]))
+            continue
+        if not rec:
+            continue
+        gen_abs = os.path.join(ROOT, rec.get("path", ""))
+        if not os.path.isfile(gen_abs):
+            problems.append("%s：清单记录的生成器 %s 不存在（被删/改名？）"
+                            % (name, rec.get("path")))
+            continue
+        if sha256_text_normalized(gen_abs) != rec.get("sha256"):
+            problems.append("%s：**生成器 %s 已改动但产物未重新上锁** —— 现有产物是旧生成器的"
+                            "输出（实测教训：生成器改成「91 个 YAML」，产物还是「100+ YAML」）。"
+                            "修法：重跑生成器 → 复跑产物门禁 → --update 重新上锁"
+                            % (name, rec.get("path")))
+
     if not got:
+        if problems:
+            print("[BLOCK] 本检出无产物实物，但生成器↔产物契约有 %d 处问题：" % len(problems))
+            for p in problems:
+                print("  · " + p)
+            return 1
         print("[SKIP] 本检出未发现任何受保护对象（清单已锁 %d 项，但 PPT/压缩包/视频 "
               "未随 git 分发或尚未产出）——跳过实物比对。" % len(exp))
-        print("       本地有这些产物时本门禁会严格校验；有意变更后请 --update 重新上锁。")
+        print("       生成器↔产物契约已核验（%d 份生成器哈希一致）。"
+              "本地有这些产物时本门禁会严格校验；有意变更后请 --update 重新上锁。"
+              % len(gmap))
         return 0
 
     for name in sorted(set(exp) | set(got)):
@@ -219,12 +299,14 @@ def main(argv):
         mark = "🔒" if name in got and exp[name].get("sha256") == got[name].get("sha256") else "⚠️"
         print("  %s %s" % (mark, name))
     if problems:
-        print("\n[BLOCK] 冻结对象被改动 %d 处：" % len(problems))
+        print("\n[BLOCK] 冻结面/生成器契约问题 %d 处：" % len(problems))
         for p in problems:
             print("  · " + p)
-        print("  若为有意变更：跑 python scripts/check_final_artifacts_freeze.py --update 重新上锁，并随提交入库。")
+        print("  若为有意变更：重跑生成器 → 复跑 scripts/check_artifact_numbers.py → "
+              "跑 python scripts/check_final_artifacts_freeze.py --update 重新上锁，并随提交入库。")
         return 1
-    print("\n[PASS] 冻结对象与清单一致（压缩包 / 答辩 PPT / 演示视频均未被改动）。")
+    print("\n[PASS] 冻结对象与清单一致（压缩包 / 答辩 PPT / 演示视频均未被改动），"
+          "且 %d 份生成器哈希与上锁时一致（产物仍是当前生成器的输出）。" % len(gmap))
     return 0
 
 

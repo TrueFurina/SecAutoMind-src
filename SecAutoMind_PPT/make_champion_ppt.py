@@ -11,6 +11,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pathlib import Path
 
 # ── 主题色 ──
 BG = RGBColor(0x0A, 0x11, 0x28)
@@ -525,7 +526,7 @@ text(s, Inches(0.7), Inches(1.0), Inches(11), Inches(0.8), [('总结与展望', 
 summary = [
     ('做了什么', '3 层编排 × 91 工具 × 18 Agent 的自主决策攻防推演平台，编译零错误、核心测试全绿、系统实启动'),
     ('技术创新', '按复杂度自动选型的三模式编排 · 事实黑板上下文共享 · C2-HITL 审批桥 · 离线自主决策'),
-    ('工程证明', '129,288 行 Go · 313 测试 · 0 panic · 33 包分层 · CTF 能力基准：静态 29.1%（真求解器口径）/ 执行 100% / Web 100%（双语言机验）'),
+    ('工程证明', '129,288 行 Go · 313 测试 · 0 panic · 37 包分层 · CTF 能力基准：静态 29.1%（真求解器口径）/ 执行 100% / Web 100%（双语言机验）'),
     ('未来展望', '接入更多国内模型 · 扩工具生态（社区 YAML）· 多靶场联动 · 智能体自学习（攻击链记忆）'),
 ]
 for i, (t, body) in enumerate(summary):
@@ -553,7 +554,12 @@ text(s, Inches(1), Inches(4.9), Inches(11), Inches(0.5),
 footer(s, 18)
 
 # ── 保存 ──
-OUT = r'E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx'
+# 🔴 输出必须落在**本文件所在目录**（= 仓库内 SecAutoMind_PPT/）。
+# 旧值指向 `E:/Program/2026挑战杯：SecAutoMind-v1.7.17-share/SecAutoMind_PPT/` —— 该目录
+# 2026-10-18 实测**已不存在**：生成器一跑就 FileNotFoundError，等于"看着有生成器、其实跑不了"；
+# 就算目录还在，产物也会落到冻结清单/交付包**之外**，仓库内的 pptx 永远不动 → 数字漂移静默复发。
+# 判据由 scripts/check_artifact_numbers.py::check_generator_out_paths 机验（越界即红）。
+OUT = Path(__file__).resolve().parent / 'SecAutoMind_参赛答辩_冲击冠军版.pptx'
 prs.save(OUT)
 print(f'✅ 已生成: {OUT}')
 print(f'   幻灯片数: {len(prs.slides)}')

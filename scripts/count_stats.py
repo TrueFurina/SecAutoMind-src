@@ -342,6 +342,32 @@ def go_packages_count():
         return None
 
 
+def internal_packages_count():
+    """统计 internal/ 下**真正的 Go 包数**（目录内含 .go 文件），递归。
+
+    为什么要单独一个字段（2026-10-18）：
+      - `internal_dirs` = internal/ 的**一级子目录数**（实测 34），不含 `internal/mcp/builtin`
+        这类二级包；材料写「N 个 internal 包」时指的是 **go list ./internal/... 的包数**（实测 37）。
+      - 两者被当成同一个数混用了很久：PPT 一处写 `37 个 internal 包`（对）、另一处写
+        `32 包分层`（错，且"包分层"到底指什么没人能定义）→ 同一份材料自相矛盾。
+      - 历史 27→31→32→33 的递增实际上就是在跟 internal 包增长走，只是手工加，永远滞后。
+
+    实现刻意**不调用 go**（go 不在 PATH 时 go_packages 会 null，锚点就静默失效）；
+    纯文件系统判定与 `go list ./internal/...` 在无 build tag 的常规布局下等价，
+    漂移由本脚本的 cross-check（下方 main 里比对 go_packages 口径）暴露。
+    """
+    base = os.path.join(ROOT, "internal")
+    if not os.path.isdir(base):
+        return 0
+    n = 0
+    for dirpath, dirnames, filenames in os.walk(base):
+        # 与 Go 工具链一致：跳过 `_`/`.` 前缀目录（`_attachments` 之类不是包）
+        dirnames[:] = [d for d in dirnames if not d.startswith(("_", "."))]
+        if any(f.endswith(".go") for f in filenames):
+            n += 1
+    return n
+
+
 def builtin_tools_count():
     """统计 Go 内置 MCP 工具数（internal/mcp/builtin/constants.go 的 GetAllBuiltinTools 列表项）。
 
@@ -441,6 +467,9 @@ def main():
         "internal_dirs": len([d for d in os.listdir(os.path.join(ROOT, "internal"))
                               if os.path.isdir(os.path.join(ROOT, "internal", d))]),
         "go_packages": go_packages_count(),
+        # internal 下的真实 Go 包数（递归、含 .go 的目录）。与 internal_dirs（一级子目录数）
+        # 是两个口径，材料写「N 个 internal 包 / N 包分层」时必须取本字段。
+        "internal_packages": internal_packages_count(),
         # 有测试的包数 != 总包数。材料里「N 包测试全绿」指的是前者（实测 28），
         # 而 go list ./... 是后者（41）。两者混用是历史漂移的又一来源，必须分开。
         "test_packages": test_packages_count(),
@@ -474,6 +503,8 @@ def main():
     print("  技能包 (SKILL.md)    %d" % data["skills"])
     print("  RBAC 角色            %d" % data["roles_yaml"])
     print("  internal 子目录      %d" % data["internal_dirs"])
+    print("  internal 包（含.go） %d  (= `go list ./internal/...` 口径)"
+          % data["internal_packages"])
     if data["go_packages"]:
         print("  Go 包 (go list)      %d" % data["go_packages"])
     print("  Go 文件              %d" % data["go_files"])

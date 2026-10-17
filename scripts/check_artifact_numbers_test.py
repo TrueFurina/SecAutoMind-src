@@ -201,6 +201,53 @@ def main():
           bool(can.ALWAYS_EXCLUDE) and skipped and has_label(mhits, "工具 YAML 数"),
           "skipped=%s mut_hits=%s" % (skipped, labels(mhits)))
 
+    # ---- T11 生成器 OUT 路径链路（2026-10-18 新增，4 个变体）-----------------
+    # 为什么值得单独钉：三个 PPT 生成器的 OUT 原本指向**已不存在的外部目录**
+    # （E:/Program/2026挑战杯…v1.7.17-share/），生成器一跑就崩、产物落在交付面之外
+    # → 仓库内产物永不更新，数字漂移静默复发。判据必须既能变红也能变绿，
+    # 否则「一致地放过」和「一致地误杀」都能骗过单向断言。
+    def fake_repo(name, out_line, make_artifact=True, manifest_names=("x.pptx",)):
+        """搭一个最小"仓库"：SecAutoMind_PPT/make_x.py + 冻结清单 +（可选）实物。"""
+        import json
+        root = os.path.join(base, name)
+        os.makedirs(os.path.join(root, "SecAutoMind_PPT"))
+        os.makedirs(os.path.join(root, "docs"))
+        with open(os.path.join(root, "SecAutoMind_PPT", "make_x.py"), "w", encoding="utf-8") as fh:
+            fh.write("from pathlib import Path\n%s\n" % out_line)
+        if make_artifact:
+            with open(os.path.join(root, "SecAutoMind_PPT", "x.pptx"), "wb") as fh:
+                fh.write(b"stub")
+        man = {"schema": 2, "artifacts": {
+            n: {"path": "SecAutoMind_PPT/" + n, "sha256": "", "size": 4} for n in manifest_names}}
+        with open(os.path.join(root, "docs", "final-artifacts.freeze.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump(man, fh)
+        return root
+
+    good_form = "OUT = Path(__file__).resolve().parent / 'x.pptx'"
+
+    # T11a 变异：盘符绝对路径 → 必须红
+    r = fake_repo("gen_abs", "OUT = r'E:/old/x.pptx'")
+    check("T11a [变异] 生成器 OUT 写成盘符绝对路径必须被抓",
+          bool(can.check_generator_out_paths(r)))
+    # T11b 变异：形式对但实物不存在 → 必须红
+    r = fake_repo("gen_noart", good_form, make_artifact=False)
+    check("T11b [变异] OUT 声明的产物不存在必须被抓",
+          bool(can.check_generator_out_paths(r)))
+    # T11c 变异：产物在、但冻结清单里没有 → 必须红（生成物没人保护）
+    r = fake_repo("gen_nofreeze", good_form, manifest_names=("other.pptx",))
+    check("T11c [变异] 产物不在冻结清单必须被抓",
+          bool(can.check_generator_out_paths(r)))
+    # T11d 反向钉：全对 → 必须绿（证明 T11a-c 不是"恒红"）
+    r = fake_repo("gen_ok", good_form)
+    check("T11d 全对时必须放行（证明 T11a-c 非恒红）",
+          not can.check_generator_out_paths(r),
+          "bad=%s" % can.check_generator_out_paths(r))
+    # T11e 变异：根本没有 OUT → 无法机验落点 → 必须红
+    r = fake_repo("gen_noout", "print('no out')")
+    check("T11e [变异] 没有模块级 OUT 必须被抓",
+          bool(can.check_generator_out_paths(r)))
+
     print("-" * 74)
     try:
         shutil.rmtree(base)
@@ -209,7 +256,7 @@ def main():
     if fail:
         print("  结论：FAIL —— %d 项未通过：%s" % (len(fail), ", ".join(fail)))
         return 1
-    print("  结论：PASS —— 11/11（含 T4/T5/T10 变异自检、T7 fail-closed、T9 跨形状方向判据）")
+    print("  结论：PASS —— 16/16（含 T4/T5/T10/T11 变异自检、T7 fail-closed、T9 跨形状方向判据）")
     return 0
 
 
