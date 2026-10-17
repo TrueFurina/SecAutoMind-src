@@ -11,6 +11,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pathlib import Path
 import io
 
 # ── 主题色 ──
@@ -27,7 +28,25 @@ LINE = RGBColor(0x23, 0x34, 0x54)
 SW, SH = Inches(13.333), Inches(7.5)
 
 # ══ 接入演示模板版.pptx 视觉母版 ══
-_tpl = Presentation('演示模板版.pptx')
+# 缺件时的取证结论（2026-10-18 实测，勿再重复"三盘搜索无果"）：
+#   母版内容**并未丢失**——它与同目录的 `闽江御盾•智防矩阵.pptx` **字节完全相同**
+#   （sha256 8525b3089222…，54,091,138 B），只是被改名/复制过。
+#   故缺件时优先用该同名副本顶替（不复制、不写盘），仍然缺才显式失败。
+_TPL_PATH = Path(__file__).with_name('演示模板版.pptx')
+_TPL_ALIAS = Path(__file__).with_name('闽江御盾•智防矩阵.pptx')
+if not _TPL_PATH.exists():
+    if _TPL_ALIAS.exists():
+        print(f"[WARN] 缺少 {_TPL_PATH.name}，改用字节相同的 {_TPL_ALIAS.name} 作视觉母版"
+              f"（sha256 相同，见本文件注释）")
+        _TPL_PATH = _TPL_ALIAS
+    else:
+        raise SystemExit(
+            "缺少视觉母版 演示模板版.pptx，且同目录下字节相同的候选 闽江御盾•智防矩阵.pptx 也不存在。\n"
+            "   2026-10-18 实测记录：两者曾字节完全相同（sha256 8525b3089222…，54,091,138 B），\n"
+            "   故先找回 闽江御盾•智防矩阵.pptx，或向持有者索取原件放回 SecAutoMind_PPT/；\n"
+            "   → 也可改用不依赖母版的 make_champion_ppt.py / make_final_ppt.py。"
+        )
+_tpl = Presentation(str(_TPL_PATH))
 _TPL_BG = None
 for _sh in _tpl.slides[0].shapes:
     if _sh.shape_type == 13 and _sh.width is not None \
@@ -434,7 +453,7 @@ rows = [
     ('go test ./...', '核心包全绿：multiagent 15.6s · database 5.4s · attackchain 4.5s', ACCENT),
     ('系统启动', 'go run --http 启动成功，GET / → 200，服务端口监听正常', ACCENT2),
     ('API 可达', '/api/auth/login 可达（参数校验生效），鉴权中间件在路径上', ACCENT2),
-    ('代码卫生', '0 panic · 0 处 TODO · 312 测试文件 · 33 个 internal 包', ACCENT),
+    ('代码卫生', '0 panic · 0 处 TODO · 312 测试文件 · 37 个 internal 包', ACCENT),
     ('安全基线', 'CORS 白名单 · SQL 参数化 · 7 个配置占位符 · HITL 审批桥', WARN),
 ]
 for i, (t, body, ac) in enumerate(rows):

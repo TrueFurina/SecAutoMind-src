@@ -423,7 +423,7 @@ rows = [
     ('系统启动', 'go run --http 启动成功，GET / → 200，服务正常监听，登录 API 可达', ACCENT2),
     ('CTF 静态基准', '55 道真题 真求解器 16 命中 = 29.1%（含 4 道 flag 提取题的全量口径 20/55 = 36.4%，不单独作为能力证据；2026-10-15 复测）', ACCENT),
     ('CTF 执行基准', '执行 17/17=100%（取证/密码攻击）· Web 靶场 10/10 · JWT 绕过 3/3 · 附件取证 10/10', ACCENT2),
-    ('工程卫生', '0 panic · 0 处 TODO · 312 测试文件 · 33 个 internal 包 · CORS/参数化/审计脱敏', WARN),
+    ('工程卫生', '0 panic · 0 处 TODO · 312 测试文件 · 37 个 internal 包 · CORS/参数化/审计脱敏', WARN),
 ]
 for i, (t, body, ac) in enumerate(rows):
     y = Inches(3.8 + i * 0.55)

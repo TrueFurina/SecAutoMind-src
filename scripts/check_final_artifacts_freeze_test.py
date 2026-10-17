@@ -104,7 +104,7 @@ def main():
     print("=" * 62)
 
     # A. 清空单 = 未上锁 → 必须 rc=1（本轮修复的核心）
-    print("\n[1/3] 冻结清单未上锁任何交付物必须 fail-closed")
+    print("\n[1/9] 冻结清单未上锁任何交付物必须 fail-closed")
     rc, out = run_case({}, {})
     ok = (rc == 1)
     print("  %s A artifacts 为空（期望 rc=1，实际 rc=%d）"
@@ -123,7 +123,7 @@ def main():
                         % (rc, out.strip().replace("\n", "\n    ")[:400]))
 
     # B. 清单非空 + CI 无实物 → 必须 rc=0（保持原有 SKIP 设计，不得修成恒红）
-    print("\n[2/3] CI 无实物的正常场景不得被修成恒红")
+    print("\n[2/9] CI 无实物的正常场景不得被修成恒红")
     locked = {name: {"path": "SecAutoMind_PPT/x.pptx",
                      "sha256": "0" * 64, "size": 10}}
     rc, out = run_case(locked, {})
@@ -135,7 +135,7 @@ def main():
                         % (rc, out.strip().replace("\n", "\n    ")[:400]))
 
     # C. 实物存在但 sha256 不符 → 篡改检测必须仍有效
-    print("\n[3/3] 篡改检测必须仍有效")
+    print("\n[3/9] 篡改检测必须仍有效")
     rc, out = run_case(locked, {"SecAutoMind_PPT/x.pptx": b"REAL-CONTENT"})
     ok = (rc == 1)
     print("  %s C 实物与冻结 sha256 不符（期望 rc=1，实际 rc=%d）"
@@ -153,7 +153,7 @@ def main():
     real_reason = "本机产物缺失且未入 git，跨盘检索与 git 历史双查无果；需重建后才纳入冻结"
 
     # D. --update 时磁盘缺失项必须迁入 retired，不得静默消失
-    print("\n[4/7] --update 时磁盘缺失项必须迁入 retired（不得静默缩小保护面）")
+    print("\n[4/9] --update 时磁盘缺失项必须迁入 retired（不得静默缩小保护面）")
     rc, out, newman = run_case({gone: gone_entry}, {}, run_update=True)
     ok = (rc == 0 and newman.get("retired", {}).get(gone, {}).get("sha256") == "a" * 64
           and gone not in newman.get("artifacts", {}))
@@ -167,7 +167,7 @@ def main():
     # E. 退役项重新出现在磁盘 → 必须报红（复活必须显式）
     # ⚠️ artifacts 必须非空，否则门禁先在"清单未上锁"处 BLOCK 返回，走不到复活判据
     # （那测到的是空清单防线，不是复活判据）。
-    print("\n[5/7] 退役项复活必须报红（退役 ≠ 可悄悄回来）")
+    print("\n[5/9] 退役项复活必须报红（退役 ≠ 可悄悄回来）")
     rc, out = run_case({name: {"path": "SecAutoMind_PPT/x.pptx",
                                "sha256": "0" * 64, "size": 10}},
                        {"SecAutoMind_PPT/x.pptx": b"REAL-CONTENT",
@@ -182,7 +182,7 @@ def main():
                         % (rc, out.strip().replace("\n", "\n    ")[:400]))
 
     # F. retired 原因仍是自动占位文本 → 必须报红（防止"退役"沦为洗白）
-    print("\n[6/7] retired 原因仍为占位文本必须报红（留痕不许空转）")
+    print("\n[6/9] retired 原因仍为占位文本必须报红（留痕不许空转）")
     rc, out = run_case({name: {"path": "SecAutoMind_PPT/x.pptx",
                                "sha256": "0" * 64, "size": 10}},
                        {"SecAutoMind_PPT/x.pptx": b"REAL-CONTENT"},
@@ -198,7 +198,7 @@ def main():
                         % (rc, out.strip().replace("\n", "\n    ")[:400]))
 
     # G. 退役项不在磁盘 + 原因已人工填写 → 不得误报（反向对照，防恒红）
-    print("\n[7/7] 已登记原因的退役项不得误报（反向对照，防修成恒红）")
+    print("\n[7/9] 已登记原因的退役项不得误报（反向对照，防修成恒红）")
     rc, out = run_case({name: {"path": "SecAutoMind_PPT/x.pptx",
                                "sha256": "0" * 64, "size": 10}},
                        {"SecAutoMind_PPT/x.pptx": b"REAL-CONTENT"},
@@ -211,6 +211,38 @@ def main():
     if not ok:
         failures.append("已登记的退役项被误报（rc=%d）\n    %s"
                         % (rc, out.strip().replace("\n", "\n    ")[:400]))
+
+    # H. 退役项实物回来 + 显式 --update → 必须从 retired 摘出、重新上锁，且**保留退役历史**
+    #    （2026-10-18 实测缺陷：旧实现只做单向迁移，复活后 --update 摘不掉 retired 条目，
+    #      --check 的「复活必报」从此永久红，没有任何合法出路。）
+    print("\n[8/9] 退役项复活 + --update 必须收口：重新上锁且保留退役历史")
+    rc, out, newman = run_case({}, {"SecAutoMind_PPT/演示模板版.pptx": b"BACK-AGAIN"},
+                              manifest_retired={gone: dict(gone_entry,
+                                                           retired_at="2026-10-17T09:00:00",
+                                                           reason=real_reason)},
+                              run_update=True)
+    hist = (newman.get("artifacts", {}).get(gone) or {}).get("previous_retirement") or {}
+    ok = (rc == 0 and gone in newman.get("artifacts", {})
+          and gone not in newman.get("retired", {})
+          and hist.get("sha256") == "a" * 64)
+    print("  %s H 复活项重新上锁、retired 摘出、previous_retirement 留史（实际 rc=%d）"
+          % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("--update 无法收口退役项复活（artifacts=%s, retired=%s, hist=%s）"
+                        % (json.dumps(newman.get("artifacts"), ensure_ascii=False)[:300],
+                           json.dumps(newman.get("retired"), ensure_ascii=False)[:300],
+                           json.dumps(hist, ensure_ascii=False)[:300]))
+
+    # H2. 收口后复跑 --check 必须 PASS（证明"永久红"已被消除，而不是只是换了报错）
+    print("\n[9/9] 复活收口后 --check 必须放行（不得留成永久报红）")
+    rc2, out2 = run_case(newman.get("artifacts", {}),
+                         {"SecAutoMind_PPT/演示模板版.pptx": b"BACK-AGAIN"},
+                         manifest_retired=newman.get("retired", {}))
+    ok2 = (rc2 == 0)
+    print("  %s H2 收口后 --check 放行（期望 rc=0，实际 rc=%d）" % ("PASS" if ok2 else "FAIL", rc2))
+    if not ok2:
+        failures.append("复活收口后 --check 仍红（rc=%d）\n    %s"
+                        % (rc2, out2.strip().replace("\n", "\n    ")[:400]))
 
     if failures:
         print("[FAIL] 交付物冻结门禁已退化，必须修 scripts/check_final_artifacts_freeze.py：")

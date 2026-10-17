@@ -170,6 +170,11 @@ FORCE_CURRENT = {
 # 精确文件名，理由同上（secret_guard 的 SELF_EXEMPT 同款教训）。
 TOOL_EXEMPT = {
     "fix_stale_numbers.py",          # 批量替换旧数字的修复脚本
+    # 2026-10-18：交付物数字定点修正脚本（SecAutoMind_PPT/ 在扫描范围内，实测被自己误伤——
+    # docstring 记载旧值、代码里 old 元组必须列举旧字面量才能替换）。
+    # ⚠️ 豁免代价：本文件内容过期时没有判据能发现（#43 教训）。缓解：它的自测在
+    #    scripts/check_artifact_numbers.py 这一侧——产物改完必须门禁转 PASS，脚本本身不承载结论。
+    "fix_artifact_numbers.py",
     # ↓ 下面两个都在 scripts/，而 scripts/ **当前不在 SCAN_DIRS 内**（实测门禁扫不到它们）。
     #   登记是前瞻性的：哪天把 scripts/ 纳入扫描，这两个文件必然带着漂移字面量
     #   （同步器的 docstring 要举例、它的自测要故意注入），届时会被自己误伤。
