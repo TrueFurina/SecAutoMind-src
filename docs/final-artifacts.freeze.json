@@ -1,52 +1,54 @@
 {
   "schema": 2,
-  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），删它等于抹掉保护面变化的历史，勿手删。",
+  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），删它等于抹掉保护面变化的历史，勿手删。退役项复活的正确姿势：把实物放回原位后跑 --update —— 该条目会从 retired 摘出、重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。",
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "8e34c338a80606ac78b7bf9bfd05ac6aecacc129c5f3b6add769750bc056e60c",
-      "size": 68592
+      "sha256": "037ae8ab4988d0ad3b20a036cafbb6a88d05e477c68fae44566e51c893aeada6",
+      "size": 68590
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "e1688f926e90dd65bf8d07b2ec0d1d98a269498862e0f0a25dd4d1b2c928cc97",
-      "size": 421330
+      "sha256": "e3f8a8614e6a3f83211daa340ad3bf7bf698800c17fd8b00f853fac2bedb3c91",
+      "size": 421329
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "262495010ec46a8d73a521225cb01290853397afa29c92ffbfec434ba7c3317e",
-      "size": 78329
+      "sha256": "86bdf5136663c480ce90beb213cb28fa3e310ed9281af025ec92b1b8ee0a2810",
+      "size": 78336
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
-      "sha256": "2ed3d4382439c51154f0fd28c22b6dd32817a3683deca82a2fa9f7297b046902",
-      "size": 63702880
+      "sha256": "c5c3c0bd5f2d3576b3868cbf5062c6a7e4aaaac2608cb59f56758a2d92b8dad8",
+      "size": 63308970
     },
-    "ppt/草稿内容版.pptx": {
-      "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "1e250402169259ebe0ce1194e158e2ae88b3453855aff541aa82de046c76c66a",
-      "size": 78330
-    },
-    "ppt/闽江御盾•智防矩阵.pptx": {
-      "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
-      "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
-      "size": 54091138
-    }
-  },
-  "retired": {
     "ppt/演示模板版.pptx": {
       "path": "SecAutoMind_PPT/演示模板版.pptx",
       "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
-      "size": 54091138,
-      "retired_at": "2026-10-17T09:17:55",
-      "reason": "本机实物缺失，且**从未入 git**（SecAutoMind_PPT/*.pptx 全部 untracked/gitignored），git 历史无副本；2026-10-17 跨 E/D/C 三盘 find（maxdepth 6）+ 回收站检索均无果。冻结时哈希 fcf21cce22ee（size 68824 版本的相邻项 54,091,138B）留档备查。**待办**：如需该模板，须由 SecAutoMind_PPT/make_template_ppt.py 重建后显式 --update 纳回。"
+      "size": 54091138
+    },
+    "ppt/草稿内容版.pptx": {
+      "path": "SecAutoMind_PPT/草稿内容版.pptx",
+      "sha256": "86bdf5136663c480ce90beb213cb28fa3e310ed9281af025ec92b1b8ee0a2810",
+      "size": 78336
+    },
+    "ppt/闽江御盾•智防矩阵.pptx": {
+      "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
+      "sha256": "ded2ba1f7c025111507276d8dae427a535ea0404c8adba34c318c2987f0c9f0d",
+      "size": 53753540
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "5e1f549d42b54c79bb87c1e30cacd9297c23f14f2720622311c57d43f1234897",
-      "size": 192748720,
-      "retired_at": "2026-10-17T09:17:55",
-      "reason": "本机 dist/ 目录整体不存在（192,748,720B 分享包从未在本机生成或已被清理）；dist/ 被 .gitignore 排除，git 历史无副本，无法从版本控制恢复。**待办**：打包时由 scripts/make_delivery_package.py 重新生成，随后显式 --update 纳回冻结。"
+      "sha256": "0862d93d606baf1af1bcef0e139ccde8ae800d2bb19e96f4778e08b5df7b61d1",
+      "size": 279165104,
+      "revived_at": "2026-10-18T05:23:51",
+      "previous_retirement": {
+        "sha256": "5e1f549d42b54c79bb87c1e30cacd9297c23f14f2720622311c57d43f1234897",
+        "size": 192748720,
+        "retired_at": "2026-10-17T09:17:55",
+        "reason": "本机 dist/ 目录整体不存在（192,748,720B 分享包从未在本机生成或已被清理）；dist/ 被 .gitignore 排除，git 历史无副本，无法从版本控制恢复。**待办**：打包时由 scripts/make_delivery_package.py 重新生成，随后显式 --update 纳回冻结。"
+      }
     }
-  }
+  },
+  "retired": {}
 }

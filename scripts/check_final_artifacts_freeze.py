@@ -95,18 +95,41 @@ def build_manifest(old=None):
                 "reason": RETIRED_DEFAULT_REASON,
             }
             demoted.append(name)
+
+    art_entries = {
+        name: {"path": os.path.relpath(p, ROOT).replace(os.sep, "/"),
+               "sha256": sha256(p), "size": os.path.getsize(p)}
+        for name, p in arts.items()
+    }
+
+    # 🔴 退役项「复活」的收口（2026-10-18 实测缺陷修复）：
+    # 旧实现只做「artifacts → retired」单向迁移，实物回来后 --update 会把它重新纳入 artifacts
+    # 却**不摘掉 retired 条目** → --check 的「复活必报」判据从此永久红，无任何合法出路。
+    # 正确语义：复活 = 显式 --update，此时把 retired 条目降级为 artifacts 里的历史字段
+    # （previous_retirement），**历史不丢**，且 retired 段不再重复登记。
+    revived = []
+    for name in list(retired):
+        if name in arts:
+            prev = retired.pop(name) or {}
+            art_entries[name]["revived_at"] = _now()
+            art_entries[name]["previous_retirement"] = {
+                "sha256": prev.get("sha256", ""),
+                "size": prev.get("size", 0),
+                "retired_at": prev.get("retired_at", ""),
+                "reason": prev.get("reason", ""),
+            }
+            revived.append(name)
+
     return {
         "schema": 2,
         "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。"
                 "retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），"
-                "删它等于抹掉保护面变化的历史，勿手删。",
-        "artifacts": {
-            name: {"path": os.path.relpath(p, ROOT).replace(os.sep, "/"),
-                   "sha256": sha256(p), "size": os.path.getsize(p)}
-            for name, p in arts.items()
-        },
+                "删它等于抹掉保护面变化的历史，勿手删。"
+                "退役项复活的正确姿势：把实物放回原位后跑 --update —— 该条目会从 retired 摘出、"
+                "重新上锁，并把退役时的哈希/时间/原因保留在 artifacts 的 previous_retirement 字段里。",
+        "artifacts": art_entries,
         "retired": retired,
-    }, demoted
+    }, demoted, revived
 
 
 def main(argv):
@@ -115,7 +138,7 @@ def main(argv):
     if update and os.path.isfile(MANIFEST):
         with open(MANIFEST, "r", encoding="utf-8") as fh:
             old = json.load(fh)
-    cur, demoted = build_manifest(old)
+    cur, demoted, revived = build_manifest(old)
 
     if update:
         os.makedirs(os.path.dirname(MANIFEST), exist_ok=True)
@@ -132,6 +155,11 @@ def main(argv):
                 print("  📦 %s" % k)
             print("  请把 retired 段里各项的 reason 改写为真实原因（被删/未生成/改名？）；"
                   "若日后实物回来，本门禁会对「退役项复活」报红，须显式 --update 纳回。")
+        if revived:
+            print("\n♻️ 以下 %d 项实物已回来，本次从 retired 摘出并重新上锁（历史保留在 "
+                  "previous_retirement 字段）：" % len(revived))
+            for k in sorted(revived):
+                print("  ♻️ %s" % k)
         return 0
 
     if not os.path.isfile(MANIFEST):
