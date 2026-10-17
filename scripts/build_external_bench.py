@@ -39,6 +39,15 @@ B 对外最漂亮的数字是**自产集 70/72 = 97.2%**，但自产集是**按�
 用法：
     python scripts/build_external_bench.py --src <A库>/data/questions_external
     python scripts/build_external_bench.py --src <...> --check     # 只校验不写盘
+    python scripts/build_external_bench.py --src <...> --freeze   # 生成产物后立即冻结哈希
+
+🔴 产物冻结（--freeze，2026-10-17 补）
+   实测证伪的洞：C8（生成器↔产物一致性）在 CI 上因无 A 库而 SKIP，于是**只改题面、
+   不动任何台账**的篡改在 CI 上门禁照样 PASS——例如把某题题面换成"可解"形态把 0/40
+   抬成 1/40，或反向把简单题改难让对照尺"显得没那么差"（后者连 quant_effect 的
+   claim 都不会红，因为命中数仍是 0）。故产物必须像 golden 一样冻结：
+   `--freeze` 要求**同时给 --src**（即"重新生成 + 重新冻结"一气呵成），
+   确保冻结哈希一定是生成器刚产出的那一代，而不是把篡改固化下来。
 """
 from __future__ import annotations
 
@@ -55,6 +64,7 @@ from collections import Counter
 OUT_DIR = os.path.join("data", "questions_external_bench")
 OUT_FILE = os.path.join(OUT_DIR, "external_bench.json")
 REPORT = os.path.join(OUT_DIR, "external_bench_source_stats.json")
+FREEZE_FILE = os.path.join(OUT_DIR, "external_bench.freeze.json")
 # `_attachments`（下划线前缀）：Go 工具链忽略 `_` 开头的目录，
 # 否则 vendored 的 Google CTF .go 源码会被 go vet/build/test ./... 当模块内包编译
 # （实测直接令 `go vet ./...` 失败）。与 A 库 data/questions_real/_attachments 同约定。
@@ -220,11 +230,58 @@ def copy_attachments_for(p: dict, src_json: str, base: str) -> int:
     return n
 
 
+def sha256_of(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_freeze() -> int:
+    """把产物（external_bench.json + 全部附件）的 sha256 冻结进清单。
+
+    必须在**刚跑完生成**之后调用：冻结的意义是"这一代产物可复现"，
+    若允许对任意（可能已被手改的）产物单独冻结，就等于把篡改固化。
+    """
+    files = {}
+    if os.path.isdir(ATT_DIR):
+        for dirpath, dirnames, filenames in os.walk(ATT_DIR):
+            dirnames.sort()
+            for n in sorted(filenames):
+                full = os.path.join(dirpath, n)
+                rel = os.path.relpath(full, OUT_DIR).replace("\\", "/")
+                files[rel] = sha256_of(full)
+    payload = {
+        "schema": 1,
+        "note": "外部真题对照尺的产物哈希冻结清单（由 build_external_bench.py --freeze 生成，勿手改）。"
+                "存在意义：C8（生成器↔产物一致性）在 CI 上因无 A 库而 SKIP，若无本清单，"
+                "「只改题面不动台账」的篡改在 CI 上门禁照样 PASS。",
+        "doc_sha256": sha256_of(OUT_FILE),
+        "files": files,
+    }
+    with open(FREEZE_FILE, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+    print("  已冻结 %d 个附件 + 产物本体 -> %s" % (len(files), FREEZE_FILE))
+    return len(files)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True, help="A 库 data/questions_external 目录")
     ap.add_argument("--check", action="store_true", help="只校验不写盘")
+    ap.add_argument("--freeze", action="store_true",
+                    help="生成产物后立即冻结哈希（必须与 --src 同用：冻结的必须是"
+                         "生成器刚产出的一代，不得用于固化手改产物）")
     args = ap.parse_args()
+
+    if args.freeze and args.check:
+        print("[FAIL] --freeze 与 --check 互斥：冻结必须在真实写盘之后做", file=sys.stderr)
+        return 1
+    if args.freeze and not args.src:
+        print("[FAIL] --freeze 必须同时给 --src（冻结哈希须来自生成器刚产出的一代）",
+              file=sys.stderr)
+        return 1
 
     if not os.path.isdir(args.src):
         print(f"[FAIL] 源目录不存在: {args.src}", file=sys.stderr)
@@ -335,6 +392,8 @@ def main() -> int:
             json.dump(payload, fh, ensure_ascii=False, indent=2)
     print(f"  已写入 {OUT_FILE}")
     print(f"  已写入 {REPORT}")
+    if args.freeze:
+        write_freeze()
     return 0
 
 

@@ -49,7 +49,7 @@ def mkprob(pid, files, desc="普通题面", title="t", flag_sha256=FLAG_SHA,
 
 
 def build_root(tmp, problems, kpi_text="{}", summary_text='{"ok": true}',
-               on_disk=None, anchor=None, with_report=True):
+               on_disk=None, anchor=None, with_report=True, freeze=None):
     """在 tmp 里搭一个最小仓库骨架。on_disk: {(pid,name): 是否落盘}"""
     bench = os.path.join(tmp, "data", "questions_external_bench")
     # 与门禁同路径：`_attachments`（下划线前缀使 Go 工具链不把它当模块内包）
@@ -84,17 +84,62 @@ def build_root(tmp, problems, kpi_text="{}", summary_text='{"ok": true}',
         fh.write(kpi_text)
     with open(os.path.join(kpi, "all_benchmarks_summary.json"), "w", encoding="utf-8") as fh:
         fh.write(summary_text)
+    # C10 产物冻结清单：freeze=None 时不写（用于"缺失冻结清单"用例）；
+    # freeze={"doc_sha256": ..., "files": {...}} 时按给定内容写。
+    if freeze is not None:
+        with open(os.path.join(bench, "external_bench.freeze.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump(freeze, fh, ensure_ascii=False)
     return doc
 
 
 def run(problems, honesty=None, kpi_text="{}", summary_text='{"ok": true}', on_disk=None,
-        anchor=None, with_report=True):
+        anchor=None, with_report=True, freeze="AUTO", tamper=None):
+    """跑门禁。
+
+    freeze   —— None：不写冻结清单（测"缺失必红"）；
+                "AUTO"：按磁盘实际内容生成正确冻结（测基线/篡改场景的对照组）；
+                dict：直接作为冻结清单内容写入（测"清空 files"等）。
+    tamper   —— ("doc"|"attachment")：在写冻结清单**之后**改产物/附件，
+                模拟"手改产物"（这正是 C10 要抓的）。
+    """
     tmp = tempfile.mkdtemp(prefix="extbench_")
     old_root = M.ROOT
     try:
-        doc = build_root(tmp, problems, kpi_text, summary_text, on_disk, anchor, with_report)
+        if freeze == "AUTO":
+            # 先按"无冻结"建骨架，再按磁盘实况生成冻结清单，最后按需篡改
+            doc = build_root(tmp, problems, kpi_text, summary_text, on_disk, anchor,
+                             with_report, freeze=None)
+            bench = os.path.join(tmp, "data", "questions_external_bench")
+            files = {}
+            for dirpath, dirnames, filenames in os.walk(os.path.join(bench, "_attachments")):
+                dirnames.sort()
+                for n in sorted(filenames):
+                    full = os.path.join(dirpath, n)
+                    rel = os.path.relpath(full, bench).replace("\\", "/")
+                    files[rel] = hashlib.sha256(open(full, "rb").read()).hexdigest()
+            doc_sha = hashlib.sha256(
+                open(os.path.join(bench, "external_bench.json"), "rb").read()).hexdigest()
+            with open(os.path.join(bench, "external_bench.freeze.json"), "w",
+                      encoding="utf-8") as fh:
+                json.dump({"schema": 1, "doc_sha256": doc_sha, "files": files}, fh,
+                          ensure_ascii=False)
+            if tamper == "doc":
+                d = json.load(open(os.path.join(bench, "external_bench.json"), encoding="utf-8"))
+                d["problems"]["ext_gctf2021_pythia"]["description"] = "RSA: 已知 p/q，解密。"
+                open(os.path.join(bench, "external_bench.json"), "w", encoding="utf-8").write(
+                    json.dumps(d, ensure_ascii=False, indent=2))
+            elif tamper == "attachment":
+                tgt = os.path.join(bench, "_attachments", "ext_gctf2021_pythia", "server.py")
+                with open(tgt, "a", encoding="utf-8") as fh:
+                    fh.write("\n# hand-edited\n")
+        else:
+            doc = build_root(tmp, problems, kpi_text, summary_text, on_disk, anchor,
+                             with_report, freeze=freeze)
         M.ROOT = tmp
         res = M.check(problems, honesty or doc["honesty"], {}, None)
+        res += M.check_freeze(os.path.join("data", "questions_external_bench",
+                                           "external_bench.json"))
         return [x for x in res if x.startswith("🔴")]
     finally:
         M.ROOT = old_root
@@ -201,6 +246,35 @@ def c_report_wrong_total():
 def c_report_missing_file():
     reds = run(base_problems(), with_report=False)
     assert any("C9" in r for r in reds), "报告缺失未报红：%s" % reds
+
+@case("C10 手改产物本体（只改题面、台账不动）→ 必红（本次证伪实验的核心场景）")
+def c_freeze_doc_tamper():
+    reds = run(base_problems(), tamper="doc")
+    assert any("C10" in r and "external_bench.json" in r for r in reds),         "手改题面未报红：%s" % reds
+
+
+@case("C10 手改附件内容 → 必红")
+def c_freeze_attachment_tamper():
+    reds = run(base_problems(), tamper="attachment")
+    assert any("C10" in r and "已被改动" in r for r in reds), "篡改附件未报红：%s" % reds
+
+
+@case("C10 冻结清单缺失 → 必红（fail-closed）")
+def c_freeze_missing():
+    reds = run(base_problems(), freeze=None)
+    assert any("C10" in r and "缺失" in r for r in reds), "缺冻结清单未报红：%s" % reds
+
+
+@case("C10 冻结清单 files 为空 → 必红（清空清单不得静默放行）")
+def c_freeze_empty_files():
+    reds = run(base_problems(), freeze={"schema": 1, "doc_sha256": "0" * 64, "files": {}})
+    assert any("C10" in r and "为空" in r for r in reds), "空 files 未报红：%s" % reds
+
+
+@case("C10 反向对照：未篡改的产物 + 正确冻结 → 不得报红（防恒红）")
+def c_freeze_baseline_ok():
+    reds = run(base_problems())
+    assert not reds, "正确冻结却被报红（判据恒红？）：%s" % reds
 
 
 def main() -> int:

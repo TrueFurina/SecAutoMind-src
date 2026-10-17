@@ -37,7 +37,7 @@
 | 授权 | Apache-2.0（`source_repo` 逐题可溯源） |
 | 真值 | 逐题 `flag_sha256`（64 位 hex），命中判定用 sha256 比对 |
 | 载荷 | 声明 40 题有附件，**38 题齐全**；不全 2 题：`ext_gctf2022_enigma`（5/7）、`ext_gctf2024_otp`（1/287） |
-| 入仓附件 | 100 个文件，约 20 MB（目录 `_attachments/`） |
+| 入仓附件 | 100 个文件，约 20 MB（目录 `_attachments/`，逐文件哈希已冻结） |
 
 ## 3. 实测结果
 
@@ -74,6 +74,31 @@ PR #44 首轮 CI 抓到两个**本机看不见**的缺陷，均已在修复提�
 > 教训：**"本地全绿" 不含 CI 检出语义**。本机跑测试时文件在工作树上，而 CI 从 git 检出；
 > 凡入仓载荷，必须用 `git ls-files` 数一遍，不能只数工作树。
 
+### 4.2 第二个洞：CI 上「只改题面、不动台账」的篡改通道（2026-10-17 证伪 + 修复）
+
+PR #44 合并后复盘，用一个**证伪实验**检验 C1–C9 是否真的够：
+
+| 篡改方式 | 台账是否被破坏 | C1–C9 是否报红 |
+|---|---|---|
+| 改 `honesty.payload_complete` 38→40 | 是（与逐题计数矛盾） | ✅ C2 抓到 |
+| **只改某题 `description`（换成"可解"形态），台账一律不动** | 否 | 🔴 **PASS（漏抓）** |
+
+漏抓的后果不只是"抬高命中数"（那会被 `quant_effect` 的 `external_control` claim 挡住），
+**反向篡改同样致命**：把简单题面换成难题面，让对照尺"显得我们没那么差"——命中数仍是 0，
+claim 也不红，**两道防线同时失效**。根因是 C8（生成器↔产物一致性）在 CI 上因无 A 库而 SKIP。
+
+**修复**：给产物加哈希冻结（同 golden freeze 模式）：
+- `build_external_bench.py --freeze`（**必须与 `--src` 同用**——冻结的必须是生成器刚产出的
+  一代，不得用于把手改产物固化）生成 `external_bench.freeze.json`：产物本体 sha256 +
+  100 个附件逐文件 sha256；
+- 门禁新增 **C10**（fail-closed）：产物本体哈希不符 / 附件被改 / 冻结清单缺失 /
+  磁盘有附件而清单 `files` 为空 / 磁盘上有**未冻结**的新附件（反向钉）→ 一律报红；
+- 自测 13 → **18 条变异用例**（含"手改题面必红""手改附件必红""清单缺失必红"
+  "files 为空必红"与"未篡改不误红"的反向对照）。
+
+> 判据边界说明：`files` 为空**仅在磁盘上确有附件时**才 fail-closed；磁盘也空时说明整把尺
+> 未落地，由 C3（登记在册但磁盘缺失）负责——两条判据各司其职，不重复也不留洞。
+
 ## 4. 归因：是「真实能力缺口」，不是「测量管道缺陷」
 
 项目三根因方法论要求先排除管道缺陷，再谈能力缺口。核对结果：
@@ -99,7 +124,7 @@ PR #44 首轮 CI 抓到两个**本机看不见**的缺陷，均已在修复提�
 ## 6. 复现
 
 ```bash
-python scripts/build_external_bench.py --src <A库>/data/questions_external
+python scripts/build_external_bench.py --src <A库>/data/questions_external --freeze   # --freeze 与 --src 必须同用
 go test -count=1 -v -run TestExternalBench ./internal/ctfplatform/ -timeout 600s
 python scripts/check_external_bench.py                      # 产物一致性（CI 用）
 python scripts/check_external_bench.py --src <A库>/...       # 追加生成器↔产物核对（本地）
