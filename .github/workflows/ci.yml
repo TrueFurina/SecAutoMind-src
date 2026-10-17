@@ -609,3 +609,28 @@ jobs:
       - name: Suite parity gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_suite_parity_test.py
 
+
+  # 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口。
+  # 背景：对外最漂亮的数字是自产集 70/72 = 97.2%，但自产集是按求解器能力造的（开卷）。
+  # 项目已明令「禁止把自产集当能力证据」，此前缺一把「外部 + 载荷齐全」的尺来实证：
+  # cross-bench（A 库真题 88 题）只有 12/88 附件仍在，1/88 可被辩解为「数据缺失」。
+  # 本尺取 Google CTF 2021–2025 共 40 题，**载荷齐全 38/40**，该辩解不成立。
+  # 🔴 本 job **不为命中率问责**（实测 0/40）——只报告不断言，避免为转绿改阈值；
+  #    但产物一致性（载荷台账 / 清单↔磁盘 / 未混入 KPI / 无 flag 明文）必须 fail-closed，
+  #    否则"载荷齐全"这个唯一价值会被静默抹掉而没人发现。
+  external-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: External bench scoring (text-only + attachment subset, report-only)
+        run: go test -count=1 -v -run 'TestExternalBench' ./internal/ctfplatform/ -timeout 600s
+      - name: External bench artifact consistency (payload ledger / manifest / no KPI mixing)
+        run: python scripts/check_external_bench.py
+      - name: External bench gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_external_bench_test.py

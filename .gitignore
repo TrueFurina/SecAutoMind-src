@@ -8,6 +8,11 @@ data/*
 #   立尺结果无法被第三方复现，等于把"尺"变成口头结论。
 #   ⚠️ 仅此一个目录例外，data/ 下其余运行时数据仍全部忽略。
 !data/questions_real_bench/
+# 例外②：外部真题对照尺（Google CTF 2021–2025 等，载荷齐全 38/40）。
+#   与 questions_real_bench 同为「可复现的评测资产」；不入库则 CI 上 TestExternalBench
+#   只能 Skip，「自产集高分 ≠ 解题能力」这条对照结论就退化成口头结论。
+#   ⚠️ 注意：data/* 的否定规则必须写在目录级（带尾斜杠），否则 git 不递归进子目录。
+!data/questions_external_bench/
 chat_uploads/
 *.db
 *.db-shm

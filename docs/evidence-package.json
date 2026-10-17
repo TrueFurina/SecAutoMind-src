@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-16T16:44:28+08:00",
+  "generated_at": "2026-10-17T08:20:43+08:00",
   "caliber": {
-    "head": "df99a3e",
+    "head": "52c1242",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -12,11 +12,11 @@
     "internal_dirs": 34,
     "go_packages": null,
     "test_packages": 37,
-    "go_files": 766,
-    "test_files": 309,
+    "go_files": 767,
+    "test_files": 310,
     "non_test_lines": 129233,
-    "test_lines": 45895,
-    "total_lines": 175128,
+    "test_lines": 46201,
+    "total_lines": 175434,
     "ctf_solvers": 181,
     "ctf_real_solvers": 122,
     "ctf_detectors": 59,
@@ -218,6 +218,7 @@
     "2026-10-16（第五轮）实现 10733（DASCTF CRYPTO-02）攻击后刷新 caliber 段（Go 文件 763→765 / 测试文件 307→308 / 非测试行 128,977→129,233 / 测试行 45,477→45,621 / 合计 174,454→174,854，真求解器 121→122 / 注册 180→181，head 30feb19）。新增 internal/ctfplatform/presolve_rsa_hint.go::tryRSAHighExpHint（注册项 rsa_hint_high_exp，优先级 43；生产 fanout 8b 步 + 注册表 181 项覆盖，反注水门禁 180/181→181/181）。攻击（**无需格**，纯模幂+gcd）：hint=(e·p+e²)^q mod n ⇒ mod p 下 e·p 项消失、hint≡e^{2q}；W=e^n mod n 因 n≡q (mod p-1) 满足 W≡e^q (mod p)，故 W²≡hint (mod p) ⇒ p=gcd(W²−hint, n)；解密侧 e=2^k 且 p≡q≡3 (mod 4) 走奇数阶子群 s=(p−1)/2 求逆 + 一轮 Rabin（4 根），明文为 rot13 编码（QNFPGS{=rot13(DASCTF{)）时返回规范 flag。**同时证伪旧归因**：presolve_rsa_leaks.go 曾记该题「不用二元 Coppersmith 不闭合」，实为推导未穷尽（两次误归因：先「数据不完整」后「须 Coppersmith」）。立尺：cross-bench 含答案口径 4/12→**5/12**（规范 flag sha256 ac232bd941738e22… 机验通过，生产=注册表），**能力缺口归零**；剔除外口径仍 4/12（10733 唯一附件 task.py 被登记 answer_key_shape 而剔除，属口径分类问题非能力缺口）；55 题静态基准 20/55 无回归；全包 go test rc=0（399.1s）。**两处数据口径异常已登记待用户拍板**（① task.py 被误标 answer_key_shape——同批 crypto 题的 task.py/output 全是 false，且该文件无 flag、装的是题目输入 hint/c/n；② 该题 description 是解法走查而非中性题面），未擅自处置（触及 P0 红线文件 6e7bb72 + 核心口径）。gates 段本机重生成实测全 0（secret_guard_mutation_rc=0，LF 未污染）。",
     "2026-10-16（第七轮）接线【16】～【22】跨集 parity（新增 internal/ctfplatform/suite_parity_test.go，7 集 16 题逐题全中；data/ctf_benchmark/parity_registry.json 的 wired 3→10）后刷新 caliber 段（Go 文件 765→766 / 测试文件 308→309 / 测试行 45,621→45,863 / 合计 174,854→175,096；非测试行 129,233 不变，真求解器 122 / 注册 181 不变）。同轮证伪并废弃台账旧 reason『go_side_unit_tests_only（Go 侧无逐题可比）』——实测 7 集 Go 侧均有生产求解器，盲注/OOB 侧硬编码秘密 sha256 == json flag_sha256；并顺带修 internal/mcp 一处真 data race（测试多余重赋值 m.stopRefresh，+2 行）。",
     "2026-10-16（第八轮）接线【5】web_hint 跨集 parity（台账 wired 21→22，**未接线归零**）后刷新 caliber 段（测试行 45,863→45,880 / 合计 175,096→175,113，仅 web_hints_test.go +17 行；Go 文件 766 / 测试文件 309 / 非测试行 129,233 不变）。同轮证伪台账最后一条 unwired 理由『ab_contrast_semantics（A/B 对照语义、两侧只有汇总非逐题集合）』——实测两侧**都逐题**（Python judge_web_hints.py 逐题比对每题 flag_sha256；Go TestHintDrivenWebExploit 逐题 hitOf==flag_sha256），B 组逐题命中集两侧 6/6 一致，已完成接线。接线过程**顺带证伪对外宣称『A/B/C 三组一致』**：A 组（无线索基线）两侧实现口径不同——Go 走 ExploitWebTarget 硬编码端点猜测（实测 4/6）、Python 走 parse_hints(\"\") 首页爬链+全类型回退（实测 3/6）——故『增量』两侧打架（+2 vs +3）**不跨语言互证**；已收窄为『B 组逐题一致』并为两侧补 fail-closed 的『增量必须为正』断言（此前 A 组只计数不断言，漂到全中也不报红，同族空洞绿）。run_all_benchmarks.py 汇总行同步诚实化（删去『A/B/C 三组一致』措辞）。gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc，未整包重生成）；三处历史快照（速查卡/KPI 报告/evidence-championship）带 CALIBER-SNAPSHOT 标记，按设计不改。",
-    "2026-10-16（第九轮）解决 §四滞留的两处数据口径异常（第六版）后刷新 caliber 段（测试行 45,880→45,895 / 合计 175,113→175,128，+15 行，全在测试文件；Go 文件 766 / 测试文件 309 / 非测试行 129,233 不变——presolve.go 仅注释等行数替换，真求解器 122 / 注册 181 不变）。**处置依据 = 本仓门禁自己的口径**（answer_key_git_gate_test.go 注释明载『裸数字/参数形态（那些是题目输入）』不算答案）：①`10733/task.py` 经复核属**题目输入**（flag 为 `b'******'` 遮蔽态、A 库原件与本仓副本 sha256 同为 328d8244…、全文无 flag 串），与同批已入库的 ezrsa/exciting_inverse/simplelegendre/filterrandom 附件同类 → 撤销 2026-10-15 的从严排除，`answer_key_shape/git_excluded` 改 false、文件入库、`RECOVERED_ATTACHMENTS` 清空；②题面改中性（生成器新增 `DESCRIPTION_OVERRIDES` 契约表，判据 C10 钉死）。**效果**：剔除口径 4/12 → **5/12**，与含答案口径归一（TestCrossBench_AttachmentSubset 两路径两口径一致，异常缺失 0），本地/CI 不再分叉；**红线未动**（4 个含 flag 的附件仍在排除集内）。门禁侧：`PINNED_REDLINE` 移除 10733 + 新增反向钉 `FORBIDDEN_EXCLUDED` + 判据 C9/C10，变异自测 18→21 例；Go 钉子 `recoveredNailViolations`→`instanceTruthNailViolations`、`TestRecoveredAttachmentHasInstanceTruth`→`TestInstanceTruthNailHolds`（断言方向反转，且因文件已入库升级为 CI 直接读文件验内容）；另修 presolve.go::tryRSATemplate 一处过期宣称（曾写该型攻击『没有已实现的分解攻击』，与 #36 已实现的事实冲突）。gates 段沿用 LF 环境采集值未动（未整包重生成）。"
+    "2026-10-16（第九轮）解决 §四滞留的两处数据口径异常（第六版）后刷新 caliber 段（测试行 45,880→45,895 / 合计 175,113→175,128，+15 行，全在测试文件；Go 文件 766 / 测试文件 309 / 非测试行 129,233 不变——presolve.go 仅注释等行数替换，真求解器 122 / 注册 181 不变）。**处置依据 = 本仓门禁自己的口径**（answer_key_git_gate_test.go 注释明载『裸数字/参数形态（那些是题目输入）』不算答案）：①`10733/task.py` 经复核属**题目输入**（flag 为 `b'******'` 遮蔽态、A 库原件与本仓副本 sha256 同为 328d8244…、全文无 flag 串），与同批已入库的 ezrsa/exciting_inverse/simplelegendre/filterrandom 附件同类 → 撤销 2026-10-15 的从严排除，`answer_key_shape/git_excluded` 改 false、文件入库、`RECOVERED_ATTACHMENTS` 清空；②题面改中性（生成器新增 `DESCRIPTION_OVERRIDES` 契约表，判据 C10 钉死）。**效果**：剔除口径 4/12 → **5/12**，与含答案口径归一（TestCrossBench_AttachmentSubset 两路径两口径一致，异常缺失 0），本地/CI 不再分叉；**红线未动**（4 个含 flag 的附件仍在排除集内）。门禁侧：`PINNED_REDLINE` 移除 10733 + 新增反向钉 `FORBIDDEN_EXCLUDED` + 判据 C9/C10，变异自测 18→21 例；Go 钉子 `recoveredNailViolations`→`instanceTruthNailViolations`、`TestRecoveredAttachmentHasInstanceTruth`→`TestInstanceTruthNailHolds`（断言方向反转，且因文件已入库升级为 CI 直接读文件验内容）；另修 presolve.go::tryRSATemplate 一处过期宣称（曾写该型攻击『没有已实现的分解攻击』，与 #36 已实现的事实冲突）。gates 段沿用 LF 环境采集值未动（未整包重生成）。",
+    "2026-10-17 新增外部真题对照尺（external-bench：Google CTF 2021–2025 共 40 题，载荷齐全 38/40）后刷新 caliber 段（Go 文件 767 / 测试文件 310 / 非测试行 129,233 / 测试行 46,201 / 合计 175,434，head 52c1242 工作树）；同修 count_stats 口径——data/questions_*_bench/ 下的**外部赛题源码附件**（Google CTF 的 .go/.py 等，实测 +9 个 .go / +2,125 行）**不计入本项目规模**，否则把别人的赛题代码算成自有代码属注水方向；gates 段沿用 LF 环境采集值未动（本机 core.autocrlf=true 会污染 secret_guard_mutation_rc）"
   ]
 }
