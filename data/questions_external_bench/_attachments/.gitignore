@@ -1,0 +1,3 @@
+# 由 scripts/build_external_bench.py 自动生成，请勿手改。
+# 含 flag 明文（sha256 与本题 flag 相等）的附件按交付红线只保留在本地，
+# 不进入 PUBLIC 仓库；CI 检出不含这些文件，「含答案口径」在 CI 上自动降级。

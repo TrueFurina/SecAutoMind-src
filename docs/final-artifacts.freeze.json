@@ -1,31 +1,52 @@
 {
-  "schema": 1,
-  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。",
+  "schema": 2,
+  "note": "决赛交付物冻结清单；有意变更后跑 --update 重新上锁。此文件应入库，任何改动即视为解冻。retired 段登记已退出冻结的对象（含退役时的哈希/大小/时间/原因），删它等于抹掉保护面变化的历史，勿手删。",
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "fcf21cce22ee722f60845518ead2d04b0d0cb1428d430becbcfeb5eca2967e13",
-      "size": 68824
+      "sha256": "8e34c338a80606ac78b7bf9bfd05ac6aecacc129c5f3b6add769750bc056e60c",
+      "size": 68592
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "4005715816cde173d55aeb240160d894f9167439d3f4c8c8ae3a8221bd2c4f0a",
-      "size": 421334
+      "sha256": "e1688f926e90dd65bf8d07b2ec0d1d98a269498862e0f0a25dd4d1b2c928cc97",
+      "size": 421330
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "b739cf9bdb48b0b7cf6479f0b62a502cfd0cab35bdf37544374bc2a5b10f95fa",
-      "size": 78366
+      "sha256": "262495010ec46a8d73a521225cb01290853397afa29c92ffbfec434ba7c3317e",
+      "size": 78329
     },
+    "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
+      "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
+      "sha256": "2ed3d4382439c51154f0fd28c22b6dd32817a3683deca82a2fa9f7297b046902",
+      "size": 63702880
+    },
+    "ppt/草稿内容版.pptx": {
+      "path": "SecAutoMind_PPT/草稿内容版.pptx",
+      "sha256": "1e250402169259ebe0ce1194e158e2ae88b3453855aff541aa82de046c76c66a",
+      "size": 78330
+    },
+    "ppt/闽江御盾•智防矩阵.pptx": {
+      "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
+      "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
+      "size": 54091138
+    }
+  },
+  "retired": {
     "ppt/演示模板版.pptx": {
       "path": "SecAutoMind_PPT/演示模板版.pptx",
       "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
-      "size": 54091138
+      "size": 54091138,
+      "retired_at": "2026-10-17T09:17:55",
+      "reason": "本机实物缺失，且**从未入 git**（SecAutoMind_PPT/*.pptx 全部 untracked/gitignored），git 历史无副本；2026-10-17 跨 E/D/C 三盘 find（maxdepth 6）+ 回收站检索均无果。冻结时哈希 fcf21cce22ee（size 68824 版本的相邻项 54,091,138B）留档备查。**待办**：如需该模板，须由 SecAutoMind_PPT/make_template_ppt.py 重建后显式 --update 纳回。"
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
       "sha256": "5e1f549d42b54c79bb87c1e30cacd9297c23f14f2720622311c57d43f1234897",
-      "size": 192748720
+      "size": 192748720,
+      "retired_at": "2026-10-17T09:17:55",
+      "reason": "本机 dist/ 目录整体不存在（192,748,720B 分享包从未在本机生成或已被清理）；dist/ 被 .gitignore 排除，git 历史无副本，无法从版本控制恢复。**待办**：打包时由 scripts/make_delivery_package.py 重新生成，随后显式 --update 纳回冻结。"
     }
   }
 }

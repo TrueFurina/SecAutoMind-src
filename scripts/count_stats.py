@@ -27,6 +27,12 @@ import hashlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 必须排除：.git/.workbuddy 内有 3 万+ 假 .go 副本，不排除会严重高估
 EXCLUDE = {".git", ".workbuddy", "node_modules", "vendor", "dist", "build", "installer"}
+# 2026-10-17 追加：**外部/对照尺的赛题载荷不是本项目代码**。
+#   `data/questions_*_bench/` 下存放的是**别人赛题的源码附件**（Google CTF 的 .go/.py 等），
+#   它们随基准入库是为了让尺可复现，但计入「Go 文件 / 代码行数」会把**外部赛题源码
+#   算成本项目规模**（实测 +9 个 .go、+2,125 行）——属注水方向，违反"数字必须可溯源"。
+#   故按目录名排除（与上方同机制：walk 时按目录名剪枝）。
+EXCLUDE |= {"questions_real_bench", "questions_external_bench"}
 
 # ---------------------------------------------------------------------------
 # tools/ 目录下**不是工具声明**的 YAML —— 不得计入 tools_yaml。

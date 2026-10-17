@@ -1,0 +1,18 @@
+{
+  "total": 40,
+  "by_category": {
+    "crypto": 26,
+    "misc": 14
+  },
+  "by_external_source": {
+    "google-ctf-2021": 9,
+    "google-ctf-2022": 10,
+    "google-ctf-2023": 7,
+    "google-ctf-2024": 8,
+    "google-ctf-2025": 6
+  },
+  "payload_complete": 38,
+  "payload_partial": 2,
+  "attachment_files_copied": 99,
+  "sha256_of_doc": "aa41e527fc44a3f39383d7055d0606bb39592218d0bb0235b7253c93a1ff4fa1"
+}
