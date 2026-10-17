@@ -117,9 +117,8 @@ def run(problems, honesty=None, kpi_text="{}", summary_text='{"ok": true}', on_d
                 for n in sorted(filenames):
                     full = os.path.join(dirpath, n)
                     rel = os.path.relpath(full, bench).replace("\\", "/")
-                    files[rel] = hashlib.sha256(open(full, "rb").read()).hexdigest()
-            doc_sha = hashlib.sha256(
-                open(os.path.join(bench, "external_bench.json"), "rb").read()).hexdigest()
+                    files[rel] = M.sha256_of(full)
+            doc_sha = M.sha256_of(os.path.join(bench, "external_bench.json"))
             with open(os.path.join(bench, "external_bench.freeze.json"), "w",
                       encoding="utf-8") as fh:
                 json.dump({"schema": 1, "doc_sha256": doc_sha, "files": files}, fh,

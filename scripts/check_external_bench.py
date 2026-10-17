@@ -65,11 +65,18 @@ def load_json(path: str):
 
 
 def sha256_of(path: str) -> str:
-    h = hashlib.sha256()
+    """按**规范化行尾（CRLF→LF）**计算哈希——与 scripts/check_golden_freeze.py 同口径。
+
+    🔴 为什么必须规范化（2026-10-17 实测踩到，且 check_golden_freeze.py 的注释里
+    早有同款记录：2026-09-13"本地 PASS、CI failure"）：
+    本仓 Windows 工作区经 core.autocrlf=true 检出为 **CRLF**，git 入库与 CI（Linux）
+    checkout 均为 **LF**。若用工作区字节直接算，`git reset --hard` / 重新 clone 之后
+    同一份文件的哈希就会变 → C10 会在本机误报（或反过来把 CRLF 哈希冻结进去、
+    让 CI 无条件报红）。规范化后两侧一致。
+    """
     with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+        data = fh.read().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def check_freeze(doc_path: str) -> list:
