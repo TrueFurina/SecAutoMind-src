@@ -43,7 +43,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCH_DIR = os.path.join("data", "questions_external_bench")
 DOC = os.path.join(BENCH_DIR, "external_bench.json")
 STATS = os.path.join(BENCH_DIR, "external_bench_source_stats.json")
-ATT = os.path.join(BENCH_DIR, "attachments")
+ATT = os.path.join(BENCH_DIR, "_attachments")
 KPI_DIR = os.path.join("data", "ctf_benchmark")
 KPI_SUMMARY = os.path.join(KPI_DIR, "all_benchmarks_summary.json")
 

@@ -59,7 +59,10 @@ jobs:
         # -skip：A→B 立尺的「有数据子集」测试（TestCrossBench_AttachmentSubset）本地实测
         # 29.6s~242s 大幅波动（presolve 扫描超时机制不定时触发），-race 下会顶穿本 job
         # 的 900s 总预算 → 移至独立 job cross-bench-subset 实跑（不跳过、不降级为不跑）。
-        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s -skip 'TestCrossBench_AttachmentSubset'
+        # 2026-10-17 同因追加 TestExternalBench_AttachmentSubset（外部尺附件子集实测
+        # 65~67s，-race 下按 3~5x 计会吃掉 200~330s 预算）—— 同样**不在本 job 跑 ≠ 不跑**：
+        # 它由 external-bench job 全量实跑（含文本口径 + 载荷台账 + 反注水钉子 + 门禁自测）。
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset'
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。

@@ -33,6 +33,9 @@ config.yaml.backup
 *.key
 *.crt
 
+#      .go 源码（tiramisu/tonality/bpfbox）会令 `go vet ./...` 直接失败；
+#   ⚠️ 否定规则必须写在那些模式**之后**：gitignore 以最后匹配者为准（写在前面无效）。
+
 # Upgrade / settings backups
 .upgrade-backup/
 
@@ -152,3 +155,11 @@ dingtalk-setup-guide.html
 mcp-servers/security_triage_agent/security_agent/data/ledger/
 mcp-servers/security_triage_agent/security_agent/data/triage_history.jsonl
 mcp-servers/security_triage_agent/security_agent/data/review_feedback.jsonl
+
+# ── 例外：外部真题对照尺的赛题载荷（收尾，见 docs/external_bench_report.md）─────────
+# ① `_attachments`（下划线前缀）让 Go 工具链**不把载荷当模块内包编译**——实测 vendored
+#    的 Google CTF .go 源码（tiramisu/tonality/bpfbox）会令 `go vet ./...` 直接失败；
+# ② 载荷含题目自带的 public.pem / .pyc，需从上面的 *.pem / *.py[cod] 放行。
+# ⚠️ 本否定块刻意放在**文件末尾**：gitignore 以最后匹配者为准，写在 *.pem / *.py[cod]
+#    之前无效（实测过：.pyc 仍被拦，CI 检出缺件 → 门禁 fail-closed 报红）。
+!data/questions_external_bench/_attachments/**

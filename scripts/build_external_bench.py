@@ -55,7 +55,10 @@ from collections import Counter
 OUT_DIR = os.path.join("data", "questions_external_bench")
 OUT_FILE = os.path.join(OUT_DIR, "external_bench.json")
 REPORT = os.path.join(OUT_DIR, "external_bench_source_stats.json")
-ATT_DIR = os.path.join(OUT_DIR, "attachments")
+# `_attachments`（下划线前缀）：Go 工具链忽略 `_` 开头的目录，
+# 否则 vendored 的 Google CTF .go 源码会被 go vet/build/test ./... 当模块内包编译
+# （实测直接令 `go vet ./...` 失败）。与 A 库 data/questions_real/_attachments 同约定。
+ATT_DIR = os.path.join(OUT_DIR, "_attachments")
 
 SAFE_ID_RE = re.compile(r"[^0-9A-Za-z._-]+")
 

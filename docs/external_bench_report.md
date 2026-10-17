@@ -37,7 +37,7 @@
 | 授权 | Apache-2.0（`source_repo` 逐题可溯源） |
 | 真值 | 逐题 `flag_sha256`（64 位 hex），命中判定用 sha256 比对 |
 | 载荷 | 声明 40 题有附件，**38 题齐全**；不全 2 题：`ext_gctf2022_enigma`（5/7）、`ext_gctf2024_otp`（1/287） |
-| 入仓附件 | 99 个文件，约 20 MB |
+| 入仓附件 | 100 个文件，约 20 MB（目录 `_attachments/`） |
 
 ## 3. 实测结果
 
@@ -56,6 +56,23 @@
 1 个是二进制密文产物）⇒ **不进 git 排除集**（git 排除 = 0），PUBLIC 仓红线未触发。
 
 另：磁盘↔清单双向核对——除清单登记文件外，`attachments/` 下**无任何游离文件**（0 个未登记）。
+
+### 4.1 CI 首次运行暴露的两处真问题（2026-10-17 修复，如实留痕）
+
+PR #44 首轮 CI 抓到两个**本机看不见**的缺陷，均已在修复提交中闭环：
+
+1. **`go vet ./...` 失败**：载荷里有 Google CTF 的 `.go` 源码（tiramisu / tonality / bpfbox），
+   被当作**模块内包**编译，其 import（`crypto-tiramisu/pb` 等）不在 std ⇒ vet 直接红。
+   **修法**：载荷目录改名 `attachments/` → **`_attachments/`**（下划线前缀，
+   Go 工具链对 `_` 开头的目录一律不递归；与 A 库 `data/questions_real/_attachments` 同约定）。
+2. **清单↔实物脱节（fail-closed 报红）**：`public.pem` 与 `.pyc` 被 `.gitignore` 的
+   `*.pem` / `*.py[cod]` 拦下，CI 检出缺 2 个文件 ⇒ 载荷台账钉子 `TestExternalBench_PayloadLedgerHolds`
+   与附件子集的「异常缺失」判据**正确报红**（这正是门禁该干的事）。
+   **修法**：在 `.gitignore` **末尾**加否定块 `!data/questions_external_bench/_attachments/**`
+   （gitignore 以最后匹配者为准——写在 `*.pem` 之前无效，此点已实测踩坑）。
+
+> 教训：**"本地全绿" 不含 CI 检出语义**。本机跑测试时文件在工作树上，而 CI 从 git 检出；
+> 凡入仓载荷，必须用 `git ls-files` 数一遍，不能只数工作树。
 
 ## 4. 归因：是「真实能力缺口」，不是「测量管道缺陷」
 

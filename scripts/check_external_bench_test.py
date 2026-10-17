@@ -52,7 +52,8 @@ def build_root(tmp, problems, kpi_text="{}", summary_text='{"ok": true}',
                on_disk=None, anchor=None, with_report=True):
     """在 tmp 里搭一个最小仓库骨架。on_disk: {(pid,name): 是否落盘}"""
     bench = os.path.join(tmp, "data", "questions_external_bench")
-    att = os.path.join(bench, "attachments")
+    # 与门禁同路径：`_attachments`（下划线前缀使 Go 工具链不把它当模块内包）
+    att = os.path.join(bench, "_attachments")
     os.makedirs(att, exist_ok=True)
     for pid, p in problems.items():
         for af in p["attachment_files"]:

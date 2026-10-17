@@ -60,7 +60,7 @@ type externalBenchDoc struct {
 
 const externalBenchDir = "data/questions_external_bench"
 const externalBenchFile = "external_bench.json"
-const externalBenchAttachDir = "attachments"
+const externalBenchAttachDir = "_attachments"
 
 func loadExternalBench(t *testing.T) externalBenchDoc {
 	t.Helper()
