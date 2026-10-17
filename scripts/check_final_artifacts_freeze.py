@@ -50,6 +50,18 @@ def sha256(path):
     return h.hexdigest()
 
 
+def sha256_text_normalized(path):
+    """文本（生成脚本）的哈希：**先把 CRLF 归一成 LF**，再哈希。
+
+    为什么不能直接哈希磁盘字节（2026-10-18 实测踩到）：本机 `core.autocrlf=true`，
+    工作树是 CRLF，而 git blob 与 CI 检出是 LF。若清单记的是本机 CRLF 的 sha256，
+    CI 用 LF 文件去比 → **恒红**；反过来在本机也比不上 blob。归一后三处一致。
+    只用于 .py/.md 这类文本；产物（pptx/tar.gz）仍用原始字节哈希。
+    """
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def collect():
     """收集受保护对象 → {逻辑名: 绝对路径}。"""
     out = {}
@@ -136,7 +148,7 @@ def build_manifest(old=None):
             continue
         gen_abs = os.path.join(ROOT, gen_rel)
         if os.path.isfile(gen_abs):
-            entry["generator"] = {"path": gen_rel, "sha256": sha256(gen_abs)}
+            entry["generator"] = {"path": gen_rel, "sha256": sha256_text_normalized(gen_abs)}
 
     # 🔴 退役项「复活」的收口（2026-10-18 实测缺陷修复）：
     # 旧实现只做「artifacts → retired」单向迁移，实物回来后 --update 会把它重新纳入 artifacts
@@ -243,7 +255,7 @@ def main(argv):
             problems.append("%s：清单记录的生成器 %s 不存在（被删/改名？）"
                             % (name, rec.get("path")))
             continue
-        if sha256(gen_abs) != rec.get("sha256"):
+        if sha256_text_normalized(gen_abs) != rec.get("sha256"):
             problems.append("%s：**生成器 %s 已改动但产物未重新上锁** —— 现有产物是旧生成器的"
                             "输出（实测教训：生成器改成「91 个 YAML」，产物还是「100+ YAML」）。"
                             "修法：重跑生成器 → 复跑产物门禁 → --update 重新上锁"
