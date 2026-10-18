@@ -29322,7 +29322,13 @@ html[data-theme="dark"] .vulnerability-details code.vuln-detail-field-value {
     line-height: 1.5;
 }
 
-.external-tool-badge {
+/* 角色面板内的徽章样式（2026-10-18 修正选择器作用域）：
+   原先这里写的是裸 `.external-tool-badge`，与本文件更靠前的「工具列表徽章」
+   定义（橙色药丸，见 .external-tool-badge 主定义）同名同特异性 → **后定义者胜**，
+   角色面板这一段把全局徽章都刷成了蓝色，设置页的来源/信任级徽章一直显示蓝而非橙。
+   现收窄到 `.role-tool-item` 作用域：角色面板保持原蓝色小标签，
+   设置页徽章恢复预定的橙色药丸（#ff9800）。 */
+.role-tool-item .external-tool-badge {
     padding: 2px 6px;
     background: rgba(0, 102, 255, 0.1);
     color: var(--accent-color);
