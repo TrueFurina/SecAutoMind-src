@@ -30,6 +30,7 @@
 退出码：0 = 无需修复 / 已修复；1 = 仍有需人工处理的漂移；2 = 取不到真值（fail-closed）
 """
 import argparse
+import functools
 import os
 import re
 import sys
@@ -46,6 +47,12 @@ if HERE not in sys.path:
 # 复用门禁：ANCHORS / BANNED / 扫描范围 / 豁免判定，全部以门禁为准。
 # 这不是"绕过门禁"，恰恰相反 —— 修复器的判定口径与门禁**逐字相同**。
 import check_material_numbers as cmn  # noqa: E402
+
+
+@functools.lru_cache(maxsize=1)
+def _has_local_binaries():
+    """本检出是否有 installer/ 产物（缓存，避免逐行 os.listdir）。"""
+    return bool(cmn.find_local_installer_products())
 
 
 def format_like(orig, want):
@@ -81,7 +88,13 @@ def fix_line(line, truth, anchors=None, strip_html=False):
     def want_of(key):
         v = truth.get(key)
         if v is None:
-            # 与门禁同款 fail-closed：字段名变了就必须崩，绝不静默跳过
+            # 体积字段真值为 null 有两种截然不同的含义，必须分流（与门禁
+            # missing_anchor_fields 同一口径，2026-10-18 第二次 CI 反扑实锤）：
+            #   · 本检出缺 installer/ 产物（二进制不入库，CI 常态）→「未核验」跳过；
+            #   · 产物在却读不出体积 → 那才是 count_stats 真坏了，仍崩。
+            if key in cmn.ARTIFACT_DEPENDENT_TRUTH and not _has_local_binaries():
+                return None
+            # 非体积字段缺失 = 字段名改了，与门禁同款 fail-closed：绝不静默跳过
             raise SystemExit(
                 "FATAL: count_stats 未返回锚点字段 %s（字段名可能已改），"
                 "修复器拒绝在无真值的情况下工作" % key)
@@ -91,9 +104,12 @@ def fix_line(line, truth, anchors=None, strip_html=False):
     if strip_html:
         probe = re.sub(r"<[^>]*>", " ", line)
         for pat, key, label in anchors:
+            want = want_of(key)
+            if want is None:
+                continue
             for m in re.finditer(pat, probe):
                 got = m.group("n")
-                new = format_like(got, want_of(key))
+                new = format_like(got, want)
                 if new == got or got not in line:
                     continue
                 line = _token_rx(got).sub(new, line)
@@ -102,6 +118,8 @@ def fix_line(line, truth, anchors=None, strip_html=False):
 
     for pat, key, label in anchors:
         want = want_of(key)
+        if want is None:
+            continue
 
         def _repl(m, _label=label, _want=want):
             got = m.group("n")

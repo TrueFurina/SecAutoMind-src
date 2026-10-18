@@ -16,6 +16,8 @@
     T8 换行符零改动：CRLF 文件修完后仍是 CRLF（否则 line-endings-gate 变红）
     T9 BANNED 不猜：命中已作废旧口径只上报、不改写
     T11「裸 N 测试」族锚点：`279 测试`（无"文件"二字）此前无锚点 → 须能修，且不误伤局部 2 位数
+    T12 体积字段 1 位小数：`99.4 MB` -> `89.5 MB`，不得 int() 截断成 89
+    T13 CI 缺二进制：体积锚点真值 null 必须「跳过」而非 FATAL（缺件≠故障，与门禁同口径）
     T10 真实仓库当前状态：修复器 dry-run 无待修 + 门禁 exit 0
 """
 import os
@@ -215,6 +217,32 @@ def main():
               "fixed=%r hits=%d ch=%r" % (fixed_mb, hits_after, ch_mb))
     else:
         check("T12 体积小数（本检出无 installer 产物 → 跳过，不误红）", True, "exe_mb=%r" % (want_mb,))
+
+    # T13 CI 缺二进制：体积锚点真值为 null 必须「跳过」而非 FATAL（2026-10-18 第二次 CI 反扑）
+    # 背景：`installer/*.exe` 不入库 → CI 检出里 setup_mb/exe_mb 为 null。门禁已用
+    # missing_anchor_fields 分流「缺件≠故障」，但修复器 want_of 仍写「None 即崩」，
+    # 扫到 docs 里的「20.3 MB」就 FATAL，caliber-gate 第 6 步红。必须与门禁同口径：
+    # 缺件 = 未核验跳过；产物在却读不出 = 才崩。
+    _orig_find = cmn.find_local_installer_products
+    cmn.find_local_installer_products = lambda: []
+    fmn._has_local_binaries.cache_clear()
+    try:
+        ci_truth = dict(truth)
+        ci_truth["setup_mb"] = None
+        ci_truth["exe_mb"] = None
+        ci_out, ci_ch = fmn.fix_line("Setup 安装版 20.3 MB / 绿色版 89.5 MB", ci_truth)
+        t13_skip = (not ci_ch) and "20.3 MB" in ci_out
+        # 非体积字段缺失在 CI 下仍必须 fail-closed（不得被上面的「跳过」误伤）
+        try:
+            fmn.fix_line("126,659 行 Go", {k: v for k, v in ci_truth.items() if k != "non_test_lines"})
+            t13_fc = False
+        except SystemExit:
+            t13_fc = True
+    finally:
+        cmn.find_local_installer_products = _orig_find
+        fmn._has_local_binaries.cache_clear()
+    check("T13 CI 缺二进制：体积锚点跳过不崩 + 非体积缺失仍 fail-closed",
+          t13_skip and t13_fc, "skip=%r fc=%r" % (t13_skip, t13_fc))
 
     # T10 真实仓库当前状态
     fixable_r, manual_r = fmn.collect(truth)
