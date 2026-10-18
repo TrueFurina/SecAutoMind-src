@@ -84,6 +84,9 @@ SKIP_DIR_PARTS = {
 #     :63-67 仅 add_picture 该图 blob），文字与形状文本一个都不进产物；已实测
 #     生成物 SecAutoMind_参赛答辩_模板版.pptx 读回为 0 命中。
 #     它本身会被交付包原样携带（供接收方重生成 PPT），但其可见文字不构成交付语义。
+#     ⚠️ 2026-10-18：它**仍是随包发出的文件**，所以文字旧了照样是交付缺陷（实测写着
+#     「90 个 YAML」「cgo 构建」）——本门禁看不见它，故由 `SecAutoMind_PPT/fix_stale_claims.py`
+#     定点修正，「豁免数字」不等于「可以写错数字」。
 # 放在这里而不是各调用点：清单只此一份，避免「打包脚本 vs 裸跑门禁」两处漂移。
 ALWAYS_EXCLUDE = ["演示模板版.pptx"]
 
@@ -428,10 +431,11 @@ def scan(root, truth, exclude_globs=()):
                     if want is None:
                         problems.append((rel, "count_stats 未返回锚点字段 %s" % key))
                         continue
-                    got = int(m.group("n").replace(",", ""))
-                    if got != int(want):
+                    # 整数计数与 1 位小数体积走同一个转换（见 cmn.coerce_num）
+                    got, want = cmn.coerce_num(m.group("n"), want)
+                    if got != want:
                         s, e = max(0, m.start() - 30), min(len(text), m.end() + 30)
-                        hits.append((rel, unit, "anchor", label, got, int(want),
+                        hits.append((rel, unit, "anchor", label, got, want,
                                      text[s:e].replace("\n", " ")))
     return hits, files, problems
 
@@ -490,7 +494,9 @@ def main():
         print("[FAIL-CLOSED] %s" % exc, file=sys.stderr)
         return 2
 
-    missing = sorted({k for _p, k, _l in cmn.ANCHORS if truth.get(k) is None})
+    # 与材料门禁同一口径（`cmn.missing_anchor_fields`）：体积字段在缺 installer 产物的
+    # 检出里是 null（二进制不入库），属"环境缺件"而非"脚本坏了"，不得判红。
+    missing = sorted(cmn.missing_anchor_fields(truth))
     if missing:
         print("[FAIL-CLOSED] count_stats 未返回锚点字段 %s —— 门禁绝不静默跳过检查" % missing,
               file=sys.stderr)

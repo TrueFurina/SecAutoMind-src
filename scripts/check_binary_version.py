@@ -190,6 +190,9 @@ def main(argv=None):
     ap.add_argument("--head", default=None, help="覆盖 HEAD（测试用；默认取 git rev-parse HEAD）")
     ap.add_argument("--require-binaries", action="store_true",
                     help="一个受管二进制都找不到时判红（打包链路必开）")
+    ap.add_argument("--forbid-history", action="store_true",
+                    help="历史快照（*提交包_<日期>*）出现在受检目录即判红（打包链路必开："
+                         "旧构建只可本地留档，不得随交付包外发）")
     ap.add_argument("--strict-unchecked", action="store_true",
                     help="存在「未能核验」的受管件时判红（打包链路必开："
                          "安装包里的程序才是评委真正跑的那份）")
@@ -238,6 +241,13 @@ def main(argv=None):
         tag = ("%s%s" % (info["commit"][:12], "+dirty" if info["dirty"] else "")
                if info and info["commit"] else "未解析")
         print("  [HIST] %s → %s（按日期命名的历史快照，不要求与 HEAD 一致）" % (label, tag))
+        # 2026-10-18：历史快照「不要求与 HEAD 一致」是**留档**语境的放宽，不是
+        # 「可以发出去」的许可。实测交付包里正躺着一份 09-04 的 `+dirty` 构建
+        # （159 MB，占包 57%，带 7 critical + 8 high 漏洞）。故打包时（--forbid-history）
+        # 历史快照一律判红：它属于本地留档，不属于交付面。
+        if args.forbid_history:
+            problems.append("%s：历史快照进包（%s）—— 旧构建/脏构建只可本地留档，"
+                            "不得随交付包外发" % (label, tag))
 
     checked = len(managed) - len([u for u in unchecked])
     print("  实际核验 %d / %d 个受管二进制" % (checked, len(managed)))

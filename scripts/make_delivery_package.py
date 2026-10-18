@@ -110,6 +110,31 @@ EXCLUDE_FILE_EXCEPTIONS = {".env.example"}
 # ── 排除：路径子串（PPT 下划线中间产物等）────────────────────────────
 EXCLUDE_PATH_SUBSTR = ("SecAutoMind_PPT/_", ".workbuddy/", "/.git/")
 
+# ── 排除：整棵目录（目录名前缀命中即剪掉；判定标准是「不属于交付语义」）──────
+# 与 EXCLUDE_DIRS 分开，因为这里每一条都需要**个案理由**，不是通用缓存目录。
+EXCLUDE_DIR_PREFIXES = (
+    # 初赛提交包快照（赛题要求①「程序材料」）。本机该目录只剩一份 09-04 的
+    # `+dirty` 旧构建：159,051,447 B，占整包 57%，且不含源码这期间修掉的
+    # 7 critical + 8 high 依赖漏洞与 presolve 占位符短路（#51/#53）。
+    # 决赛包再发一份 = 让评委面对两个互不相同的主程序，且大的那个带已知漏洞。
+    # 留档在本地（不删），只是不进交付面。
+    "SecAutoMind_提交包_",
+)
+
+# ── 排除：单个文件（相对仓库根的精确路径，不做前缀/子树匹配）──────────────
+# ⚠️ 2026-10-18 踩坑：最初把它写进「路径前缀」表并按 `p.startswith(r + "/")` 判，
+# 结果整棵 `SecAutoMind_PPT/` 被剪掉（母版是目录里的一员，目录本身就是它自己的前缀）
+# → 包从 222 MB 掉到 54.6 MB，且下面红线 1b 立刻报「两份母版都不在包里」抓住了它。
+# 文件级排除必须**精确匹配**，绝不能拿去做子树判定。
+EXCLUDE_REL_FILES = {
+    # 视觉母版（`make_template_ppt.py` 的输入）。2026-10-18 实测：与同目录的
+    # `闽江御盾•智防矩阵.pptx` **可见文本 24/24 单元完全一致**（同款视觉的副本，
+    # 只差 zip 里 3 个字节），两份 54 MB 都在包里 = 107 MB 里有一份是纯重复。
+    # 生成器缺件时会自动改用该副本（`_TPL_ALIAS` 兜底，实测实跑产出 421,330 B，
+    # 与冻结的「模板版」一致），故排除母版后接收方仍能重生成。
+    "SecAutoMind_PPT/演示模板版.pptx",
+}
+
 # ── 红线：成品包内绝不允许出现的路径前缀（相对包根）────────────────────
 FORBIDDEN_IN_PACKAGE = [
     "data/", "logs/", "chat_uploads/", "tmp/", "tmp_recon_",
@@ -132,6 +157,8 @@ def is_excluded_dir(rel):
         if p in EXCLUDE_DIRS or p.startswith(EXCLUDE_DIR_PREFIXES):
             return True
     r = rel.replace("\\", "/")
+    if r in EXCLUDE_DIR_PREFIXES or any(p.startswith(r + "/") for p in EXCLUDE_DIR_PREFIXES):
+        return True
     return any(s in r for s in EXCLUDE_PATH_SUBSTR)
 
 
@@ -150,6 +177,8 @@ def is_excluded_file(rel):
     name = rel.replace("\\", "/").rsplit("/", 1)[-1]
     if name in EXCLUDE_FILE_EXCEPTIONS:
         return False
+    if rel.replace("\\", "/") in EXCLUDE_REL_FILES:   # 精确路径，不参与子树判定
+        return True
     # 2026-10-10（交付包开箱复核发现）：包内若新旧安装包并存，评委打开会困惑
     # 「到底哪个版本」。故只保留与当前版本同号的 `SecAutoMind-Setup-<当前版本>-x64.exe`，
     # 其余版本的 Setup 安装包一律排除（版本号与 config.share.yaml 的 version 同源，去 v 前缀比较）。
@@ -317,6 +346,18 @@ def verify(package, staging):
                 issues.append("禁区文件入包：%s" % rel)
                 break
 
+    # 红线 1b：生成器可运行性（2026-10-18）
+    # 我们把视觉母版 `演示模板版.pptx` 排出了包（它与 `闽江御盾•智防矩阵.pptx` 可见文本
+    # 完全一致，两份 54 MB 重复）。代价是接收方跑 `make_template_ppt.py` 时会走
+    # `_TPL_ALIAS` 兜底 —— 一旦哪天连 `闽江御盾•智防矩阵.pptx` 也不在包里，
+    # 那条生成链就在交付面上**直接断掉**，而本地测试永远发现不了。
+    if not any(r.endswith("SecAutoMind_PPT/演示模板版.pptx") for r in rels):
+        if not any(r.endswith("SecAutoMind_PPT/闽江御盾•智防矩阵.pptx") for r in rels):
+            issues.append("包里既无 演示模板版.pptx 也无 闽江御盾•智防矩阵.pptx —— "
+                          "make_template_ppt.py 无母版可用，接收方无法重生成「模板版」")
+        else:
+            notes.append("视觉母版以 闽江御盾•智防矩阵.pptx 形式随包（make_template_ppt.py 兜底可跑）")
+
     # 红线 2：包内 config.yaml 必须等于 config.share.yaml（顶替生效）
     if not os.path.exists(CLEAN_CONFIG):
         issues.append("缺少 config.share.yaml，未执行干净配置顶替")
@@ -401,6 +442,9 @@ def verify(package, staging):
     # 与 presolve 占位符短路。文件名与体积都看不出来 —— 只有读 exe 内嵌的 Go buildinfo
     # 才能判定。故对 **staging（真正要发出去的字节）** 跑二进制来源门禁，
     # 并且 --require-binaries：包里一个 exe 都没有也算红（评委拿什么跑？）。
+    # 2026-10-18 追加 --forbid-history：历史快照（`*提交包_<日期>*`）出现在 staging 即红。
+    # 此前它被「只登记不判」的 HIST 分支放过 —— 于是 09-04 那份 159 MB 的 `+dirty`
+    # 构建在交付包里躺了六周，占整包 57%，带着源码期间修掉的 15 个依赖漏洞。
     if os.path.exists(BINARY_VERSION_CHECK):
         # ⚠️ staging 是临时目录、**不是 git 仓库** —— 门禁在里面 `git rev-parse HEAD`
         # 会失败。这不是它该自己猜的事：HEAD 必须由调用方显式传入（本次首跑就踩到，
@@ -408,7 +452,7 @@ def verify(package, staging):
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                               capture_output=True, text=True).stdout.strip()
         cmd = [sys.executable, BINARY_VERSION_CHECK, "--root", staging,
-               "--require-binaries", "--strict-unchecked"]
+               "--require-binaries", "--strict-unchecked", "--forbid-history"]
         if head:
             cmd += ["--head", head]
         r = subprocess.run(cmd, capture_output=True, text=True,

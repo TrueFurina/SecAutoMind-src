@@ -30,6 +30,7 @@
 退出码：0 = 无需修复 / 已修复；1 = 仍有需人工处理的漂移；2 = 取不到真值（fail-closed）
 """
 import argparse
+import functools
 import os
 import re
 import sys
@@ -48,8 +49,21 @@ if HERE not in sys.path:
 import check_material_numbers as cmn  # noqa: E402
 
 
+@functools.lru_cache(maxsize=1)
+def _has_local_binaries():
+    """本检出是否有 installer/ 产物（缓存，避免逐行 os.listdir）。"""
+    return bool(cmn.find_local_installer_products())
+
+
 def format_like(orig, want):
-    """跟随原写法保留千分位：'126,659' -> '126,675'；'724' -> '1234'（不带逗号）。"""
+    """跟随原写法保留千分位：'126,659' -> '126,675'；'724' -> '1234'（不带逗号）。
+
+    ⚠️ 2026-10-18：**体积字段是 1 位小数**（`setup_mb` / `exe_mb` = 89.5 / 20.3）。
+    旧实现一律 `int(want)` → 把「89.5」写成「89」，改完门禁立刻报漂移，
+    修复器与门禁形成死循环。故先按真值类型分流：浮点保留 1 位，整数才走千分位逻辑。
+    """
+    if isinstance(want, float) or "." in str(want):
+        return "%.1f" % float(want)
     return format(int(want), ",") if "," in orig else str(int(want))
 
 
@@ -74,18 +88,28 @@ def fix_line(line, truth, anchors=None, strip_html=False):
     def want_of(key):
         v = truth.get(key)
         if v is None:
-            # 与门禁同款 fail-closed：字段名变了就必须崩，绝不静默跳过
+            # 体积字段真值为 null 有两种截然不同的含义，必须分流（与门禁
+            # missing_anchor_fields 同一口径，2026-10-18 第二次 CI 反扑实锤）：
+            #   · 本检出缺 installer/ 产物（二进制不入库，CI 常态）→「未核验」跳过；
+            #   · 产物在却读不出体积 → 那才是 count_stats 真坏了，仍崩。
+            if key in cmn.ARTIFACT_DEPENDENT_TRUTH and not _has_local_binaries():
+                return None
+            # 非体积字段缺失 = 字段名改了，与门禁同款 fail-closed：绝不静默跳过
             raise SystemExit(
                 "FATAL: count_stats 未返回锚点字段 %s（字段名可能已改），"
                 "修复器拒绝在无真值的情况下工作" % key)
-        return int(v)
+        # 体积字段是 1 位小数，**不可 int()**（会把 89.5 截成 89，修复器与门禁死循环）
+        return v if isinstance(v, float) else int(v)
 
     if strip_html:
         probe = re.sub(r"<[^>]*>", " ", line)
         for pat, key, label in anchors:
+            want = want_of(key)
+            if want is None:
+                continue
             for m in re.finditer(pat, probe):
                 got = m.group("n")
-                new = format_like(got, want_of(key))
+                new = format_like(got, want)
                 if new == got or got not in line:
                     continue
                 line = _token_rx(got).sub(new, line)
@@ -94,6 +118,8 @@ def fix_line(line, truth, anchors=None, strip_html=False):
 
     for pat, key, label in anchors:
         want = want_of(key)
+        if want is None:
+            continue
 
         def _repl(m, _label=label, _want=want):
             got = m.group("n")

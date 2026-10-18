@@ -201,6 +201,23 @@ def t13():
     assert "落后于源码" in out, out
 
 
+@case("T14 历史快照：缺省只登记；--forbid-history（打包链路）→ BLOCK")
+def t14():
+    # 实测事故：交付包里躺着 `SecAutoMind_提交包_20260905/01_程序材料/secautomind-ai.exe`
+    # （159 MB，+dirty，带 15 个已修依赖漏洞）。它按日期命名，被 HIST 分支"只登记不判"
+    # 放过，于是六周无人发现。留档是留档，交付是交付 —— 打包必须拒绝。
+    root = make_root({
+        "installer/secautomind-ai.exe": fake_exe(HEAD),
+        "SecAutoMind_提交包_20260905/01_程序材料/secautomind-ai.exe": fake_exe(OLD, dirty=True),
+    })
+    rc, out = run(["--root", root, "--head", HEAD])
+    assert rc == 0, out                    # 仓库里留档：不判
+    assert "[HIST]" in out, out
+    rc2, out2 = run(["--root", root, "--head", HEAD, "--forbid-history"])
+    assert rc2 == 1, out2                  # 打包：历史快照进包即红
+    assert "历史快照进包" in out2, out2
+
+
 def git_repo_with(first, second):
     """建一个真 git 仓库：commit A = first 里的文件；commit B = 叠加 second 的改动 → (root, A, B)。"""
     root = tempfile.mkdtemp(prefix="binver_git_")
