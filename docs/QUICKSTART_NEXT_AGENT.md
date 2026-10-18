@@ -37,8 +37,11 @@ python scripts/check_artifact_numbers.py                # 应 PASS（9 个 PPT/P
 python scripts/build_championship_evidence.py --check   # 应 PASS（冠军证据包）
 python scripts/check_final_artifacts_freeze.py          # 应 PASS（产物与生成器哈希已上锁）
 python scripts/check_web_asset_parity.py                # rc=0
+python scripts/css_shadow_audit.py --check              # 应 PASS（2026-10-19 新增：无可证明安全的 CSS 影子块）
+python scripts/css_shadow_audit_test.py                 # 应 PASS（24 例：importance 反向变异/级联/端到端 --apply）
 go build ./...                                          # rc=0
-go test ./internal/config ./internal/handler            # rc=0
+go test -p 1 ./internal/...                             # rc=0（必须 -p 1！本机并行链大测试二进制会 OOM：
+                                                         #  errno=1455 VirtualAlloc 失败 → 8 个包假红 [build failed]）
 node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全过（已接 CI：web-js-tests）
 ```
 
@@ -103,6 +106,7 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 - **`git push` 到 github.com 失败**（代理）。上游提交用 `gh api` 重建 commit 绕行（`D:/tmp_pr/push_via_api.py`）。
 - **CGO 测试**报 `cgo.exe exit 2`：先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"`。
 - **C 盘空间**紧张时全量测试假 FAIL：**三条分开** `export TMP=D:/tmp_gotest; export TEMP=D:/tmp_gotest; export TMPDIR=D:/tmp_gotest`（⚠️ `export TMP=TEMP=TMPDIR=x` 多重赋值在本 shell 会变成字面量垃圾串，TEMP/TMPDIR 根本没设上，还能在仓库根建出怪目录——2026-10-14 与 10-19 各中过一次），并 `go list ./... | grep -v ctfplatform` 分流跑。
+- **🔴 全量 `go test ./internal/...` 会 OOM 假红**（2026-10-19 实测）：并行链多个大测试二进制时 `VirtualAlloc ... errno=1455`，`internal/handler` 等 8 个包报 `[build failed]`。**加 `-p 1` 串行链即全绿**（实测 8/8 ok，41 秒）。这不是代码问题，别去"修"代码；判红前先看报错是 OOM 还是真 FAIL。
 - **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`（系统 python 无 PyYAML，校验 yml 时用它）。
 - **CI 仿真**：`git archive HEAD` 在 `core.autocrlf=true` 下**仍导出 CRLF**；要纯 LF 必须 `git -c core.autocrlf=false archive HEAD`。
 
@@ -111,11 +115,17 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 ## 6. 上游状态（不用人工轮询）
 
 `72fbc708` 自动化每两天只读巡检，仅在出现"请修改"评论或 merged/closed 时提醒。
+**2026-10-19 人工复核（gh api 实测）**：
 
-- PR #83（octop-harness 规则）：**mergeable**，等合并。
-- PR #2170（Octop docs）：open，等评审。
-- Issue #2171（`OCTOP_HOME` 口令）：**已被社区 `legend91019` 认领**，本方无需再提 PR。
-- Issue #84（枚举缺 `defense_evasion`）：待认领，低优先级。
+- PR #83（octop-harness 规则）：open、mergeable、**零评审零评论**，等合并。
+- PR #2170（Octop docs）：open、无评审，mergeable_state=`unstable`（CI 未跑完），等评审。
+- Issue #2171（`OCTOP_HOME` 口令）：**已被 `legend91019` 认领并提交修复 [PR #2174](https://github.com/TencentCloud/Octop/pull/2174)**
+  （2026-10-18 07:19 交叉引用；无 assignee，认领以评论为准）。我方已评审：集成测试更新到位
+  （正是 #2171 提醒的阻塞点）、legacy 回退逻辑正确（复用旧密码不生成冲突密钥 + 原子 0o600 写）、
+  base 是 `develop`；**唯一待办是补 `CHANGELOG.md` 条目**（已留言给出建议条目原文）。
+- Issue #84（**octop-harness**，枚举缺 `defense_evasion`）：open、0 评论，待认领，低优先级。
+  ⚠️ 编号撞车提醒：`TencentCloud/Octop` 另有一个**无关**的 #84（远程桌面致出站流量死，
+  2026-07-29 已 completed）——两个仓库的 #84 不是同一件事，查状态前先确认仓库。
 
 ---
 
@@ -125,4 +135,4 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 2. **提交已完成**（2026-10-18）：主体为 `55585c9` 修 HEAD 断链 → `7f50c82` robot 卡片 → `3c776a8` P0 资产元数据+口径治理（141 文件）→ 若干文档与体积同步修正（SHA 以 `git log` 为准）。安装包已按 §2 方法由提交时的 HEAD 重建、binary-gate PASS。详见 `HANDOFF_2026-10-18.md` §14/§15。**没有待拍板事项。**
    剩余未提交的只有并行会话的在途 WIP（`scripts/verify_live_contract.py` 重写、`scripts/mock_sim_platform.py`、`docs/` 三篇、`.workbuddy-ai/`），不归本任务。
    ⚠️ 提交任何东西之前想清楚：**提交后 exe 戳记即失效**，要再按 §2 的方法重建一次。
-3. 非阻塞项（择机做，都不影响交付）：~~修 `check_material_numbers.py` 的 `strip_html` 盲区~~ **已修**（第十三轮，属性值补扫 + 旧运行时数 143 的写法进 BANNED，自测 19/19，见 HANDOFF §14.4）；~~source/trust 徽章配色由蓝改橙~~ **已修**（第十五轮，级联覆盖所致，见 HANDOFF §16）；赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform，需实机）。
+3. 非阻塞项（择机做，都不影响交付）：~~修 `check_material_numbers.py` 的 `strip_html` 盲区~~ **已修**（第十三轮，属性值补扫 + 旧运行时数 143 的写法进 BANNED，自测 19/19，见 HANDOFF §14.4）；~~source/trust 徽章配色由蓝改橙~~ **已修**（第十五轮，级联覆盖所致，见 HANDOFF §16）；~~收敛 CSS 影子块~~ **已做可证明安全子集**（第十六轮后，35 块已删 + 三层等价性验证 + `css-shadow-gate` 接 CI，剩余 102 组"部分存活"是需人工判定的技术债，见 HANDOFF §17）；赛前在 `172.16.222.99` 跑一次全量 `go test -p 1 ./...`（分流避开 ctfplatform，需实机）。

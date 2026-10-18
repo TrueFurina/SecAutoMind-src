@@ -466,6 +466,28 @@ jobs:
       - name: Web parity gate mutation check (prove the gate can fail)
         run: python scripts/check_web_asset_parity_test.py
 
+  # CSS 影子块门禁（2026-10-19 新增）。背景：style.css 里两个同名同特异性
+  # `.external-tool-badge` 定义靠出现顺序决胜，靠后的蓝色定义把全局徽章刷成错色
+  # （HANDOFF §16/§17）。全量审计：6,696 个顶层块里 130 组同名选择器。
+  # 本门禁只拦「可证明安全」的那一类（每属性都被更靠后、**重要性不更低**的
+  # 同选择器块覆盖 ⇒ 删除无任何副作用），--check 发现即红；
+  # 「部分存活」组（前块有属性未被可靠覆盖）是需人工判定的技术债，只报告不动。
+  # 🔴 importance 必须参与判定：2026-10-19 首版 analyse() 只按"后来者必胜"，
+  # 实删前复核发现被删块含 15 处 !important —— 若某处只被后来块的普通声明覆盖，
+  # 删除会把生效值从 important 旧值换成普通新值，而等价性验证（同样 importance
+  # 盲）看不见。自测含该反向变异用例 + 级联表 4 项 + 端到端 --apply + 空扫防呆。
+  css-shadow-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: CSS shadow-block gate self-test (importance-aware, 24 cases incl. mutation)
+        run: python scripts/css_shadow_audit_test.py
+      - name: No provably-dead CSS shadow blocks (new ones => BLOCK)
+        run: python scripts/css_shadow_audit.py --check
+
   # 前端运行时测试：`internal/app/web/static/js/*.test.cjs` 曾长期是**孤儿测试**——
   # ci.yml 全文没有 node --test，全靠人手跑，于是两条断言在实现重构后**静默腐烂**。
   # 2026-10-18 首次全量跑（131 例）实测 2 处 FAIL：
