@@ -494,7 +494,9 @@ def main():
         print("[FAIL-CLOSED] %s" % exc, file=sys.stderr)
         return 2
 
-    missing = sorted({k for _p, k, _l in cmn.ANCHORS if truth.get(k) is None})
+    # 与材料门禁同一口径（`cmn.missing_anchor_fields`）：体积字段在缺 installer 产物的
+    # 检出里是 null（二进制不入库），属"环境缺件"而非"脚本坏了"，不得判红。
+    missing = sorted(cmn.missing_anchor_fields(truth))
     if missing:
         print("[FAIL-CLOSED] count_stats 未返回锚点字段 %s —— 门禁绝不静默跳过检查" % missing,
               file=sys.stderr)

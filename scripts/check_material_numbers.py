@@ -259,6 +259,33 @@ def coerce_num(raw, want):
     return int(raw), int(want)
 
 
+def find_local_installer_products():
+    """本检出是否真的有 installer/ 产物（决定体积真值为 null 是"环境缺件"还是"脚本坏了"）。"""
+    base = os.path.join(ROOT, "installer")
+    if not os.path.isdir(base):
+        return []
+    return [f for f in os.listdir(base) if f.lower().endswith(".exe")]
+
+
+# 真值依赖「二进制实物」的锚点字段：二进制不入库（`.gitignore` `installer/*`），
+# 故 CI 检出里恒为 null。两个门禁（材料 / 产物）必须用同一套口径判断"缺件"与"故障"，
+# 否则一个绿一个红 —— 这里定义一次，两处调用。
+ARTIFACT_DEPENDENT_TRUTH = ("setup_mb", "exe_mb")
+
+
+def missing_anchor_fields(truth, local_binaries=None):
+    """锚点字段缺失清单（缺失即崩）。**体积字段按"产物在不在"分流**：
+
+    · 产物不在本检出 → 记为「未核验」（CI 常态，不是故障）；
+    · 产物在、却读不出体积 → 仍算缺失（count_stats 真坏了），必须红。
+    """
+    if local_binaries is None:
+        local_binaries = bool(find_local_installer_products())
+    return [k for _p, k, _l in ANCHORS
+            if truth.get(k) is None
+            and not (k in ARTIFACT_DEPENDENT_TRUTH and not local_binaries)]
+
+
 def load_truth():
     """从单一真值源取数。取不到就直接崩 —— 没有真值的门禁毫无意义。"""
     out = subprocess.run(
@@ -357,13 +384,21 @@ def check_ledger(verdict):
 def main():
     truth = load_truth()
     # 自检：锚点用到的字段必须全部存在于真值中。缺失就崩，绝不静默跳过。
-    missing = [k for _, k, _ in ANCHORS if truth.get(k) is None]
+    # ⚠️ 2026-10-18 例外：`setup_mb` / `exe_mb` 的真值来自 installer/ 下的**实物**，
+    # 而二进制不入库（`.gitignore` `installer/*`）→ CI 检出里这两个字段天然是 null。
+    # 若也按"缺失即崩"处理，caliber-gate 会恒红（实测首跑就打红）。
+    # 但「本机明明有 installer 产物却读不出体积」仍是真故障（count_stats 坏了），必须红 ——
+    # 故这里不是无条件豁免，而是按「产物在不在」分流。
+    ARTIFACT_TRUTH = ARTIFACT_DEPENDENT_TRUTH
+    missing = missing_anchor_fields(truth)
     if missing:
         raise SystemExit(
             "FATAL: count_stats.py 未返回锚点字段 %s（脚本字段名可能已改）。\n"
             "门禁绝不静默跳过检查 —— 请先修复字段名，否则本门禁形同虚设。" % missing
         )
     banned_hits, anchor_hits = [], []
+    # 「本检出无法核验」的锚点（真值为 null）：只作显式登记，不计违规 —— 见下面体积锚点处注释
+    unverifiable = []
     exempted = 0
     scanned = 0   # 2026-10-14 补：扫描覆盖数（见下方 fail-closed 判据）
 
@@ -396,7 +431,15 @@ def main():
                 m = re.search(pat, line)
                 if not m:
                     continue
-                want = truth[key]
+                want = truth.get(key)
+                # 2026-10-18：分发体积（setup_mb / exe_mb）的真值来自 installer/ 下的实物，
+                # 而**二进制不入库**（`.gitignore` `installer/*`）→ CI 检出里这两个字段是
+                # null。此时不能崩（`int(None)` / `float(None)` 都抛异常，实测把 caliber-gate
+                # 直接打红），也不能装作验过：显式记一笔「本检出无法核验」。
+                # 防退化不靠这里——靠自测第 15 条（真值存在时「错必红/对必绿」双向钉）。
+                if want is None:
+                    unverifiable.append((rpath, lineno, label))
+                    continue
                 # 计数字段整数 / 体积字段 1 位小数，统一走 coerce_num（两个门禁共用一个实现）
                 got, want = coerce_num(m.group("n"), want)
                 if got != want:
@@ -425,6 +468,10 @@ def main():
              truth.get("go_packages"), truth.get("test_packages")))
     if exempted:
         print("  [豁免] 历史档案中 %d 处旧口径已豁免（文首已声明锚定旧基线）" % exempted)
+    if unverifiable:
+        keys = sorted({lbl for _f, _l, lbl in unverifiable})
+        print("  [未核验] %d 处「%s」：本检出缺 installer/ 产物（二进制不入库），"
+              "真值为 null —— 已显式登记，不计违规" % (len(unverifiable), "、".join(keys)))
     print("-" * 70)
 
     if banned_hits:

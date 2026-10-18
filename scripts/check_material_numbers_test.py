@@ -109,7 +109,7 @@ def main():
     print("=" * 66)
 
     # ---- 1. 扫描 0 文件（目录不存在）必须 fail-closed ----
-    print("\n[1/15] 扫描覆盖数为 0（SCAN_DIRS 目录不存在）必须 fail-closed")
+    print("\n[1/16] 扫描覆盖数为 0（SCAN_DIRS 目录不存在）必须 fail-closed")
     rc, out = run_gate({}, scan_dirs=("docs",))
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
     print("  %s 返回 %s（期望 SystemExit）" % ("PASS" if ok else "FAIL", rc))
@@ -117,7 +117,7 @@ def main():
         failures.append("目录不存在时未 fail-closed（rc=%s）——「没扫到」被当成「没问题」" % rc)
 
     # ---- 2. 扫描 0 文件（目录存在但无可扫扩展名）必须 fail-closed ----
-    print("\n[2/15] 扫描覆盖数为 0（目录存在但只有非扫描扩展名）必须 fail-closed")
+    print("\n[2/16] 扫描覆盖数为 0（目录存在但只有非扫描扩展名）必须 fail-closed")
     rc, out = run_gate({"docs/cover.png": "not text"}, scan_dirs=("docs",))
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
     print("  %s 返回 %s（期望 SystemExit）" % ("PASS" if ok else "FAIL", rc))
@@ -125,7 +125,7 @@ def main():
         failures.append("扩展名扫不到时未 fail-closed（rc=%s）——SCAN_EXT 被改空会静默失效" % rc)
 
     # ---- 3. 反向变异：材料与真值一致必须 PASS（防恒红）----
-    print("\n[3/15] 材料数字与真值一致必须 PASS（反向变异：防恒红）")
+    print("\n[3/16] 材料数字与真值一致必须 PASS（反向变异：防恒红）")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -133,7 +133,7 @@ def main():
         failures.append("一致场景被判红（rc=%s）——门禁被修成恒红：%s" % (rc, out[-300:]))
 
     # ---- 4. 锚点漂移必须 FAIL ----
-    print("\n[4/15] 锚点漂移（Go 751 → 999）必须 FAIL")
+    print("\n[4/16] 锚点漂移（Go 751 → 999）必须 FAIL")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC.replace("Go 751 文件", "Go 999 文件")})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
@@ -141,7 +141,7 @@ def main():
         failures.append("真漂移未判红（rc=%s）" % rc)
 
     # ---- 5. 已作废旧口径复活必须 FAIL ----
-    print("\n[5/15] 已作废旧口径复活（140 运行时工具）必须 FAIL")
+    print("\n[5/16] 已作废旧口径复活（140 运行时工具）必须 FAIL")
     rc, out = run_gate({"docs/scale.md": "官网写 140 运行时工具\n"})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
@@ -149,7 +149,7 @@ def main():
         failures.append("黑名单数字未判红（rc=%s）" % rc)
 
     # ---- 6. CALIBER-SNAPSHOT 历史快照必须豁免（防把豁免机制改坏）----
-    print("\n[6/15] 带 CALIBER-SNAPSHOT 标记的历史档案必须豁免")
+    print("\n[6/16] 带 CALIBER-SNAPSHOT 标记的历史档案必须豁免")
     snap = "CALIBER-SNAPSHOT: 本文件锚定 2026-09-05 基线\n\n" + CLEAN_DOC.replace("751", "715").replace("299", "257")
     rc, out = run_gate({"docs/old_snapshot.md": snap})
     ok = (rc == 0)
@@ -158,7 +158,7 @@ def main():
         failures.append("历史快照豁免失效（rc=%s）——豁免机制被顺手套坏" % rc)
 
     # ---- 7. 文件名内嵌历史日期必须豁免 ----
-    print("\n[7/15] 文件名内嵌旧日期（report_20260901.md）必须豁免")
+    print("\n[7/16] 文件名内嵌旧日期（report_20260901.md）必须豁免")
     rc, out = run_gate({"docs/report_20260901.md": CLEAN_DOC.replace("751", "715")})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -166,7 +166,7 @@ def main():
         failures.append("文件名日期豁免失效（rc=%s）" % rc)
 
     # ---- 8. FORCE_CURRENT（名字旧仍是现行作战材料）不得豁免 ----
-    print("\n[8/15] FORCE_CURRENT 清单（提交前终检清单_20260903.md）必须照查")
+    print("\n[8/16] FORCE_CURRENT 清单（提交前终检清单_20260903.md）必须照查")
     rc, out = run_gate({"docs/提交前终检清单_20260903.md": CLEAN_DOC.replace("91 YAML 工具", "90 个 YAML")})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
@@ -174,7 +174,7 @@ def main():
         failures.append("现行作战材料被误豁免（rc=%s）——按日期豁免会放过现场还在念的材料" % rc)
 
     # ---- 9. 真值缺锚点字段必须 fail-closed ----
-    print("\n[9/15] count_stats 缺锚点字段必须 fail-closed（不许静默跳过）")
+    print("\n[9/16] count_stats 缺锚点字段必须 fail-closed（不许静默跳过）")
     bad_truth = {k: v for k, v in TRUTH.items() if k != "tools_yaml"}
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC}, truth=bad_truth)
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
@@ -183,7 +183,7 @@ def main():
         failures.append("真值字段缺失未 fail-closed（rc=%s）——静默跳过的门禁等于没有门禁" % rc)
 
     # ---- 10. 口径修复清单缺失 → 跳过（可选件，不因缺失误红）----
-    print("\n[10/15] 口径修复清单缺失必须跳过（可选件缺失不得误红）")
+    print("\n[10/16] 口径修复清单缺失必须跳过（可选件缺失不得误红）")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -191,7 +191,7 @@ def main():
         failures.append("清单缺失被误判红（rc=%s）——把可选件当必检会让门禁无法在无清单处使用" % rc)
 
     # ---- 11. 清单状态与门禁一致 → PASS（反向变异：防恒红）----
-    print("\n[11/15] 口径修复清单状态与门禁一致（PASS）必须通过")
+    print("\n[11/16] 口径修复清单状态与门禁一致（PASS）必须通过")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n当前门禁状态：PASS\n"})
     ok = (rc == 0)
@@ -200,7 +200,7 @@ def main():
         failures.append("清单状态一致却被判红（rc=%s）——check_ledger 被修成恒红" % rc)
 
     # ---- 12. 清单过期（写 FAIL 而门禁 PASS）→ 红（核心：钉死 09-09 那种过期快照）----
-    print("\n[12/15] 口径修复清单过期（声明 FAIL / 门禁 PASS）必须红")
+    print("\n[12/16] 口径修复清单过期（声明 FAIL / 门禁 PASS）必须红")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n当前门禁状态：FAIL\n"})
     ok = (rc == 1)
@@ -209,7 +209,7 @@ def main():
         failures.append("过期清单未判红（rc=%s）——09-09 那种「漂移已修、文件仍写 FAIL」会重现" % rc)
 
     # ---- 13. 清单缺机器可读状态行 → 红（fail-closed）----
-    print("\n[13/15] 口径修复清单缺状态行必须 fail-closed")
+    print("\n[13/16] 口径修复清单缺状态行必须 fail-closed")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n这里没有机器可读状态行。\n"})
     ok = (rc == 1)
@@ -221,7 +221,7 @@ def main():
     # 背景：这两类写法此前**完全无锚点** → 冻结产物里「32 包分层」（真值 37）与
     # 「100+ YAML 配方」（真值 91）长期无人发现。加号尤其危险：所有锚点都要求
     # 「数字紧跟 YAML/个」，`100+` 的 `+` 让它们全部失配，漂移被伪装成"约数"。
-    print("\n[14/15] 「N 包分层」「N+ YAML」宣称必须可机验（漂移必红、正确必绿）")
+    print("\n[14/16] 「N 包分层」「N+ YAML」宣称必须可机验（漂移必红、正确必绿）")
     d1 = CLEAN_DOC.replace("34 包分层", "33 包分层")
     rc1, _o1 = run_gate({"docs/scale.md": d1})
     d2 = CLEAN_DOC.replace("34 包分层", "100+ YAML 配方")
@@ -238,7 +238,7 @@ def main():
     # 是 20.3 / 89.5 MB；`参赛答辩演讲稿` 与三份 PPT 仍宣称「cgo sqlite / cgo 构建」，
     # 而 release.yml 三平台一律 CGO_ENABLED=0、驱动是 glebarez 纯 Go。
     # 两类断言此前**完全无判据**（体积字段真值源里根本没有；技术断言没有数字）。
-    print("\n[15/15] 分发体积 / cgo 断言必须可机验（错必红、对必绿）")
+    print("\n[15/16] 分发体积 / cgo 断言必须可机验（错必红、对必绿）")
     rc1, _o1 = run_gate({"docs/v.md": "Setup 安装版 33.6 MB / 绿色版 158 MB\n"})
     rc2, _o2 = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.5 MB\n"})
     rc3, _o3 = run_gate({"docs/v.md": "三平台原生编译（含 cgo sqlite）\n"})
@@ -250,13 +250,24 @@ def main():
         failures.append("分发体积或 cgo 断言未双向钉住（rc=%s/%s/%s/%s）——"
                         "要么放过旧口径，要么把正确写法判红" % (rc1, rc2, rc3, rc4))
 
+    print("\n[16/16] 本检出缺 installer 产物（体积真值为 null）→ 显式「未核验」，不崩也不谎报")
+    # CI 检出里二进制不入库（`.gitignore` `installer/*`）→ count_stats 的 setup_mb/exe_mb
+    # 为 null。旧实现直接 `coerce_num(raw, None)` 抛异常，把 caliber-gate 打红（实测）。
+    # 正解：显式登记「未核验」，同时保留自测第 15 条作为防退化判据（真值在时错必红）。
+    no_bin = {k: v for k, v in TRUTH.items() if k not in ("setup_mb", "exe_mb")}
+    rc, out = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.5 MB\n"}, truth=no_bin)
+    ok = (rc == 0 and "未核验" in out)
+    print("  %s 返回 %s（期望 0 且输出含「未核验」）" % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("体积真值为 null 时未优雅降级（rc=%s）—— CI 检出会因此恒红" % rc)
+
     print("\n" + "=" * 66)
     if failures:
         print("FAIL —— %d 项不达标：" % len(failures))
         for f in failures:
             print("  - " + f)
         return 1
-    print("PASS —— check_material_numbers 门禁 15/15 用例通过"
+    print("PASS —— check_material_numbers 门禁 16/16 用例通过"
           "（零覆盖 fail-closed + 恒红防护 + 豁免机制未退化 + 清单过期双向钉死 + "
           "体积/cgo 断言双向钉）。")
     return 0
