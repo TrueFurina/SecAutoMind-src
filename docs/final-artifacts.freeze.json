@@ -4,29 +4,29 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "c7de3aa0ffb97dcb57f3560fd62583821106458e533b1a9432d323f978e22f71",
+      "sha256": "95cde1718bb5c8e4d4bf0e055f02eac10109772db0831341c4b95cd2f9d125a5",
       "size": 68894,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
-        "sha256": "97be6bfafa0764c00b65e38c6879f3edca3ff1e5df45d58a0df67008479cbdef"
+        "sha256": "5823e1d7cc8c4d2c508c63d8b2e7d0078361f5d795458afa737753f49df7d05f"
       }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "b13598d0506120687191fdbf323133bed3aa1eb126d3bccd231fcb632cc76836",
+      "sha256": "01fad399e2735dff8e374f8c06f08fecb8ce058ab32f596d4411c2ef8cc140be",
       "size": 421330,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
-        "sha256": "21aaae411ffdff50a37382d423bd492d67234ab5744a74e236d73523d600e4df"
+        "sha256": "911f2bde8c1256ab92576c044f823919bde0b6e90dbdccf521fd1eeffd6b47f2"
       }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "9c935b0861c837032382af4b250e6ed422b90966581129f9ee7e459972462482",
+      "sha256": "8175c7f9f4a338b96692c58733e65b4b6a1ec55bf4fbca22197a63059cb50662",
       "size": 78377,
       "generator": {
         "path": "SecAutoMind_PPT/make_final_ppt.py",
-        "sha256": "7327a62a993f02910bdba7f045386319a98c09c71f790e072f93df54a2377070"
+        "sha256": "1aec3733f2252e571dad976072c6153fd611c5e33cd1879cd044499151d56e16"
       }
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
@@ -52,7 +52,14 @@
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
       "sha256": "6719924da339813b1c8b7c67225a2d4dd4035147d0d76651479e9b0458f7e042",
-      "size": 178977257
+      "size": 178977257,
+      "revived_at": "2026-10-18T15:59:37",
+      "previous_retirement": {
+        "sha256": "6719924da339813b1c8b7c67225a2d4dd4035147d0d76651479e9b0458f7e042",
+        "size": 178977257,
+        "retired_at": "2026-10-18T15:58:59",
+        "reason": "磁盘上已不存在（被删/未生成/改名？）——由 --update 自动迁移留痕，**需人工复核并改写为真实原因**"
+      }
     }
   },
   "retired": {}
