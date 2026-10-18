@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"secautomind-ai/internal/paths"
+
 	"github.com/cloudwego/eino/compose"
 )
 
@@ -42,7 +44,8 @@ func SetCheckpointDir(dir string) {
 
 func (e *Engine) checkpointStore() (compose.CheckPointStore, error) {
 	e.cpStoreMu.Do(func() {
-		e.cpStore, e.cpStoreErr = newFileCheckPointStore(e.checkpointDir)
+		// 延迟解析：包级默认值在 paths.Init 之前求值，必须到真正使用时才归到数据根。
+		e.cpStore, e.cpStoreErr = newFileCheckPointStore(paths.Resolve(e.checkpointDir))
 	})
 	return e.cpStore, e.cpStoreErr
 }

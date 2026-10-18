@@ -27,6 +27,7 @@ import (
 	"secautomind-ai/internal/mcp"
 	"secautomind-ai/internal/monitor"
 	"secautomind-ai/internal/multiagent"
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/security"
 	"secautomind-ai/internal/skillpackage"
 
@@ -86,12 +87,20 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// 初始化数据库
 	dbPath := cfg.Database.Path
 	if dbPath == "" {
-		dbPath = "data/conversations.db"
+		dbPath = paths.Resolve("data/conversations.db")
 	}
 
 	// 确保目录存在
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return nil, fmt.Errorf("创建数据库目录失败: %w", err)
+	}
+
+	// 启动即把数据根与真实库路径打进日志：用户/排障不再需要猜"配置和数据在哪"。
+	if home := paths.Home(); home != "" {
+		log.Logger.Info("应用数据根目录",
+			zap.String("home", home),
+			zap.String("database", dbPath),
+		)
 	}
 
 	db, err := database.NewDB(dbPath, log.Logger)
@@ -1197,6 +1206,7 @@ func setupRoutes(
 		protected.GET("/chat-uploads", chatUploadsHandler.List)
 		protected.GET("/chat-uploads/export", chatUploadsHandler.Export)
 		protected.GET("/chat-uploads/download", chatUploadsHandler.Download)
+		protected.GET("/chat-uploads/verify", chatUploadsHandler.Verify)
 		protected.GET("/chat-uploads/path", chatUploadsHandler.ResolvePath)
 		protected.GET("/chat-uploads/content", chatUploadsHandler.GetContent)
 		protected.POST("/chat-uploads", chatUploadsHandler.Upload)

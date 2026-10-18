@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/termout"
 
 	"gopkg.in/yaml.v3"
@@ -1417,6 +1418,16 @@ type ToolConfig struct {
 	Parameters       []ParameterConfig `yaml:"parameters,omitempty"`         // 参数定义（可选）
 	ArgMapping       string            `yaml:"arg_mapping,omitempty"`        // 参数映射方式: "auto", "manual", "template"（可选）
 	AllowedExitCodes []int             `yaml:"allowed_exit_codes,omitempty"` // 允许的退出码列表（某些工具在成功时也返回非零退出码）
+
+	// 资产元数据（来源可追溯）。仅用于展示与审计，不参与执行语义。
+	// 缺省值语义：Version 空=未标注；Source 空=未判定；License 空=未核实；
+	// Trust 空=按 builtin 处理（随发行版分发的配方即内置，属事实而非声明）。
+	Version  string `yaml:"version,omitempty"`  // 配方自身版本，非上游工具版本
+	Source   string `yaml:"source,omitempty"`   // self | upstream
+	Upstream string `yaml:"upstream,omitempty"` // source=upstream 时的上游仓库或主页
+	License  string `yaml:"license,omitempty"`  // SPDX 标识；未核实填 unknown，禁止臆测
+	Trust    string `yaml:"trust,omitempty"`    // builtin | verified | community
+	Evidence string `yaml:"evidence,omitempty"` // trust=verified 时指向可复现证据
 }
 
 // ParameterConfig 参数配置
@@ -1439,6 +1450,10 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}
+
+	// 数据根解析必须早于任何路径使用：确定 data/tmp 等相对路径归到哪个根目录。
+	// 解析结果进程内记忆，未调用本函数（如单元测试直接构造 Config）时 paths.Resolve 保持原样。
+	paths.Init(path)
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
@@ -1526,7 +1541,26 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
+	resolveDataPaths(&cfg)
+
 	return &cfg, nil
+}
+
+// resolveDataPaths 把"数据类"相对路径归到统一数据根（paths.Home）。
+//
+// 只处理会写入磁盘的运行时目录；skills_dir / agents_dir / roles_dir 等内容目录
+// 仍相对配置文件所在目录解析（它们是只读资源，随程序分发，不应落到用户数据目录）。
+//
+// 空值不在此处补默认值：保留"未配置"语义，由各使用点的默认值经 paths.Resolve 解析。
+func resolveDataPaths(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	cfg.Database.Path = paths.Resolve(cfg.Database.Path)
+	cfg.Database.KnowledgeDBPath = paths.Resolve(cfg.Database.KnowledgeDBPath)
+	cfg.Agent.WorkspaceRootDir = paths.Resolve(cfg.Agent.WorkspaceRootDir)
+	cfg.MultiAgent.EinoMiddleware.ReductionRootDir = paths.Resolve(cfg.MultiAgent.EinoMiddleware.ReductionRootDir)
+	cfg.MultiAgent.EinoMiddleware.CheckpointDir = paths.Resolve(cfg.MultiAgent.EinoMiddleware.CheckpointDir)
 }
 
 func validateOpenAIOutputLimits(openAI OpenAIConfig) error {
@@ -1993,8 +2027,8 @@ func Default() *Config {
 			ToolsDir: "tools",        // 默认工具目录
 		},
 		Database: DatabaseConfig{
-			Path:            "data/conversations.db",
-			KnowledgeDBPath: "data/knowledge.db", // 默认知识库数据库路径
+			Path:            paths.Resolve("data/conversations.db"),
+			KnowledgeDBPath: paths.Resolve("data/knowledge.db"), // 默认知识库数据库路径
 		},
 		Auth: AuthConfig{
 			SessionDurationHours: 12,

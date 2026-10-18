@@ -11,6 +11,8 @@ import (
 	"strings"
 	"text/template"
 
+	"secautomind-ai/internal/paths"
+
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -41,7 +43,7 @@ func NewPayloadBuilder(manager *Manager, logger *zap.Logger, tmplDir, outputDir 
 		tmplDir = "internal/c2/payload_templates"
 	}
 	if outputDir == "" {
-		outputDir = "tmp/c2/payloads"
+		outputDir = paths.Resolve("tmp/c2/payloads")
 	}
 	return &PayloadBuilder{
 		manager:   manager,

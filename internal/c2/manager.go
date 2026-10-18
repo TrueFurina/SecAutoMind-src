@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"secautomind-ai/internal/database"
+	"secautomind-ai/internal/paths"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -78,7 +79,7 @@ func NewManager(db *database.DB, logger *zap.Logger, storageDir string) *Manager
 		logger = zap.NewNop()
 	}
 	if storageDir == "" {
-		storageDir = "tmp/c2"
+		storageDir = paths.Resolve("tmp/c2")
 	}
 	return &Manager{
 		db:               db,

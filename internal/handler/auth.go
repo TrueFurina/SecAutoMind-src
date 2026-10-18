@@ -10,6 +10,7 @@ import (
 
 	"secautomind-ai/internal/audit"
 	"secautomind-ai/internal/config"
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/security"
 
 	"github.com/gin-gonic/gin"
@@ -326,7 +327,7 @@ func permissionKeys(perms map[string]bool) []string {
 // initialPasswordFile 返回首启初始密码文件路径（与 app.go bootstrap 落盘路径一致）。
 // 该文件存在 = 平台尚未完成"首次向导"（管理员还没设置专属密码）。
 func (h *AuthHandler) initialPasswordFile() string {
-	dbPath := "data/conversations.db"
+	dbPath := paths.Resolve("data/conversations.db")
 	if h.config != nil && strings.TrimSpace(h.config.Database.Path) != "" {
 		dbPath = h.config.Database.Path
 	}
