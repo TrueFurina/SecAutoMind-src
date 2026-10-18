@@ -421,22 +421,78 @@ def _exe_vcs(path):
     return grab("vcs.revision="), grab("vcs.time=")
 
 
+# Go 在非 tag 提交上的模块伪版本：`v1.2.3-0.<YYYYMMDDhhmmss>-<12 位 commit>`。
+# 解析它比 `vcs.revision=` 更可靠：前者在 -trimpath 构建里也一定存在（buildinfo 的
+# `mod` 行），后者只是 vcs 段的附带信息。
+_PSEUDO_VERSION_RE = re.compile(
+    r"^v\d+\.\d+\.\d+-\d+\.(\d{14})-([0-9a-f]{7,12})(\+dirty)?$")
+_BUILDINFO_MOD_RE = re.compile(
+    rb"mod\tsecautomind-ai\t([^\t\x00-\x1f]+)")
+
+
+def read_buildinfo(path):
+    """解析 Go 二进制的构建来源 → {version, commit, dirty, built_at}；解析不到返回 None。
+
+    **单一实现**：`check_binary_version.py`（交付二进制来源门禁）与 exe_info() 都调这里，
+    避免"门禁一套判据、报表另一套口径"——那正是交付包里三份不同构建能长期共存的土壤。
+    """
+    try:
+        with open(path, "rb") as fh:
+            blob = fh.read()
+    except OSError:
+        return None
+    m = _BUILDINFO_MOD_RE.search(blob)
+    rev, tm = _exe_vcs(path)
+    if not m:
+        # 没有 mod 行但 vcs 段在：至少给出提交（少见，保留可用信息）
+        return ({"version": "", "commit": rev, "dirty": False, "built_at": tm}
+                if rev else None)
+    ver = m.group(1).decode("ascii", "replace")
+    pm = _PSEUDO_VERSION_RE.match(ver)
+    if pm:
+        return {"version": ver, "commit": pm.group(2), "dirty": bool(pm.group(3)),
+                "built_at": pm.group(1)}
+    return {"version": ver, "commit": rev, "dirty": ver.endswith("+dirty"),
+            "built_at": tm}
+
+
+# 交付主程序的候选路径（按优先级）。2026-10-18 修：原先只认 ROOT/secautomind-ai.exe，
+# 而实际产物在 installer/ 下 —— 于是报表永远打印「未找到交付 exe」，
+# 「包里三份 exe 没有一份是当前源码」这件事从头到尾没人看见过。
+EXE_CANDIDATES = (
+    "installer/secautomind-ai.exe",
+    "secautomind-ai.exe",
+    "dist/secautomind-ai.exe",
+)
+
+
+def find_delivery_exe():
+    for rel in EXE_CANDIDATES:
+        p = os.path.join(ROOT, rel)
+        if os.path.isfile(p):
+            return p
+    return ""
+
+
 def exe_info():
-    exe = os.path.join(ROOT, "secautomind-ai.exe")
-    if not os.path.isfile(exe):
+    exe = find_delivery_exe()
+    if not exe:
         return {"present": False}
     h = hashlib.md5()
     with open(exe, "rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
-    rev, tm = _exe_vcs(exe)
+    info = read_buildinfo(exe) or {}
+    rev = info.get("commit") or ""
     return {
         "present": True,
+        "path": os.path.relpath(exe, ROOT).replace(os.sep, "/"),
         "md5": h.hexdigest(),
         "size_mib": round(os.path.getsize(exe) / 1048576, 1),
         "vcs_revision": rev,
-        "vcs_time": tm,
-        "mod_version": ("vcs %s @ %s" % (rev[:12], tm)) if rev else "",
+        "vcs_time": info.get("built_at", ""),
+        "dirty": bool(info.get("dirty")),
+        "mod_version": info.get("version", ""),
     }
 
 
@@ -519,14 +575,16 @@ def main():
               % data["ctf_detectors"])
     print("  IM 适配器 (func Start*)%d" % data["im_adapters"])
     if e["present"]:
-        print("  交付 exe             md5=%s (%s MiB)" % (e["md5"], e["size_mib"]))
+        print("  交付 exe             %s  md5=%s (%s MiB)"
+              % (e.get("path", ""), e["md5"], e["size_mib"]))
         if e.get("vcs_revision"):
-            print("                       内嵌 vcs.revision=%s (vcs.time=%s)"
-                  % (e["vcs_revision"][:12], e.get("vcs_time", "")))
+            print("                       构建自 %s @ %s%s"
+                  % (e["vcs_revision"][:12], e.get("vcs_time", ""),
+                     "  ⚠️ +dirty" if e.get("dirty") else ""))
         elif e["mod_version"]:
             print("                       %s" % e["mod_version"])
     else:
-        print("  交付 exe             (未找到 secautomind-ai.exe)")
+        print("  交付 exe             (未找到：%s)" % " / ".join(EXE_CANDIDATES))
     print("=" * 62)
     print("口径纪律：材料数字一律引用本脚本输出；求解器数=RegisterSolver(SolverEntry{ 真实调用数，")
     print("          不含注释行与 func 定义行（历史误把 137 当真值，实际 135）。")

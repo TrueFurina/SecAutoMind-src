@@ -194,6 +194,33 @@ jobs:
       - name: Final artifacts freeze (压缩包/答辩PPT/演示视频 未被改动)
         run: python scripts/check_final_artifacts_freeze.py
 
+  # 交付二进制来源门禁（2026-10-18）：发出去的 exe 必须由当前 HEAD 构建。
+  # 实锤事故：交付包里同时躺着 09-04(+dirty) / 09-07 / 09-30 三份构建，没有一份是
+  # 当前源码的产物，而源码期间修掉了 7 critical + 8 high 依赖漏洞与 presolve 短路。
+  # 文件名和体积都看不出来，只有读 Go buildinfo 才能判定。
+  # CI 里 exe 未入库（.gitignore）→ 无实物可比，故这里做两件事：
+  #   ① 自测证明门禁逻辑真能红（含"安装包解不出 payload 也算红"）；
+  #   ② 用 release 同款参数**现场编一份** windows exe 再过门禁 ——
+  #      既证明构建参数还产得出可解析的 buildinfo，也证明门禁在真产物上不误杀。
+  binary-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Binary version gate self-test (stale/dirty/unverifiable must NOT pass)
+        run: python scripts/check_binary_version_test.py
+      - name: Build Windows exe with release flags
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-H windowsgui -w -s" -o installer/secautomind-ai.exe ./cmd/server
+      - name: Binary version gate on a fresh HEAD build
+        run: python scripts/check_binary_version.py
+
   # 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分）。
   # 既有测试是**组件级**的；这一路把「仿真 DASCTF 平台 + 真实 Poller + 真实求解器」串起来跑：
   # 拉题（含注入 429）→ 并发求解 → 提交（剥离外壳）→ 判分 accepted，并验证
