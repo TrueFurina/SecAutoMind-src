@@ -126,6 +126,13 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 			if wErr := os.WriteFile(pwFile, []byte(content), 0600); wErr != nil {
 				log.Logger.Warn("写入初始密码提示文件失败", zap.Error(wErr))
 			} else {
+				// 日志与 stdout 双写：windowsgui 构建无控制台，stdout 不可见，
+				// 此时 <数据根>/logs/secautomind.log 是用户唯一能读到该路径的地方。
+				// 只记路径不记口令本身——日志会落盘，口令不进日志。
+				log.Logger.Info("初始密码已保存至提示文件",
+					zap.String("file", pwFile),
+					zap.String("home", paths.Home()),
+				)
 				fmt.Printf("初始密码已保存至: %s\n", pwFile)
 			}
 		}

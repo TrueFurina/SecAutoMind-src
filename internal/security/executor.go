@@ -1677,36 +1677,17 @@ func getExitCodeValue(err error) int {
 // 合法 shell 语法（分号/重定向/算术展开/变量展开）为设计内用法，放行——
 // exec 工具是设计内 RCE 接口（见 executeSystemCommand 头注释），本函数仅兜底
 // 拦截"意外外联/反连/解释器任意代码执行"类最危险特征，不是沙箱。
+//
+// 规则数据外置在 command_rules.yaml（go:embed 嵌入），本函数只负责按序匹配；
+// 改拦截口径请改 YAML 并同步 shell_interception_test.go，不要在这里硬编码新规则。
 func isDangerousShellCommand(cmd string) (bool, string) {
-	dangerous := []struct {
-		pattern string
-		reason  string
-	}{
-		{"|", "管道（|）"},
-		{"&&", "逻辑与（&&）"},
-		{"||", "逻辑或（||）"},
-		{"`", "反引号替换"},
-		{"curl ", "curl（可能外联）"},
-		{"wget ", "wget（可能外联）"},
-		{"nc ", "netcat（可能建立反向shell）"},
-		{"socat ", "socat（可能建立反向shell）"},
-		{"telnet ", "telnet（可能外联）"},
-		{"/dev/tcp", "bash反向shell"},
-		{"bash -i", "交互式bash"},
-		{"python -c", "Python代码执行"},
-		{"python3 -c", "Python代码执行"},
-		{"py -c", "Python代码执行"},
-		{"perl -e", "Perl代码执行"},
-		{"ruby -e", "Ruby代码执行"},
-	}
-	for _, d := range dangerous {
-		if strings.Contains(cmd, d.pattern) {
-			return true, d.reason
+	for _, r := range loadCommandRules() {
+		if r.unlessContains != "" && strings.Contains(cmd, r.unlessContains) {
+			continue
 		}
-	}
-	// $(...) 子 shell 替换：排除 $(( 算术展开（合法语法）
-	if strings.Contains(cmd, "$(") && !strings.Contains(cmd, "$((") {
-		return true, "子shell替换（$()）"
+		if r.re.MatchString(cmd) {
+			return true, r.reason
+		}
 	}
 	return false, ""
 }
