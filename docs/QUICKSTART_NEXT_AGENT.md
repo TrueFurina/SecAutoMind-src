@@ -21,14 +21,14 @@ SecAutoMind：Go 单体（`cmd/server`）+ 嵌入式前端（`internal/app/web/`
 
 ---
 
-## 2. 五分钟自检（全部应绿）
+## 2. 五分钟自检（除 §4 已知红灯外应全绿）
 
 ```bash
 export APPDATA="$USERPROFILE/AppData/Roaming"          # ← 不设这条，go 命令全废（见 §5）
 export PATH="/d/DevCache/go/bin:$PATH"
 
 python scripts/freeze_gate.py --status                  # 应 PASS，窗口 2027-02-15~03-01
-python scripts/audit_asset_metadata.py --check          # license 65/90, upstream 70/90, 不一致 0
+python scripts/audit_asset_metadata.py --check          # 口径会变：2026-10-18 16:54 实测 89 配方 / license 65/89 / upstream 70/89 / 不一致 0
 python scripts/check_web_asset_parity.py                # rc=0
 go build ./...                                          # rc=0
 node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
@@ -45,15 +45,23 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 | **决赛 2027-03-01，冻结 2027-02-15~03-01** | 窗口内 `internal/ agents/ cmd/` 改动被闸门 BLOCK。`roles/ skills/` 不在闸门内，但 P3 纪律性推迟赛后。破例走 `--freeze-override` + `FREEZE_OVERRIDE_ACK=1` 并留审计。 |
 | **禁止 `git add -A`** | 工作树常驻大量并行会话 WIP（2026-10-18 实测 112 项）。只 stage 显式路径，提交后用 `git show --stat` 复验零交集。 |
 | **前端双副本** | `go:embed` 的是 `internal/app/web/`，root `web/` 是工作副本。改任一处必跑 parity，否则改动静默失效。 |
-| **勿擅删 `hashpump` / `lightx`** | 属语义变更，等用户拍板（见 §4）。配置里已加 ⚠️ 注释，**未改 enabled、未删文件**。 |
+| **勿擅删 `hashpump` / `lightx`** | 属语义变更。**现状：工作树已被并行会话执行（hashpump 置灰、lightx 已删），未提交**——见 §4，不要代提交或回滚。 |
 | **勿把单向不变量改双向** | `tools_metadata_test.go`：已核 license ⇒ 必有 upstream。反向不成立——gdb/objdump/strings 是「上游已核、许可未核」的正当状态。 |
 
 ---
 
-## 4. 只有用户能拍板的两件事
+## 4. 两个语义决策：**工作树里已有人执行，但未提交**
 
-1. **`hashpump`**：`enabled:true` 但上游 `bwall/HashPump` 已消失（gh api 404 + 网页 404 + Kali 未收录）。风险最高的一条——对外提供了一个宿主机上很可能不存在的工具。建议置灰或删。
-2. **`lightx`**：全仓 grep + requirements + run.sh 均无此工具，疑幻影条目。建议删 `tools/lightx.yaml` 并清 `tools/risk_policy.yaml` 引用。
+> 2026-10-18 16:50 起工作树出现下列变更（`tools/hashpump.yaml` mtime 可证），非本卡作者所为，属并行会话在途 WIP。
+> **接手方不要代提交、不要回滚**，先与用户/该会话确认意图。
+
+1. **`hashpump`**：已**置灰**（`enabled: false` + 配置头「⚠️ 已置灰（2026-10-18 人工定夺）」注释，文件保留留档）。上游 `bwall/HashPump` 确已消失（gh api 404 + 网页 404 + Kali 未收录）。
+2. **`lightx`**：`tools/lightx.yaml` 已被**删除**（`git status` 显示 ` D`，未暂存未提交）。
+
+**⚠️ 由此产生的已知红灯（重要）**：`internal/config/tools_metadata_test.go:15` 硬编码 `len(tools) != 90`，删除 lightx 后实际 89 →
+`go test ./internal/config` **FAIL**：`工具配方数量应为 90，实际 89（是否增删了 tools/*.yaml？）`。
+这是守卫按设计报警，不是代码 bug。**处置前提是用户确认删除**；确认后把 90 改为 89（或改为读目录计数并单独断言期望值）。
+在此之前 `handler`/`app` 两包仍为 `ok`，`go build ./...` 仍 rc=0。
 
 其余三项（binutils 三件套 / dnsenum / waybackurls 的 license 留 unknown）**是正确状态，不要"补全"**。
 
