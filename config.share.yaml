@@ -26,7 +26,7 @@ version: "v1.7.28"
 # 逃生阀：--freeze-override "<≥20 字理由>" 且环境变量 FREEZE_OVERRIDE_ACK=1（会写入 docs/freeze-override-log.md 审计）。
 freeze:
   enabled: true
-  final_date: "2026-12-15"  # 决赛日期 YYYY-MM-DD；窗口 = final_date - freeze_days(14) ~ final_date → 2026-12-01 起禁改架构（日期待用户最终确认）
+  final_date: "2027-03-01"  # 决赛日期 YYYY-MM-DD；窗口 = final_date - freeze_days(14) ~ final_date → 2027-02-15 起禁改架构（用户 2026-10-18 确认，替换原未定稿占位 2026-12-15）
   freeze_days: 14
   protected_paths: [internal/, agents/, cmd/]   # 冻结窗口内禁止改动的路径前缀
   override_ack_env: FREEZE_OVERRIDE_ACK
