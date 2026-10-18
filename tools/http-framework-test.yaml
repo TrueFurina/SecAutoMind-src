@@ -1344,6 +1344,10 @@ args:
             print("\nInterrupted.", file=sys.stderr)
             sys.exit(130)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "纯Python HTTP测试框架（httpx，会话复用+编码守护）"
 description: |
   纯 Python 构建的 HTTP 测试框架：基于 httpx 会话，结合 socket 探针补齐 DNS/TCP/TLS 观测，

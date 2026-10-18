@@ -145,7 +145,7 @@ text(s, Inches(0.82), Inches(3.3), Inches(11), Inches(0.6),
      [("自主决策 · 多智能体协同 · 全链路攻防推演平台", 24, ACCENT2, True)])
 text(s, Inches(0.82), Inches(4.15), Inches(11.6), Inches(1.2),
      [[("面向赛题 XH-202609「具备自主决策能力的通用网络安全智能体技术研究」\n", 17, INK, False),
-       ("以 3 层编排 × 91 工具 × 18 Agent，打造可离线运行的 AI 安全作战指挥舱——", 17, MUTED, False),
+       ("以 3 层编排 × 90 工具 × 18 Agent，打造可离线运行的 AI 安全作战指挥舱——", 17, MUTED, False),
        ("双击即用 · 跨平台 · 可验证", 17, ACCENT, True)]], size=17, line_spacing=1.4)
 chip(s, Inches(0.85), Inches(5.6), Inches(2.6), "Windows / Linux / macOS")
 chip(s, Inches(3.65), Inches(5.6), Inches(2.6), "首启向导 · 零配置密钥")
@@ -160,7 +160,7 @@ bg(s)
 sec_banner(s, 0, "目录  CONTENTS")
 items = [
     ("01", "赛题理解与总体方案", "XH-202609 要一个怎样的智能体 · 我们做什么"),
-    ("02", "核心能力与技术架构", "五层架构 · 三层编排 · 91 工具 · HITL 审计 · 离线"),
+    ("02", "核心能力与技术架构", "五层架构 · 三层编排 · 90 工具 · HITL 审计 · 离线"),
     ("03", "技术创新", "自动选型 / YAML 工具化 / 人类可控 / 产品化闭环"),
     ("04", "产品化与跨平台交付", "双击即用 · 首启向导 · 三端 CI · 多 LLM 零配置"),
     ("05", "实测验证与评分对照", "编译零错误 · 测试全绿 · 向导/权限/CI 实测"),
@@ -228,7 +228,7 @@ text(s, Inches(0.6), Inches(1.3), Inches(12.1), Inches(1.2),
      [[("以「", 20, MUTED, False),
        ("规划 / 执行 / 审计 / 复盘", 20, ACCENT, True),
        ("」四类 Agent 协同，通过共享事实黑板传递上下文；用 ", 20, MUTED, False),
-       ("91 个 YAML 安全工具 + 3 种编排模式", 20, ACCENT, True),
+       ("90 个 YAML 安全工具 + 3 种编排模式", 20, ACCENT, True),
        ("，构建可离线运行的自主决策攻防推演平台。", 20, MUTED, False)]],
      line_spacing=1.35)
 # 四类 Agent
@@ -260,7 +260,7 @@ bg(s)
 text(s, Inches(1), Inches(2.4), Inches(11), Inches(1.4), "02", size=110, color=RGBColor(0x14, 0x24, 0x42), bold=True)
 text(s, Inches(1), Inches(4.2), Inches(11), Inches(0.8), [("核心能力与技术架构", 40, INK, True)])
 text(s, Inches(1.02), Inches(5.1), Inches(9), Inches(0.5),
-     "五层架构 · 三层编排 · 91 工具 × 18 Agent · HITL 审计 · 离线可跑", size=16, color=MUTED)
+     "五层架构 · 三层编排 · 90 工具 × 18 Agent · HITL 审计 · 离线可跑", size=16, color=MUTED)
 footer(s, 6)
 
 # ═══════════════════════════════════════════════
@@ -272,7 +272,7 @@ sec_banner(s, 3, "系统架构：五层解耦 · 纵深防御")
 layers = [
     ("① Web 控制台", "仪表盘 / 对话 / 资产 / 漏洞 / 工作流 / C2 / 审计回放 / 多用户 RBAC", ACCENT),
     ("② Agent 编排层", "规划 / 执行 / 审计 / 复盘 Agent · Deep / Plan-Execute / Supervisor 三种编排", ACCENT2),
-    ("③ 安全工具层", "91 个 YAML 工具配方 + MCP 协议 · 注入型与独立型统一接入", WARN),
+    ("③ 安全工具层", "90 个 YAML 工具配方 + MCP 协议 · 注入型与独立型统一接入", WARN),
     ("④ 知识层", "攻防知识库 / 复盘沉淀 / 模型多通道（qwen · deepseek · openai…自动探测）", GOLD),
     ("⑤ 数据与安全底座", "审计日志全链路 · HITL 审批 · RBAC 权限隔离 · SQLite 本地持久化", ACCENT2),
 ]
@@ -318,9 +318,9 @@ footer(s, 8)
 # ═══════════════════════════════════════════════
 s = add_slide()
 bg(s)
-sec_banner(s, 5, "通用性：91 工具 × 18 Agent × 全链路覆盖")
+sec_banner(s, 5, "通用性：90 工具 × 18 Agent × 全链路覆盖")
 stats = [
-    ("91", "YAML 安全工具配方", ACCENT),
+    ("90", "YAML 安全工具配方", ACCENT),
     ("18", "角色化 Agent", ACCENT2),
     ("13", "安全场景覆盖", WARN),
     ("27", "外部协议 / 注入型工具", GOLD),
@@ -430,11 +430,11 @@ text(s, Inches(0.6), Inches(5.2), Inches(12.1), Inches(0.8),
 footer(s, 13)
 
 # ═══════════════════════════════════════════════
-# 14 创新二：91 工具 YAML 统一对抗
+# 14 创新二：90 工具 YAML 统一对抗
 # ═══════════════════════════════════════════════
 s = add_slide()
 bg(s)
-sec_banner(s, 9, "创新点二：91 工具 × 18 Agent 的「全链路通用对抗」")
+sec_banner(s, 9, "创新点二：90 工具 × 18 Agent 的「全链路通用对抗」")
 card(s, Inches(0.6), Inches(1.5), Inches(6.0), Inches(3.3), "行业痛点：安全工具碎片化", [
     ("▸ Nmap 在命令行、Burp 在 GUI", 13, MUTED, False),
     ("▸ 脚本各写各的，Agent 无法统一编排", 13, MUTED, False),
@@ -442,7 +442,7 @@ card(s, Inches(0.6), Inches(1.5), Inches(6.0), Inches(3.3), "行业痛点：安�
     ("▸ 能力难扩展：加工具=改代码", 13, MUTED, False),
 ], accent=WARN)
 card(s, Inches(6.9), Inches(1.5), Inches(5.9), Inches(3.3), "我们的统一抽象", [
-    ("▸ 91 个 YAML 工具配方（元数据+Schema）", 13, ACCENT, True),
+    ("▸ 90 个 YAML 工具配方（元数据+Schema）", 13, ACCENT, True),
     ("▸ MCP 协议统一接入注入型 / 独立型工具", 13, ACCENT, True),
     ("▸ Agent 按 Schema 自动生成调用参数", 13, MUTED, False),
     ("▸ 新增工具 = 新增 YAML（可扩展）", 13, ACCENT2, True),
@@ -579,7 +579,7 @@ sec_banner(s, 14, "实测验证：编译零错误 · 测试全绿 · 全流程�
 text(s, Inches(0.6), Inches(1.2), Inches(12), Inches(0.4),
      "（2026-09 实测，全部为磁盘/接口真实数据，无模拟）", size=13, color=MUTED)
 stats2 = [
-    ("0", "编译错误\n（129,288 行 Go）", ACCENT),
+    ("0", "编译错误\n（129,955 行 Go）", ACCENT),
     ("181", "预解组件\n（122 真求解器 + 59 检测器）", ACCENT2),
     ("29.1%", "静态 55 真题真解\n（16 题，剔除 4 道抄答案题）", WARN),
     ("100%", "执行 17/17 · Web 10/10\n· JWT 3/3 · 取证 10/10", GOLD),
@@ -666,7 +666,7 @@ text(s, Inches(0.8), Inches(0.9), Inches(11.8), Inches(0.6),
      [("总结  SUMMARY", 15, MUTED, False)])
 text(s, Inches(0.8), Inches(1.6), Inches(11.8), Inches(2.2),
      [[("做了什么：", 17, ACCENT, True),
-       ("3 层编排 × 91 工具 × 18 Agent 的自主决策攻防推演平台——", 17, INK, True),
+       ("3 层编排 × 90 工具 × 18 Agent 的自主决策攻防推演平台——", 17, INK, True),
        ("编译零错误、核心测试全绿、系统实启动、三端可下载、首启向导与审计全流程实测。", 17, MUTED, False)]],
      line_spacing=1.4)
 text(s, Inches(0.8), Inches(3.5), Inches(11.8), Inches(1.0),

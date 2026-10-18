@@ -69,7 +69,7 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 - 门禁自身必须有回归测试。**失效的门禁比没有门禁更危险**——它会持续给出假的安全感。
   实证：旧打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`（第 4 位是连字符），
   一把真 key 从洞里漏过而门禁报 CLEAN。
-- 现有门禁（`ci.yml` **七个** job）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
+- 现有门禁（`ci.yml` 共 **25** 个 job，以下 7 个为核心）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
   `evidence-gate`（基准双语言机验 + `verify_evidence`）· `secret-gate`（密钥三件套：门禁本体 + 自测 + 变异验证）·
   `caliber-gate`（材料数字 vs `count_stats` 真值）· `evidence-package-gate`（冠军证据包一致性 + 变异验证）·
   `freeze-gate`（决赛冻结纪律，见第七条）。

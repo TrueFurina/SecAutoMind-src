@@ -1,6 +1,11 @@
 name: "hashcat"
 command: "hashcat"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/hashcat/hashcat"
+trust: "builtin"
 short_description: "高级密码破解工具，支持GPU加速"
 description: |
   Hashcat是一个高级密码恢复工具，支持多种哈希算法和攻击模式。

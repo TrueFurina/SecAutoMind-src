@@ -1,6 +1,16 @@
+# ── 许可证核实（2026-10-18）──
+# 结论：GPL-2.0-or-later。
+# 出处：上游 dnsenum.pl（VERSION 1.2.4）头部原文
+#       「either version 2 of the License, or (at your option) any later version」，
+#       版权行 Copyright (C) 2014 - Filip Waeytens, tixxDZ。
 name: "dnsenum"
 command: "dnsenum"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://github.com/fwaeytens/dnsenum"
+license: "GPL-2.0-or-later"
+trust: "builtin"
 short_description: "DNS枚举工具"
 description: |
   DNSenum是一个DNS信息收集工具，用于枚举DNS信息。

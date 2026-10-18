@@ -1,6 +1,11 @@
 name: "feroxbuster"
 command: "feroxbuster"
 enabled: false
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/epi052/feroxbuster"
+trust: "builtin"
 short_description: "递归内容发现工具"
 description: |
   Feroxbuster是一个快速、简单的递归内容发现工具。

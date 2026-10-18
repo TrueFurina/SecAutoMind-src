@@ -1,6 +1,11 @@
 name: "x8"
 command: "x8"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/sh1yo/x8"
+trust: "builtin"
 short_description: "隐藏参数发现工具"
 description: |
   X8是一个用于发现Web应用中隐藏参数的工具。

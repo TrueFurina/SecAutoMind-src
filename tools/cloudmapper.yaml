@@ -1,6 +1,11 @@
 name: "cloudmapper"
 command: "cloudmapper"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/duo-labs/cloudmapper"
+trust: "builtin"
 short_description: "AWS网络可视化和安全分析工具"
 description: |
   CloudMapper是一个AWS网络可视化和安全分析工具。

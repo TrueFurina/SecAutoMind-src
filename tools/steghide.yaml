@@ -1,6 +1,11 @@
 name: "steghide"
 command: "steghide"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://sourceforge.net/projects/steghide/"
+license: "GPL-2.0"
+trust: "builtin"
 short_description: "隐写术分析工具"
 description: |
   Steghide是一个隐写术工具，用于在图像和音频文件中隐藏数据。

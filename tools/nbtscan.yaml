@@ -1,6 +1,11 @@
 name: "nbtscan"
 command: "nbtscan"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://github.com/resurrecting-open-source-projects/nbtscan"
+license: "GPL-2.0"
+trust: "builtin"
 short_description: "NetBIOS名称扫描工具"
 description: |
   Nbtscan是一个NetBIOS名称扫描工具，用于发现网络中的Windows系统。

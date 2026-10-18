@@ -1,6 +1,11 @@
 name: "zap"
 command: "zap-cli"
 enabled: false
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/Grunny/zap-cli"
+trust: "builtin"
 short_description: "OWASP ZAP Web应用安全扫描器"
 description: |
   OWASP ZAP是一个Web应用安全扫描器，用于发现Web应用中的安全漏洞。

@@ -1,6 +1,11 @@
 name: "ropper"
 command: "ropper"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/sashs/Ropper"
+trust: "builtin"
 short_description: "高级ROP/JOP gadget搜索工具"
 description: |
   Ropper是一个高级ROP/JOP gadget搜索工具，用于漏洞利用开发。

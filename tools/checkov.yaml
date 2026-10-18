@@ -1,6 +1,11 @@
 name: "checkov"
 command: "checkov"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/bridgecrewio/checkov"
+trust: "builtin"
 short_description: "基础设施即代码安全扫描工具"
 description: |
   Checkov是一个静态代码分析工具，用于基础设施即代码（IaC）的安全扫描。

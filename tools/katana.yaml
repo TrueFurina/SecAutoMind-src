@@ -1,6 +1,11 @@
 name: "katana"
 command: "katana"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/projectdiscovery/katana"
+trust: "builtin"
 short_description: "下一代Web爬虫和蜘蛛工具"
 description: |
   Katana是一个快速、智能的Web爬虫工具，用于发现Web应用中的端点和资源。

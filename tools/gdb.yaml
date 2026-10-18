@@ -1,6 +1,16 @@
+# ── 许可证核实（2026-10-18）──
+# 结论：GPL-3.0-or-later（发行版同时标注 LGPL-3.0-or-later 组件）。
+# 出处：Alpine aports main/gdb/APKBUILD（gdb 16.3）
+#       license="GPL-3.0-or-later AND LGPL-3.0-or-later"。
+# 说明：Debian sources.debian.org 对本机 IP 封禁，改走发行版打包元数据，非臆测。
 name: "gdb"
 command: "gdb"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git"
+license: "GPL-3.0-or-later"
+trust: "builtin"
 short_description: "GNU调试器，用于二进制分析和调试"
 description: |
   GDB是GNU调试器，用于调试和分析二进制程序。

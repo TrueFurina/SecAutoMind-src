@@ -1,7 +1,7 @@
 # SecAutoMind — 快速运行指南
 
 > **SecAutoMind** 是一个**多智能体驱动的靶场自主攻防推演平台**，面向授权靶场与教学场景。
-> 集成 91 个 YAML 工具配方（覆盖 100+ 底层安全工具），支持人机协同审计、自动化报告生成。
+> 集成 90 个 YAML 工具配方（覆盖 100+ 底层安全工具），支持人机协同审计、自动化报告生成。
 
 本目录是**已编译、可直接运行**的分发包。接收方按以下步骤即可启动。
 
@@ -91,7 +91,7 @@ SecAutoMind/
 ├── internal/ cmd/            # Go 源码 (仅供参考，编译用)
 ├── agents/ roles/            # Agent 与角色定义
 ├── skills/                   # Skill 库 (23 个攻防技能包)
-├── tools/                    # 工具库 (91 个 YAML 工具定义)
+├── tools/                    # 工具库 (90 个 YAML 工具定义)
 ├── mcp-servers/              # MCP 服务 (pent_claude_agent, reverse_shell)
 ├── plugins/                  # 浏览器/Burp 插件源码
 ├── knowledge_base/           # 知识库 (SQL Injection / Prompt Injection)

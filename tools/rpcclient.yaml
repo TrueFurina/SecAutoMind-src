@@ -47,6 +47,10 @@ args:
         sys.stderr.write(proc.stderr)
     sys.exit(proc.returncode)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "RPC枚举工具"
 description: |
   Rpcclient是一个RPC客户端工具，用于枚举Windows/Samba系统信息。

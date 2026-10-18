@@ -57,6 +57,10 @@ args:
     fi
   - "_"
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "在指定虚拟环境中编写并执行Python脚本"
 description: |
   在虚拟环境中执行Python脚本。

@@ -32,6 +32,10 @@ args:
     # 执行用户脚本，提供上下文变量
     exec(script_content, context)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "符号执行和二进制分析框架"
 description: |
   Angr是一个符号执行和二进制分析框架，用于自动化漏洞发现和利用。

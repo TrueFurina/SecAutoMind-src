@@ -4,6 +4,10 @@ name: "query_execution_result"
 # 实现位置：internal/mcp/server.go 或 internal/handler/agent.go
 command: "internal:query_execution_result"
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 # 简短描述（用于工具列表，减少token消耗）
 short_description: "查询工具执行结果，支持分页、搜索和过滤大结果集"
 # 工具详细描述

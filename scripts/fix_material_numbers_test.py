@@ -157,7 +157,7 @@ def main():
 
         # T9 BANNED 只上报不改写
         p9 = os.path.join(tmp, "banned.md")
-        banned_line = "本系统共 90 工具 YAML，226 测试\n"
+        banned_line = "本系统共 91 工具 YAML，226 测试\n"
         with open(p9, "w", encoding="utf-8", newline="") as fh:
             fh.write(banned_line)
         try:

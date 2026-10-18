@@ -2,6 +2,11 @@ name: "jaeles"
 command: "jaeles"
 args: ["scan"]
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/jaeles-project/jaeles"
+trust: "builtin"
 short_description: "高级漏洞扫描器，支持自定义签名"
 description: |
   Jaeles是一个高级漏洞扫描器，支持自定义签名进行漏洞检测。

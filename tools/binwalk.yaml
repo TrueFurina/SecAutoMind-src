@@ -1,6 +1,11 @@
 name: "binwalk"
 command: "binwalk"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/ReFirmLabs/binwalk"
+trust: "builtin"
 short_description: "固件和文件分析工具"
 description: |
   Binwalk是一个固件分析工具，用于分析、提取和逆向工程固件镜像。

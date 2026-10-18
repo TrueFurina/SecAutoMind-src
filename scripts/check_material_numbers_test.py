@@ -48,7 +48,7 @@ def load_gate():
 TRUTH = {
     "go_files": 751, "runtime_tools": 143, "ctf_solvers": 177,
     "ctf_real_solvers": 118, "ctf_detectors": 59, "test_files": 299,
-    "tools_yaml": 91, "builtin_tools": 52, "skills": 27, "agents_md": 18,
+    "tools_yaml": 90, "builtin_tools": 52, "skills": 27, "agents_md": 18,
     "roles_yaml": 14, "internal_dirs": 32, "internal_packages": 34, "test_packages": 28,
     "non_test_lines": 128094, "total_lines": 171238, "go_packages": 41,
     # 分发体积：MB = 10^6，1 位小数（2026-10-18 新增锚点，见 count_stats.size_mb）
@@ -63,7 +63,7 @@ CLEAN_DOC = """# 规模一览
 - 751 Go 文件，171,238 含测试 / 128,094 行（128,094 非测试行）
 - 143 运行时工具，52 内置工具
 - 177 求解器 = 118 真求解器 + 59 检测器
-- 91 YAML 工具（工具 YAML 91）
+- 90 YAML 工具（工具 YAML 90）
 - 27 技能包，18 Agent，14 角色，internal 目录 32，28 包测试
 - 34 个 internal 包（34 包分层）
 """
@@ -167,7 +167,7 @@ def main():
 
     # ---- 8. FORCE_CURRENT（名字旧仍是现行作战材料）不得豁免 ----
     print("\n[8/16] FORCE_CURRENT 清单（提交前终检清单_20260903.md）必须照查")
-    rc, out = run_gate({"docs/提交前终检清单_20260903.md": CLEAN_DOC.replace("91 YAML 工具", "90 个 YAML")})
+    rc, out = run_gate({"docs/提交前终检清单_20260903.md": CLEAN_DOC.replace("90 YAML 工具", "91 YAML 工具")})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
     if not ok:
@@ -219,7 +219,7 @@ def main():
 
     # ---- 14. 「N 包分层」「N+ YAML」两种历史宣称形态必须可机验（2026-10-18 新增）----
     # 背景：这两类写法此前**完全无锚点** → 冻结产物里「32 包分层」（真值 37）与
-    # 「100+ YAML 配方」（真值 91）长期无人发现。加号尤其危险：所有锚点都要求
+    # 「100+ YAML 配方」（真值 90）长期无人发现。加号尤其危险：所有锚点都要求
     # 「数字紧跟 YAML/个」，`100+` 的 `+` 让它们全部失配，漂移被伪装成"约数"。
     print("\n[14/16] 「N 包分层」「N+ YAML」宣称必须可机验（漂移必红、正确必绿）")
     d1 = CLEAN_DOC.replace("34 包分层", "33 包分层")

@@ -122,6 +122,12 @@ def classify(cmd):
         return "skip", 'go 步骤：本机需先 export APPDATA="$USERPROFILE/AppData/Roaming"（见 MEMORY §5）'
     if cmd.startswith(("bash ", "./", "sh ")):
         return "skip", "shell 步骤"
+    # 前端运行时测试（2026-10-18 新增 ci.yml `web-js-tests` job）：
+    # node 命令同样能在本机等价复刻，不能落进下面的"非 python 命令"兜底被静默跳过 ——
+    # 否则「本地全绿 == CI 会绿」这个承诺又漏一条（与上面 [BLOCK] 那条同一个教训）。
+    # kind 沿用 "python" 这个名字，实际含义是"可本地复刻执行"；汇总文案已同步。
+    if cmd.startswith("node --test"):
+        return "python", ""
     if not cmd.startswith("python "):
         return "skip", "非 python 命令"
     if any(h in cmd for h in HEAVY):
@@ -178,7 +184,7 @@ def main():
 
     bad = [r for r in rows if r[2] != 0]
     print("=" * 78)
-    print("python 侧：跑 %d 条，失败 %d 条，跳过 %d 条" % (len(rows), len(bad), len(skipped)))
+    print("可本地复刻的命令：跑 %d 条，失败 %d 条，跳过 %d 条" % (len(rows), len(bad), len(skipped)))
     if bad:
         for job, cmd, rc, _ in bad:
             print("  *** FAIL %s  rc=%d" % (cmd, rc))

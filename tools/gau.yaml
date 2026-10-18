@@ -1,6 +1,11 @@
 name: "gau"
 command: "gau"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/lc/gau"
+trust: "builtin"
 short_description: "从多个数据源获取所有URL"
 description: |
   Gau (Get All URLs) 从多个数据源获取目标域名的所有URL。

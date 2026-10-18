@@ -4,6 +4,11 @@ command: "dalfox"
 args:
   - "url"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/hahwul/dalfox"
+trust: "builtin"
 short_description: "高级XSS漏洞扫描器"
 description: |
   Dalfox是一个高级XSS漏洞扫描器，支持多种XSS检测技术。

@@ -1,6 +1,11 @@
 name: "ffuf"
 command: "ffuf"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/ffuf/ffuf"
+trust: "builtin"
 short_description: "快速Web模糊测试工具，用于目录、参数和内容发现"
 description: |
   FFuf是一个快速的Web模糊测试工具，用于目录发现、参数模糊测试和内容发现。

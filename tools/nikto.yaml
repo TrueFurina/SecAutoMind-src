@@ -1,6 +1,11 @@
 name: "nikto"
 command: "nikto"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/sullo/nikto"
+trust: "builtin"
 # 允许的退出码列表：nikto在找到漏洞时会返回退出码1，这是正常的成功状态
 allowed_exit_codes: [1]
 # 简短描述（用于工具列表，减少token消耗）

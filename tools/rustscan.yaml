@@ -1,6 +1,11 @@
 name: "rustscan"
 command: "rustscan"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/RustScan/RustScan"
+trust: "builtin"
 short_description: "超快速端口扫描（Rust）；可选 greppable、批量与脚本级别"
 description: |
   RustScan 2.x：快速端口发现，可选再调 Nmap 脚本。

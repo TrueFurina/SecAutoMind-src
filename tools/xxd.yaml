@@ -1,6 +1,11 @@
 name: "xxd"
 command: "xxd"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Vim"
+upstream: "https://github.com/vim/vim"
+trust: "builtin"
 short_description: "十六进制转储工具"
 description: |
   Xxd是一个十六进制转储工具，用于以十六进制格式显示文件内容。

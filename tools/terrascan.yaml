@@ -1,6 +1,11 @@
 name: "terrascan"
 command: "terrascan"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/tenable/terrascan"
+trust: "builtin"
 short_description: "基础设施即代码安全扫描工具"
 description: |
   Terrascan是一个基础设施即代码安全扫描工具，用于检测IaC配置中的安全问题。

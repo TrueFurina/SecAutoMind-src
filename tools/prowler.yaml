@@ -1,6 +1,11 @@
 name: "prowler"
 command: "prowler"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/prowler-cloud/prowler"
+trust: "builtin"
 short_description: "云安全评估工具（AWS, Azure, GCP）"
 description: |
   Prowler是一个全面的云安全评估工具，支持AWS、Azure和GCP。

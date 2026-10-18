@@ -2,14 +2,15 @@
 
 > 这是入口卡，不是全量交接。**全量事实以 `docs/HANDOFF_2026-10-18.md` 为准**，本卡只负责"30 秒内知道该干什么、不能碰什么"。
 > 生成于 2026-10-18，所有数字均为当日实跑值；过期后以脚本输出为准，不要相信卡上的字。
+> **最近一次更新：2026-10-18 17:15（第七/八轮执行完毕，已无待拍板事项）。**
 
 ---
 
 ## 0. 阅读顺序（按此顺序，别跳）
 
 1. `AGENTS.md` —— 八条协作宪章，尤其第一条「诚实高于一切」。**违反即本次工作作废**。
-2. `.workbuddy-ai/memory/MEMORY.md` —— 长期记忆（已于 2026-10-18 校正冻结日期）。
-3. `docs/HANDOFF_2026-10-18.md` —— 全量交接：改了哪些文件、验证门禁、五个语义决策。
+2. `.workbuddy-ai/memory/MEMORY.md` —— 长期记忆（冻结日期、两套口径、CI 坑）。
+3. `docs/HANDOFF_2026-10-18.md` —— 全量交接：改了哪些文件、验证门禁、决策执行记录（§4 / §10 / §11）。
 4. `docs/Octop_取精去糟与反哺清单_20261018.md` §7.4 —— 上游 PR/Issue 状态。
 
 ---
@@ -17,22 +18,31 @@
 ## 1. 项目是什么
 
 SecAutoMind：Go 单体（`cmd/server`）+ 嵌入式前端（`internal/app/web/`，`go:embed`）+ YAML 工具/角色/技能配置。
-本阶段两条工作流均已完工：**A · P0 工具资产元数据**、**B · Octop 取精去糟 + 反哺**。
+两条工作流均已完工：**A · P0 工具资产元数据**、**B · Octop 取精去糟 + 反哺**。
 
 ---
 
-## 2. 五分钟自检（除 §4 已知红灯外应全绿）
+## 2. 五分钟自检（**应当全绿**，无已知红灯）
 
 ```bash
 export APPDATA="$USERPROFILE/AppData/Roaming"          # ← 不设这条，go 命令全废（见 §5）
-export PATH="/d/DevCache/go/bin:$PATH"
+export PATH="/d/miniconda3_new:/d/DevCache/go/bin:$PATH"   # conda 在前：它带 pycryptodome/pypdf/yaml/pptx
 
 python scripts/freeze_gate.py --status                  # 应 PASS，窗口 2027-02-15~03-01
-python scripts/audit_asset_metadata.py --check          # 口径会变：2026-10-18 16:54 实测 89 配方 / license 65/89 / upstream 70/89 / 不一致 0
+python scripts/audit_asset_metadata.py                  # 89 真实配方 / license 69/89 / upstream 70/89 / 不一致 0
+python scripts/check_material_numbers.py                # 应 PASS（材料数字 vs count_stats 真值）
+python scripts/check_artifact_numbers.py                # 应 PASS（9 个 PPT/PDF 产物内数字）
+python scripts/build_championship_evidence.py --check   # 应 PASS（冠军证据包）
+python scripts/check_final_artifacts_freeze.py          # 应 PASS（产物与生成器哈希已上锁）
 python scripts/check_web_asset_parity.py                # rc=0
 go build ./...                                          # rc=0
-node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
+go test ./internal/config ./internal/handler            # rc=0
+node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全过（已接 CI：web-js-tests）
 ```
+
+> 慢门禁（各约 2–5 分钟，跑前务必先设好上面两行 PATH，否则会假红）：
+> `python scripts/check_quant_effect.py --full`（10 条陈述）、`python scripts/check_suite_parity.py --check`（22 集）。
+> **唯一已知红灯**：`python scripts/check_binary_version.py` —— `installer/*.exe` 构建自旧提交，需 `python installer/build_installer.py --makensis D:/nsis_env/NSIS/makensis.exe` 重建（属交付动作，未执行）。
 
 判成败一律 `cmd > out.txt 2>&1; echo "RC=$?"`，**不要用管道**（`| grep -v ^ok` 会吞掉 FAIL 行）。
 
@@ -43,31 +53,27 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 | 红线 | 说明 |
 |---|---|
 | **决赛 2027-03-01，冻结 2027-02-15~03-01** | 窗口内 `internal/ agents/ cmd/` 改动被闸门 BLOCK。`roles/ skills/` 不在闸门内，但 P3 纪律性推迟赛后。破例走 `--freeze-override` + `FREEZE_OVERRIDE_ACK=1` 并留审计。 |
-| **禁止 `git add -A`** | 工作树常驻**上百项**并行会话 WIP（2026-10-18 实测 112→142，几分钟内仍在涨）。只 stage 显式路径，提交后用 `git show --stat` 复验零交集。 |
+| **禁止 `git add -A`** | 工作树常驻**上百项**并行会话 WIP（2026-10-18 实测 113 项，持续变动）。只 stage 显式路径，提交后用 `git show --stat` 复验零交集。 |
 | **前端双副本** | `go:embed` 的是 `internal/app/web/`，root `web/` 是工作副本。改任一处必跑 parity，否则改动静默失效。 |
-| **勿擅删 `hashpump` / `lightx`** | 属语义变更。**现状：工作树已被并行会话执行（hashpump 置灰、lightx 已删），未提交**——见 §4，不要代提交或回滚。 |
-| **勿把单向不变量改双向** | `tools_metadata_test.go`：已核 license ⇒ 必有 upstream。反向不成立——gdb/objdump/strings 是「上游已核、许可未核」的正当状态。 |
+| **`hashpump` / `lightx` 已定案，勿再动** | 用户已批准：`hashpump` 置灰留档（`enabled: false`）、`lightx` 配方已删除。**不要恢复、也不要再改口径**。 |
+| **勿把单向不变量改双向** | `tools_metadata_test.go`：已核 license ⇒ 必有 upstream。反向不成立——「上游已核、许可未核」是正当状态。 |
 
 ---
 
-## 4. 两个语义决策：**工作树里已有人执行，但未提交**
+## 4. 语义决策：**已由用户拍板并执行完毕**（无待办）
 
-> 2026-10-18 16:50 起工作树出现下列变更（`tools/hashpump.yaml` mtime 可证），非本卡作者所为，属并行会话在途 WIP。
-> **接手方不要代提交、不要回滚**，先与用户/该会话确认意图。
+| 项 | 决定 | 现状 |
+|---|---|---|
+| `hashpump` | 置灰保留 | `enabled: false`，配置头注明人工定夺，文件留档 |
+| `lightx` | 删除配方 | `tools/lightx.yaml` 已删；`risk_policy.yaml` 原本就无引用 |
+| `gdb` | 换数据源核实 | `GPL-3.0-or-later`（Alpine aports `main/gdb`） |
+| `objdump` / `strings` | 换数据源核实 | `GPL-2.0-or-later`（Alpine aports `main/binutils`） |
+| `dnsenum` | 换数据源核实 | `GPL-2.0-or-later`（上游 `dnsenum.pl` 头「version 2 or later」） |
+| `waybackurls` | 换数据源核实 | **确证上游无许可**（API `license=null`、无 LICENSE、`main.go` 无版权头）→ 留 `unknown`，这是"查到了没有"，不是"没查到" |
 
-1. **`hashpump`**：已**置灰**（`enabled: false` + 配置头「⚠️ 已置灰（2026-10-18 人工定夺）」注释，文件保留留档）。上游 `bwall/HashPump` 确已消失（gh api 404 + 网页 404 + Kali 未收录）。
-2. **`lightx`**：`tools/lightx.yaml` 已被**删除**（`git status` 显示 ` D`，未暂存未提交）。
-
-**⚠️ 由此产生的已知红灯（重要）**：`internal/config/tools_metadata_test.go:15` 硬编码 `len(tools) != 90`，删除 lightx 后实际 89 →
-`go test ./internal/config` **FAIL**：`工具配方数量应为 90，实际 89（是否增删了 tools/*.yaml？）`。
-这是守卫按设计报警，不是代码 bug。**处置前提是用户确认删除**；确认后把 90 改为 89（或改为读目录计数并单独断言期望值）。
-在此之前 `handler`/`app` 两包仍为 `ok`，`go build ./...` 仍 rc=0。
-
-**别把 89 和 90 当成谁算错了**：`audit_asset_metadata.py` 解析 YAML 得 89（真实工具数），`count_stats.py` 文件计数得 90（`_shared_args.yaml` 被历史性计入）。
-副作用（实测）：删前 `count_stats` 为 91、删后 90，**恰好等于材料长期用的「90」**，所以 `check_material_numbers.py` 报 PASS；
-但 90 含 `_shared_args.yaml`，真实工具只有 89。**改 `tools/*.yaml` 后别只信口径门禁，必须手动跑 `go test ./internal/config`。**
-
-其余三项（binutils 三件套 / dnsenum / waybackurls 的 license 留 unknown）**是正确状态，不要"补全"**。
+**⚠️ 两套口径别当成谁算错了**：`count_stats.py` 的 `tools_yaml` = **90**（把 `_shared_args.yaml` 这个 YAML anchor 文件按历史约定计入，**对外材料用这个数**）；
+`audit_asset_metadata.py` 与 Go 加载器只认带 `name`+`command` 的真实配方 = **89**。
+**改 `tools/*.yaml` 后别只信口径门禁，必须跑 `go test ./internal/config`**——实测删 lightx 后口径门禁反而转 PASS，只有 Go 守卫会红。
 
 ---
 
@@ -78,7 +84,8 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 - **`git push` 到 github.com 失败**（代理）。上游提交用 `gh api` 重建 commit 绕行（`D:/tmp_pr/push_via_api.py`）。
 - **CGO 测试**报 `cgo.exe exit 2`：先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"`。
 - **C 盘空间**紧张时全量测试假 FAIL：`export TMP=TEMP=TMPDIR=D:/tmp_gotest`，并 `go list ./... | grep -v ctfplatform` 分流跑。
-- **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`。
+- **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`（系统 python 无 PyYAML，校验 yml 时用它）。
+- **CI 仿真**：`git archive HEAD` 在 `core.autocrlf=true` 下**仍导出 CRLF**；要纯 LF 必须 `git -c core.autocrlf=false archive HEAD`。
 
 ---
 
@@ -95,6 +102,6 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 
 ## 7. 默认下一步（若用户没给新指令）
 
-1. 跑完 §2 自检，确认基线绿。
-2. 把 §4 两项整理成待确认清单递给用户——**不要自己动手**。
-3. 除此之外没有必须做的事；`§5 非阻塞观察`（JS 测试接 CI、服务器全量测试、source 徽章配色）择机做，都非阻塞。
+1. 跑完 §2 自检，确认基线全绿。
+2. **没有待拍板事项了**（§4 已全部执行）。当前唯一悬而未决的是**是否提交**：改动都在工作树，提交须逐路径 `git add`，先向用户确认。
+3. 非阻塞项（择机做，都不影响交付）：赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。

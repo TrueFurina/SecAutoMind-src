@@ -1,6 +1,11 @@
 name: "linpeas"
 command: "linpeas.sh"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-2.0-or-later"
+upstream: "https://github.com/peass-ng/PEASS-ng"
+trust: "builtin"
 short_description: "Linux 权限提升枚举脚本，自动检测常见提权路径"
 description: |
   LinPEAS (Linux Privilege Escalation Awesome Script) 是一个自动化权限提升枚举脚本，用于检测 Linux 系统中的常见提权路径。

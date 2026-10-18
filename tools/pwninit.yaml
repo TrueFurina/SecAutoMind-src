@@ -1,6 +1,11 @@
 name: "pwninit"
 command: "pwninit"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/io12/pwninit"
+trust: "builtin"
 short_description: "CTF二进制漏洞利用设置工具"
 description: |
   Pwninit是一个用于CTF二进制漏洞利用设置的工具，自动配置libc和loader。

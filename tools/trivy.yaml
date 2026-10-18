@@ -1,6 +1,11 @@
 name: "trivy"
 command: "trivy"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/aquasecurity/trivy"
+trust: "builtin"
 short_description: "容器和文件系统漏洞扫描器"
 description: |
   Trivy是一个简单而全面的容器和文件系统漏洞扫描器。

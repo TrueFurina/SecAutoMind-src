@@ -6,7 +6,7 @@
 
 替换依据（均事实可溯源）：
 1. risk_policy.yaml 已接入 Go HITL 闸门（本会话完成）：LoadRiskPolicy 启动加载，
-   shouldInterrupt 以 91 工具每工具 hitl 字段为权威敏感度源 → 见 right/left 卡对应改写。
+   shouldInterrupt 以 90 工具每工具 hitl 字段为权威敏感度源 → 见 right/left 卡对应改写。
 2. 整改补充_20260905：实测决策链含 2 次自动审批拒绝，拒绝后 Agent 自动降级安全工具
    完成任务（证据 hitl_rejected ×2）→ 见 left 卡拒绝机制改写。
 """
@@ -25,7 +25,7 @@ EDITS = [
     # slide 10 (idx 9), left HITL card (shape 7), 白名单校验子行 → 加 risk_policy 驱动
     (9, 7, 0, 5,
      "    调用前校验 + 权限点二次拦截",
-     "    风险策略文件驱动 91 工具判定"),
+     "    风险策略文件驱动 90 工具判定"),
 ]
 
 p = Presentation(SRC)

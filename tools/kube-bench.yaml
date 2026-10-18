@@ -1,6 +1,11 @@
 name: "kube-bench"
 command: "kube-bench"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/aquasecurity/kube-bench"
+trust: "builtin"
 short_description: "CIS Kubernetes基准检查工具"
 description: |
   Kube-bench是一个CIS Kubernetes基准检查工具，用于检查Kubernetes集群是否符合CIS基准。

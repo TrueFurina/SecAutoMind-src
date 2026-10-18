@@ -2,6 +2,11 @@ name: "api-schema-analyzer"
 command: "spectral"
 args: ["lint"]
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/stoplightio/spectral"
+trust: "builtin"
 short_description: "API模式分析工具，识别潜在安全问题"
 description: |
   调用 `spectral lint` 对 OpenAPI/Swagger/GraphQL 模式进行静态分析，可结合自定义规则集或输出格式。

@@ -1,6 +1,11 @@
 name: "scout-suite"
 command: "scout"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-2.0"
+upstream: "https://github.com/nccgroup/ScoutSuite"
+trust: "builtin"
 short_description: "多云安全评估工具"
 description: |
   Scout Suite是一个多云安全评估工具，支持AWS、Azure、GCP、Aliyun和OCI。

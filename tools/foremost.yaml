@@ -1,6 +1,11 @@
 name: "foremost"
 command: "foremost"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://sourceforge.net/projects/foremost/"
+license: "Public Domain"
+trust: "builtin"
 short_description: "文件恢复工具"
 description: |
   Foremost是一个基于文件头和尾的文件恢复工具。

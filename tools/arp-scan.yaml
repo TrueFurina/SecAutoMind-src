@@ -1,6 +1,11 @@
 name: "arp-scan"
 command: "arp-scan"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/royhills/arp-scan"
+trust: "builtin"
 short_description: "ARP网络发现工具"
 description: |
   Arp-scan是一个ARP网络发现工具，用于发现本地网络中的活动主机。

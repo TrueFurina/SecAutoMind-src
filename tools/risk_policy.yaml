@@ -294,11 +294,6 @@ tools:
     hitl: true
     category: vuln
     reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
-  - name: lightx
-    risk: medium
-    hitl: true
-    category: uncategorized
-    reason: "中危：主动扫描/枚举/模糊，建议人工确认或限速"
   - name: masscan
     risk: medium
     hitl: true

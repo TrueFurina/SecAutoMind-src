@@ -1,6 +1,11 @@
 name: "exiftool"
 command: "exiftool"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/exiftool/exiftool"
+trust: "builtin"
 short_description: "元数据提取工具"
 description: |
   ExifTool用于读取、写入和编辑各种文件格式的元数据。
