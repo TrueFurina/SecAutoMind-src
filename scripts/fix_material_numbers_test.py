@@ -53,7 +53,9 @@ def probe_hits(rpath, body, truth):
     n = 0
     for pat, key, _label in cmn.ANCHORS:
         for m in re.finditer(pat, probe):
-            if int(m.group("n").replace(",", "")) != int(truth[key]):
+            # 与门禁同源比较（整数计数 / 1 位小数体积），别再各写一遍 int()
+            got, want = cmn.coerce_num(m.group("n"), truth[key])
+            if got != want:
                 n += 1
     return n
 
@@ -196,6 +198,23 @@ def main():
           % (stale_tf, b11, fmt_tf),
           b11 == 2 and a11 == 0 and ("%s 测试" % fmt_tf) in f11 and not ch_local and not ch_file,
           "b=%d a=%d f11=%r ch_local=%r ch_file=%r" % (b11, a11, f11, ch_local, ch_file))
+
+    # T12 体积字段是 1 位小数：修复器不得 int() 截断（2026-10-18 实锤）
+    # 背景：新增 `setup_mb`/`exe_mb`（89.5 / 20.3）后，`want_of` 与 `format_like` 里的
+    # `int()` 把 89.5 变成 89 → 修复器把「89.5」改成「89」，门禁立刻又报漂移 →
+    # **改完立刻再红**的死循环。CI caliber-gate 第 6 步就是这么红的。
+    # 真值缺失时跳过（本用例只针对小数逻辑，不引入新的 fail-closed 判据）。
+    want_mb = truth.get("exe_mb")
+    if isinstance(want_mb, float):
+        wrong_mb = "%.1f" % (want_mb + 9.9)
+        line_mb = "下载页写 绿色版 %s MB" % wrong_mb
+        fixed_mb, ch_mb = fmn.fix_line(line_mb, truth)
+        hits_after = probe_hits("docs/x.md", fixed_mb, truth)
+        check("T12 体积小数：%s MB -> %.1f MB（不得截断成整数）" % (wrong_mb, want_mb),
+              ("%.1f MB" % want_mb) in fixed_mb and hits_after == 0 and bool(ch_mb),
+              "fixed=%r hits=%d ch=%r" % (fixed_mb, hits_after, ch_mb))
+    else:
+        check("T12 体积小数（本检出无 installer 产物 → 跳过，不误红）", True, "exe_mb=%r" % (want_mb,))
 
     # T10 真实仓库当前状态
     fixable_r, manual_r = fmn.collect(truth)
