@@ -94,9 +94,10 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 | Go 工具链 | 实测 `D:\DevCache\go\bin\go.exe`（go1.25.0，2026-10-18 复核 `go build ./...` rc=0）；~~`.workbuddy/toolchain/go/bin/go.exe`~~ 该路径**已不存在**；`GOPROXY=https://goproxy.cn,direct` |
 | 🔴 **本 shell 缺 `%AppData%` → 所有 go 命令失效**（2026-09-16 实锤） | 症状：`go build/list/test` 报 `go: downloading ...` 或 `module lookup disabled by GOPROXY=off`，**极易误判成"模块缓存被删/网络断了"**。真因：go 找不到自己的 GOENV 配置文件 `%AppData%\go\env`（内含 `GOPATH=D:\DevCache\gopath`、`GOPROXY=goproxy.cn`、`GOTOOLCHAIN=local`）→ GOPATH 回落到空的默认缓存。**正解：先 `export APPDATA="$USERPROFILE/AppData/Roaming"`**（实测 `go list ./...` rc=1→**0**，42 包；`go build ./cmd/server` 恢复 rc=0）。`scripts/count_stats.py` 已内置该回退（`_go_env()`），故 `go_packages` 不再退化为 null。 |
 | Python venv | `C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe` |
-| C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时 `export TMP=TEMP=TMPDIR=D:/tmp_gotest` 再跑测试 |
+| C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时**三条分开**设：`export TMP=D:/tmp_gotest; export TEMP=D:/tmp_gotest; export TMPDIR=D:/tmp_gotest`。
+| 🔴 **禁止 `export TMP=TEMP=TMPDIR=x` 多重赋值**（2026-10-14 事故，2026-10-19 又中一次） | 本 shell 会把它变成一个字面量垃圾串赋给 TMP（TEMP/TMPDIR 根本没设），Go `t.TempDir()` 据此 mkdir 失败 → 一致场景假 FAIL；更糟的是它可能在**仓库根建出名为 `TEMP=TMPDIR=D://tmp_gotest` 的怪目录**。必须逐变量分开 export。 |
 | 🔴 **禁用 `git add -A` / `git add -A <dir>`**（09-24 事故） | 会把并行会话的**未跟踪在途文件**一并卷进提交，违反"不代提交他人 WIP"。一律显式列文件路径，或先 `git status --porcelain` 逐条确认。误加后纠正：`git reset --soft HEAD~1` → `git restore --staged <文件>` → 显式列路径重新提交，并用 `git show --stat HEAD` 复验零交集。 |
-| `官网/` 被 `.gitignore:81` 排除 | 官网**从未进版本库**，改它只在磁盘/交付包生效，不随 git 分发 |
+| `官网/` 曾整目录被排除 | **2026-10-18 已入库**（`3c776a8`，`.gitignore` 注记同步更新）：数字纳入 `check_material_numbers.py` 机验、由 `pages.yml` 部署。历史上它既不受门禁约束也无法分发的状态才是坑 |
 
 ---
 

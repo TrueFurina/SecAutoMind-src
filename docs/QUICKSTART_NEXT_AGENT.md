@@ -31,6 +31,8 @@ export PATH="/d/miniconda3_new:/d/DevCache/go/bin:$PATH"   # conda 在前：它�
 python scripts/freeze_gate.py --status                  # 应 PASS，窗口 2027-02-15~03-01
 python scripts/audit_asset_metadata.py                  # 89 真实配方 / license 69/89 / upstream 70/89 / 不一致 0
 python scripts/check_material_numbers.py                # 应 PASS（材料数字 vs count_stats 真值）
+python scripts/check_material_numbers_test.py           # 应 PASS（门禁自测 19 例：防空洞绿/恒红/属性值盲区）
+python scripts/fix_material_numbers_test.py             # 应 PASS（修复器自测 13 例，含真实仓库 dry-run）
 python scripts/check_artifact_numbers.py                # 应 PASS（9 个 PPT/PDF 产物内数字）
 python scripts/build_championship_evidence.py --check   # 应 PASS（冠军证据包）
 python scripts/check_final_artifacts_freeze.py          # 应 PASS（产物与生成器哈希已上锁）
@@ -100,7 +102,7 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 - **Go 工具链不在 PATH**：`D:\DevCache\go\bin\go.exe`（go1.25.0）。`GOPROXY=https://goproxy.cn,direct`。
 - **`git push` 到 github.com 失败**（代理）。上游提交用 `gh api` 重建 commit 绕行（`D:/tmp_pr/push_via_api.py`）。
 - **CGO 测试**报 `cgo.exe exit 2`：先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"`。
-- **C 盘空间**紧张时全量测试假 FAIL：`export TMP=TEMP=TMPDIR=D:/tmp_gotest`，并 `go list ./... | grep -v ctfplatform` 分流跑。
+- **C 盘空间**紧张时全量测试假 FAIL：**三条分开** `export TMP=D:/tmp_gotest; export TEMP=D:/tmp_gotest; export TMPDIR=D:/tmp_gotest`（⚠️ `export TMP=TEMP=TMPDIR=x` 多重赋值在本 shell 会变成字面量垃圾串，TEMP/TMPDIR 根本没设上，还能在仓库根建出怪目录——2026-10-14 与 10-19 各中过一次），并 `go list ./... | grep -v ctfplatform` 分流跑。
 - **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`（系统 python 无 PyYAML，校验 yml 时用它）。
 - **CI 仿真**：`git archive HEAD` 在 `core.autocrlf=true` 下**仍导出 CRLF**；要纯 LF 必须 `git -c core.autocrlf=false archive HEAD`。
 
