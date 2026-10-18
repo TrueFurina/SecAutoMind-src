@@ -44,12 +44,17 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 > `python scripts/check_quant_effect.py --full`（10 条陈述）、`python scripts/check_suite_parity.py --check`（22 集）。
 > **`check_binary_version.py` 的坑（2026-10-18 实测）**：`installer/*.exe` 必须构建自**干净树**，
 > 否则 Go 会打 `+dirty` 戳（`v1.7.28-0.20261018121719-<sha>+dirty`），门禁直接 BLOCK。
-> 而本仓工作树常驻并行会话 WIP，**在主工作树里重建必然带 `+dirty`**。正确做法是在干净 worktree 里构建：
+> 而本仓工作树常驻并行会话 WIP，**在主工作树里重建必然带 `+dirty`**。
+> 正确做法是在**真克隆**里构建（注意：`git worktree` **不行**——linked worktree 的 `.git` 是文件，
+> Go 的 VCS 探测取不到，buildinfo 里直接没有 `vcs.*` 行，版本退化成 `(devel)`，门禁同样红）：
 > ```bash
-> git worktree add D:/tmp_build HEAD
-> cd D:/tmp_build && export PATH="/d/miniconda3_new:/d/DevCache/go/bin:$PATH"
+> git clone --shared E:/Program/SecAutoMind D:/tmp_clone   # --local 跨盘会因硬链接失败
+> cd D:/tmp_clone && export PATH="/d/miniconda3_new:/d/DevCache/go/bin:$PATH"
 > python installer/build_installer.py --makensis D:/nsis_env/NSIS/makensis.exe
-> # 产物在 D:/tmp_build/installer/，拷回主树的 installer/ 后复跑 check_binary_version.py
+> # 期望看到 vcs.modified=false 与 v1.7.28-0.<时间戳>-<sha>
+> go version -m installer/secautomind-ai.exe | grep -E 'mod\s|vcs\.'
+> cp installer/secautomind-ai.exe installer/SecAutoMind-Setup-*-x64.exe E:/Program/SecAutoMind/installer/
+> cd E:/Program/SecAutoMind && python scripts/check_binary_version.py
 > ```
 
 判成败一律 `cmd > out.txt 2>&1; echo "RC=$?"`，**不要用管道**（`| grep -v ^ok` 会吞掉 FAIL 行）。
