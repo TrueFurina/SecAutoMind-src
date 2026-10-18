@@ -459,10 +459,10 @@
 **2. 文字内容清单**
 - 主标题：`跨平台三端发布：CI 自动构建 · 官网分发`（27pt）
 - 三卡：
-  - `Windows`：`Setup 安装版 33.6 MB（选目录+快捷方式+卸载）` / `绿色版 158 MB`
-  - `Linux`：`amd64 单文件` / `chmod +x 即跑` / `原生 cgo 编译`
+  - `Windows`：`Setup 安装版 20.3 MB（选目录+快捷方式+卸载）` / `绿色版 89.5 MB`
+  - `Linux`：`amd64 单文件` / `chmod +x 即跑` / `原生编译（纯 Go 免 CGO）`
   - `macOS`：`Apple Silicon arm64` / `+ Intel amd64` / `原生编译`
-- 底句：`CI 流水线：push tag → GitHub Actions 三平台原生编译（含 cgo sqlite）→ 产物自动上传 Release → 官网（GitHub Pages）三端下载，全程可复现、无需本机环境。`（14.5pt）
+- 底句：`CI 流水线：push tag → GitHub Actions 三平台原生编译（含纯 Go sqlite 驱动）→ 产物自动上传 Release → 官网（GitHub Pages）三端下载，全程可复现、无需本机环境。`（14.5pt）
 
 **3. 视觉排版**：三列卡（坐标同第 8 页），卡顶放平台 logo 占位（Win 窗/苹果/Tux）；底句高亮条 `Y5.2 W12.1` 蓝描边。可加一条「tag→CI→Release→官网」流水线箭头。
 

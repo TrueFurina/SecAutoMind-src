@@ -13,11 +13,11 @@
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "c1478838f5d21fab0a19ab78903e96265500778dc22f7730377c6560973c3a40",
+      "sha256": "b13598d0506120687191fdbf323133bed3aa1eb126d3bccd231fcb632cc76836",
       "size": 421330,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
-        "sha256": "4592ce45cc049299b13341a2b3355f0a17bd8fcab85bd57e19df565d46e42cbb"
+        "sha256": "21aaae411ffdff50a37382d423bd492d67234ab5744a74e236d73523d600e4df"
       }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
@@ -31,28 +31,28 @@
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
-      "sha256": "c5c3c0bd5f2d3576b3868cbf5062c6a7e4aaaac2608cb59f56758a2d92b8dad8",
-      "size": 63308970
+      "sha256": "2c8c1dd600bc8eaedd7edb5a6db2d94650c508692b7c911fa78ff0d270391354",
+      "size": 63308978
     },
     "ppt/演示模板版.pptx": {
       "path": "SecAutoMind_PPT/演示模板版.pptx",
-      "sha256": "8525b3089222a59621c70263f4b053490f085a4ce43d18fa6a2d2720badbe4ef",
-      "size": 54091138
+      "sha256": "a9dd34c4a2b293a95fd5142e07e91406dcfbb5b5f6054f40ad1e59d35adfb3a8",
+      "size": 53753538
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "9cbd3b3f73b5a3200a5e61998fbce8005fcb7ad9621ce7b2198f72936e253267",
-      "size": 78335
+      "sha256": "28299f161d18c4bec878def05bdd1c2c650dce4ae206dae2011b319c58e0a127",
+      "size": 78355
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
       "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
-      "sha256": "ded2ba1f7c025111507276d8dae427a535ea0404c8adba34c318c2987f0c9f0d",
-      "size": 53753540
+      "sha256": "1f8a99a31d19209c6655c21965ef5b41569e32e4693fea77a8ea5058559b8ed5",
+      "size": 53753541
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "80a77a5fb6514c4dbd6f777ed7af83d44aabed8e9f7e4b905b3e463370d83e97",
-      "size": 279408570
+      "sha256": "6719924da339813b1c8b7c67225a2d4dd4035147d0d76651479e9b0458f7e042",
+      "size": 178977257
     }
   },
   "retired": {}

@@ -474,6 +474,25 @@ def find_delivery_exe():
     return ""
 
 
+def find_setup_installer():
+    """当前版本的 NSIS 安装包（installer/SecAutoMind-Setup-<ver>-x64.exe）。"""
+    base = os.path.join(ROOT, "installer")
+    if not os.path.isdir(base):
+        return ""
+    cands = sorted(f for f in os.listdir(base)
+                   if f.startswith("SecAutoMind-Setup-") and f.endswith("-x64.exe"))
+    return os.path.join(base, cands[-1]) if cands else ""
+
+
+def size_mb(path):
+    """分发体积口径：MB = 10^6 字节（与下载页/官网「绿色版 · 89.5 MB」同一口径）。
+
+    刻意**不用** MiB：材料与官网历史上混用两套分母，158MB / 152MiB / 89.5MB 三个
+    数字指的其实是同一批产物，谁也说不清哪个对。真值源只出一套。
+    """
+    return round(os.path.getsize(path) / 1e6, 1) if os.path.isfile(path) else None
+
+
 def exe_info():
     exe = find_delivery_exe()
     if not exe:
@@ -489,6 +508,7 @@ def exe_info():
         "path": os.path.relpath(exe, ROOT).replace(os.sep, "/"),
         "md5": h.hexdigest(),
         "size_mib": round(os.path.getsize(exe) / 1048576, 1),
+        "size_mb": size_mb(exe),
         "vcs_revision": rev,
         "vcs_time": info.get("built_at", ""),
         "dirty": bool(info.get("dirty")),
@@ -512,6 +532,7 @@ def main():
     tools_yaml = _count_files("tools", ".yaml", TOOLS_YAML_EXCLUDE)
     _warn_unregistered_non_tool_yaml()
     builtin_tools = builtin_tools_count()
+    _exe = exe_info()
     data = {
         "head": _sh("git rev-parse --short HEAD") or "unknown",
         "tools_yaml": tools_yaml,
@@ -540,7 +561,14 @@ def main():
         "ctf_real_solvers": real_solvers,
         "ctf_detectors": solvers_detectors,
         "im_adapters": im_adapters,
-        "exe": exe_info(),
+        "exe": _exe,
+        # ── 分发体积（2026-10-18 新增）─────────────────────────────────
+        # 材料长期写「Setup 33.6 MB / 绿色版 158 MB」，而 installer/ 实物早已是
+        # 20.3 MB / 89.5 MB（#52 只修了三份生成器产物，草稿内容版与制作脚本里的旧值
+        # 一直没人能自动发现——因为真值源里**根本没有这两个数**）。
+        # 单位统一 MB=10^6，与官网下载按钮措辞一致。
+        "exe_mb": _exe.get("size_mb"),
+        "setup_mb": size_mb(find_setup_installer()),
     }
 
     if "--json" in sys.argv:
@@ -585,6 +613,8 @@ def main():
             print("                       %s" % e["mod_version"])
     else:
         print("  交付 exe             (未找到：%s)" % " / ".join(EXE_CANDIDATES))
+    print("  分发体积(MB=10^6)    Setup %s MB / 绿色版 %s MB"
+          % (data["setup_mb"], data["exe_mb"]))
     print("=" * 62)
     print("口径纪律：材料数字一律引用本脚本输出；求解器数=RegisterSolver(SolverEntry{ 真实调用数，")
     print("          不含注释行与 func 定义行（历史误把 137 当真值，实际 135）。")

@@ -29,21 +29,25 @@ SW, SH = Inches(13.333), Inches(7.5)
 
 # ══ 接入演示模板版.pptx 视觉母版 ══
 # 缺件时的取证结论（2026-10-18 实测，勿再重复"三盘搜索无果"）：
-#   母版内容**并未丢失**——它与同目录的 `闽江御盾•智防矩阵.pptx` **字节完全相同**
-#   （sha256 8525b3089222…，54,091,138 B），只是被改名/复制过。
-#   故缺件时优先用该同名副本顶替（不复制、不写盘），仍然缺才显式失败。
+#   母版内容**并未丢失**——`SecAutoMind_PPT/` 下还有一份同款视觉的 `闽江御盾•智防矩阵.pptx`，
+#   只是被改名/复制过。故缺件时用它顶替（不复制、不写盘），两者都缺才显式失败。
+# ⚠️ 2026-10-18 更正一处**过期断言**：此前本文注释写「两者字节完全相同（sha256
+#   8525b308…）」。实测当日晚间两者分别做了定点修正（90→91、cgo→纯 Go），
+#   现为 53753538 B / 53753541 B、sha256 已不同 —— **分叉了**。
+#   功能上不受影响：本脚本只从母版首页克隆那张全屏背景图，其余文字一个都不进产物；
+#   但「字节相同」这句不能再当依据用，顶替关系已降级为「同款视觉的副本」。
 _TPL_PATH = Path(__file__).with_name('演示模板版.pptx')
 _TPL_ALIAS = Path(__file__).with_name('闽江御盾•智防矩阵.pptx')
 if not _TPL_PATH.exists():
     if _TPL_ALIAS.exists():
-        print(f"[WARN] 缺少 {_TPL_PATH.name}，改用字节相同的 {_TPL_ALIAS.name} 作视觉母版"
-              f"（sha256 相同，见本文件注释）")
+        print(f"[WARN] 缺少 {_TPL_PATH.name}，改用同目录同款视觉的 {_TPL_ALIAS.name} 作母版"
+              f"（两者 2026-10-18 起已非字节相同，见本文件注释）")
         _TPL_PATH = _TPL_ALIAS
     else:
         raise SystemExit(
-            "缺少视觉母版 演示模板版.pptx，且同目录下字节相同的候选 闽江御盾•智防矩阵.pptx 也不存在。\n"
-            "   2026-10-18 实测记录：两者曾字节完全相同（sha256 8525b3089222…，54,091,138 B），\n"
-            "   故先找回 闽江御盾•智防矩阵.pptx，或向持有者索取原件放回 SecAutoMind_PPT/；\n"
+            "缺少视觉母版 演示模板版.pptx，且同目录的候选 闽江御盾•智防矩阵.pptx 也不存在。\n"
+            "   2026-10-18 取证：母版曾被改名/复制为 闽江御盾•智防矩阵.pptx（同款视觉），\n"
+            "   故先找回其中任一份放回 SecAutoMind_PPT/；\n"
             "   → 也可改用不依赖母版的 make_champion_ppt.py / make_final_ppt.py。"
         )
 _tpl = Presentation(str(_TPL_PATH))
@@ -53,6 +57,13 @@ for _sh in _tpl.slides[0].shapes:
             and _sh.width >= _tpl.slide_width * 0.9 and _sh.height >= _tpl.slide_height * 0.9:
         _TPL_BG = _sh
         break
+# 空洞绿防护（2026-10-18）：母版在、但首页没有≥90% 页面的图片 → 旧代码**静默退纯色底**，
+# 生成物看起来"成功"，只是整套视觉没了。这种"缺件也算过"必须显式报出来。
+if _TPL_BG is None:
+    raise SystemExit(
+        "母版 %s 首页未找到覆盖 ≥90%% 页面的背景图 —— 不会静默退纯色，请换回正确母版。\n"
+        "   （旧行为是 rect() 纯色兜底，产物照样生成但视觉全失，肉眼要打开 PPT 才发现）"
+        % _TPL_PATH.name)
 # 仅复用模板首页全屏背景图作视觉底层；内容载体用空白 Presentation，
 # 避免与模板残留的 slide part 重名（否则生成文件会有 Duplicate name 警告且 PowerPoint 打开异常）。
 prs = Presentation()

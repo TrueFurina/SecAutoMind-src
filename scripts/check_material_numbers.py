@@ -57,6 +57,19 @@ BANNED = [
     # 也不是 internal 包数（37），两个口径都禁止再出现这个值。
     (r"31\s*internal|internal\s*(子)?(目录|包)\s*\**\s*31", "旧 internal 数 31（现 子目录 34 / 包 37）"),
     (r"111,933|113,\d{3}", "旧非测试行数（现 122,601）"),
+    # ── 09-05 一代分发体积：Setup 33.6 MB / 绿色版 158 MB ────────────────────
+    # 那一代产物是 159,051,447 B 的 `+dirty` 构建（09-04），早已被 89.5 MB 的
+    # 纯 Go 构建取代。体积差近一倍，写错的后果是评委按图索骥找不到对应文件。
+    (r"33\.6\s*MB|158\s*MB", "旧分发体积（33.6MB/158MB，现 20.3MB/89.5MB）"),
+    # ── 技术栈断言：cgo ──────────────────────────────────────────────────
+    # 2026-10-18 实测：release.yml 三平台一律 `CGO_ENABLED=0`，SQLite 用 glebarez
+    # 纯 Go 驱动，全仓 `import "C"` 数量为 0 —— 早已不依赖 cgo。
+    # 但材料仍在四处宣称「cgo 构建 / cgo sqlite / 原生 cgo 编译 / Go/cgo 单文件」，
+    # 而同一批 PPT 里 `集大成版` 写的是「纯 Go 免 CGO」→ **同一事实三种口径**。
+    # 这类断言没有数字，锚点机制管不到，只能按"禁用旧断言"处理。
+    (r"cgo\s*sqlite|sqlite\s*[（(]?\s*cgo", "cgo sqlite 断言（现为 glebarez 纯 Go 驱动）"),
+    (r"cgo\s*构建|Go\s*/\s*cgo", "cgo 构建断言（现 CGO_ENABLED=0 纯 Go 构建）"),
+    (r"原生\s*cgo\s*编译", "原生 cgo 编译断言（现纯 Go 交叉编译）"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -165,6 +178,15 @@ ANCHORS = [
     # 补锚点后该形态可被机验，修复器亦能机械同步。
     (r"(?<![\d,.])(?P<n>\d{2,3},\d{3})\s*非测试行", "non_test_lines", "非测试代码行数（非测试行）"),
     (r"(?<![\d,.])(?P<n>\d{2,3},\d{3})\s*含测试", "total_lines", "总行数（含测试）"),
+    # 2026-10-18 新增（第 7 处「锚点覆盖不全」）：**分发体积**此前完全无锚点。
+    # 实测 `草稿内容版.pptx` 仍写「Setup 安装版 33.6 MB / 绿色版 158 MB」，而 installer/
+    # 实物是 20.3 MB / 89.5 MB（09-05 那代产物早已不存在）。#52 只修了三份生成器产物，
+    # 这两处因为真值源里没有对应字段而**永远无法被机验**——写什么都算对。
+    # 口径：MB = 10^6（与官网下载按钮「绿色版 · 89.5 MB」同一分母），见 count_stats.size_mb。
+    (r"Setup\s*安装版\s*(?P<n>\d+(?:\.\d+)?)\s*MB", "setup_mb", "Setup 安装包体积(MB)"),
+    (r"安装版\s*[（(][^）)\n]{0,12}?(?P<n>\d+(?:\.\d+)?)\s*MB", "setup_mb",
+     "Setup 安装包体积(MB，括注式)"),
+    (r"绿色版\s*[·・（(]?\s*(?P<n>\d+(?:\.\d+)?)\s*MB", "exe_mb", "绿色版单文件体积(MB)"),
 ]
 
 # 历史档案豁免：文件**内容里**带 CALIBER-SNAPSHOT 标记即视为历史快照。
@@ -194,6 +216,10 @@ TOOL_EXEMPT = {
     # ⚠️ 豁免代价：本文件内容过期时没有判据能发现（#43 教训）。缓解：它的自测在
     #    scripts/check_artifact_numbers.py 这一侧——产物改完必须门禁转 PASS，脚本本身不承载结论。
     "fix_artifact_numbers.py",
+    # 2026-10-18：交付 PPT 的**过期技术断言/体积**定点修正脚本。同上——它的 RULES
+    # 必须逐条列出旧串（"33.6 MB" → "20.3 MB"）才能替换，列举 ≠ 使用。
+    # 代价与缓解同上：产物是否真改对，由产物门禁（check_artifact_numbers）说话。
+    "fix_stale_claims.py",
     # ↓ 下面两个都在 scripts/，而 scripts/ **当前不在 SCAN_DIRS 内**（实测门禁扫不到它们）。
     #   登记是前瞻性的：哪天把 scripts/ 纳入扫描，这两个文件必然带着漂移字面量
     #   （同步器的 docstring 要举例、它的自测要故意注入），届时会被自己误伤。
@@ -218,6 +244,19 @@ SKIP_DIR_PARTS = {".git", ".workbuddy", "node_modules", "logs", "data", "install
 # 明细显示上限。设太小的后果已实测：报 112 处却只显示 25 条，
 # 让人误以为只有 25 处（截断本身也是一种「掩盖失败」）。
 MAX_SHOW = 500
+
+
+def coerce_num(raw, want):
+    """把材料里抽到的数字与真值统一成同类型再比 —— **两个门禁共用这一个实现**。
+
+    计数字段是整数（行数带千分位，如 126,396）；体积字段（setup_mb / exe_mb）是
+    1 位小数。2026-10-18 首次引入小数锚点时，两处各自 `int(m.group("n"))` 都直接
+    抛 ValueError（材料门禁与产物门禁各踩一次）——正是「同一判据写两遍」的老毛病。
+    """
+    raw = raw.replace(",", "")
+    if "." in raw or isinstance(want, float):
+        return float(raw), float(want)
+    return int(raw), int(want)
 
 
 def load_truth():
@@ -358,9 +397,10 @@ def main():
                 if not m:
                     continue
                 want = truth[key]
-                got = int(m.group("n").replace(",", ""))  # 行数锚点带千分位（如 126,396）
-                if got != int(want):
-                    anchor_hits.append((rpath, lineno, label, got, int(want), line.strip()[:120]))
+                # 计数字段整数 / 体积字段 1 位小数，统一走 coerce_num（两个门禁共用一个实现）
+                got, want = coerce_num(m.group("n"), want)
+                if got != want:
+                    anchor_hits.append((rpath, lineno, label, got, want, line.strip()[:120]))
 
     # 2026-10-14 补（门禁审计 · 空洞绿）：本门禁的全部结论都由「违规项计数」构成，
     # 因此**扫到 0 个文件时会无条件全绿** —— SCAN_DIRS 写错目录名、目录被 gitignore
@@ -398,7 +438,9 @@ def main():
     if anchor_hits:
         print("  [FAIL] 材料数字与真值不符 %d 处：" % len(anchor_hits))
         for fp, ln, label, got, want, txt in anchor_hits[:MAX_SHOW]:
-            print("    %s:%d  %s=%d，真值=%d" % (fp, ln, label, got, want))
+            # 体积锚点是 1 位小数，计数字段是整数 —— 统一按「谁带小数按两位以内输出」
+            fmt = "%g" if isinstance(got, float) or isinstance(want, float) else "%d"
+            print(("    %s:%d  %s=" + fmt + "，真值=" + fmt) % (fp, ln, label, got, want))
             print("        %s" % txt)
     else:
         print("  [PASS] 材料数字与真值一致")
