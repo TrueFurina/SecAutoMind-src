@@ -4,7 +4,7 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "5a8e268688f0d9658c8e3361f5c0b1016ffb7dc2f6aba5abd3ed7259a6b8417b",
+      "sha256": "68c2a9a5ce3d1a14841d3874d4fba1da51e25ee029abb94ad98bb42e8879ebbb",
       "size": 68896,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
@@ -13,7 +13,7 @@
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "d994b121cd5ef4fcbbf671eea63276e4cece592da1415ea5d67b75eaecc9505b",
+      "sha256": "af93baf8701abb3481b6e369a9d36868e37dfef67c9df9d30fe1211878e77402",
       "size": 421331,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
@@ -22,7 +22,7 @@
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "aedfb2c1342ee1d8ed6525d495a3b039fdc5e4d407bf7367b4c34c15aab79561",
+      "sha256": "201d78708a6d5a9559ebb403fd73c38815ab95f2fe19ea6bf60f42c89da18810",
       "size": 78377,
       "generator": {
         "path": "SecAutoMind_PPT/make_final_ppt.py",
@@ -41,7 +41,7 @@
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "e5abd9aa617a152919e37b72c022bc86e072bfbcbe7bcf3f5a6ef27221d8c4ac",
+      "sha256": "204beed44a361ef999ff6f8389577533ab68e35f347a39f76328b00ab02ccb99",
       "size": 78354
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
