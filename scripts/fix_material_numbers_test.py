@@ -46,19 +46,20 @@ def check(name, cond, detail=""):
 
 
 def probe_hits(rpath, body, truth):
-    """用**门禁自己的 ANCHORS + 同样的 HTML 剥离**复扫一行，返回命中数。
+    """用**门禁自己的 ANCHORS + 同一个 scan_texts 探针**复扫一行，返回命中数。
 
     这是"闭环"的关键：修复是否正确，不由修复器自己说了算，而由门禁的判定说了算。
+    2026-10-18：探针从「自抄一份 HTML 剥离」改为调用门禁的 `cmn.scan_texts`——
+    两边必须同源，否则属性值盲区修复后这里会让闭环验证失真。
     """
-    strip_html = rpath.lower().endswith((".html", ".htm"))
-    probe = re.sub(r"<[^>]*>", " ", body) if strip_html else body
     n = 0
-    for pat, key, _label in cmn.ANCHORS:
-        for m in re.finditer(pat, probe):
-            # 与门禁同源比较（整数计数 / 1 位小数体积），别再各写一遍 int()
-            got, want = cmn.coerce_num(m.group("n"), truth[key])
-            if got != want:
-                n += 1
+    for text, _via in cmn.scan_texts(body, cmn.is_html_path(rpath)):
+        for pat, key, _label in cmn.ANCHORS:
+            for m in re.finditer(pat, text):
+                # 与门禁同源比较（整数计数 / 1 位小数体积），别再各写一遍 int()
+                got, want = cmn.coerce_num(m.group("n"), truth[key])
+                if got != want:
+                    n += 1
     return n
 
 

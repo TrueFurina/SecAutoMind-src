@@ -45,27 +45,32 @@ def load_gate():
     return m
 
 
+# 夹具真值 = count_stats.py 当前实跑值（2026-10-18 刷新）。
+# 刻意与 count_stats 保持一致：否则夹具会变成"第二套过期真值"——
+# 实例：runtime_tools 曾是 143，而 2026-10-18 起「143 工具」进了 BANNED
+# （删 lightx 前的旧口径），夹具若不刷新，反向变异用例（一致必须 PASS）会被
+# 自己的陈旧数字打红。改真值时同步改 CLEAN_DOC 与各用例里的替代串。
 TRUTH = {
-    "go_files": 751, "runtime_tools": 143, "ctf_solvers": 177,
-    "ctf_real_solvers": 118, "ctf_detectors": 59, "test_files": 299,
-    "tools_yaml": 90, "builtin_tools": 52, "skills": 27, "agents_md": 18,
-    "roles_yaml": 14, "internal_dirs": 32, "internal_packages": 34, "test_packages": 28,
-    "non_test_lines": 128094, "total_lines": 171238, "go_packages": 41,
+    "go_files": 778, "runtime_tools": 142, "ctf_solvers": 181,
+    "ctf_real_solvers": 122, "ctf_detectors": 59, "test_files": 318,
+    "tools_yaml": 90, "builtin_tools": 52, "skills": 23, "agents_md": 18,
+    "roles_yaml": 13, "internal_dirs": 35, "internal_packages": 38, "test_packages": 38,
+    "non_test_lines": 129955, "total_lines": 177187, "go_packages": 44,
     # 分发体积：MB = 10^6，1 位小数（2026-10-18 新增锚点，见 count_stats.size_mb）
-    "setup_mb": 20.3, "exe_mb": 89.5,
+    "setup_mb": 20.3, "exe_mb": 89.6,
     "head": "deadbeef",
 }
 
 # 一份与 TRUTH 完全一致的材料（覆盖每类锚点的一种写法）
 CLEAN_DOC = """# 规模一览
 
-- Go 751 文件（299 测试文件）
-- 751 Go 文件，171,238 含测试 / 128,094 行（128,094 非测试行）
-- 143 运行时工具，52 内置工具
-- 177 求解器 = 118 真求解器 + 59 检测器
+- Go 778 文件（318 测试文件）
+- 778 Go 文件，177,187 含测试 / 129,955 行（129,955 非测试行）
+- 142 运行时工具，52 内置工具
+- 181 求解器 = 122 真求解器 + 59 检测器
 - 90 YAML 工具（工具 YAML 90）
-- 27 技能包，18 Agent，14 角色，internal 目录 32，28 包测试
-- 34 个 internal 包（34 包分层）
+- 23 技能包，18 Agent，13 角色，internal 目录 35，38 包测试
+- 38 个 internal 包（38 包分层）
 """
 
 
@@ -109,7 +114,7 @@ def main():
     print("=" * 66)
 
     # ---- 1. 扫描 0 文件（目录不存在）必须 fail-closed ----
-    print("\n[1/16] 扫描覆盖数为 0（SCAN_DIRS 目录不存在）必须 fail-closed")
+    print("\n[1/19] 扫描覆盖数为 0（SCAN_DIRS 目录不存在）必须 fail-closed")
     rc, out = run_gate({}, scan_dirs=("docs",))
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
     print("  %s 返回 %s（期望 SystemExit）" % ("PASS" if ok else "FAIL", rc))
@@ -117,7 +122,7 @@ def main():
         failures.append("目录不存在时未 fail-closed（rc=%s）——「没扫到」被当成「没问题」" % rc)
 
     # ---- 2. 扫描 0 文件（目录存在但无可扫扩展名）必须 fail-closed ----
-    print("\n[2/16] 扫描覆盖数为 0（目录存在但只有非扫描扩展名）必须 fail-closed")
+    print("\n[2/19] 扫描覆盖数为 0（目录存在但只有非扫描扩展名）必须 fail-closed")
     rc, out = run_gate({"docs/cover.png": "not text"}, scan_dirs=("docs",))
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
     print("  %s 返回 %s（期望 SystemExit）" % ("PASS" if ok else "FAIL", rc))
@@ -125,7 +130,7 @@ def main():
         failures.append("扩展名扫不到时未 fail-closed（rc=%s）——SCAN_EXT 被改空会静默失效" % rc)
 
     # ---- 3. 反向变异：材料与真值一致必须 PASS（防恒红）----
-    print("\n[3/16] 材料数字与真值一致必须 PASS（反向变异：防恒红）")
+    print("\n[3/19] 材料数字与真值一致必须 PASS（反向变异：防恒红）")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -133,15 +138,15 @@ def main():
         failures.append("一致场景被判红（rc=%s）——门禁被修成恒红：%s" % (rc, out[-300:]))
 
     # ---- 4. 锚点漂移必须 FAIL ----
-    print("\n[4/16] 锚点漂移（Go 751 → 999）必须 FAIL")
-    rc, out = run_gate({"docs/scale.md": CLEAN_DOC.replace("Go 751 文件", "Go 999 文件")})
+    print("\n[4/19] 锚点漂移（Go 778 → 999）必须 FAIL")
+    rc, out = run_gate({"docs/scale.md": CLEAN_DOC.replace("Go 778 文件", "Go 999 文件")})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
     if not ok:
         failures.append("真漂移未判红（rc=%s）" % rc)
 
     # ---- 5. 已作废旧口径复活必须 FAIL ----
-    print("\n[5/16] 已作废旧口径复活（140 运行时工具 / 运行时安全工具）必须 FAIL")
+    print("\n[5/19] 已作废旧口径复活（140 运行时工具 / 运行时安全工具）必须 FAIL")
     rc, out = run_gate({"docs/scale.md": "官网写 140 运行时安全工具，另一处写 140 运行时工具\n"})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
@@ -149,8 +154,8 @@ def main():
         failures.append("黑名单数字未判红（rc=%s）" % rc)
 
     # ---- 6. CALIBER-SNAPSHOT 历史快照必须豁免（防把豁免机制改坏）----
-    print("\n[6/16] 带 CALIBER-SNAPSHOT 标记的历史档案必须豁免")
-    snap = "CALIBER-SNAPSHOT: 本文件锚定 2026-09-05 基线\n\n" + CLEAN_DOC.replace("751", "715").replace("299", "257")
+    print("\n[6/19] 带 CALIBER-SNAPSHOT 标记的历史档案必须豁免")
+    snap = "CALIBER-SNAPSHOT: 本文件锚定 2026-09-05 基线\n\n" + CLEAN_DOC.replace("778", "715").replace("318", "257")
     rc, out = run_gate({"docs/old_snapshot.md": snap})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -158,15 +163,15 @@ def main():
         failures.append("历史快照豁免失效（rc=%s）——豁免机制被顺手套坏" % rc)
 
     # ---- 7. 文件名内嵌历史日期必须豁免 ----
-    print("\n[7/16] 文件名内嵌旧日期（report_20260901.md）必须豁免")
-    rc, out = run_gate({"docs/report_20260901.md": CLEAN_DOC.replace("751", "715")})
+    print("\n[7/19] 文件名内嵌旧日期（report_20260901.md）必须豁免")
+    rc, out = run_gate({"docs/report_20260901.md": CLEAN_DOC.replace("778", "715")})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
     if not ok:
         failures.append("文件名日期豁免失效（rc=%s）" % rc)
 
     # ---- 8. FORCE_CURRENT（名字旧仍是现行作战材料）不得豁免 ----
-    print("\n[8/16] FORCE_CURRENT 清单（提交前终检清单_20260903.md）必须照查")
+    print("\n[8/19] FORCE_CURRENT 清单（提交前终检清单_20260903.md）必须照查")
     rc, out = run_gate({"docs/提交前终检清单_20260903.md": CLEAN_DOC.replace("90 YAML 工具", "91 YAML 工具")})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
@@ -174,7 +179,7 @@ def main():
         failures.append("现行作战材料被误豁免（rc=%s）——按日期豁免会放过现场还在念的材料" % rc)
 
     # ---- 9. 真值缺锚点字段必须 fail-closed ----
-    print("\n[9/16] count_stats 缺锚点字段必须 fail-closed（不许静默跳过）")
+    print("\n[9/19] count_stats 缺锚点字段必须 fail-closed（不许静默跳过）")
     bad_truth = {k: v for k, v in TRUTH.items() if k != "tools_yaml"}
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC}, truth=bad_truth)
     ok = isinstance(rc, str) and rc.startswith("SYSEXIT")
@@ -183,7 +188,7 @@ def main():
         failures.append("真值字段缺失未 fail-closed（rc=%s）——静默跳过的门禁等于没有门禁" % rc)
 
     # ---- 10. 口径修复清单缺失 → 跳过（可选件，不因缺失误红）----
-    print("\n[10/16] 口径修复清单缺失必须跳过（可选件缺失不得误红）")
+    print("\n[10/19] 口径修复清单缺失必须跳过（可选件缺失不得误红）")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC})
     ok = (rc == 0)
     print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc))
@@ -191,7 +196,7 @@ def main():
         failures.append("清单缺失被误判红（rc=%s）——把可选件当必检会让门禁无法在无清单处使用" % rc)
 
     # ---- 11. 清单状态与门禁一致 → PASS（反向变异：防恒红）----
-    print("\n[11/16] 口径修复清单状态与门禁一致（PASS）必须通过")
+    print("\n[11/19] 口径修复清单状态与门禁一致（PASS）必须通过")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n当前门禁状态：PASS\n"})
     ok = (rc == 0)
@@ -200,7 +205,7 @@ def main():
         failures.append("清单状态一致却被判红（rc=%s）——check_ledger 被修成恒红" % rc)
 
     # ---- 12. 清单过期（写 FAIL 而门禁 PASS）→ 红（核心：钉死 09-09 那种过期快照）----
-    print("\n[12/16] 口径修复清单过期（声明 FAIL / 门禁 PASS）必须红")
+    print("\n[12/19] 口径修复清单过期（声明 FAIL / 门禁 PASS）必须红")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n当前门禁状态：FAIL\n"})
     ok = (rc == 1)
@@ -209,7 +214,7 @@ def main():
         failures.append("过期清单未判红（rc=%s）——09-09 那种「漂移已修、文件仍写 FAIL」会重现" % rc)
 
     # ---- 13. 清单缺机器可读状态行 → 红（fail-closed）----
-    print("\n[13/16] 口径修复清单缺状态行必须 fail-closed")
+    print("\n[13/19] 口径修复清单缺状态行必须 fail-closed")
     rc, out = run_gate({"docs/scale.md": CLEAN_DOC,
                         "docs/口径修复清单.md": "# 材料口径修复清单\n\n这里没有机器可读状态行。\n"})
     ok = (rc == 1)
@@ -221,10 +226,10 @@ def main():
     # 背景：这两类写法此前**完全无锚点** → 冻结产物里「32 包分层」（真值 37）与
     # 「100+ YAML 配方」（真值 90）长期无人发现。加号尤其危险：所有锚点都要求
     # 「数字紧跟 YAML/个」，`100+` 的 `+` 让它们全部失配，漂移被伪装成"约数"。
-    print("\n[14/16] 「N 包分层」「N+ YAML」宣称必须可机验（漂移必红、正确必绿）")
-    d1 = CLEAN_DOC.replace("34 包分层", "33 包分层")
+    print("\n[14/19] 「N 包分层」「N+ YAML」宣称必须可机验（漂移必红、正确必绿）")
+    d1 = CLEAN_DOC.replace("38 包分层", "33 包分层")
     rc1, _o1 = run_gate({"docs/scale.md": d1})
-    d2 = CLEAN_DOC.replace("34 包分层", "100+ YAML 配方")
+    d2 = CLEAN_DOC.replace("38 包分层", "100+ YAML 配方")
     rc2, _o2 = run_gate({"docs/scale.md": d2})
     ok = (rc1 == 1 and rc2 == 1)
     print("  %s 包分层漂移 rc=%s / N+ YAML 取整 rc=%s（期望各 1）"
@@ -238,9 +243,9 @@ def main():
     # 是 20.3 / 89.5 MB；`参赛答辩演讲稿` 与三份 PPT 仍宣称「cgo sqlite / cgo 构建」，
     # 而 release.yml 三平台一律 CGO_ENABLED=0、驱动是 glebarez 纯 Go。
     # 两类断言此前**完全无判据**（体积字段真值源里根本没有；技术断言没有数字）。
-    print("\n[15/16] 分发体积 / cgo 断言必须可机验（错必红、对必绿）")
+    print("\n[15/19] 分发体积 / cgo 断言必须可机验（错必红、对必绿）")
     rc1, _o1 = run_gate({"docs/v.md": "Setup 安装版 33.6 MB / 绿色版 158 MB\n"})
-    rc2, _o2 = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.5 MB\n"})
+    rc2, _o2 = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.6 MB\n"})
     rc3, _o3 = run_gate({"docs/v.md": "三平台原生编译（含 cgo sqlite）\n"})
     rc4, _o4 = run_gate({"docs/v.md": "三平台原生编译（含纯 Go sqlite 驱动）\n"})
     ok = (rc1 == 1 and rc2 == 0 and rc3 == 1 and rc4 == 0)
@@ -250,16 +255,51 @@ def main():
         failures.append("分发体积或 cgo 断言未双向钉住（rc=%s/%s/%s/%s）——"
                         "要么放过旧口径，要么把正确写法判红" % (rc1, rc2, rc3, rc4))
 
-    print("\n[16/16] 本检出缺 installer 产物（体积真值为 null）→ 显式「未核验」，不崩也不谎报")
+    print("\n[16/19] 本检出缺 installer 产物（体积真值为 null）→ 显式「未核验」，不崩也不谎报")
     # CI 检出里二进制不入库（`.gitignore` `installer/*`）→ count_stats 的 setup_mb/exe_mb
     # 为 null。旧实现直接 `coerce_num(raw, None)` 抛异常，把 caliber-gate 打红（实测）。
     # 正解：显式登记「未核验」，同时保留自测第 15 条作为防退化判据（真值在时错必红）。
     no_bin = {k: v for k, v in TRUTH.items() if k not in ("setup_mb", "exe_mb")}
-    rc, out = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.5 MB\n"}, truth=no_bin)
+    rc, out = run_gate({"docs/v.md": "Setup 安装版 20.3 MB / 绿色版 89.6 MB\n"}, truth=no_bin)
     ok = (rc == 0 and "未核验" in out)
     print("  %s 返回 %s（期望 0 且输出含「未核验」）" % ("PASS" if ok else "FAIL", rc))
     if not ok:
         failures.append("体积真值为 null 时未优雅降级（rc=%s）—— CI 检出会因此恒红" % rc)
+
+    # ---- 17-19. HTML 属性值盲区（2026-10-18 修 strip_html 时补的三个判据）----
+    # 背景：`<[^>]*>` 把整个标签连同属性值换成空格，写在属性里的文字对 BANNED 与
+    # ANCHORS 双双不可见。实测官网 og:description 的「143 工具」（删 lightx 前旧口径）
+    # 与 91/143 一类旧值正是这样长期漏检：可见文本早已改对，属性里还是旧数。
+    # 修法（scan_texts）对 HTML 同时产出「可见文本」与「原文」两份探针。
+    print("\n[17/19] HTML 属性值里的旧口径必须 FAIL（BANNED 原文补扫）")
+    rc, out = run_gate({"docs/page.html":
+        '<html><head><meta name="description" content="平台共 91 个 YAML 工具，'
+        '143 运行时工具"></head><body><p>现行口径 90 YAML 工具（142 运行时）</p>'
+        '</body></html>\n'})
+    ok = (rc == 1 and "HTML 属性值" in out and "docs/page.html:1" in out)
+    print("  %s 返回 %s（期望 1 且标注「HTML 属性值」）" % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("HTML 属性值里的旧口径未被判红（rc=%s）——属性值盲区复发" % rc)
+
+    print("\n[18/19] HTML 属性值里的锚点：错必红、对必绿（双向）")
+    rc_bad, _o1 = run_gate({"docs/page.html": '<meta content="Go 999 文件">\n'})
+    rc_ok, _o2 = run_gate({"docs/page.html": '<meta content="Go 778 文件">\n'})
+    ok = (rc_bad == 1 and rc_ok == 0)
+    print("  %s 属性错值 rc=%s / 属性对值 rc=%s（期望 1/0）"
+          % ("PASS" if ok else "FAIL", rc_bad, rc_ok))
+    if not ok:
+        failures.append("属性值锚点未双向钉住（rc=%s/%s）——要么漏检要么恒红" % (rc_bad, rc_ok))
+
+    print("\n[19/19] 同一处同时在可见文本与属性值出现，只报一次（去重）")
+    rc, out = run_gate({"docs/page.html":
+        '<p>平台共 91 个 YAML 工具</p>'
+        '<meta content="平台共 91 个 YAML 工具">\n'})
+    ok = (rc == 1 and out.count("docs/page.html:1") == 1)
+    print("  %s 返回 %s，行内报告 %d 次（期望 1 且仅 1 次）"
+          % ("PASS" if ok else "FAIL", rc, out.count("docs/page.html:1")))
+    if not ok:
+        failures.append("同一处被重复计数（rc=%s，报告 %d 次）——两个探针未去重"
+                        % (rc, out.count("docs/page.html:1")))
 
     print("\n" + "=" * 66)
     if failures:
@@ -267,7 +307,7 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
-    print("PASS —— check_material_numbers 门禁 16/16 用例通过"
+    print("PASS —— check_material_numbers 门禁 19/19 用例通过"
           "（零覆盖 fail-closed + 恒红防护 + 豁免机制未退化 + 清单过期双向钉死 + "
           "体积/cgo 断言双向钉）。")
     return 0

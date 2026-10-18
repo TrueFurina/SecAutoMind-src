@@ -123,4 +123,4 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 2. **提交已完成**（2026-10-18）：主体为 `55585c9` 修 HEAD 断链 → `7f50c82` robot 卡片 → `3c776a8` P0 资产元数据+口径治理（141 文件）→ 若干文档与体积同步修正（SHA 以 `git log` 为准）。安装包已按 §2 方法由提交时的 HEAD 重建、binary-gate PASS。详见 `HANDOFF_2026-10-18.md` §14/§15。**没有待拍板事项。**
    剩余未提交的只有并行会话的在途 WIP（`scripts/verify_live_contract.py` 重写、`scripts/mock_sim_platform.py`、`docs/` 三篇、`.workbuddy-ai/`），不归本任务。
    ⚠️ 提交任何东西之前想清楚：**提交后 exe 戳记即失效**，要再按 §2 的方法重建一次。
-3. 非阻塞项（择机做，都不影响交付）：修 `check_material_numbers.py` 的 `strip_html` 盲区（HTML 属性值里的数字扫不到，见 HANDOFF §14.4）；赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。
+3. 非阻塞项（择机做，都不影响交付）：~~修 `check_material_numbers.py` 的 `strip_html` 盲区~~ **已修**（第十三轮，属性值补扫 + 旧运行时数 143 的写法进 BANNED，自测 19/19，见 HANDOFF §14.4）；赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。
