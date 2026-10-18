@@ -43,7 +43,7 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 | 红线 | 说明 |
 |---|---|
 | **决赛 2027-03-01，冻结 2027-02-15~03-01** | 窗口内 `internal/ agents/ cmd/` 改动被闸门 BLOCK。`roles/ skills/` 不在闸门内，但 P3 纪律性推迟赛后。破例走 `--freeze-override` + `FREEZE_OVERRIDE_ACK=1` 并留审计。 |
-| **禁止 `git add -A`** | 工作树常驻大量并行会话 WIP（2026-10-18 实测 112 项）。只 stage 显式路径，提交后用 `git show --stat` 复验零交集。 |
+| **禁止 `git add -A`** | 工作树常驻**上百项**并行会话 WIP（2026-10-18 实测 112→142，几分钟内仍在涨）。只 stage 显式路径，提交后用 `git show --stat` 复验零交集。 |
 | **前端双副本** | `go:embed` 的是 `internal/app/web/`，root `web/` 是工作副本。改任一处必跑 parity，否则改动静默失效。 |
 | **勿擅删 `hashpump` / `lightx`** | 属语义变更。**现状：工作树已被并行会话执行（hashpump 置灰、lightx 已删），未提交**——见 §4，不要代提交或回滚。 |
 | **勿把单向不变量改双向** | `tools_metadata_test.go`：已核 license ⇒ 必有 upstream。反向不成立——gdb/objdump/strings 是「上游已核、许可未核」的正当状态。 |
