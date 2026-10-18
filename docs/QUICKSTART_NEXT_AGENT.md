@@ -2,7 +2,7 @@
 
 > 这是入口卡，不是全量交接。**全量事实以 `docs/HANDOFF_2026-10-18.md` 为准**，本卡只负责"30 秒内知道该干什么、不能碰什么"。
 > 生成于 2026-10-18，所有数字均为当日实跑值；过期后以脚本输出为准，不要相信卡上的字。
-> **最近一次更新：2026-10-18 17:15（第七/八轮执行完毕，已无待拍板事项）。**
+> **最近一次更新：2026-10-18 22:45（第十一轮提交 + 第十二轮安装包重建与收尾，已无待拍板事项、无已知红灯）。**
 
 ---
 
@@ -42,9 +42,11 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 > 慢门禁（各约 2–5 分钟，跑前务必先设好上面两行 PATH，否则会假红）：
 > `python scripts/check_quant_effect.py --full`（10 条陈述）、`python scripts/check_suite_parity.py --check`（22 集）。
-> **`check_binary_version.py` 的坑（2026-10-18 实测）**：`installer/*.exe` 必须构建自**干净树**，
-> 否则 Go 会打 `+dirty` 戳（`v1.7.28-0.20261018121719-<sha>+dirty`），门禁直接 BLOCK。
-> 而本仓工作树常驻并行会话 WIP，**在主工作树里重建必然带 `+dirty`**。
+> `python scripts/check_binary_version.py`（现为 **PASS**：exe 构建自 HEAD、无 dirty）。
+>
+> **重建安装包的纪律（2026-10-18 实测，提交后必读）**：`installer/*.exe` 必须构建自**干净树**，
+> 否则 Go 会打 `+dirty` 戳，门禁直接 BLOCK。而本仓工作树常驻并行会话 WIP，
+> **在主工作树里重建必然带 `+dirty`**；且**任何一次新提交都会让已构建 exe 的戳记失效**。
 > 正确做法是在**真克隆**里构建（注意：`git worktree` **不行**——linked worktree 的 `.git` 是文件，
 > Go 的 VCS 探测取不到，buildinfo 里直接没有 `vcs.*` 行，版本退化成 `(devel)`，门禁同样红）：
 > ```bash
@@ -56,6 +58,8 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 > cp installer/secautomind-ai.exe installer/SecAutoMind-Setup-*-x64.exe E:/Program/SecAutoMind/installer/
 > cd E:/Program/SecAutoMind && python scripts/check_binary_version.py
 > ```
+> 重建后 exe 体积可能变化——**复跑 `check_material_numbers.py`**，体积也是口径锚点
+> （本次 89.5→89.6 MB 就曾让 caliber-gate 红，见 HANDOFF §15.1）。
 
 判成败一律 `cmd > out.txt 2>&1; echo "RC=$?"`，**不要用管道**（`| grep -v ^ok` 会吞掉 FAIL 行）。
 
@@ -78,7 +82,7 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 | 项 | 决定 | 现状 |
 |---|---|---|
 | `hashpump` | 置灰保留 | `enabled: false`，配置头注明人工定夺，文件留档 |
-| `lightx` | 删除配方 | `tools/lightx.yaml` 已删；`risk_policy.yaml` 原本就无引用 |
+| `lightx` | 删除配方 | `tools/lightx.yaml` 已删；`risk_policy.yaml` 中原有的 5 行 lightx 条目也已一并删除（旧说法「原本无引用」不成立，见 HANDOFF §14.7） |
 | `gdb` | 换数据源核实 | `GPL-3.0-or-later`（Alpine aports `main/gdb`） |
 | `objdump` / `strings` | 换数据源核实 | `GPL-2.0-or-later`（Alpine aports `main/binutils`） |
 | `dnsenum` | 换数据源核实 | `GPL-2.0-or-later`（上游 `dnsenum.pl` 头「version 2 or later」） |
@@ -115,7 +119,8 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 ## 7. 默认下一步（若用户没给新指令）
 
-1. 跑完 §2 自检，确认基线全绿。
-2. **提交已完成**（2026-10-18 第十一轮）：`55585c9` 修 HEAD 断链 → `7f50c82` robot 卡片 → `3c776a8` P0 资产元数据+口径治理（141 文件）。详见 `HANDOFF_2026-10-18.md` §14。**没有待拍板事项。**
+1. 跑完 §2 自检，确认基线全绿（含 `check_binary_version.py`，现 PASS）。
+2. **提交已完成**（2026-10-18）：`55585c9` 修 HEAD 断链 → `7f50c82` robot 卡片 → `3c776a8` P0 资产元数据+口径治理（141 文件）→ `a6ab198`/`024eaac` 文档 → `3083860` 体积同步与 argparse 修复。安装包已由 HEAD `3083860` 重建。详见 `HANDOFF_2026-10-18.md` §14/§15。**没有待拍板事项。**
    剩余未提交的只有并行会话的在途 WIP（`scripts/verify_live_contract.py` 重写、`scripts/mock_sim_platform.py`、`docs/` 三篇、`.workbuddy-ai/`），不归本任务。
+   ⚠️ 提交任何东西之前想清楚：**提交后 exe 戳记即失效**，要再按 §2 的方法重建一次。
 3. 非阻塞项（择机做，都不影响交付）：修 `check_material_numbers.py` 的 `strip_html` 盲区（HTML 属性值里的数字扫不到，见 HANDOFF §14.4）；赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。
