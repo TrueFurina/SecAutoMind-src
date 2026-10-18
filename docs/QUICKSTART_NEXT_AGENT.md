@@ -63,6 +63,10 @@ node --test internal/app/web/static/js/tool-meta-badges.test.cjs   # 8/8
 这是守卫按设计报警，不是代码 bug。**处置前提是用户确认删除**；确认后把 90 改为 89（或改为读目录计数并单独断言期望值）。
 在此之前 `handler`/`app` 两包仍为 `ok`，`go build ./...` 仍 rc=0。
 
+**别把 89 和 90 当成谁算错了**：`audit_asset_metadata.py` 解析 YAML 得 89（真实工具数），`count_stats.py` 文件计数得 90（`_shared_args.yaml` 被历史性计入）。
+副作用（实测）：删前 `count_stats` 为 91、删后 90，**恰好等于材料长期用的「90」**，所以 `check_material_numbers.py` 报 PASS；
+但 90 含 `_shared_args.yaml`，真实工具只有 89。**改 `tools/*.yaml` 后别只信口径门禁，必须手动跑 `go test ./internal/config`。**
+
 其余三项（binutils 三件套 / dnsenum / waybackurls 的 license 留 unknown）**是正确状态，不要"补全"**。
 
 ---
