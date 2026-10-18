@@ -42,7 +42,15 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 > 慢门禁（各约 2–5 分钟，跑前务必先设好上面两行 PATH，否则会假红）：
 > `python scripts/check_quant_effect.py --full`（10 条陈述）、`python scripts/check_suite_parity.py --check`（22 集）。
-> **唯一已知红灯**：`python scripts/check_binary_version.py` —— `installer/*.exe` 构建自旧提交，需 `python installer/build_installer.py --makensis D:/nsis_env/NSIS/makensis.exe` 重建（属交付动作，未执行）。
+> **`check_binary_version.py` 的坑（2026-10-18 实测）**：`installer/*.exe` 必须构建自**干净树**，
+> 否则 Go 会打 `+dirty` 戳（`v1.7.28-0.20261018121719-<sha>+dirty`），门禁直接 BLOCK。
+> 而本仓工作树常驻并行会话 WIP，**在主工作树里重建必然带 `+dirty`**。正确做法是在干净 worktree 里构建：
+> ```bash
+> git worktree add D:/tmp_build HEAD
+> cd D:/tmp_build && export PATH="/d/miniconda3_new:/d/DevCache/go/bin:$PATH"
+> python installer/build_installer.py --makensis D:/nsis_env/NSIS/makensis.exe
+> # 产物在 D:/tmp_build/installer/，拷回主树的 installer/ 后复跑 check_binary_version.py
+> ```
 
 判成败一律 `cmd > out.txt 2>&1; echo "RC=$?"`，**不要用管道**（`| grep -v ^ok` 会吞掉 FAIL 行）。
 
@@ -103,5 +111,6 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 ## 7. 默认下一步（若用户没给新指令）
 
 1. 跑完 §2 自检，确认基线全绿。
-2. **没有待拍板事项了**（§4 已全部执行）。当前唯一悬而未决的是**是否提交**：改动都在工作树，提交须逐路径 `git add`，先向用户确认。
-3. 非阻塞项（择机做，都不影响交付）：赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。
+2. **提交已完成**（2026-10-18 第十一轮）：`55585c9` 修 HEAD 断链 → `7f50c82` robot 卡片 → `3c776a8` P0 资产元数据+口径治理（141 文件）。详见 `HANDOFF_2026-10-18.md` §14。**没有待拍板事项。**
+   剩余未提交的只有并行会话的在途 WIP（`scripts/verify_live_contract.py` 重写、`scripts/mock_sim_platform.py`、`docs/` 三篇、`.workbuddy-ai/`），不归本任务。
+3. 非阻塞项（择机做，都不影响交付）：修 `check_material_numbers.py` 的 `strip_html` 盲区（HTML 属性值里的数字扫不到，见 HANDOFF §14.4）；赛前在 `172.16.222.99` 跑一次全量 `go test ./...`（分流避开 ctfplatform）；source/trust 徽章配色由蓝改橙（既有行为，独立议题）。
