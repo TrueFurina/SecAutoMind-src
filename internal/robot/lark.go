@@ -99,12 +99,12 @@ func handleLarkMessage(ctx context.Context, event *larkim.P2MessageReceiveV1, cf
 	}
 	messageID := larkcore.StringValue(msg.MessageId)
 	reply := h.HandleMessage("lark", userID, text)
-	contentBytes, _ := json.Marshal(larkTextContent{Text: reply})
+	msgType, content := larkReplyPayload(reply)
 	_, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(messageID).
 		Body(larkim.NewReplyMessageReqBodyBuilder().
-			MsgType(larkim.MsgTypeText).
-			Content(string(contentBytes)).
+			MsgType(msgType).
+			Content(content).
 			Build()).
 		Build())
 	if err != nil {
