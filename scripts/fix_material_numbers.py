@@ -49,7 +49,14 @@ import check_material_numbers as cmn  # noqa: E402
 
 
 def format_like(orig, want):
-    """跟随原写法保留千分位：'126,659' -> '126,675'；'724' -> '1234'（不带逗号）。"""
+    """跟随原写法保留千分位：'126,659' -> '126,675'；'724' -> '1234'（不带逗号）。
+
+    ⚠️ 2026-10-18：**体积字段是 1 位小数**（`setup_mb` / `exe_mb` = 89.5 / 20.3）。
+    旧实现一律 `int(want)` → 把「89.5」写成「89」，改完门禁立刻报漂移，
+    修复器与门禁形成死循环。故先按真值类型分流：浮点保留 1 位，整数才走千分位逻辑。
+    """
+    if isinstance(want, float) or "." in str(want):
+        return "%.1f" % float(want)
     return format(int(want), ",") if "," in orig else str(int(want))
 
 
@@ -78,7 +85,8 @@ def fix_line(line, truth, anchors=None, strip_html=False):
             raise SystemExit(
                 "FATAL: count_stats 未返回锚点字段 %s（字段名可能已改），"
                 "修复器拒绝在无真值的情况下工作" % key)
-        return int(v)
+        # 体积字段是 1 位小数，**不可 int()**（会把 89.5 截成 89，修复器与门禁死循环）
+        return v if isinstance(v, float) else int(v)
 
     if strip_html:
         probe = re.sub(r"<[^>]*>", " ", line)
