@@ -141,8 +141,8 @@ def main():
         failures.append("真漂移未判红（rc=%s）" % rc)
 
     # ---- 5. 已作废旧口径复活必须 FAIL ----
-    print("\n[5/16] 已作废旧口径复活（140 运行时工具）必须 FAIL")
-    rc, out = run_gate({"docs/scale.md": "官网写 140 运行时工具\n"})
+    print("\n[5/16] 已作废旧口径复活（140 运行时工具 / 运行时安全工具）必须 FAIL")
+    rc, out = run_gate({"docs/scale.md": "官网写 140 运行时安全工具，另一处写 140 运行时工具\n"})
     ok = (rc == 1)
     print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
     if not ok:

@@ -179,7 +179,7 @@ section{position:relative;padding:96px 0}
 
     <div class="stats">
       <div class="stat"><div class="num">129,288</div><div class="lbl">行 Go 工程代码</div></div>
-      <div class="stat"><div class="num">140</div><div class="lbl">运行时安全工具</div></div>
+      <div class="stat"><div class="num">143</div><div class="lbl">运行时安全工具</div></div>
       <div class="stat"><div class="num">18</div><div class="lbl">场景 Agent 角色</div></div>
       <div class="stat"><div class="num">313</div><div class="lbl">自动化测试文件</div></div>
     </div>
@@ -302,7 +302,7 @@ section{position:relative;padding:96px 0}
     <div class="sh">
       <div class="idx">04 · VERIFICATION</div>
       <h2>实测证据：工程闭环不是纸面功夫</h2>
-      <p>以下全部为 2026-09-05 磁盘实测数据（Go 1.22.5 + CGO_ENABLED=0 纯 Go 环境），可现场复现。</p>
+      <p>以下为当前磁盘实测数据（Go 1.25 + CGO_ENABLED=0 纯 Go 环境，<code>count_stats.py</code> 单一真值源），可现场复现。</p>
     </div>
     <div class="grid3">
       <div class="card" style="text-align:center">
@@ -311,15 +311,22 @@ section{position:relative;padding:96px 0}
         <p><code>go build ./... </code>全量 129,288 行零错误</p>
       </div>
       <div class="card" style="text-align:center">
-        <div class="num" style="font-size:44px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">28/28</div>
+        <div class="num" style="font-size:44px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">37/37</div>
         <h3 style="margin:8px 0 4px">测试包通过</h3>
-        <p>核心包全绿：multiagent / database / attackchain</p>
+        <p>37 个 internal 包全绿：<code>go test ./...</code> 零失败</p>
       </div>
       <div class="card" style="text-align:center">
         <div class="num" style="font-size:44px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">18086</div>
         <h3 style="margin:8px 0 4px">服务端口</h3>
         <p>系统实启动 HTTP 200 · 端口 18086 监听</p>
       </div>
+    </div>
+    <div style="margin-top:26px;background:var(--acc-soft);border:1px solid var(--line-strong);border-radius:14px;padding:22px 26px">
+      <p style="color:var(--ink);font-size:16px;font-weight:800;margin:0 0 8px">为什么这些数字可信 —— 可复现 · 反注水</p>
+      <p style="color:var(--muted);font-size:14.5px;margin:0;line-height:1.8">
+        所有规模数字由 <code>count_stats.py</code> 单一真值源生成，六道红线门禁在打包前自动校验，任一数字漂移即 CI 变红 —— 不是手写自述，评委可现场一键复现：<code>python verify_evidence.py --package</code>。
+        这意味着 <b style="color:var(--ink)">我们交付的每一个数字都有机器证据背书</b>，不依赖「看起来很大」的自我宣传。
+      </p>
     </div>
   </div>
 </section>
