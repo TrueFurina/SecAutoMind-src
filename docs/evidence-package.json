@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-18T06:10:29+08:00",
+  "generated_at": "2026-10-18T15:38:43+08:00",
   "caliber": {
-    "head": "ec99a3b",
+    "head": "3bb413f",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,20 +10,23 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 34,
-    "go_packages": 43,
+    "go_packages": null,
+    "internal_packages": 37,
     "test_packages": 37,
-    "go_files": 770,
-    "test_files": 313,
-    "non_test_lines": 129288,
-    "test_lines": 46633,
-    "total_lines": 175921,
+    "go_files": 772,
+    "test_files": 314,
+    "non_test_lines": 129409,
+    "test_lines": 46757,
+    "total_lines": 176166,
     "ctf_solvers": 181,
     "ctf_real_solvers": 122,
     "ctf_detectors": 59,
     "im_adapters": 7,
     "exe": {
       "present": false
-    }
+    },
+    "exe_mb": null,
+    "setup_mb": null
   },
   "benchmark": {
     "base": {
@@ -181,28 +184,21 @@
     },
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
-      "present": true,
-      "size_bytes": 89098240,
-      "md5": "443e8afd3853e6b1ce072abfbf95bce6",
-      "sha256": "baf8fd6e9da06ab30c5010f04d06893571727a3a7d573d65942f92582e115f48"
+      "present": false
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
-      "present": true,
-      "size_bytes": 20299011,
-      "md5": "577b0d0138b034ab06e2b984cace102c",
-      "sha256": "33e0e0d8d63edfbf076acb81ee893e66ae11e6b0e06370622db54861a7348791"
+      "present": false
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "present": true,
-      "size_bytes": 279169317,
-      "md5": "f9baf05a15f98a15324296dd86462a16",
-      "sha256": "8b2e8ab5ffb3063d57c2f96b3cf938b4a93f6a7dca967dd0fc264e0ae68fa522"
+      "present": false
     }
   },
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": []
+  "notes": [
+    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
+  ]
 }
