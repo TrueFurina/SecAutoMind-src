@@ -64,17 +64,31 @@ func TestRBACUploadOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.UpsertChatUploadArtifact("2026-07-10/"+conversation.ID+"/a.txt", conversation.ID, "u1"); err != nil {
+	if err := db.UpsertChatUploadArtifact("2026-07-10/"+conversation.ID+"/a.txt", conversation.ID, "u1", "abc123", "doc", 12); err != nil {
 		t.Fatal(err)
 	}
 	if conv, owner, ok := db.GetChatUploadArtifact("2026-07-10/" + conversation.ID + "/a.txt"); !ok || conv != conversation.ID || owner != "u1" {
 		t.Fatalf("artifact = conv=%q owner=%q ok=%v", conv, owner, ok)
+	}
+	if sum, size, kind, ok := db.GetChatUploadArtifactMeta("2026-07-10/" + conversation.ID + "/a.txt"); !ok || sum != "abc123" || size != 12 || kind != "doc" {
+		t.Fatalf("artifact meta = sha=%q size=%d kind=%q ok=%v", sum, size, kind, ok)
 	}
 	if err := db.RenameChatUploadArtifactPath("2026-07-10/"+conversation.ID+"/a.txt", "2026-07-10/"+conversation.ID+"/b.txt"); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, ok := db.GetChatUploadArtifact("2026-07-10/" + conversation.ID + "/b.txt"); !ok {
 		t.Fatal("renamed artifact metadata missing")
+	}
+	// Rename 只改路径、不改内容 → 哈希应随路径保留，不得误失效。
+	if sum, _, kind, ok := db.GetChatUploadArtifactMeta("2026-07-10/" + conversation.ID + "/b.txt"); !ok || sum != "abc123" || kind != "doc" {
+		t.Fatalf("rename 后哈希应保留: sha=%q kind=%q ok=%v", sum, kind, ok)
+	}
+	// 内容变更 → 哈希置空、size 更新，但行仍存在（区别于"从未登记"）。
+	if err := db.InvalidateChatUploadArtifactHash("2026-07-10/"+conversation.ID+"/b.txt", 20); err != nil {
+		t.Fatal(err)
+	}
+	if sum, size, _, ok := db.GetChatUploadArtifactMeta("2026-07-10/" + conversation.ID + "/b.txt"); !ok || sum != "" || size != 20 {
+		t.Fatalf("失效后: sha=%q size=%d ok=%v", sum, size, ok)
 	}
 }
 

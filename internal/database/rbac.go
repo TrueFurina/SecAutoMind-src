@@ -162,6 +162,9 @@ func (db *DB) initRBACTables() error {
 			conversation_id TEXT NOT NULL,
 			owner_user_id TEXT NOT NULL,
 			created_at DATETIME NOT NULL,
+			sha256 TEXT NOT NULL DEFAULT '',
+			size INTEGER NOT NULL DEFAULT 0,
+			kind TEXT NOT NULL DEFAULT '',
 			FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 		);`,
 		`CREATE TABLE IF NOT EXISTS c2_payload_artifacts (
