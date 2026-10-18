@@ -9,7 +9,8 @@
   对成功契约的判据目前只靠「真源 golden + httptest 仿真」两条证据支撑，真机仍未验。
 
   本脚本把「成功契约」固化成可机验清单，凭证到位后一键跑，逐项 PASS / FAIL / SKIP。
-  退出码：0 = 全部通过；1 = 有 FAIL；2 = 全部 SKIP（说明还是 40403，权限仍未开通）。
+  退出码：0 = 全部通过；1 = 有 FAIL 或缺凭证；2 = 全部 SKIP（说明还是 40403，权限仍未开通）；
+          3 = 冻结期（2027-03-01 前，Agent Key 决赛现场才发放，见 FREEZE_UNTIL）。
 
 安全：
   - 凭证只从环境变量 DASCTF_BASE_URL / DASCTF_TOKEN 读，命令历史与输出均不落明文；
@@ -21,6 +22,7 @@
   python scripts/verify_live_contract.py --full     # 含写入契约（起靶机+提交+回收）
 """
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -38,6 +40,10 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 BASE = os.environ.get("DASCTF_BASE_URL", "").rstrip("/")
 TOKEN = os.environ.get("DASCTF_TOKEN") or os.environ.get("CTF_AGENT_PLATFORM_TOKEN")
 PREFIX = "/slab-match/api/v1/agent"
+
+# 时间锁（用户 2026-10-18 拍板）：Agent Key 仅决赛现场发放，此前本脚本冻结不可跑，
+# 防止提前拿到临时凭证时误触发真机请求、也防止此事项被反复催办。到期自动解封。
+FREEZE_UNTIL = datetime.date(2027, 3, 1)
 
 ENDPOINTS = {
     "overview": "/answer-panel/overview",
@@ -93,6 +99,15 @@ def main():
     ap.add_argument("--full", action="store_true",
                     help="含写入契约（起靶机→提交 flag→回收），有真实副作用")
     args = ap.parse_args()
+
+    # 时间锁：2027-03-01 前冻结（Agent Key 决赛现场才有）。rc=3 = 冻结期，不是故障。
+    if datetime.date.today() < FREEZE_UNTIL:
+        print("FROZEN: 真机联调验证冻结至 %s（Agent Key 仅决赛现场发放，用户 2026-10-18 拍板）。"
+              % FREEZE_UNTIL.isoformat())
+        print("  到期后运行：export DASCTF_BASE_URL=https://pro.dasctf.com")
+        print("             export DASCTF_TOKEN=<现场 Agent Key>")
+        print("             python scripts/verify_live_contract.py [--full]")
+        return 3
 
     if not BASE or not TOKEN:
         print("FATAL: 缺少 DASCTF_BASE_URL / DASCTF_TOKEN 环境变量。")
