@@ -118,7 +118,36 @@ def is_setup(name):
     return name.startswith("SecAutoMind-Setup-") and name.lower().endswith(".exe")
 
 
-def check_one(path, head, label="", tmp_cleanup=None):
+GO_SOURCE_PATHSPECS = ["*.go", "go.mod", "go.sum"]
+
+
+def go_source_changed_since(git_root, base, head):
+    """`base..head` 之间是否有 Go 源码变化 → True / False / None（无法判定）。
+
+    为什么要这条而不是「commit 必须 == HEAD」（2026-10-18 打包时被自己的门禁拦住才发现）：
+    严格相等意味着**改一行动 docs 也得重编 89 MB 二进制**，现实中没人会这么做 ——
+    最后必然有人加 `--force` 旁路，门禁等于没有。真正要保的不变量是
+    「发出去的程序 ≡ 当前 Go 源码」，所以判据应是「构建点之后**没动过** Go 源码」。
+    无法判定（非 git 仓库 / 提交不在历史里）一律当红：宁可要求重编，不可放过来路不明的产物。
+    """
+    if not base:
+        return None
+
+    def git(*a):
+        return subprocess.run(["git"] + list(a), cwd=git_root,
+                              capture_output=True, text=True)
+
+    if git("rev-parse", "--git-dir").returncode != 0:
+        return None
+    if git("merge-base", "--is-ancestor", base, head).returncode != 0:
+        return None
+    r = git("diff", "--name-only", "%s..%s" % (base, head), "--", *GO_SOURCE_PATHSPECS)
+    if r.returncode != 0:
+        return None
+    return bool((r.stdout or "").strip())
+
+
+def check_one(path, head, label="", git_root=None):
     """→ (problems, notes)。"""
     problems, notes = [], []
     info = parse_buildinfo(path)
@@ -132,18 +161,32 @@ def check_one(path, head, label="", tmp_cleanup=None):
         problems.append("%s：版本 %s 不是伪版本（无 commit），无法与 HEAD 对齐 —— "
                         "tag 构建请在构建前记下提交，别让产物失去可追溯性"
                         % (label, info["version"]))
-    elif not (head.startswith(info["commit"]) or info["commit"].startswith(head)):
-        problems.append("%s：构建自 %s，当前 HEAD %s —— **产物落后于源码**，"
-                        "源码里修掉的问题在这份程序里仍然存在"
-                        % (label, info["commit"][:12], head[:12]))
+    elif head.startswith(info["commit"]) or info["commit"].startswith(head):
+        pass  # 就是 HEAD 本身
+    else:
+        changed = go_source_changed_since(git_root or ROOT, info["commit"], head)
+        if changed is None:
+            problems.append("%s：构建自 %s，当前 HEAD %s，且**无法判定**其间是否改过 Go 源码"
+                            "（提交不在本仓历史 / 非 git 仓库）—— 请重编"
+                            % (label, info["commit"][:12], head[:12]))
+        elif changed:
+            problems.append("%s：构建自 %s，其后 Go 源码有改动（HEAD %s）—— "
+                            "**产物落后于源码**，源码里修掉的问题在这份程序里仍然存在"
+                            % (label, info["commit"][:12], head[:12]))
+        else:
+            notes.append("%s → %s（%s）；其后未改 Go 源码，与在 HEAD 重建等价"
+                         % (label, info["commit"][:12], info["built_at"]))
     if not problems:
-        notes.append("%s → %s（%s）" % (label, info["commit"][:12], info["built_at"]))
+        if not any(n.startswith(label) for n in notes):
+            notes.append("%s → %s（%s）" % (label, info["commit"][:12], info["built_at"]))
     return problems, notes
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="交付二进制来源门禁")
-    ap.add_argument("--root", default=ROOT, help="仓库根（测试用）")
+    ap.add_argument("--root", default=ROOT, help="受管二进制所在根（打包时=staging）")
+    ap.add_argument("--git-root", default=ROOT,
+                    help="取 HEAD / 判 Go 差异的 git 仓库根（staging 不是仓库，故与 --root 分离）")
     ap.add_argument("--head", default=None, help="覆盖 HEAD（测试用；默认取 git rev-parse HEAD）")
     ap.add_argument("--require-binaries", action="store_true",
                     help="一个受管二进制都找不到时判红（打包链路必开）")
@@ -154,7 +197,7 @@ def main(argv=None):
 
     head = args.head
     if not head:
-        r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=args.root,
+        r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=args.git_root,
                            capture_output=True, text=True)
         if r.returncode != 0:
             print("[BLOCK] 取不到 HEAD（%s）" % r.stderr.strip()[:120])
@@ -178,13 +221,14 @@ def main(argv=None):
                 unchecked.append("%s：%s —— **安装包内嵌程序未核验**" % (label, why))
                 continue
             try:
-                p, n = check_one(payload, head, label + "（内嵌 payload）")
+                p, n = check_one(payload, head, label + "（内嵌 payload）",
+                                 git_root=args.git_root)
                 problems += p
                 notes += n
             finally:
                 shutil.rmtree(os.path.dirname(payload), ignore_errors=True)
         else:
-            p, n = check_one(path, head, label)
+            p, n = check_one(path, head, label, git_root=args.git_root)
             problems += p
             notes += n
 

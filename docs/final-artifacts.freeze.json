@@ -51,8 +51,8 @@
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "7b960bff5129ea9199b8af4f0d8657349048c16a88365807f47019ca5373e272",
-      "size": 279406183
+      "sha256": "80a77a5fb6514c4dbd6f777ed7af83d44aabed8e9f7e4b905b3e463370d83e97",
+      "size": 279408570
     }
   },
   "retired": {}

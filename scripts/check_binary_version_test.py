@@ -87,7 +87,8 @@ def t2():
     root = make_root({"installer/secautomind-ai.exe": fake_exe(OLD)})
     rc, out = run(["--root", root, "--head", HEAD])
     assert rc == 1, out
-    assert "落后于源码" in out, out
+    # 假提交不在任何仓库历史里 → 判据走「无法判定 ⇒ 红」分支；真落后走「落后于源码」分支。
+    assert ("请重编" in out) or ("落后于源码" in out), out
 
 
 @case("T3 脏树构建 +dirty → BLOCK")
@@ -163,7 +164,7 @@ def t10():
     })
     rc, out = run(["--root", root, "--head", HEAD])
     assert rc == 1, out
-    assert "落后于源码" in out, out
+    assert ("请重编" in out) or ("落后于源码" in out), out
 
 
 @case("T11 --strict-unchecked：部分未能核验 → BLOCK（打包链路用）")
@@ -177,6 +178,63 @@ def t11():
     rc2, out2 = run(["--root", root, "--head", HEAD, "--strict-unchecked"])
     assert rc2 == 1, out2         # 打包链路不放行
     assert "未能核验" in out2, out2
+
+
+@case("T12 构建点之后只改了文档（Go 未变）→ PASS（不必为改文档重编 89MB）")
+def t12():
+    root, a, b = git_repo_with([("main.go", "package main\n"),
+                                ("README.md", "v1\n")],
+                               [("README.md", "v2\n")])
+    write_exe(root, "installer/secautomind-ai.exe", fake_exe(a))
+    rc, out = run(["--root", root, "--git-root", root, "--head", b])
+    assert rc == 0, out
+    assert "未改 Go 源码" in out, out
+
+
+@case("T13 构建点之后改了 Go 源码 → BLOCK（真正的落后）")
+def t13():
+    root, a, b = git_repo_with([("main.go", "package main\n")],
+                               [("main.go", "package main // fix\n")])
+    write_exe(root, "installer/secautomind-ai.exe", fake_exe(a))
+    rc, out = run(["--root", root, "--git-root", root, "--head", b])
+    assert rc == 1, out
+    assert "落后于源码" in out, out
+
+
+def git_repo_with(first, second):
+    """建一个真 git 仓库：commit A = first 里的文件；commit B = 叠加 second 的改动 → (root, A, B)。"""
+    root = tempfile.mkdtemp(prefix="binver_git_")
+    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+
+    def g(*a):
+        return subprocess.run(["git"] + list(a), cwd=root, env=env,
+                              capture_output=True, text=True)
+
+    g("init", "-q")
+    for rel, data in first:
+        p = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(p) or root, exist_ok=True)
+        open(p, "w", encoding="utf-8").write(data)
+    g("add", "-A")
+    g("-c", "commit.gpgsign=false", "commit", "-q", "-m", "A")
+    sha_a = g("rev-parse", "HEAD").stdout.strip()
+    for rel, data in second:
+        p = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(p) or root, exist_ok=True)
+        open(p, "w", encoding="utf-8").write(data)
+    g("add", "-A")
+    g("-c", "commit.gpgsign=false", "commit", "-q", "-m", "B")
+    sha_b = g("rev-parse", "HEAD").stdout.strip()
+    return root, sha_a, sha_b
+
+
+def write_exe(root, rel, data):
+    p = os.path.join(root, rel)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "wb") as fh:
+        fh.write(data)
+    return p
 
 
 def main():

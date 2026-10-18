@@ -191,6 +191,6 @@ GCM nonce 复用、MT19937、LFSR 等），结果写入 `data/ctf_benchmark/all_
 ---
 
 **版本**: v1.7.28
-**构建时间**: 2026-09-30（exe 内嵌 commit `344e5bd`，md5 `b339fa5bd2920e310c97344468064f9c`，89,472,512 B；配方 `CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui -w -s" -o secautomind-ai.exe ./cmd/server`）
-**分发包制作**: 2026-10-10（`dist/SecAutoMind-v1.7.28-share.tar.gz`，203.2 MB；五项红线全过：无运行数据 · `config.yaml` 由 `config.share.yaml` 顶替 · `secret_guard` rc=0 · 脚本行尾合规 · 产物数字与真值一致。重新打包后请同步更新本行）
+**构建时间**: 由 `scripts/make_delivery_package.py` 打包时按 exe 内嵌 buildinfo 自动写入（commit / md5 / 体积 / 构建配方）。**勿手改**——本行曾长期停在 09-30 的 `344e5bd`，而包里实际已是别的构建。
+**分发包制作**: 同上（日期 / 纳入文件数 / 六项红线清单）。**勿手改**——本行曾长期停在「2026-10-10 / 203.2 MB / 五项红线」，而实际早已是六项。
 

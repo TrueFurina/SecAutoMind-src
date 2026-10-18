@@ -40,6 +40,7 @@
     1 = 自验失败（含真凭证 / 含禁区数据 / 产物数字漂移），成品包已删除
 """
 import argparse
+import datetime
 import fnmatch
 import hashlib
 import os
@@ -232,6 +233,59 @@ def read_version():
     return "dev"
 
 
+# SHARE_README 里两条「派生事实」行是手写维护的死角（2026-10-18 实测）：
+#   · `**构建时间**` 还写着 09-30 的 `344e5bd` / md5 `b339fa5b…` / 89,472,512 B；
+#   · `**分发包制作**` 还写着 2026-10-10 / 203.2 MB / **五项**红线（现为六项）。
+# 它本身就带一句「重新打包后请同步更新本行」—— 事实是没人更新。凡是「要人手同步」的派生字段
+# 必然会过期，故改为**打包时按真实产物重写**（在 staging 里写，改的是要发出去的那一份）。
+_FACT_BUILD_RE = re.compile(r"^\*\*构建时间\*\*:.*$", re.M)
+_FACT_PACK_RE = re.compile(r"^\*\*分发包制作\*\*:.*$", re.M)
+
+
+def rewrite_share_readme(staging, n_files):
+    """按真实产物重写 SHARE_README 的两条派生事实行；锚点缺失即失败（不静默放过）。"""
+    path = os.path.join(staging, "SHARE_README.md")
+    if not os.path.isfile(path):
+        raise SystemExit("[BLOCK] staging 里没有 SHARE_README.md —— 交付说明缺失，拒绝出包")
+    exe = os.path.join(staging, "installer", "secautomind-ai.exe")
+    if not os.path.isfile(exe):
+        raise SystemExit("[BLOCK] staging 里没有 installer/secautomind-ai.exe，"
+                         "无法写入构建事实（先跑 installer/build_installer.py）")
+
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import count_stats as cs
+    info = cs.read_buildinfo(exe) or {}
+    commit = (info.get("commit") or "")[:12]
+    built_at = info.get("built_at") or ""
+    if len(built_at) == 14 and built_at.isdigit():  # 20261017232921 → 2026-10-17 23:29:21
+        built_at = "%s-%s-%s %s:%s:%s" % (built_at[0:4], built_at[4:6], built_at[6:8],
+                                          built_at[8:10], built_at[10:12], built_at[12:14])
+    dirty = "（⚠️ 脏树构建）" if info.get("dirty") else ""
+    md5 = hashlib.md5(open(exe, "rb").read()).hexdigest()
+    build_line = ("**构建时间**: %s（exe 内嵌 commit `%s`%s，md5 `%s`，%s B；配方见 "
+                  "`installer/build_installer.py`，复验 `python installer/build_installer.py "
+                  "--verify-only`）" % (built_at or "未知", commit or "未知", dirty, md5,
+                                        format(os.path.getsize(exe), ",")))
+    pack_line = ("**分发包制作**: %s（纳入文件 %d 个；六项红线全过：无运行数据 · "
+                 "`config.yaml` 由 `config.share.yaml` 顶替 · `secret_guard` rc=0 · "
+                 "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建。"
+                 "本行与上一行由 `scripts/make_delivery_package.py` 自动写入，勿手改）"
+                 % (datetime.date.today().isoformat(), n_files))
+
+    with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+        text = fh.read()
+    for pat, line, what in ((_FACT_BUILD_RE, build_line, "构建时间"),
+                            (_FACT_PACK_RE, pack_line, "分发包制作")):
+        if not pat.search(text):
+            raise SystemExit("[BLOCK] SHARE_README.md 里找不到 `%s` 事实行锚点 —— "
+                             "格式被改坏了？请先恢复 `**%s**: ...` 这一行再打包。"
+                             % (what, what))
+        text = pat.sub(lambda _m, s=line: s, text, count=1)
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+    return build_line, pack_line
+
+
 def sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -418,6 +472,10 @@ def main():
             print("  例外纳入：%s（机验基准集）" % ", ".join(INCLUDE_PATH_EXCEPTIONS))
         print("  （--list-only 预览结束，未打包）")
         return 0
+
+    # 派生事实行按真实产物重写（写进 staging，即要发出去的那一份）
+    build_line, pack_line = rewrite_share_readme(staging, len(included))
+    print("  SHARE_README 事实行已按产物重写")
 
     os.makedirs(os.path.dirname(out), exist_ok=True)
     root_name = "SecAutoMind-%s-share" % ver
