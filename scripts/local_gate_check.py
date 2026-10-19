@@ -41,6 +41,24 @@ CI = os.path.join(ROOT, ".github", "workflows", "ci.yml")
 # 这些步骤会改仓库状态或非常慢，默认不跑（--full 才跑）
 HEAVY = ("regen_exec_fixtures.py", "run_all_benchmarks.py")
 
+# 归档仿真（git archive 抽出的纯 LF 干净检出：无 .git）下**结构性不可验或极易误红**的门禁。
+# 它们要么依赖真实 git 检出（取 HEAD / git ls-files / git check-ignore），要么需在完整环境里
+# 真跑重型命令（量化陈述机验），在「无 .git / 纯 LF」的归档里跑只会结构性失败或误红，
+# 与代码质量无关。统一跳过，请走真实克隆或 CI 核验（本地实跑均已 PASS：binary / line-endings /
+# cross-bench 在真实仓库 RC=0；quant 由 CI 跑）。注意子串须避开对应的 _test.py。
+_ARCHIVE_INCOMPATIBLE = (
+    "check_binary_version.py",        # 需 git HEAD + 现场 exe（exe 还是 gitignored 产物）
+    "check_line_endings",             # 主门禁需 git ls-files、纯 LF 归档还会把 .bat 误判为应 CRLF；
+                                       # 其自测 T7 跑默认（git）模式也需 git → 主门禁与自测一并 SKIP
+    "check_cross_bench_manifest.py",  # C7 需 git check-ignore / git ls-files
+    "check_quant_effect.py",          # 重型真跑门禁，需完整环境+时间，CI 专用
+    "check_suite_parity.py --check",  # 重型真跑门禁：21 个 wired 集各跑 python judge + `go test
+                                       #   ./internal/ctfplatform/ -timeout 600s`；go test 依赖 gitignored
+                                       #   基准夹具（归档里缺 → 结构性失败），且耗时长（真仓 ~5-7min），CI/真实克隆核验。
+                                       #   只匹配主门禁（带 --check）；其 *_test.py 自测只用纯函数 + 读受跟踪的
+                                       #   台账/汇总文件，无需 git/夹具，归档里仍照常 [RUN]（与 line-endings 情形相反）。
+)
+
 
 def parse_ci():
     """从 ci.yml 解析 [(job, step_name, command)]，顺序即文件顺序。
@@ -95,11 +113,29 @@ def parse_ci():
     return out
 
 
+def _is_git_repo(path):
+    """当前检出是否为 git 仓库（用于判断 binary-gate 能否等价复现）。"""
+    try:
+        r = subprocess.run(["git", "-C", path, "rev-parse", "--is-inside-work-tree"],
+                           capture_output=True, text=True)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 def classify(cmd):
     """-> ('python'|'heavy'|'skip', 原因)
 
     跳过一律**带原因**（不静默）：本脚本的结论只覆盖它真的跑过的那些命令。
     """
+    # 归档仿真（git archive 抽出的干净检出：无 .git、纯 LF）下结构性不可验或极易误红的门禁。
+    # 它们依赖真实 git 检出（取 HEAD / git ls-files / git check-ignore）或需在完整环境真跑
+    # 重型命令（量化陈述机验），在「无 .git / 纯 LF」的归档里跑只会结构性失败或误红
+    # （与代码质量无关）。明确跳过，请走真实克隆或 CI 核验（本地实跑均已 PASS）。
+    if not _is_git_repo(ROOT):
+        for _tok in _ARCHIVE_INCOMPATIBLE:
+            if _tok in cmd:
+                return "skip", "归档仿真（无 .git/纯 LF）下结构性不可验或易误红；请在真实克隆/CI 核验"
     # 多行 run 块（见 parse_ci）：解析器不拆 shell 语法，但**必须**把藏在块里的
     # python 门禁显式点出来 —— 否则它会被"非 python 命令"这条兜底规则静默吞掉，
     # 而"本地全绿"就会变成一个假信号。
