@@ -137,3 +137,17 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
    剩余未提交的只有并行会话的在途 WIP（`scripts/verify_live_contract.py` 重写、`scripts/mock_sim_platform.py`、`docs/` 三篇、`.workbuddy-ai/`），不归本任务。
    ⚠️ 提交任何东西之前想清楚：**提交后 exe 戳记即失效**，要再按 §2 的方法重建一次。
 3. 非阻塞项（择机做，都不影响交付）：~~修 `check_material_numbers.py` 的 `strip_html` 盲区~~ **已修**（第十三轮，属性值补扫 + 旧运行时数 143 的写法进 BANNED，自测 19/19，见 HANDOFF §14.4）；~~source/trust 徽章配色由蓝改橙~~ **已修**（第十五轮，级联覆盖所致，见 HANDOFF §16）；~~收敛 CSS 影子块~~ **已做可证明安全子集**（第十六轮后，35 块已删 + 三层等价性验证 + `css-shadow-gate` 接 CI，剩余 102 组"部分存活"是需人工判定的技术债，见 HANDOFF §17）；赛前在 `172.16.222.99` 跑一次全量 `go test -p 1 ./...`（分流避开 ctfplatform，需实机）。
+
+## 8. 缺口审计与演练基线（2026-10-20 实测）
+
+**§8 缺口审计**（AGENTS.md 第八条；生产调用点计数，排除 `_test.go` 与接口定义文件）：
+
+| 方法 | 生产调用 | 结论 |
+|---|---|---|
+| ListChallenges / GetChallenge / CreateInstance / GetAccess / DownloadAttachment / SubmitFlag / DestroyInstance | 1–2 | 已接线 |
+| **ResetInstance** | 0 | **非缺口**——被 `DestroyInstance` 复用（`dasctf.go:1075`），DestroyInstance 在 `handleChallenge` 回收靶机时有生产调用（`poller.go:350`）。计数 0 是排除 dasctf.go 的假阴性 |
+| **GetMatchInfo / GetOverview** | 0 | **观测类，不影响得分，按纪律不接线**：比赛起止由 runbook 控制、平台会拒绝窗口外提交；排名纯观测不改我方分数。硬接线只为刷非零计数属注水，不做 |
+
+**演练基线**：`go test -p 1 -count=1 -run TestRehearsal ./internal/ctfplatform/` → **RC=0（2.087s）**，"拉题→解题→提交→判分"关键链通过。
+
+**口径门禁（干净检出）**：HEAD 干净 worktree 上 `check_material_numbers.py` → **RC=0 PASS**。工作树若红，先查是否**未跟踪的并行 WIP 文档**引用了旧数字（门禁 BANNED 按"数字紧跟单位词"抓，引用旧值须让数字不紧跟单位词，见 AGENTS.md 第一条坑）。
