@@ -151,3 +151,5 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 **演练基线**：`go test -p 1 -count=1 -run TestRehearsal ./internal/ctfplatform/` → **RC=0（2.087s）**，"拉题→解题→提交→判分"关键链通过。
 
 **口径门禁（干净检出）**：HEAD 干净 worktree 上 `check_material_numbers.py` → **RC=0 PASS**。工作树若红，先查是否**未跟踪的并行 WIP 文档**引用了旧数字（门禁 BANNED 按"数字紧跟单位词"抓，引用旧值须让数字不紧跟单位词，见 AGENTS.md 第一条坑）。
+
+**ctfplatform 整包为何慢（2026-10-20 实测定位）**：`TestLLMAutoSolve`（`llm_autosolve_test.go`）在检测到 `DEEPSEEK_API_KEY`（或 `LLM_EVAL_API_KEY`）时会**真调 LLM** 跑 13 题 × 22 步评测（含 4 次退避重试），本机有 key 时会跑数分钟——**设计如此，非 bug**（无 key 自动 SKIP，绝不 FAIL）。故日常全量用 `go list ./internal/... | grep -v ctfplatform` 分流（37 包 RC=0）；要单独跑 LLM 评测用 `LLM_EVAL_LIMIT=3 go test -run TestLLMAutoSolve ./internal/ctfplatform/`。
