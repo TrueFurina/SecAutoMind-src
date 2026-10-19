@@ -119,10 +119,10 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 - PR #83（octop-harness 规则）：open、mergeable、**零评审零评论**，等合并。
 - PR #2170（Octop docs）：open、无评审，mergeable_state=`unstable`（CI 未跑完），等评审。
-- Issue #2171（`OCTOP_HOME` 口令）：**已被 `legend91019` 认领并提交修复 [PR #2174](https://github.com/TencentCloud/Octop/pull/2174)**
+- Issue #2171（`OCTOP_HOME` 口令）：**已被 `legend91019` 认领并修复，[PR #2174](https://github.com/TencentCloud/Octop/pull/2174) 已于 2026-10-19 复核确认 `merged`**
   （2026-10-18 07:19 交叉引用；无 assignee，认领以评论为准）。我方已评审：集成测试更新到位
   （正是 #2171 提醒的阻塞点）、legacy 回退逻辑正确（复用旧密码不生成冲突密钥 + 原子 0o600 写）、
-  base 是 `develop`；**唯一待办是补 `CHANGELOG.md` 条目**（已留言给出建议条目原文）。
+  base 是 `develop`。**PR #2174 已合并，`#2171` 反哺闭环完成**（CHANGELOG 由上游维护者随合并处理，本方无需再跟）。
 - Issue #84（**octop-harness**，枚举缺 `defense_evasion`）：open、0 评论，待认领，低优先级。
   ⚠️ 编号撞车提醒：`TencentCloud/Octop` 另有一个**无关**的 #84（远程桌面致出站流量死，
   2026-07-29 已 completed）——两个仓库的 #84 不是同一件事，查状态前先确认仓库。
