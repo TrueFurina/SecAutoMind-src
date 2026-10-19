@@ -2,7 +2,7 @@
 
 > 这是入口卡，不是全量交接。**全量事实以 `docs/HANDOFF_2026-10-18.md` 为准**，本卡只负责"30 秒内知道该干什么、不能碰什么"。
 > 生成于 2026-10-18，所有数字均为当日实跑值；过期后以脚本输出为准，不要相信卡上的字。
-> **最近一次更新：2026-10-18 22:45（第十一轮提交 + 第十二轮安装包重建与收尾，已无待拍板事项、无已知红灯）。**
+> **最近一次更新：2026-10-20（新增冻结期干净检出门禁仿真脚本 `clean_checkout_gate_sim.sh`，见 §5；§8 缺口审计/演练基线为 10-20 实测）。**
 
 ---
 
@@ -109,6 +109,10 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 - **🔴 全量 `go test ./internal/...` 会 OOM 假红**（2026-10-19 实测）：并行链多个大测试二进制时 `VirtualAlloc ... errno=1455`，`internal/handler` 等 8 个包报 `[build failed]`。**加 `-p 1` 串行链即全绿**（实测 8/8 ok，41 秒）。这不是代码问题，别去"修"代码；判红前先看报错是 OOM 还是真 FAIL。
 - **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`（系统 python 无 PyYAML，校验 yml 时用它）。
 - **CI 仿真**：`git archive HEAD` 在 `core.autocrlf=true` 下**仍导出 CRLF**；要纯 LF 必须 `git -c core.autocrlf=false archive HEAD`。
+- **🔴 冻结期"干净检出门禁仿真"一键脚本**（2026-10-20 新增）：`bash scripts/clean_checkout_gate_sim.sh [--go|--full|--preflight]`。
+  它用 `git -c core.autocrlf=false archive HEAD` 抽一份**纯 LF 干净检出**（默认 `/d/tmp_ci_sim`），自动设好 `APPDATA` / `PATH`（conda 在前）/ `TMP`·`TEMP`·`TMPDIR`（三件套分开 `export`，别用多重赋值）三件套，再跑 `local_gate_check.py`（CI 门禁的本地镜像：只读 `.github/workflows/ci.yml` 的 `run:` 行，只跑 python+node 类，go/`${{ }}`/pip/apt 类按原因跳过，单一事实源不重复命令表）。
+  核心价值：**根治 §2 里 `check_golden_freeze.py` / `check_final_artifacts_freeze.py` 的 autocrlf 假红**——这俩对 golden 文件做**原始字节哈希**，本机 CRLF 检出必红、纯 LF 检出才绿，而 CI 是纯 LF 所以 CI 绿；用本脚本可让"本地 == CI"成立。
+  参数：`--list` 仅列出待跑门禁不执行；`--preflight` 加跑 `finals_preflight.py --phase pre`（rehearsal+caliber+secret+evidence+switches 总检）；`--go` 加跑 build+rehearsal；`--full` 加跑 `go test -p 1 ./...`（最慢，数十分钟）。失败封闭：缺 `git`/`tar`/`python` 或 archive 失败 → rc=2。`bash -n` 语法通过、`--list` 实测 rc=0。
 
 ---
 
@@ -152,4 +156,9 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 **口径门禁（干净检出）**：HEAD 干净 worktree 上 `check_material_numbers.py` → **RC=0 PASS**。工作树若红，先查是否**未跟踪的并行 WIP 文档**引用了旧数字（门禁 BANNED 按"数字紧跟单位词"抓，引用旧值须让数字不紧跟单位词，见 AGENTS.md 第一条坑）。
 
-**ctfplatform 整包为何慢（2026-10-20 实测定位）**：`TestLLMAutoSolve`（`llm_autosolve_test.go`）在检测到 `DEEPSEEK_API_KEY`（或 `LLM_EVAL_API_KEY`）时会**真调 LLM** 跑 13 题 × 22 步评测（含 4 次退避重试），本机有 key 时会跑数分钟——**设计如此，非 bug**（无 key 自动 SKIP，绝不 FAIL）。故日常全量用 `go list ./internal/... | grep -v ctfplatform` 分流（37 包 RC=0）；要单独跑 LLM 评测用 `LLM_EVAL_LIMIT=3 go test -run TestLLMAutoSolve ./internal/ctfplatform/`。
+**ctfplatform 整包为何慢（2026-10-20 实测定位）**：三个慢源，**均为设计如此、非 bug**——
+- `TestLLMAutoSolve`（`llm_autosolve_test.go`）：检测到 `DEEPSEEK_API_KEY`（或 `LLM_EVAL_API_KEY`）时**真调 LLM** 跑 13 题 × 22 步评测（含 4 次退避重试），本机有 key 时数分钟；无 key 自动 SKIP。
+- `TestSSRFAttackAgainstRange` / `TestSSRFAttackViaProductionText`：各约 **62s**（起真实 Python SSRF 靶场 + 真实利用），实测**均 PASS**（`ok ... 124.228s`）。
+故日常全量用 `go list ./internal/... | grep -v ctfplatform` 分流（37 包 RC=0）；要跑整包须给足超时（`-timeout 900s`，300s 会不够）并 `env -u DEEPSEEK_API_KEY`（跳过 LLM 评测）；单独跑 LLM 评测用 `LLM_EVAL_LIMIT=3 go test -run TestLLMAutoSolve ./internal/ctfplatform/`。
+
+**🔴 冻结期想在"纯 LF 干净检出"上跑全部门禁**（含 autocrlf 敏感的 `check_golden_freeze.py` / `check_final_artifacts_freeze.py`）：用 §5 的 `bash scripts/clean_checkout_gate_sim.sh`，别再手动 `git worktree`——worktree 的 `core.autocrlf` 仍可能导出 CRLF，而脚本用 `git -c core.autocrlf=false archive HEAD` 保证纯 LF，让"本地 == CI"。
