@@ -117,12 +117,13 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 `72fbc708` 自动化每两天只读巡检，仅在出现"请修改"评论或 merged/closed 时提醒。
 **2026-10-19 人工复核（gh api 实测）**：
 
-- PR #83（octop-harness 规则）：open、mergeable、**零评审零评论**，等合并。
-- PR #2170（Octop docs）：open、无评审，mergeable_state=`unstable`（CI 未跑完），等评审。
+  - PR #83（octop-harness 规则）：open、mergeable、**1 评论（本方 TrueFurina 跟进说明：篡改类规则暂用 `code_execution`，已提 #84 提议补 `defense_evasion` 枚举；无维护者评审）**，等合并。
+  - PR #2170（Octop docs）：open、**无维护者评审**，mergeable_state=`unstable`（该 head 的 CI check-run 为 0 条，非我方改动所致），1 评论亦为本方交叉引用（开 #2171 + 指出 `.env.example:18` 同款错路径）。等评审合并。
 - Issue #2171（`OCTOP_HOME` 口令）：**已被 `legend91019` 认领并修复，[PR #2174](https://github.com/TencentCloud/Octop/pull/2174) 已于 2026-10-19 复核确认 `merged`**
   （2026-10-18 07:19 交叉引用；无 assignee，认领以评论为准）。我方已评审：集成测试更新到位
   （正是 #2171 提醒的阻塞点）、legacy 回退逻辑正确（复用旧密码不生成冲突密钥 + 原子 0o600 写）、
   base 是 `develop`。**PR #2174 已合并，`#2171` 反哺闭环完成**（CHANGELOG 由上游维护者随合并处理，本方无需再跟）。
+  - ⚠️ **`.env.example` 残留 → 已提 [Issue #2230](https://github.com/TencentCloud/Octop/issues/2230)**：PR #2174 合并时未改 `.env.example:18`（旧错路径未修、且未同步 relocation 新逻辑）。本方收尾跟进，等上游处理，非本仓库待办。
 - Issue #84（**octop-harness**，枚举缺 `defense_evasion`）：open、0 评论，待认领，低优先级。
   ⚠️ 编号撞车提醒：`TencentCloud/Octop` 另有一个**无关**的 #84（远程桌面致出站流量死，
   2026-07-29 已 completed）——两个仓库的 #84 不是同一件事，查状态前先确认仓库。
