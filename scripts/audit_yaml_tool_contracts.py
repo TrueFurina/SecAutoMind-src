@@ -74,11 +74,11 @@ TRUST_ALLOWED = {"builtin"}
 #: 允许的 source 取值（上游移植 / 自研）。
 SOURCE_ALLOWED = {"upstream", "self"}
 
-#: 溯源缺口基线：`source=upstream` 却缺 `upstream` URL 的历史成员。
-#: 补 URL 需要核实上游地址——**不编**。登记在此只让它不阻断，报告里照旧列出。
-BASELINE_PROVENANCE_GAPS = {
-    "hashpump": "上游地址待核实（不编造 URL）；核实后删除本行",
-}
+#: 溯源缺口基线：`source=upstream` 却缺 `upstream` URL、且**仍在启用**的历史成员。
+#: 当前为空——唯一命中的 `hashpump` 是 `enabled: false` 的置灰留档（上游仓库已消失、
+#: 核实失败而留空，配方头有完整记录），按"置灰不判缺陷"处理，不再占用本表。
+#: 表保留为空而非删掉：将来真出现启用态的溯源缺口时，仍要有"登记而不阻断"这条路。
+BASELINE_PROVENANCE_GAPS: dict[str, str] = {}
 
 #: 原样透传参数名：把调用方字符串直接拼进命令行末尾。
 RAW_PASSTHROUGH_PARAMS = ("additional_args",)
@@ -167,6 +167,9 @@ def scan() -> dict:
             "is_tool": False,
             "error": item.get("error"),
             "has_command": False,
+            # 置灰（enabled: false）的配方不对外可用：判它的契约缺陷只会制造噪音，
+            # 而且会随每次新增置灰工具不断变长。故只计量、不进硬缺陷。
+            "enabled": True,
             "param_count": 0,
             "required_declared": False,
             "params_missing_type": [],
@@ -188,6 +191,7 @@ def scan() -> dict:
             continue
         declared.add(name)
         rec["has_command"] = bool(str(doc.get("command") or "").strip())
+        rec["enabled"] = doc.get("enabled") is not False
         params = doc.get("parameters")
         if isinstance(params, list):
             for p in params:
@@ -219,6 +223,8 @@ def summarize(result: dict) -> dict:
     tools = {r["tool"] or r["file"]: r for r in recs}
     hard: list[dict] = []
     for key, r in tools.items():
+        if not r["enabled"]:
+            continue
         if not r["has_command"]:
             hard.append({"tool": key, "kind": "缺 command"})
         if r["param_count"] == 0:
@@ -255,6 +261,9 @@ def summarize(result: dict) -> dict:
         "budget_out_of_scope_note": "响应预算由 exec 层截断，配方文件无上限字段 ⇒ 本脚本不判定",
         "tools_without_required": sorted(n for n, r in tools.items()
                                          if not r["required_declared"]),
+        # 置灰留档：不对外可用，故不判缺陷，但要被看见（否则"89 份"里混着 10 份
+        # 谁也调不动的，对外宣称工具数时容易虚报）。
+        "disabled_tools": sorted(n for n, r in tools.items() if not r["enabled"]),
         "hard_defects": hard,
         "hard_defects_baselined": baselined,
         "hard_defects_fresh": fresh,
@@ -308,6 +317,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"③ 响应预算：{summary['budget_out_of_scope_note']}")
         print(f"\n全无 required 声明的工具（{len(summary['tools_without_required'])}）："
               f"{', '.join(summary['tools_without_required']) or '无'}")
+        if summary["disabled_tools"]:
+            print(f"置灰留档（enabled: false，不判缺陷但须被看见，"
+                  f"{len(summary['disabled_tools'])} 份）："
+                  f"{', '.join(summary['disabled_tools'])}")
         print(f"参数缺 description（{len(summary['params_missing_desc'])}）："
               f"{', '.join(summary['params_missing_desc']) or '无'}")
         if summary["parse_errors"]:

@@ -142,6 +142,26 @@ class FakeRepoCase(unittest.TestCase):
         finally:
             (self.root / "tools" / "with-args.yaml").unlink()
 
+    def test_disabled_recipe_is_not_a_defect_but_still_listed(self):
+        """置灰（enabled: false）的配方对外不可用：判它的缺陷是噪音，
+        但**必须被单独列出来**——否则"89 份工具"里混着十几份谁也调不动的，
+        对外报数时会虚报。实测仓里 hashpump 就是这样：上游仓库已消失、
+        upstream 留空是核实失败而非遗漏。"""
+        path = self.root / "tools" / "hashpump.yaml"
+        _write(self.root, "tools/hashpump.yaml", GOOD.format(name="hashpump").replace(
+            'upstream: "https://example.invalid/hashpump"\n', "").replace(
+            'enabled: true', 'enabled: false'))
+        # 本类共用同一假仓，写进去的文件必须还原：否则后面按字母序执行的
+        # test_scan_counts_only_real_tool_declarations 会数出 8 份而不是 7 份
+        # （首版就踩了这个 —— 夹具污染表现为"别的测试突然红"，极难归因）。
+        self.addCleanup(lambda: path.unlink() if path.exists() else None)
+        out = _run(self.root, "--json")
+        s = json.loads(out.stdout)["summary"]
+        self.assertIn("hashpump", s["disabled_tools"], "置灰的必须被列出来")
+        self.assertNotIn("hashpump", {h["tool"] for h in s["hard_defects"]},
+                         "置灰配方不判硬缺陷")
+        self.assertEqual(out.returncode, 0)
+
     def test_budget_is_declared_out_of_scope(self):
         s = json.loads(_run(self.root, "--json").stdout)["summary"]
         self.assertFalse(s["budget_field_present_any"])

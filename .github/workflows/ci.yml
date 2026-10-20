@@ -433,6 +433,14 @@ jobs:
         run: python -X utf8 scripts/audit_tool_contracts_test.py
       - name: T0 tool contracts (InputSchema + required)
         run: python -X utf8 scripts/audit_tool_contracts.py --gate
+      # 错误投影（2026-10-21 收窄，REA #10/#176）：26 处 `textResult("错误: "+err.Error())`
+      # 已收敛到 toolInternalError（对外只出可行动文案、原文进日志），只保留 4 处入参
+      # 校验直出并登记基线。**纯 Python 守卫，不占 Go 额度**：Go 侧改动已由服务器
+      # `go build` + `go vet` + `go test ./...` 验证（本机无 Go 工具链，见总账 HUNG 项）。
+      - name: Error-projection gate self-test (new leak must be red)
+        run: python -X utf8 scripts/check_error_projection_test.py
+      - name: Error projection (no new err.Error() leaks beyond baseline)
+        run: python -X utf8 scripts/check_error_projection.py --gate
       # 工具**配方**（tools/*.yaml，89 份真声明）的契约：与上面的内置 MCP 工具
       # 是两条完全不同的链路（注册表 vs 命令行拼装），四维度不能照抄，故单独一套
       # 解析与门禁。除四维度外还做「与 count_stats.tools_yaml 的口径对账」——两个
