@@ -412,6 +412,25 @@ jobs:
         run: python scripts/check_doc_facts_test.py
       - name: Doc facts vs single source of truth
         run: python scripts/check_doc_facts.py
+      # 范围边界准入清单（2026-10-20 新增，REA #169）：豁免必须有审计日期、
+      # 准入理由、到期日。缺字段或过期 = 没有准入（过期条目比新增条目更危险：
+      # 它看起来"已经被批准过"）。空清单是合法状态——没裁定过就不该有准入。
+      - name: Scope allow-list self-test (missing expiry / vague reason must FAIL)
+        run: python -X utf8 scripts/scope_allowlist_test.py
+      - name: Scope allow-list validity (expired entries block)
+        run: python -X utf8 scripts/scope_allowlist.py --check
+      # 工具契约四件套（2026-10-20 新增，REA #176）：MCP 对外契约 = 错误投影 /
+      # 入参 schema / 响应预算 / 溯源，不是"能跑通"。这里只把**硬缺陷**设为阻断：
+      # T0 常驻工具缺 InputSchema 或 required。错误投影现状（12 个 T0 拼 err.Error()）
+      # 是已登记缺口，见 docs/工具契约与输出边界-2026-10-20.md，暂不阻断。
+      - name: Tool contract sampler self-test (constant names / fail-closed)
+        run: python -X utf8 scripts/audit_tool_contracts_test.py
+      - name: T0 tool contracts (InputSchema + required)
+        run: python -X utf8 scripts/audit_tool_contracts.py --gate
+      # 环境指纹（2026-10-20 新增，REA #33/#239）：块会随基准产物公开，故必须自测
+      # "不含绝对路径、不写环境变量原值、取不到的项进 unknown 而不是填默认值"。
+      - name: Env fingerprint self-test (no path/secret leak)
+        run: python -X utf8 scripts/env_fingerprint_test.py
       # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，
       # 会出现「修复器说修好了、门禁说还红」的隐蔽失效。10 项含 4 项变异验证
       # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。

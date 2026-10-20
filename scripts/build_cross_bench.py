@@ -30,6 +30,9 @@ import shutil
 import sys
 from collections import Counter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import env_fingerprint  # noqa: E402  —— 同目录原语，脚本独立运行时也能取到
+
 OUT_DIR = os.path.join("data", "questions_real_bench")
 OUT_FILE = os.path.join(OUT_DIR, "cross_bench.json")
 REPORT = os.path.join(OUT_DIR, "cross_bench_source_stats.json")
@@ -298,6 +301,9 @@ def main() -> int:
         "sha256_of_doc": hashlib.sha256(
             json.dumps(doc, sort_keys=True, ensure_ascii=False).encode("utf-8")
         ).hexdigest(),
+        # 环境指纹（REA #33/#239）：没有它，这份基准的数字三个月后无法归因。
+        # 只记解释器/平台/依赖版本/git 短 SHA；不含绝对路径与密钥（见 env_fingerprint）。
+        "env": env_fingerprint.collect(cwd=os.getcwd()),
     }
 
     print("=" * 62)

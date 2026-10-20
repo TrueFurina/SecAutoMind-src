@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "note": "范围边界准入清单（REA #169）。这里只做**标注**，不隐藏任何命中项：审计报告仍然列出全部命中，只是在其上标注「已准入 / 已过期 / 待裁」。每条必须有 audited_on（审计日期）、reason（准入理由：评的是实际能力，不是名字）、reviewer（签字人）、expires_on（到期日，默认 90 天）。缺字段或已过期 = 失效，由 scripts/scope_allowlist.py 与 --gate 拦下。空清单是合法状态：没有裁定过就不该有准入。",
+  "required_fields": ["pattern", "category", "reason", "audited_on", "reviewer", "expires_on"],
+  "entries": []
+}
