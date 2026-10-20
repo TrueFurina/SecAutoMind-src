@@ -4,29 +4,29 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "68c2a9a5ce3d1a14841d3874d4fba1da51e25ee029abb94ad98bb42e8879ebbb",
-      "size": 68896,
+      "sha256": "e2d6fae40576cc92f6a946f452d64ce50d16f4eeaeca41a536d68d10edd3c482",
+      "size": 68895,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
-        "sha256": "60fe85a556ce086777d550b680b13852ffa55b271678e1dc02caa33ef661bda1"
+        "sha256": "31740b01d9473c3e4576ded84077985b1f30fbe933d705cfe0a7c9c2b36a91d3"
       }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "af93baf8701abb3481b6e369a9d36868e37dfef67c9df9d30fe1211878e77402",
+      "sha256": "eb52251e95b6c1525fe5b4668f920c236fc034a3c58715c60cf4b67f13a7adee",
       "size": 421331,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
-        "sha256": "b0fedff477af6508538ad540f1d7e3b4f812b5c3be1e998dbbadf8b4fa61af59"
+        "sha256": "43ea4e83dc2b318b3aa99a285ddef932705d3725b5042891b7c294d543190841"
       }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "201d78708a6d5a9559ebb403fd73c38815ab95f2fe19ea6bf60f42c89da18810",
-      "size": 78377,
+      "sha256": "d44fa315ba2edebc21ff8fc3cc7900f1597570e1bf2b10bcea3cb51f16e8aacf",
+      "size": 78376,
       "generator": {
         "path": "SecAutoMind_PPT/make_final_ppt.py",
-        "sha256": "6266f6ca0c1a40a48fbb4b5f0375c953ccb9dfa4ae73cf3bffb86ce22c65787d"
+        "sha256": "1e345668a03bcff5ffef92d8191c3a9ab1a4cbfe3ad9cf69c390a6ff9d527ef8"
       }
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
@@ -41,7 +41,7 @@
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "204beed44a361ef999ff6f8389577533ab68e35f347a39f76328b00ab02ccb99",
+      "sha256": "9f607c731152dbd43e641130a03d1bcea009478057699e854b96548c2cf6bb7c",
       "size": 78354
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
