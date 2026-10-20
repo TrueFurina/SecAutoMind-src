@@ -50,6 +50,37 @@ T0_TOOLS = {
     "webshell_exec",
 }
 
+#: 「有 schema 但**故意**不声明 required」的 T0 工具（REA #169：豁免必须有理由、
+#: 复核日期；过期/无理由 = 没有豁免）。
+#:
+#: 这条是 2026-10-20 的**实测教训**：门禁初版把判据写成「T0 缺 required = 硬缺陷」，
+#: 一上线就把 4 个工具判红（`audit_tool_contracts.py --gate` exit 1）。查源码后确认
+#: 它们全是**故意**不声明的，判据本身错了——把"没声明"当成"有必填却没声明"：
+#:   - create_asset：host/ip/domain 三选一无法用 JSON Schema 表达（Bedrock 拒绝
+#:     顶层 oneOf/allOf/anyOf，代码注释自陈），约束由 assetFromCreateArgs 强制；
+#:   - 其余三个是列表/查询工具，参数全是可选筛选条件与分页，无参即"全部"。
+#: 若不登记就靠"删掉 required 判据"让门禁变绿，等于把判据降到无法发现真缺陷；
+#: 登记 + 复核日期是可复核的中间解。
+NO_REQUIRED_EXEMPT = {
+    "create_asset": {
+        "reason": "host/ip/domain 三选一无法用 JSON Schema 表达（Bedrock 拒绝顶层 oneOf），"
+                  "由 assetFromCreateArgs 在代码里强制",
+        "reviewed_on": "2026-10-20",
+    },
+    "list_project_facts": {
+        "reason": "全可选筛选 + 分页参数，无参即列出当前项目全部",
+        "reviewed_on": "2026-10-20",
+    },
+    "list_vulnerabilities": {
+        "reason": "全可选筛选（scope/severity…），无参按对话绑定项目默认范围返回",
+        "reviewed_on": "2026-10-20",
+    },
+    "query_assets": {
+        "reason": "分页查询，全部条件可选，默认每页 20 条（assetQuerySchema 自陈）",
+        "reviewed_on": "2026-10-20",
+    },
+}
+
 _NAME_RE = re.compile(r'\bName:\s*("[a-z0-9_]+"|[A-Za-z_][\w.]*)')
 # 注册块里 Name 常写成常量引用（Name: ToolCompleteAssetScan），故先从 constants.go
 # 建「常量 → 字符串」映射。不做这一步只能扫到少数写字面量的工具（实测只扫到 8/52），
@@ -147,10 +178,19 @@ def summarize(tools: dict[str, dict]) -> dict:
     raw_leak = sorted(n for n, r in tools.items() if r["raw_err_leak"])
     no_limit = sorted(n for n, r in tools.items()
                       if any(w in n for w in ("list", "query", "search")) and not r["limit_param"])
+    t0_schema_missing = sorted(n for n, r in tools.items()
+                                if r["t0"] and not r["has_schema"])
+    t0_no_required = sorted(n for n, r in tools.items()
+                             if r["t0"] and r["has_schema"] and not r["has_required"])
     return {
         "tools_found": total,
         "t0_found": sorted(n for n, r in tools.items() if r["t0"]),
         "t0_missing_from_source": sorted(T0_TOOLS - set(tools)),
+        "t0_missing_input_schema": t0_schema_missing,
+        "t0_missing_required": t0_no_required,
+        "t0_missing_required_exempt": [n for n in t0_no_required if n in NO_REQUIRED_EXEMPT],
+        "t0_missing_required_unjustified": [n for n in t0_no_required
+                                            if n not in NO_REQUIRED_EXEMPT],
         "no_input_schema": no_schema,
         "schema_without_required": no_required,
         "no_iserror_path": no_error_path,
@@ -197,12 +237,22 @@ def main(argv: list[str] | None = None) -> int:
         print("\n口径：静态正则抽样，report-only；命中≠运行时缺陷，未命中≠合格。")
 
     if args.gate:
-        hard = [n for n in summary["t0_found"]
-                if not tools[n]["has_schema"] or not tools[n]["has_required"]]
+        # 硬缺陷分两档（2026-10-20 修正，理由见 NO_REQUIRED_EXEMPT 的注释）：
+        #   ① 缺 InputSchema —— 客户端无从构造调用，无条件阻断；
+        #   ② 缺 required —— 只有**未登记豁免理由**的才阻断，登记过的按"故意不声明"放行。
+        # 旧判据把 ② 也当无条件缺陷，一上线就把 4 个合法工具判红。
+        hard = summary["t0_missing_input_schema"]
+        unjustified = summary["t0_missing_required_unjustified"]
         if hard:
-            print(f"\n[gate] T0 工具契约硬缺陷：{', '.join(hard)}", file=sys.stderr)
+            print(f"\n[gate] T0 工具缺 InputSchema：{', '.join(hard)}", file=sys.stderr)
             return 1
-        print("\n[gate] T0 工具均具备 InputSchema 与 required 声明")
+        if unjustified:
+            print(f"\n[gate] T0 工具缺 required 且未登记豁免理由：{', '.join(unjustified)}"
+                  f"（确属故意不声明的请登记到 NO_REQUIRED_EXEMPT，附理由与复核日期）",
+                  file=sys.stderr)
+            return 1
+        print("\n[gate] T0 工具均具备 InputSchema；"
+              f"缺 required 的 {len(summary['t0_missing_required'])} 个已登记理由")
     return 0
 
 

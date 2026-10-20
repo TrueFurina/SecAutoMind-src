@@ -397,6 +397,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 配方契约审计要解析 tools/*.yaml，而 PyYAML 不在 requirements.txt
+      # （那份只管工具运行时，不管审计脚本）。ubuntu runner 的 Python 不保证预装，
+      # 故显式装——与本文件其它「pip install pycryptodome」步同一惯例。
+      # 脚本本身在缺 PyYAML 时 exit 2（fail-closed），不会静默放行。
+      - name: Install PyYAML for recipe contract audit
+        run: python -m pip install --upgrade pip && pip install pyyaml
       # 门禁自身也要有回归测试（2026-10-14 门禁审计）：本门禁结论全由「违规项计数」
       # 构成，扫到 0 个文件（目录名写错 / 被 gitignore / 扩展名被改空）时会无条件全绿。
       # 现 fail-closed（覆盖数为 0 即红）并由本步实跑自测，同时锁死豁免机制不退化。
@@ -427,6 +433,14 @@ jobs:
         run: python -X utf8 scripts/audit_tool_contracts_test.py
       - name: T0 tool contracts (InputSchema + required)
         run: python -X utf8 scripts/audit_tool_contracts.py --gate
+      # 工具**配方**（tools/*.yaml，89 份真声明）的契约：与上面的内置 MCP 工具
+      # 是两条完全不同的链路（注册表 vs 命令行拼装），四维度不能照抄，故单独一套
+      # 解析与门禁。除四维度外还做「与 count_stats.tools_yaml 的口径对账」——两个
+      # 独立计数器差值无法逐项解释时变红（这正是 risk_policy 虚报 92 的复现路径）。
+      - name: Recipe contract sampler self-test (bad samples must be red)
+        run: python -X utf8 scripts/audit_yaml_tool_contracts_test.py
+      - name: Tool recipe contracts + count reconciliation
+        run: python -X utf8 scripts/audit_yaml_tool_contracts.py --gate
       # 环境指纹（2026-10-20 新增，REA #33/#239）：块会随基准产物公开，故必须自测
       # "不含绝对路径、不写环境变量原值、取不到的项进 unknown 而不是填默认值"。
       - name: Env fingerprint self-test (no path/secret leak)

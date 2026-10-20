@@ -48,6 +48,7 @@ SecAutoMind documentation is organized by user journey. Start with deployment, t
 - [工具契约与输出边界](工具契约与输出边界-2026-10-20.md)：契约四件套（错误投影/schema/响应预算/溯源）、选定事实视图、`NOT_ENOUGH_INFO`
 - [工具故障分诊模板](../templates/工具故障分诊.md)：六层分诊（注册/授权/入参/provider/数据/运行时）
 - [审计报告模板（findings 四分法）](../templates/审计报告模板-findings四分法.md)：已复现缺陷 / 有据成本 / 假设 / 不可得证据
+- 工具**配方**契约（tools/*.yaml，89 份）与依赖清单盘点：见上条文档 §6 / §7；入口脚本 `scripts/audit_yaml_tool_contracts.py`、`scripts/env_fingerprint.py --root`
 
 ## English Documentation
 
