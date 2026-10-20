@@ -106,7 +106,7 @@ SecAutoMind/
 ## Use Cases
 
 - **University cyber range training** — automated attack-defense simulation with standardized grading
-- **CTF competition training** — AI-assisted problem solving with tool automation
+- **CTF competition training** — AI-assisted problem solving with tool automation, **scoped to the competition's own challenge targets**; bypassing platform access control is out of scope (see [SECURITY.md](SECURITY.md#authorized-use-boundary))
 - **Security research** — CVE reproduction, PoC validation, attack chain analysis
 - **Blue team training** — detection capability training, alert triage drills
 
