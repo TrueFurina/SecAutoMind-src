@@ -4,11 +4,11 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "e2d6fae40576cc92f6a946f452d64ce50d16f4eeaeca41a536d68d10edd3c482",
-      "size": 68895,
+      "sha256": "e2c722297bff4d884bb3f8696a456e24022d1fbafb33784b95e6cb9f83c220d1",
+      "size": 68932,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
-        "sha256": "31740b01d9473c3e4576ded84077985b1f30fbe933d705cfe0a7c9c2b36a91d3"
+        "sha256": "e6078bf494d357ad349e09c09e467f0ecf165894b55bb5f06898ab8d0f355979"
       }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {

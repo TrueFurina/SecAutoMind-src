@@ -9,7 +9,7 @@
     "static": {
       "total": 55,
       "min_hit": 20,
-      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。20/55 = 36.4% 是当前水位（其中 4 道为题面即答案伪解，真求解器口径 16/55 = 29.1%，见 check_benchmark_plaintext_answer.py）——剩余 35 道需真实工具执行/实时靶机/二进制/隐写。这里只锁『不低于 20』防退化，不假装它是满分。"
+      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。20/55 = 36.4% 是当前水位（其中 4 道为题面即答案伪解，真求解器口径 16/55 = 29.1%，见 check_benchmark_plaintext_answer.py）。关键事实（2026-10-21 实测，见 miss_attribution_test.go）：未命中的 35 道题在库内 description 长度为 0、附件数为 0——是数据缺失，不是能力缺口；有数据的 20 道真求解器命中 16 = 80%。剩余 35 道的原始题面/附件需从赛事平台补齐后才可评估能力。这里只锁『不低于 20』防退化，不假装它是满分。"
     },
     "execution": {
       "total": 17,
