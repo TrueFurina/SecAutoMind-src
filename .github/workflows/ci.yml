@@ -398,6 +398,14 @@ jobs:
         run: python scripts/check_material_numbers_test.py
       - name: Material numbers vs single source of truth
         run: python scripts/check_material_numbers.py
+      # 文档事实门禁（2026-10-20 新增）：AGENTS.md 是材料门禁的 EXEMPT_FILES
+      # （规范文档必须列举旧数字才能说明规则，列举 ≠ 使用），但豁免制造了盲区——
+      # 其「N YAML + K 内置 = R 运行时」分解式示范是**现行事实的示范**而非枚举，
+      # 实测 91/143 已漂移过一轮且无任何判据能看见。由本门禁兜底。
+      - name: Doc-facts gate self-test (6 mutations + 2 fail-closed)
+        run: python scripts/check_doc_facts_test.py
+      - name: Doc facts vs single source of truth
+        run: python scripts/check_doc_facts.py
       # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，
       # 会出现「修复器说修好了、门禁说还红」的隐蔽失效。10 项含 4 项变异验证
       # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。
@@ -586,6 +594,12 @@ jobs:
         run: python scripts/check_mcp_servers.py
       - name: MCP servers gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_mcp_servers_test.py
+      # 出口契约门禁（2026-10-19）：每条工具结论必须自报权威等级 / 覆盖度 /
+      # 限制 / 证据指纹，且降级不得伪装成功。14 项含 5 类变异——伪造
+      # 「degraded 无原因」「unavailable 无限制」等坏契约，校验器必须变红。
+      - name: MCP tool output contract (authority / coverage / limitations)
+        working-directory: mcp-servers/security_triage_agent
+        run: python contract_test.py
 
   # 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着
   # payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析；
