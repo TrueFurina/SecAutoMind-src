@@ -1,0 +1,140 @@
+{
+ "_readme": [
+  "staticcheck 2025.1.1 全仓基线（2026-10-21 首跑 156 条 → 修复 21 条后 135 条）。",
+  "守卫：scripts/check_staticcheck_baseline.py --report <staticcheck -f json 的输出>。",
+  "键 = (code, 仓库相对路径)，**不含行号**：本轮实测，删两行循环后 U1000 行号漂移，凭空多出 2 条「新增」（REA #258 同款教训）。",
+  "阻断档（新增即红）：SA4000 / SA4004 / SA4006 / SA5011 / SA9009 / ST1008 —— 正确性类。",
+  "观察档（只提示）：风格类与死代码；--strict 下也判红，供本地自查。",
+  "file = \"*\" 表示类级豁免（死代码台账 / 上游弃用），不做 stale 判定。",
+  "新增语义类告警时：要么修掉，要么在此登记豁免（reason + reviewed_on）。不得删判据了事（REA #257）。",
+  "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。"
+ ],
+ "tool": "staticcheck 2025.1.1（go install honnef.co/go/tools/cmd/staticcheck@2025.1.1）",
+ "generated_on": "2026-10-21",
+ "scan_root_note": "报告内为绝对路径时，用环境变量 SECAUTOMIND_STATICCHECK_ROOT 归一化成仓库相对路径",
+ "blocking_codes": {
+  "SA4000": 0,
+  "SA4004": 0,
+  "SA4006": 3,
+  "SA5011": 1,
+  "SA9009": 0,
+  "ST1008": 0
+ },
+ "observed_codes": {
+  "S1005": 1,
+  "S1009": 0,
+  "S1011": 0,
+  "S1017": 0,
+  "S1039": 0,
+  "SA1012": 10,
+  "SA1019": 8,
+  "ST1005": 2,
+  "U1000": 110
+ },
+ "exemptions": [
+  {
+   "code": "SA4006",
+   "file": "internal/ctfplatform/presolve_misc.go",
+   "symbol": "bestLike（2 处）",
+   "reason": "块内赋值后，出了块只读 best、不再读 bestLike（死存储属实）。保留赋值是为了让「命中即更新最优解」这层意图留在代码里，而不是靠读者从 best 的间接变化反推；已就地加注释。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA4006",
+   "file": "internal/handler/batch_task_manager.go",
+   "symbol": "taskIndex",
+   "reason": "首次查找只为判存在，索引必然被「重新加锁后的二次查找」覆盖（防加锁间隙队列被换=TOCTOU 防护）。删掉会让两段查找看起来像重复代码；已就地加注释。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA5011",
+   "file": "internal/agent/agent.go",
+   "symbol": "result.IsError",
+   "reason": "假阳性：同一函数上方已 `for _, content := range result.Content` 解引用，result 为 nil 时更早已 panic；此处的 != nil 判断是防御性冗余，不是漏判。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1012",
+   "file": "internal/authctx/principal_test.go",
+   "symbol": "WithPrincipal(nil, ...)",
+   "reason": "测试**故意**传 nil Context 验证容错（用例名即写「nil context is safe」）。改成 context.TODO() 会失去这条覆盖——静态检查建议与测试意图冲突时，以测试意图为准。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1012",
+   "file": "internal/multiagent/eino_tool_result_progress_emitter_test.go",
+   "symbol": "emitter.Emit(nil, ...)",
+   "reason": "同上：验证 Emit 对 nil Context 的容忍，改掉即失去覆盖。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "ST1005",
+   "file": "internal/workflow/validation.go",
+   "symbol": "fmt.Errorf(\"Agent 节点…\")（2 处）",
+   "reason": "中文错误文案以专有名词 Agent 开头而触发「首字母不得大写」规则；中文语境下该规则不适用，改小写反而破坏对外文案。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/knowledge/wire_retriever.go",
+   "symbol": "model.ChatModel",
+   "reason": "上游 eino 弃用（→ ToolCallingChatModel）。迁移要跟上游节奏，单仓先改会与未来 API 冲突；登记观察。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/llm/agentic_chat_adapter.go",
+   "symbol": "model.ChatModel",
+   "reason": "同上（eino 弃用 API）。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/multiagent/eino_input_telemetry.go",
+   "symbol": "mc.Tools",
+   "reason": "eino 明示该字段「remains populated for backward compatibility」，替换需改到 TypedChatModelAgentState；登记观察。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/multiagent/eino_turn_loop_runtime.go",
+   "symbol": "schema.ChatMessagePart",
+   "reason": "eino 弃用：需改用 MessageInputPart / MessageOutputPart，属跨版本迁移项。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/multiagent/hitl_middleware.go",
+   "symbol": "adk.State",
+   "reason": "adk 明示该字段仅为 checkpoint 向后兼容保留、不应直接使用；改造面大，登记观察。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "SA1019",
+   "file": "internal/workflow/package/exporter.go",
+   "symbol": "header.SetModTime",
+   "reason": "archive/zip 自 Go 1.10 起弃用 → 改用 Modified 字段。改动小但需与打包产物回归一起验，登记观察。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "code": "U1000",
+   "file": "*",
+   "symbol": "110 处未使用的函数/类型/变量",
+   "reason": "死代码台账：本轮纪律是**不删除任何东西**，只登记。多数是 ctfplatform 各 solver 的进阶尝试路径与历史工具函数（tryStegoAdvanced / bfxPrintableRuns / md5Finalize 等）。清理需逐个确认是否有外部脚本或反射引用，另立任务。",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰"
+  }
+ ]
+}

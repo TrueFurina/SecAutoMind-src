@@ -5,8 +5,12 @@ import (
 	"io/fs"
 )
 
-// go:embed 前端资源（模板 + 静态），使 exe 在任意目录双击即用，
-// 不依赖磁盘上的 web/ 目录（单文件分发）。
+// 嵌入前端资源（模板 + 静态），使 exe 在任意目录双击即用，不依赖磁盘上的
+// web/ 目录（单文件分发）。
+//
+// 注意：说明文字不要写成 "// go:embed ..."——`//` 与 `go:embed` 之间多一个空格
+// 就不再是编译指令，staticcheck SA9009 会报"ineffectual compiler directive"。
+// 真正的指令在紧随其后的两行。
 //
 //go:embed web/templates/*.html
 //go:embed web/static/css/* web/static/js/* web/static/i18n/* web/static/vendor/* web/static/favicon.ico web/static/logo.png

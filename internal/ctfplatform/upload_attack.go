@@ -54,9 +54,7 @@ func uploadAttackFromText(ctx context.Context, text string) []string {
 		seen[base] = true
 		tctx, cancel := context.WithTimeout(ctx, 40*time.Second)
 		defer cancel()
-		for _, f := range ExploitUploadTarget(tctx, cl, base, hints) {
-			out = append(out, f)
-		}
+		out = append(out, ExploitUploadTarget(tctx, cl, base, hints)...)
 	}
 	for _, m := range reHTTPURL.FindAllString(text, 4) {
 		u := strings.TrimRight(m, ".,;:)]}>\"'")

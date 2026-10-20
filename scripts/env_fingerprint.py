@@ -357,6 +357,15 @@ def deps_coverage(root=None) -> dict:
     declared = declared_python_deps(root)
     resolved = deps(root)
     missing = sorted(n for n in declared if resolved.get(n) is None)
+    where = sampling_context(root)
+    note = None
+    if missing and not where["sampled_in_project_venv"]:
+        # 2026-10-21 实测事故：study-help-pro 用托管 venv 采集时报
+        # "32 声明 / 25 已装、langgraph 未装"，换项目自带 py-server/.venv
+        # 重采后是 32/32（全装）。缺口来自**采样环境不对**，不是依赖缺失。
+        note = ("以下 declared_not_installed 由**非本项目**解释器采集，"
+                "很可能是采样环境不对而非依赖缺失；"
+                "请用目标项目自己的 venv 重采后再下结论。")
     return {
         "declared_count": len(declared),
         "watched_count": len(_WATCHED_DEPS),
@@ -364,6 +373,35 @@ def deps_coverage(root=None) -> dict:
         "declared_not_installed": missing,
         "declared_from": declared_source_files(root),
         "unparsed_manifests": unparsed_manifests(root),
+        "sampling": where,
+        "sampling_warning": note,
+    }
+
+
+def sampling_context(root=None) -> dict:
+    """这次指纹是**用哪个解释器**采的？说不清就别拿它判"缺依赖"。
+
+    不写可执行文件的绝对路径（含用户名，且要随产物公开），只回答两个是非题：
+    ① 当前是否在 venv 里；② 该 venv 是否属于被采集的仓库。
+    """
+    import sys
+
+    try:
+        in_venv = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+    except Exception:      # pragma: no cover
+        in_venv = False
+    owns = False
+    if root and in_venv:
+        try:
+            from pathlib import Path
+
+            owns = str(Path(sys.prefix).resolve()).lower().startswith(
+                str(Path(root).resolve()).lower())
+        except Exception:  # pragma: no cover
+            owns = False
+    return {
+        "in_venv": in_venv,
+        "sampled_in_project_venv": bool(in_venv and owns),
     }
 
 

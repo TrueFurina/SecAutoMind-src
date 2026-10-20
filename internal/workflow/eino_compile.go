@@ -36,16 +36,18 @@ func invokeEinoGraph(ctx context.Context, args RunArgs, runID string, workflowID
 	runCtx = attachWorkflowCallbacks(runCtx, args.AppCfg, args, workflowID)
 
 	invokeOpts := []compose.Option{compose.WithCheckPointID(runID)}
-	for {
-		_, err = art.runnable.Invoke(runCtx, wfInput, invokeOpts...)
-		if err == nil {
-			return false, nil
-		}
-		if hitlErr := extractAwaitingHITL(err, art, runID, args, state); hitlErr != nil {
-			return true, hitlErr
-		}
-		return false, err
+	// 2026-10-21：此处原为 `for { ... }`，但三条分支全部 return，循环恒执行
+	// 一次（staticcheck SA4004）。去掉 for 是**行为等价**的改写，不改变语义。
+	// 若将来要支持"HITL 中断后原地续跑多轮"，续跑入口应显式写在这里——
+	// 现在的续跑由调用方带 resume=true 重新进入本函数完成，不是靠这个循环。
+	_, err = art.runnable.Invoke(runCtx, wfInput, invokeOpts...)
+	if err == nil {
+		return false, nil
 	}
+	if hitlErr := extractAwaitingHITL(err, art, runID, args, state); hitlErr != nil {
+		return true, hitlErr
+	}
+	return false, err
 }
 
 func extractAwaitingHITL(err error, art *compiledArtifact, runID string, args RunArgs, state *WorkflowLocalState) error {

@@ -24,10 +24,17 @@
      缺陷而是既定设计**，本脚本只把它**计量并落档**，不进门禁（否则首日永久红，
      结局必然是 `--no-verify`）。
 
-  ③ 响应预算（显式标 out_of_scope）
-     配方文件里没有输出上限字段，上限由 exec 层截断。本脚本**不假装测了**：
-     记 `budget_field_present: false` 并在口径说明里写明"归 exec 层，不在本脚本
-     判定范围"。写"未知"比写"通过"诚实。
+  ③ 响应预算（2026-10-21 从"不知道归谁"收敛为**已定位的实测归属**）
+     配方文件里没有输出上限字段——上限由 exec 层统一截断，已定位到代码：
+       internal/app/app.go:180  mcpServer.ConfigureToolResultMaxBytes(...)
+       internal/app/app.go:186  executor.SetToolOutputMaxBytes(...)
+       internal/app/app.go:205  externalMCPMgr.ConfigureToolResultMaxBytes(...)
+     三者同源于 `MultiAgentEinoMiddleware.ReductionMaxLengthForTruncEffective()`
+     （internal/config/config.go:438），配置项
+     `multi_agent.eino_middleware.reduction_max_length_for_trunc`，**默认 12000**；
+     超出的部分 spill 落盘（SetToolOutputSpillRoot / ReductionRootDir）。
+     所以本脚本记 `budget_field_present: false` 且 `budget_owner = exec`，**不判定**。
+     写"未知"比写"通过"诚实；把"未知"变成"归谁、默认值多少、在哪改"才算收敛完。
 
   ④ 溯源（同 MCP 侧，但字段不同）
      配方自称的来源必须可回查：`source ∈ {upstream, self}`；`source=upstream`
@@ -258,9 +265,26 @@ def summarize(result: dict) -> dict:
         "raw_passthrough_ratio": (f"{len(raw_pt)}/{len(tools)}" if tools else "0/0"),
         # ③：显式越界声明
         "budget_field_present_any": any(r["budget_field_present"] for r in tools.values()),
-        "budget_out_of_scope_note": "响应预算由 exec 层截断，配方文件无上限字段 ⇒ 本脚本不判定",
+        "budget_out_of_scope_note": "响应预算归 exec 层（不在配方里），本脚本不判定",
+        "budget_owner": "exec",
+        "budget_config_key": "multi_agent.eino_middleware.reduction_max_length_for_trunc",
+        "budget_default_bytes": 12000,
+        "budget_applied_at": [
+            "internal/app/app.go:180 mcpServer.ConfigureToolResultMaxBytes",
+            "internal/app/app.go:186 executor.SetToolOutputMaxBytes",
+            "internal/app/app.go:205 externalMCPMgr.ConfigureToolResultMaxBytes",
+        ],
+        "budget_overflow": "超出部分 spill 落盘（SetToolOutputSpillRoot / ReductionRootDir）",
         "tools_without_required": sorted(n for n, r in tools.items()
                                          if not r["required_declared"]),
+        # 「无 required」是两回事，别混着报：真正零参（param_count=0）大概率是
+        # "跑就完了"的扫描器；**有参数却一个必填都没有**的，才需要人工确认是不是
+        # 漏标（这类才是可疑项）。2026-10-21 起分开计数。
+        "tools_zero_param": sorted(n for n, r in tools.items()
+                                   if not r["required_declared"] and r["param_count"] == 0),
+        "tools_all_optional_params": sorted(n for n, r in tools.items()
+                                            if not r["required_declared"]
+                                            and r["param_count"] > 0),
         # 置灰留档：不对外可用，故不判缺陷，但要被看见（否则"89 份"里混着 10 份
         # 谁也调不动的，对外宣称工具数时容易虚报）。
         "disabled_tools": sorted(n for n, r in tools.items() if not r["enabled"]),
@@ -317,6 +341,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"③ 响应预算：{summary['budget_out_of_scope_note']}")
         print(f"\n全无 required 声明的工具（{len(summary['tools_without_required'])}）："
               f"{', '.join(summary['tools_without_required']) or '无'}")
+        print(f"  ├ 真·零参（跑就完了）：{len(summary['tools_zero_param'])} → "
+              f"{', '.join(summary['tools_zero_param']) or '无'}")
+        print(f"  └ 有参数却全可选（**需人工确认是否漏标必填**）："
+              f"{len(summary['tools_all_optional_params'])} → "
+              f"{', '.join(summary['tools_all_optional_params']) or '无'}")
         if summary["disabled_tools"]:
             print(f"置灰留档（enabled: false，不判缺陷但须被看见，"
                   f"{len(summary['disabled_tools'])} 份）："

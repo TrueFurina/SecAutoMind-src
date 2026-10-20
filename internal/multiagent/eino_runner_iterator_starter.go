@@ -57,7 +57,7 @@ func (s *einoRunnerIteratorStarter) newRunOptions() []adk.AgentRunOption {
 	if s.cfg.RuntimeCancelRegistrar != nil && s.cfg.UnregisterAgentCancel != nil {
 		*s.cfg.UnregisterAgentCancel = s.cfg.RuntimeCancelRegistrar(func(cause error) bool {
 			s.storeNativeCancelCause(cause)
-			waitErr, submitted, handled := requestEinoNativeAgentCancel(cancelFn, cause)
+			submitted, handled, waitErr := requestEinoNativeAgentCancel(cancelFn, cause)
 			s.logNativeCancelRequest(cause, waitErr, submitted, handled)
 			return handled
 		})

@@ -491,13 +491,51 @@ func TestLastListOKFalseOnFailure(t *testing.T) {
 }
 
 // ⑦ HTTP 连接复用
+//
+// 2026-10-21 修正：原断言是 `p.HTTPClient != p.HTTPClient`——左右同式，**恒为假**，
+// 这个测试从写下的那天起就从不验证任何东西（staticcheck SA4000 抓到）。
+// 它挂在"⑦ 连接复用"名下，会让读者以为该契约有回归保护，实际是空转。
+// 改写为验证 anti_block_config.go 里那条真正会出事的规则：关闭复用时必须
+// **克隆私有 Transport**，不得改动进程级 http.DefaultTransport。
 func TestHTTPClientReuse(t *testing.T) {
 	p := newTestPlatform(t, "http://example.invalid")
 	if p.HTTPClient == nil {
 		t.Fatal("HTTPClient 应被创建")
 	}
-	if p.HTTPClient != p.HTTPClient {
-		t.Fatal("HTTPClient 应复用同一实例（连接池）")
+
+	// 默认 Transport 为 nil → 走 http.DefaultTransport（Go 原生连接复用）
+	if p.HTTPClient.Transport != nil {
+		t.Fatalf("新建平台应沿用默认 Transport（复用），实际已私有化: %T", p.HTTPClient.Transport)
+	}
+
+	// 关闭复用：必须克隆一份私有 Transport，禁止污染进程级 DefaultTransport
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Fatal("http.DefaultTransport 不是 *http.Transport，无法校验污染")
+	}
+	before := defaultTransport.DisableKeepAlives
+
+	p.setConnectionReuse(false)
+
+	if defaultTransport.DisableKeepAlives != before {
+		t.Fatal("关闭连接复用污染了进程级 http.DefaultTransport（应克隆私有 Transport 再改）")
+	}
+	tr, ok := p.HTTPClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("关闭复用后应持有私有 *http.Transport，实际 %T", p.HTTPClient.Transport)
+	}
+	if !tr.DisableKeepAlives {
+		t.Fatal("关闭复用后私有 Transport 的 DisableKeepAlives 应为 true")
+	}
+
+	// 重新开启：同一 Transport 就地改回，且不新建 client（复用同一实例=同一连接池）
+	client := p.HTTPClient
+	p.setConnectionReuse(true)
+	if p.HTTPClient != client {
+		t.Fatal("切换复用开关不应替换 HTTPClient 实例（否则连接池被丢弃）")
+	}
+	if tr.DisableKeepAlives {
+		t.Fatal("重新开启复用后 DisableKeepAlives 应回到 false")
 	}
 }
 

@@ -143,7 +143,7 @@ func (s *rehearsalPlatform) handler(t *testing.T) http.HandlerFunc {
 		case "/slab-match/api/v1/agent/answer-panel/answer":
 			body, _ := io.ReadAll(r.Body)
 			var req map[string]interface{}
-			_ = json.Unmarshal(body, &req)
+			json.Unmarshal(body, &req)
 			rawID, _ := req["exerciseId"]
 			id := fmt.Sprintf("%v", rawID)
 			submitted, _ := req["flag"].(string)

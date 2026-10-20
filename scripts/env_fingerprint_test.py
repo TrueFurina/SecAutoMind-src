@@ -247,5 +247,38 @@ class RequirementsParseTest(unittest.TestCase):
         self.assertNotIn(os.path.expanduser("~"), blob)
 
 
+class SamplingContextTest(unittest.TestCase):
+    """2026-10-21 事故：用托管 venv 采 study-help-pro，报"langgraph 未装"；
+    换成项目自带 py-server/.venv 重采 → 32/32 全装。缺口是**采样环境不对**
+    造出来的，不是依赖缺失。指纹必须自证"我是用谁采的"。"""
+
+    def test_sampling_context_has_expected_keys(self):
+        ctx = ef.sampling_context()
+        self.assertIn("in_venv", ctx)
+        self.assertIn("sampled_in_project_venv", ctx)
+
+    def test_foreign_root_is_not_owned_venv(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(tmp, ignore_errors=True))
+        ctx = ef.sampling_context(tmp)
+        self.assertFalse(ctx["sampled_in_project_venv"],
+                         "采样器不在该仓库的 venv 里时不得自称属于它")
+
+    def test_coverage_carries_sampling(self):
+        cov = ef.deps_coverage()
+        self.assertIn("sampling", cov)
+        self.assertIn("sampling_warning", cov)
+
+    def test_missing_deps_outside_project_venv_warns(self):
+        """非项目 venv 采出的"未安装"必须带警告——否则会被当成真缺口。"""
+        root = _fake_repo({"requirements.txt": "totally-not-installed-pkg-x>=1\n"})
+        self.addCleanup(lambda: __import__("shutil").rmtree(root, ignore_errors=True))
+        cov = ef.deps_coverage(root)
+        self.assertEqual(cov["declared_not_installed"], ["totally-not-installed-pkg-x"])
+        if not cov["sampling"]["sampled_in_project_venv"]:
+            self.assertTrue(cov["sampling_warning"],
+                            "非项目 venv 采集且有缺口时必须给出警告")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

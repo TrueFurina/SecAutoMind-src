@@ -1109,7 +1109,9 @@ func combinedOutputCancellableWithLimit(ctx context.Context, cmd *exec.Cmd, maxB
 	select {
 	case waitErr = <-done:
 	case <-ctx.Done():
-		waitErr = <-done
+		// 排空 done：避免 wait goroutine 永久阻塞。本分支返回 ctx.Err()，
+		// 原先存进 waitErr 是死存储（staticcheck SA4006）。
+		<-done
 		return finalizeJoinedBoundedOutputs(stdoutBuf, stderrBuf, maxBytes, tee), ctx.Err()
 	}
 	return finalizeJoinedBoundedOutputs(stdoutBuf, stderrBuf, maxBytes, tee), waitErr

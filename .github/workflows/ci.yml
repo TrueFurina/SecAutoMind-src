@@ -92,6 +92,41 @@ jobs:
       - name: Build
         run: CGO_ENABLED=1 go build -trimpath ./cmd/server
 
+  # Go 全系静态检查门禁（2026-10-21 新增，通道见 E:\Program\实验服务器与全局配置.md §九）。
+  # 首跑 156 条 → 修掉 21 条后基线 135 条。**只拦新增语义类告警**
+  # （SA4xxx/SA5xxx/SA9xxx/ST1008），风格类与死代码只计量不阻断——
+  # 首日就把门禁设成"零告警"，唯一的下场是被 --no-verify 绕过（REA #169）。
+  # 报告上传为 artifact，红了可以直接下载定位。
+  staticcheck-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      # 固定版本：staticcheck 的新版会新增检查项，不固定则基线无意义
+      - name: Install staticcheck (pinned 2025.1.1)
+        run: go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+      - name: Run staticcheck
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          staticcheck -version
+          # staticcheck 有告警时退出码非 0；判定交给下面的基线守卫，这里只保证报告生成
+          staticcheck -f json ./... > staticcheck.json || true
+          echo "告警条数: $(grep -c . staticcheck.json || echo 0)"
+      # 门禁自身要有"必须被抓到"的用例：永远绿的门禁比没有门禁更坏（REA #253）
+      - name: Static gate self-test (bad sample must be red)
+        run: python scripts/check_staticcheck_baseline_test.py
+      - name: Static gate vs baseline (new semantic findings block)
+        run: python scripts/check_staticcheck_baseline.py --report staticcheck.json
+      - name: Upload staticcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staticcheck-report
+          path: staticcheck.json
+          if-no-files-found: warn
+
   # 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证。
   # 防止「求解器注水 / 误报 / 注册表死代码」回归，每次 PR/push 自动拦。
   capability-gate:

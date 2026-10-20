@@ -400,6 +400,9 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 
 	// 快速路径若已拿到 flag 外形的可信结果（likeness=3，已是上界），
 	// 全量扫描不可能更好，直接返回、零额外延迟；否则必须等扫描结果。
+	// 说明：本块内对 bestLike 的两次赋值，出了块之后只再读 best、不再读 bestLike
+	// （staticcheck SA4006 报「死存储」属实）。保留赋值是为了让「命中即更新最优解」
+	// 这层意图留在代码里，而不是靠读者从 best 的间接变化里反推。
 	if bestLike < 3 {
 		select {
 		case r := <-chSweep:

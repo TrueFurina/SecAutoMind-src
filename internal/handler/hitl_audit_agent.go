@@ -173,10 +173,9 @@ func auditAgentJSONCandidates(s string) []string {
 
 func stripMarkdownCodeFence(s string) string {
 	s = strings.TrimSpace(s)
+	// TrimPrefix 在无前缀时原样返回，外层 HasPrefix 判断多余（staticcheck S1017）。
 	for _, fence := range []string{"```json", "```JSON", "```"} {
-		if strings.HasPrefix(s, fence) {
-			s = strings.TrimPrefix(s, fence)
-		}
+		s = strings.TrimPrefix(s, fence)
 	}
 	s = strings.TrimSuffix(s, "```")
 	return strings.TrimSpace(s)
