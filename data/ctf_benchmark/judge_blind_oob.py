@@ -27,7 +27,7 @@ BENCH = os.path.join(HERE, "blind_oob_benchmark.json")
 TIME_SECRET = "t1m3b1"
 OOB_SECRET = "flag{o0b_3xfil_7k}"
 CHARSET = "abcdefghijklmnopqrstuvwxyz0123456789_"
-THRESHOLD = 0.12  # 秒，条件成立延迟 0.30s >> 阈值 >> 不成立 0.02s
+THRESHOLD = 0.12  # 秒，条件成立延迟 0.35s >> 阈值 >> 不成立 0.02s
 
 CAPTURED = []  # OOB 监听器捕获的回调 RawQuery
 
@@ -39,7 +39,7 @@ def make_time_handler():
             pos = int(q.get("pos", ["-1"])[0])
             c = q.get("c", [""])[0]
             if 0 <= pos < len(TIME_SECRET) and len(c) == 1 and TIME_SECRET[pos] == c:
-                time.sleep(0.30)  # 条件成立：显著延迟
+                time.sleep(0.35)  # 条件成立：显著延迟（拉大与不成立侧的间隙，抗抖动）
             else:
                 time.sleep(0.02)  # 条件不成立：快速返回
             self.send_response(200)
@@ -95,19 +95,23 @@ def run_server(handler_cls):
     return srv, srv.server_address[1]
 
 
-def time_oracle(time_port, cond):
+def time_oracle(time_port, cond, n=3):
     u = "http://127.0.0.1:%d/time?%s" % (time_port, cond)
-    t0 = time.time()
-    urllib.request.urlopen(u, timeout=5).read()
-    return time.time() - t0
+    samples = []
+    for _ in range(n):
+        t0 = time.time()
+        urllib.request.urlopen(u, timeout=5).read()
+        samples.append(time.time() - t0)
+    samples.sort()
+    return samples[len(samples) // 2]  # 中位数：抗 OS 调度抖动（单次测量偶尔会把 0.35s 误测成 <阈值）
 
 
-def time_blind_recover(time_port, n, charset, threshold):
+def time_blind_recover(time_port, n, charset, threshold, samples=3):
     out = ""
     for i in range(n):
         for c in charset:
             cond = urllib.parse.urlencode({"pos": i, "c": c})
-            if time_oracle(time_port, cond) >= threshold:
+            if time_oracle(time_port, cond, n=samples) >= threshold:
                 out += c
                 break
     return out
@@ -144,7 +148,7 @@ def main():
         total = len(doc)
         hit = 0
 
-        t_rec = time_blind_recover(time_port, len(TIME_SECRET), CHARSET, THRESHOLD)
+        t_rec = time_blind_recover(time_port, len(TIME_SECRET), CHARSET, THRESHOLD, samples=3)
         t_ok = hashlib.sha256(t_rec.encode()).hexdigest() == doc["time_blind_basic"]["flag_sha256"]
         hit += 1 if t_ok else 0
         print("%-22s %s  (还原=%s)" % ("time_blind_basic", "HIT " if t_ok else "MISS", t_rec))

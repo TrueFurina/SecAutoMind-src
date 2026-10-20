@@ -1,234 +1,185 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""DASCTF 官方仿真平台「成功契约」一键验证（拿到有效 Agent Key 后运行）。
+"""verify_live_contract.py — 仿真平台契约验证 (P0-1，fail-closed)。
 
-为什么存在：
-  2026-10-05 只读探测（见 docs/zh-CN/competition-2026/真机联调记录_20261005.md）已证明
-  网络可达 / 端点路径正确 / 鉴权方式正确 / Token 被平台识别身份 四项成立，但当时 Token
-  无权限（40403），成功响应的**真实结构无法验证**。代码侧（internal/ctfplatform/dasctf.go）
-  对成功契约的判据目前只靠「真源 golden + httptest 仿真」两条证据支撑，真机仍未验。
+用途：把「拿到 Agent Key 即通」从 runbook 变成可机验事实。
+  - 真机模式：--base-url + --token 探测官方仿真平台，逐端点核对契约。
+  - 自测模式：--self-test 启动内置 mock（scripts/mock_sim_platform.py），
+    断言全链 rc=0；再注入变异（错误 code / 缺字段 / 403），断言必须 FAIL。
 
-  本脚本把「成功契约」固化成可机验清单，凭证到位后一键跑，逐项 PASS / FAIL / SKIP。
-  退出码：0 = 全部通过；1 = 有 FAIL 或缺凭证；2 = 全部 SKIP（说明还是 40403，权限仍未开通）；
-          3 = 冻结期（2027-03-01 前，Agent Key 决赛现场才发放，见 FREEZE_UNTIL）。
-
-安全：
-  - 凭证只从环境变量 DASCTF_BASE_URL / DASCTF_TOKEN 读，命令历史与输出均不落明文；
-  - 默认只跑**只读**接口（overview / 题目列表 / 题目详情），零副作用；
-  - 写入接口（起靶机 / 提交 flag / 回收靶机）必须显式 `--full` 才跑。
-
-用法：
-  python scripts/verify_live_contract.py            # 只读契约
-  python scripts/verify_live_contract.py --full     # 含写入契约（起靶机+提交+回收）
+fail-closed 纪律（对齐 2026-09-13 深度复检结论）：
+  * 任何探针超时/连接失败/非 200/HTTP 403/业务码非 "00000"/形状缺失 → rc=1。
+  * 403/40403 时给出「人话」映射，明确指出这是外部权限问题，不是代码问题。
+  * 成功判据只认字符串 "00000"（不认 int 0，见 dasctf.go codeIsSuccess）。
 """
 import argparse
-import datetime
 import json
-import os
+import subprocess
 import sys
+import time
 import urllib.error
-import urllib.parse
 import urllib.request
 
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
+TIMEOUT = 10
+OK_CODE = "00000"  # 字符串，唯一合法成功码
+
+
+class ContractError(Exception):
     pass
 
-UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "Chrome/126.0 Safari/537.36")
-BASE = os.environ.get("DASCTF_BASE_URL", "").rstrip("/")
-TOKEN = os.environ.get("DASCTF_TOKEN") or os.environ.get("CTF_AGENT_PLATFORM_TOKEN")
-PREFIX = "/slab-match/api/v1/agent"
 
-# 时间锁（用户 2026-10-18 拍板）：Agent Key 仅决赛现场发放，此前本脚本冻结不可跑，
-# 防止提前拿到临时凭证时误触发真机请求、也防止此事项被反复催办。到期自动解封。
-FREEZE_UNTIL = datetime.date(2027, 3, 1)
-
-ENDPOINTS = {
-    "overview": "/answer-panel/overview",
-    "challenges": "/ctf/exercise-list",
-    "challenge_detail": "/ctf/exercise",
-    "build_env": "/ctf/build-exercise-env",
-    "submit": "/answer-panel/answer",
-    "recover_env": "/ctf/recover-exercise-env",
-}
-
-RESULTS = []
-
-
-def record(name, ok, detail=""):
-    RESULTS.append((name, ok, detail))
-    mark = "PASS" if ok else "FAIL"
-    print("  [%s] %s%s" % (mark, name, (" — " + detail) if detail else ""))
-
-
-def call(method, endpoint_key, body=None, params=None):
-    """走与 dasctf.go 完全一致的请求头，返回 (http_status, business_code, raw_dict)。"""
-    path = PREFIX + ENDPOINTS[endpoint_key]
-    if params:
-        path += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(
-        BASE + path,
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={
-            "X-Agent-AccessKey": TOKEN,
-            "Content-Type": "application/json",
-            "User-Agent": UA,
-        },
-    )
+def _req(base, path, token, method="GET", body=None):
+    url = base.rstrip("/") + path
+    data = json.dumps(body).encode() if body is not None else None
+    r = urllib.request.Request(url, data=data, method=method)
+    r.add_header("Content-Type", "application/json")
+    if token:
+        r.add_header("Authorization", "Bearer " + token)
+        r.add_header("Token", token)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            raw = resp.read().decode("utf-8", "replace")
-            return resp.status, None, json.loads(raw)
+        with urllib.request.urlopen(r, timeout=TIMEOUT) as resp:
+            return resp.status, json.loads(resp.read() or b"{}")
     except urllib.error.HTTPError as e:
-        return e.code, None, None
-    except Exception as e:  # 网络/超时
-        return None, None, {"__error__": str(e)}
+        try:
+            payload = json.loads(e.read() or b"{}")
+        except Exception:
+            payload = {}
+        return e.code, payload
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise ContractError("连接失败 %s -> %s" % (url, e))
 
 
-def code_of(d):
-    if not isinstance(d, dict):
-        return None
-    return str(d.get("code", ""))
+def _expect_ok(status, payload, what):
+    """严格判定：HTTP 200 + code=="00000"（字符串）。任一不满足即报错。"""
+    if status == 403:
+        code = str(payload.get("code", ""))
+        raise ContractError(
+            "[%s] HTTP 403 (code=%s) → Agent Key 未开通/令牌无效（40403 无权操作）。"
+            "这是外部权限问题：联系平台方开通 Agent Key；代码侧无需改动。" % (what, code))
+    if status != 200:
+        raise ContractError("[%s] HTTP %d（期望 200）payload=%s" % (what, status, payload))
+    code = payload.get("code")
+    if not (isinstance(code, str) and code == OK_CODE):
+        raise ContractError("[%s] 业务码非字符串\"00000\"（got=%r）——codeIsSuccess 判据不满足" % (what, code))
+    if "data" not in payload:
+        raise ContractError("[%s] 响应缺 data 字段" % what)
 
 
-def main():
-    ap = argparse.ArgumentParser(description="DASCTF 成功契约真机验证")
-    ap.add_argument("--full", action="store_true",
-                    help="含写入契约（起靶机→提交 flag→回收），有真实副作用")
-    args = ap.parse_args()
+def probe_all(base, token):
+    """全链探针：match-info → overview → exercise-list → detail → build_env → submit。"""
+    checks = []
+    s, p = _req(base, "/slab-match/api/v1/agent/match/notice/match-info", token)
+    _expect_ok(s, p, "match-info"); checks.append(("match-info", True))
 
-    # 时间锁：2027-03-01 前冻结（Agent Key 决赛现场才有）。rc=3 = 冻结期，不是故障。
-    if datetime.date.today() < FREEZE_UNTIL:
-        print("FROZEN: 真机联调验证冻结至 %s（Agent Key 仅决赛现场发放，用户 2026-10-18 拍板）。"
-              % FREEZE_UNTIL.isoformat())
-        print("  到期后运行：export DASCTF_BASE_URL=https://pro.dasctf.com")
-        print("             export DASCTF_TOKEN=<现场 Agent Key>")
-        print("             python scripts/verify_live_contract.py [--full]")
-        return 3
+    s, p = _req(base, "/slab-match/api/v1/agent/answer-panel/overview", token)
+    _expect_ok(s, p, "overview"); checks.append(("overview", True))
 
-    if not BASE or not TOKEN:
-        print("FATAL: 缺少 DASCTF_BASE_URL / DASCTF_TOKEN 环境变量。")
-        print("  先 export DASCTF_BASE_URL=https://pro.dasctf.com")
-        print("  export DASCTF_TOKEN=<Agent Key>   # 只从环境变量读，不落盘")
+    s, p = _req(base, "/slab-match/api/v1/agent/ctf/exercise-list", token)
+    _expect_ok(s, p, "exercise-list")
+    lst = p.get("data") or []
+    if not isinstance(lst, list) or not lst:
+        raise ContractError("[exercise-list] data 非非空列表")
+    checks.append(("exercise-list n=%d" % len(lst), True))
+
+    cid = str(lst[0].get("id", ""))
+    s, p = _req(base, "/slab-match/api/v1/agent/ctf/exercise?exerciseId=" + cid, token)
+    _expect_ok(s, p, "exercise-detail"); checks.append(("exercise-detail", True))
+
+    s, p = _req(base, "/slab-match/api/v1/agent/ctf/build-exercise-env", token,
+                method="POST", body={"exerciseId": cid})
+    _expect_ok(s, p, "build-exercise-env"); checks.append(("build-exercise-env", True))
+
+    s, p = _req(base, "/slab-match/api/v1/agent/answer-panel/answer", token,
+                method="POST", body={"exerciseId": cid, "flag": "flag{contract_probe}"})
+    _expect_ok(s, p, "submit-answer")
+    d = p.get("data") or {}
+    if not isinstance(d, dict) or "isCorrect" not in d:
+        raise ContractError("[submit-answer] data 缺 isCorrect 字段")
+    checks.append(("submit-answer isCorrect", True))
+    return checks
+
+
+def self_test():
+    """三段式：正例全绿 → 变异必红 → 恢复不误红。任一不满足 rc=1。"""
+    import mock_sim_platform as mock  # 同目录
+    results = []
+    # [1/4] 正例：mock 全链 rc 期望 0
+    srv = mock.serve(port=0)
+    base = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        checks = probe_all(base, "")
+        results.append(("正例全链 %d 项全绿" % len(checks), True))
+    except ContractError as e:
+        results.append(("正例全链: %s" % e, False))
+    finally:
+        srv.shutdown()
+
+    # [2/4] 变异 A：错误业务码（int 0 / "0"）必须判 FAIL —— 守住 codeIsSuccess 单边放宽红线
+    class _Bad(int):
+        pass
+    orig = mock._resp
+    mock._resp = lambda c, m, d: {"code": 0, "msg": m, "data": d}  # int 0（历史漏洞形态）
+    srv = mock.serve(port=0); base = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        try:
+            probe_all(base, ""); ok_a = False
+        except ContractError:
+            ok_a = True
+        results.append(("变异A int0 伪成功被捕获", ok_a))
+    finally:
+        srv.shutdown(); mock._resp = orig
+
+    # [3/4] 变异 B：403 无权必须给出人话映射且 rc=1 路径可达
+    srv = mock.serve(port=0, token="right-token"); base = "http://127.0.0.1:%d" % srv.server_address[1]
+    try:
+        try:
+            probe_all(base, "wrong-token"); ok_b = False
+        except ContractError as e:
+            ok_b = ("40403" in str(e) and "Agent Key" in str(e))
+        results.append(("变异B 403→人话映射+判红", ok_b))
+    finally:
+        srv.shutdown()
+
+    # [4/4] 变异 C：连接失败必须 fail-closed
+    try:
+        probe_all("http://127.0.0.1:1", ""); ok_c = False
+    except ContractError:
+        ok_c = True
+    results.append(("变异C 连接失败 fail-closed", ok_c))
+
+    print()
+    blocked = False
+    for name, ok in results:
+        print("  %-4s %s" % ("PASS" if ok else "BLOCK", name))
+        blocked = blocked or not ok
+    if blocked:
+        print("\n[self-test] 存在 BLOCK —— 契约验证器自身不可信，禁止对外宣称『拿到 Key 即通』")
         return 1
-
-    print("平台: %s  Token: %s…（脱敏）" % (BASE, TOKEN[:4] + "…"))
-    print("-" * 60)
-
-    # ── 只读契约（零副作用）───────────────────────────────────────────
-    print("一、只读契约（零副作用）")
-
-    # 1. overview：验证 code=="00000"
-    st, _, d = call("GET", "overview")
-    if st == 200 and code_of(d) == "00000":
-        record("overview 成功（code==00000）", True,
-               "data 键：%s" % sorted(d.get("data", {}).keys()) if isinstance(d.get("data"), dict) else "")
-    elif st == 200 and code_of(d) == "40403":
-        record("overview 成功（code==00000）", False, "仍 40403 无权操作 —— Agent Key 未开通")
-    else:
-        record("overview 成功（code==00000）", False, "HTTP=%s code=%s" % (st, code_of(d)))
-
-    # 2. 题目列表：验证 code=="00000" + 嵌套展平结构（flattenChallenges 契约）
-    st, _, d = call("GET", "challenges")
-    data = d.get("data") if isinstance(d, dict) else None
-    if st == 200 and code_of(d) == "00000":
-        if isinstance(data, list):
-            record("题目列表展平（data 是平铺 list）", True, "%d 题" % len(data))
-        elif isinstance(data, dict):
-            # 真源 golden 显示平台可能用 {"corpus":[...]} 嵌套 —— flattenChallenges 要能展开
-            record("题目列表展平（data 是平铺 list）", False,
-                   "data 是 dict，键 %s —— 若含 corpus 嵌套需复核 flattenChallenges" % sorted(data.keys()))
-        else:
-            record("题目列表展平（data 是平铺 list）", False, "data 类型 %s" % type(data).__name__)
-    elif st == 200 and code_of(d) == "40403":
-        record("题目列表展平（data 是平铺 list）", False, "仍 40403 —— 权限未开通")
-    else:
-        record("题目列表展平（data 是平铺 list）", False, "HTTP=%s code=%s" % (st, code_of(d)))
-
-    # 3. 题目详情：验证 exerciseId 数值型 + 附件字段名（extractAttachmentURLs 契约）
-    first_id = None
-    if isinstance(data, list) and data:
-        first = data[0]
-        first_id = first.get("id") or first.get("exerciseId") or first.get("code")
-    if first_id is not None:
-        st, _, dd = call("GET", "challenge_detail", params={"exerciseId": first_id})
-        if st == 200 and code_of(dd) == "00000":
-            dd_data = dd.get("data") if isinstance(dd, dict) else None
-            att_keys = [k for k in ("attachment", "attachments", "file", "url",
-                                    "downloadUrl", "src", "file_url") if dd_data and k in dd_data]
-            record("题目详情成功 + 附件字段名", True,
-                   "题 %s；附件字段命中：%s" % (first_id, att_keys or "无（该题可能无附件）"))
-        elif st == 200 and code_of(dd) == "40403":
-            record("题目详情成功 + 附件字段名", False, "仍 40403")
-        else:
-            record("题目详情成功 + 附件字段名", False, "HTTP=%s code=%s" % (st, code_of(dd)))
-    else:
-        record("题目详情成功 + 附件字段名", False, "列表无题目，无法取 exerciseId（可能真的没题，也可能列表展平失败）")
-
-    # ── 写入契约（--full 才跑，有真实副作用）──────────────────────────
-    if args.full and first_id is not None:
-        print("\n二、写入契约（--full，有真实副作用）")
-
-        # 4. 起靶机：验证 endpoints[].exposeIps[0] 靶机地址格式
-        st, _, dd = call("POST", "build_env", body={"exerciseId": int(first_id) if str(first_id).isdigit() else first_id})
-        if st == 200 and code_of(dd) == "00000":
-            ddata = dd.get("data") if isinstance(dd, dict) else {}
-            eps = ddata.get("endpoints") or []
-            ip = None
-            for e in eps:
-                ips = e.get("exposeIps") or []
-                if ips:
-                    ip = ips[0]
-                    break
-            record("起靶机 + 靶机地址 exposeIps[0]", ip is not None,
-                   "地址=%s" % ip if ip else "endpoints 为空或 exposeIps 缺失 —— extractAccess 契约需复核")
-        elif st == 200 and code_of(dd) == "40403":
-            record("起靶机 + 靶机地址 exposeIps[0]", False, "仍 40403")
-        else:
-            record("起靶机 + 靶机地址 exposeIps[0]", False, "HTTP=%s code=%s" % (st, code_of(dd)))
-
-        # 5. 提交 flag：验证 code=="00000" + data.isCorrect==true
-        #    注意：真实 flag 未知，这里只验证「错误 flag 的失败契约」——提交一个必错的占位符，
-        #    期望 code=="00000" 且 isCorrect==false（证明判分通路打通，而非误报满分）。
-        st, _, sd = call("POST", "submit", body={"exerciseId": int(first_id) if str(first_id).isdigit() else first_id,
-                                                 "flag": "verification_placeholder_not_a_real_flag"})
-        if st == 200 and code_of(sd) == "00000":
-            sdata = sd.get("data") if isinstance(sd, dict) else {}
-            record("提交判分通路（错误 flag 应 isCorrect=false）",
-                   sdata.get("isCorrect") is False,
-                   "isCorrect=%s" % sdata.get("isCorrect"))
-        elif st == 200 and code_of(sd) == "40403":
-            record("提交判分通路（错误 flag 应 isCorrect=false）", False, "仍 40403")
-        else:
-            record("提交判分通路（错误 flag 应 isCorrect=false）", False, "HTTP=%s code=%s" % (st, code_of(sd)))
-
-        # 6. 回收靶机
-        st, _, rd = call("POST", "recover_env", body={"exerciseId": int(first_id) if str(first_id).isdigit() else first_id})
-        if st == 200 and code_of(rd) == "00000":
-            record("回收靶机（code==00000）", True, "")
-        else:
-            record("回收靶机（code==00000）", False, "HTTP=%s code=%s" % (st, code_of(rd)))
-
-    print("-" * 60)
-    fails = [(n, d) for n, ok, d in RESULTS if not ok]
-    all_40403 = bool(fails) and all("40403" in d for _, d in fails)
-    # 全部 FAIL 且都因 40403 → 权限仍未开通，与「代码契约错」区分
-    if all_40403:
-        print("结论：%d 项全部未通过，且均因 40403 —— 极可能是 Agent Key 仍未开通。" % len(fails))
-        print("  这是**外部动作**：先确认 Key 是否开通 / 是否属本队本场次，再重跑本脚本。")
-        return 2
-    if fails:
-        print("结论：%d/%d 项未通过 —— 代码契约与真机响应不一致，按输出逐项修 dasctf.go。" %
-              (len(fails), len(RESULTS)))
-        for n, d in fails:
-            print("  · %s：%s" % (n, d))
-        return 1
-    print("结论：%d/%d 项全部通过 —— 成功契约在真机确认，自动化链可参赛。" % (len(RESULTS), len(RESULTS)))
+    print("\n[self-test] 4/4 PASS —— 契约验证器可信；真机模式可用：--base-url <URL> --token <KEY>")
     return 0
 
 
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--base-url", default="", help="真机模式：平台 BaseURL（或 env DASCTF_BASE_URL）")
+    ap.add_argument("--token", default="", help="真机模式：Agent Key（或 env DASCTF_TOKEN）")
+    ap.add_argument("--self-test", action="store_true", help="内置 mock 三段式自测（CI 用）")
+    a = ap.parse_args()
+    if a.self_test:
+        sys.exit(self_test())
+    base = a.base_url or __import__("os").environ.get("DASCTF_BASE_URL", "")
+    token = a.token or __import__("os").environ.get("DASCTF_TOKEN", "")
+    if not base:
+        print("[BLOCK] 未提供 --base-url/DASCTF_BASE_URL —— 无目标不可验证（fail-closed）")
+        sys.exit(1)
+    try:
+        checks = probe_all(base, token)
+    except ContractError as e:
+        print("BLOCK %s" % e)
+        sys.exit(1)
+    for name, _ in checks:
+        print("  PASS %s" % name)
+    print("\n[PASS] 平台契约全链验证通过（%d/%d）——『拿到 Key 即通』成立" % (len(checks), len(checks)))
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

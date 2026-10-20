@@ -9,6 +9,10 @@ from security_agent.tools.base import Tool
 
 class AssetLookupTool(Tool):
     name = "asset_lookup"
+    authority = "observed"
+    limitations = (
+        "仅覆盖知识库已纳管主机；未纳管主机返回空结果，不代表主机不存在",
+    )
     requires = ("event",)
 
     def run(self, **kwargs):
@@ -36,6 +40,10 @@ class AssetLookupTool(Tool):
 
 class LogLookupTool(Tool):
     name = "log_lookup"
+    authority = "observed"
+    limitations = (
+        "最多返回 3 条关联日志；仅检索知识库内已采集日志，不覆盖原始日志平台",
+    )
     requires = ("event",)
 
     def run(self, **kwargs):
@@ -52,6 +60,10 @@ class LogLookupTool(Tool):
 
 class IntelLookupTool(Tool):
     name = "intel_lookup"
+    authority = "observed"
+    limitations = (
+        "仅比对知识库内已有情报记录；未覆盖外部实时威胁情报源",
+    )
     requires = ("event",)
 
     def run(self, **kwargs):
@@ -68,6 +80,10 @@ class IntelLookupTool(Tool):
 
 class HistoryAlertLookupTool(Tool):
     name = "history_alert_lookup"
+    authority = "observed"
+    limitations = (
+        "最多返回 3 条历史告警；异主机同名账号属弱关联，不能当成本机行为画像",
+    )
     requires = ("event",)
 
     def run(self, **kwargs):
@@ -101,6 +117,10 @@ class HistoryAlertLookupTool(Tool):
 
 class FalsePositiveCheckTool(Tool):
     name = "false_positive_check"
+    authority = "derived"
+    limitations = (
+        "基于关键词与结构化信号的规则匹配结果，属线索而非误报定论",
+    )
     # 必需项只有 event 与 asset_observation：`run` 要读 event 的字段与
     # `asset_observation.details`（维护窗口 / 基线进程两个结构化信号）。
     # 刻意**不含** log_observation —— 见 run 内的语料隔离说明，
@@ -160,6 +180,10 @@ class FalsePositiveCheckTool(Tool):
 
 class IncidentTriageTool(Tool):
     name = "incident_triage"
+    authority = "inferred"
+    limitations = (
+        "结论依赖模型推理与知识库上下文；LLM 不可用时回退规则引擎",
+    )
     # 研判主入口：正常路径透传给 triage_event 消费全部上游观察结果，
     # 兜底路径也逐个读 summary。缺任一 observation 即失败。
     requires = (
@@ -222,6 +246,13 @@ class IncidentTriageTool(Tool):
                 kwargs["false_positive_observation"],
             ]
             return {
+                # 契约（2026-10-19）：兜底路径必须**自报降级**。此前这条分支返回
+                # `isError=False` + `risk_level="medium"`，调用方看到的是「研判成功」，
+                # 实际一步研判都没做——正是本类 `_adapt_kwargs` 注释里承认过的
+                # fail-open 伪装。允许降级，不允许假装没降级，故显式打标，
+                # 由 MCP 出口提升为 `_contract.degraded` / `authority="unknown"`。
+                "_degraded": True,
+                "_degradation_reason": f"研判异常，已启用最简兜底: {type(exc).__name__}: {exc}",
                 "event_type": "通用异常行为",
                 "verdict": "存在待确认风险，需要进一步补充上下文。",
                 "risk_level": "medium",
@@ -245,6 +276,10 @@ class IncidentTriageTool(Tool):
 
 class PlaybookMatcherTool(Tool):
     name = "playbook_matcher"
+    authority = "derived"
+    limitations = (
+        "处置预案为静态模板，未结合资产实际处置能力与值班资源",
+    )
     requires = ("event", "analysis")
 
     def run(self, **kwargs):
@@ -288,6 +323,10 @@ class PlaybookMatcherTool(Tool):
 
 class TicketGeneratorTool(Tool):
     name = "ticket_generator"
+    authority = "derived"
+    limitations = (
+        "工单为模拟生成，未接入真实 ITSM；编号规则不代表外部系统已受理",
+    )
     requires = ("event", "analysis")
 
     def run(self, **kwargs):
@@ -343,6 +382,10 @@ class TicketGeneratorTool(Tool):
 
 class HostIsolationSimulatorTool(Tool):
     name = "host_isolation_simulator"
+    authority = "derived"
+    limitations = (
+        "仅生成建议动作，不执行任何真实隔离或阻断",
+    )
     requires = ("event", "analysis")
 
     def run(self, **kwargs):
@@ -372,6 +415,10 @@ class HostIsolationSimulatorTool(Tool):
 
 class CommandExecutionTool(Tool):
     name = "command_executor"
+    authority = "observed"
+    limitations = (
+        "返回命令原始 stdout/stderr；命令产生的副作用不在证据范围内",
+    )
     # 不读 event：唯一必需入参是 `command`。此前被硬编码声明为 required=["event"]，
     # 遵循声明的客户端会传 event 而不传 command，调用必失败。
     requires = ("command",)
@@ -397,6 +444,10 @@ class IocSearchTool(Tool):
     """IOC 情报搜索（阶段 3 HuntAgent 用）：按主机/IP/域名/进程检索情报与知识库。"""
 
     name = "ioc_search"
+    authority = "observed"
+    limitations = (
+        "仅检索事件自带的 4 个指标（目的IP/目的域名/源IP/主机）；空列表可能是未命中，也可能是无指标可检索",
+    )
     # 返回**命中列表**，而非其余 10 个工具的统一形态 `ToolObservation`。
     # 这是刻意的既成事实，不是遗漏（2026-10-14 复核）：
     #   · 检索语义——命中项本身就是结论，没有要转交下游的中间结论；

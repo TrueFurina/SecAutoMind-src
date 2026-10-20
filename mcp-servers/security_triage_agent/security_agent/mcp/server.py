@@ -10,6 +10,10 @@
 1. 零依赖：不依赖 `mcp` python 包，纯标准库 json/sys，`pip install` 失败不影响
 2. 动态注册：从 ToolRegistry 自动发现工具，新增工具无需改 MCP 层
 3. fail-open：任何异常返回 JSON-RPC error，进程不退出
+4. 结论可审计（2026-10-19）：每个成功出口在业务字段旁**追加** `_contract`，
+   写明权威等级（observed/derived/inferred/unknown）、覆盖度、限制与证据指纹。
+   原始字段结构不变（向后兼容）；降级必须自报 `degraded=true`，
+   **允许降级，不允许假装没降级**。见 `security_agent/mcp/contract.py`。
 
 协议合规（2026-10-14 修复，此前这三处使标准客户端无法对通）：
 - 通知不响应：`notifications/initialized` 曾回一条 id=null 的 -32601 错误；
@@ -289,13 +293,25 @@ class McpServer:
                 command=arguments.get("command"),
                 **observations,
             )
+            # 出口契约（2026-10-19）：每条结论都带权威等级 / 覆盖度 / 限制 /
+            # 证据指纹。原始业务字段一个不动，契约以 `_contract` 追加——
+            # 老消费者按原结构解析不受影响。
+            #
+            # 为什么必须在**出口**加而不是在工具里加：工具只知道自己的结论，
+            # 不知道调用方拿到了什么；只有出口能统一保证「无一遗漏」。
+            # 工具通过 `Tool.authority` / `ToolObservation.contract_overrides()`
+            # 声明事实，本层只负责搬运（见 security_agent/mcp/contract.py）。
+            serialized = self._serialize(result)
+            read_overrides = getattr(result, "contract_overrides", None)
+            overrides = read_overrides() if callable(read_overrides) else {}
+            from security_agent.mcp import contract as tool_contract
+
+            payload = tool_contract.attach(serialized, tool, arguments, **overrides)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": json.dumps(
-                            self._serialize(result), ensure_ascii=False
-                        ),
+                        "text": json.dumps(payload, ensure_ascii=False),
                     }
                 ],
                 "isError": False,

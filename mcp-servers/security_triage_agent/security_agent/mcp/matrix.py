@@ -235,4 +235,70 @@ class ToolMatrix:
                         f"[{name}] 缺 {key!r} 的失败提示未点名该参数 → {text[:120]}",
                     )
 
+        # ── 5. 出口契约：每条结论必须自报权威等级与覆盖度（2026-10-19）──
+        #
+        # 这一节守的是「结论的可信度声明」，不是「结论对不对」：
+        # 前四节只能证明工具**调得通**，证明不了调用方拿到的东西是否自洽。
+        # 三类真实缺陷都发生在这一层——查不到却与查到混同、降级却报成功、
+        # 空结果与不可用不可区分。契约字段是它们唯一的结构化出口。
+        from security_agent.mcp import contract as tool_contract
+
+        # 5.1 工具声明的等级必须合法（开发期错误在这里 fail-loud，
+        #     而不是等运行时被降级成 unknown 才发现）
+        for entry in listed:
+            name = entry["name"]
+            tool = self.registry.tools[name]
+            declared = getattr(tool, "authority", None)
+            self._check(
+                declared in tool_contract.AUTHORITIES,
+                f"[{name}] Tool.authority={declared!r} 非法，合法值 {tool_contract.AUTHORITIES}",
+            )
+            self._check(
+                isinstance(getattr(tool, "limitations", ()), tuple),
+                f"[{name}] Tool.limitations 必须是 tuple",
+            )
+
+        # 5.2 出口必须带契约，且契约自洽
+        contract_payloads: dict[str, object] = {}
+        for name in names:
+            try:
+                err, payload, text = self.invoke_minimal(name)
+            except MatrixError as exc:
+                self._fail(f"[{name}] 契约检查无法装配参数: {exc}")
+                continue
+            if err:  # 失败路径的契约由异常语义承担，这里只管成功出口
+                continue
+            contract_payloads[name] = payload
+            errors = tool_contract.validate(payload)
+            self._check(
+                not errors,
+                f"[{name}] 出口契约不自洽: {'; '.join(errors)}",
+            )
+
+        # 5.3 契约里的 authority 必须等于工具声明（出口层不得自行改写）
+        for name, payload in contract_payloads.items():
+            if not isinstance(payload, dict):
+                continue
+            block = payload.get(tool_contract.CONTRACT_KEY)
+            if not isinstance(block, dict):
+                continue
+            declared = getattr(self.registry.tools[name], "authority", None)
+            self._check(
+                block.get("authority") == declared,
+                f"[{name}] 出口 authority={block.get('authority')!r} 与工具声明 "
+                f"{declared!r} 不一致（出口层不应改写权威等级）",
+            )
+
+        # 5.4 兜底必须自报：命中兜底文案却声称未降级 = fail-open 伪装
+        for name, payload in contract_payloads.items():
+            if not isinstance(payload, dict):
+                continue
+            block = payload.get(tool_contract.CONTRACT_KEY) or {}
+            markers = [m for m in FALLBACK_MARKERS if m in json.dumps(payload, ensure_ascii=False)]
+            if markers:
+                self._check(
+                    block.get("degraded") is True,
+                    f"[{name}] 结果含兜底痕迹 {markers}，但契约未标记 degraded",
+                )
+
         return self.result
