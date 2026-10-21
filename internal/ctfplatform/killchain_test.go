@@ -2,6 +2,9 @@ package ctfplatform
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -111,5 +114,76 @@ func TestLiveKillChain(t *testing.T) {
 	}
 	if !strings.Contains(res.RootID, "uid=0(root)") {
 		t.Errorf("RootID 异常: %q", res.RootID)
+	}
+}
+
+// newFakeSite 起一个最小站点：入口页带 ?page= 链接（让 recon 能发现参数），
+// body 由调用方决定是否包含 .htpasswd 行。
+func newFakeSite(t *testing.T, htpasswd string) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if htpasswd != "" && strings.Contains(r.URL.RawQuery, "htpasswd") {
+			io.WriteString(w, "<html><body><div id=main>\n"+htpasswd+"\n</div></body></html>")
+			return
+		}
+		io.WriteString(w, `<html><body><a href="/?page=blog&title=Blog">Blog</a></body></html>`)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestRunKillChain_StopsAtLootWhenNoHtpasswd 覆盖 loot 失败路径：
+// recon 能过（有参数），但三处常见路径都拿不到 DES 条目 → 停在 loot，不进 crack。
+func TestRunKillChain_StopsAtLootWhenNoHtpasswd(t *testing.T) {
+	srv := newFakeSite(t, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	res := RunKillChain(ctx, KillChainOptions{
+		BaseURL: srv.URL + "/", SSHAddr: "127.0.0.1:1", AllowInsecure: true, StepTimeout: 3 * time.Second,
+	})
+	if len(res.Steps) != 2 {
+		t.Fatalf("应停在 loot（2 步），实际 %d 步: %+v", len(res.Steps), res.Steps)
+	}
+	if !res.Steps[0].OK {
+		t.Fatalf("recon 应成功，实际: %+v", res.Steps[0])
+	}
+	if res.Steps[1].Name != "loot" || res.Steps[1].OK {
+		t.Fatalf("第 2 步应为失败的 loot，实际: %+v", res.Steps[1])
+	}
+	if res.Root {
+		t.Fatal("不应误报 root")
+	}
+}
+
+// TestRunKillChain_StopsAtCrackWhenHashUncrackable 覆盖 crack 失败路径：
+// loot 拿到合法格式的 DES 条目，但口令不在字典里 → 停在 crack，不进 ssh。
+func TestRunKillChain_StopsAtCrackWhenHashUncrackable(t *testing.T) {
+	// 用随机口令生成哈希，确保内置字典命中不了
+	hash := desCrypt("Zz9-uncrackable-!x", "qq")
+	srv := newFakeSite(t, "alice:"+hash)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	res := RunKillChain(ctx, KillChainOptions{
+		BaseURL: srv.URL + "/", SSHAddr: "127.0.0.1:1", AllowInsecure: true, StepTimeout: 3 * time.Second,
+	})
+	if len(res.Steps) != 3 {
+		t.Fatalf("应停在 crack（3 步），实际 %d 步: %+v", len(res.Steps), res.Steps)
+	}
+	if !res.Steps[1].OK {
+		t.Fatalf("loot 应成功，实际: %+v", res.Steps[1])
+	}
+	if res.Steps[2].Name != "crack" || res.Steps[2].OK {
+		t.Fatalf("第 3 步应为失败的 crack，实际: %+v", res.Steps[2])
+	}
+	if !strings.Contains(res.Steps[2].Detail, "未命中") {
+		t.Errorf("crack 失败原因应说明未命中，实际: %q", res.Steps[2].Detail)
+	}
+	if res.Root {
+		t.Fatal("不应误报 root")
 	}
 }
