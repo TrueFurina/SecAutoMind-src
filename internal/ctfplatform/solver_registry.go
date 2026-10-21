@@ -984,3 +984,44 @@ func solvePigLatin(ctx context.Context, text string, attachments map[string]stri
 func solveBase64URLSafe(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryBase64URLSafe(text)
 }
+
+// ── P1 真解题求解器注册 ──────────────────────────────────────────
+//
+// 2026-10-22 接线（REA #296）：这批适配函数此前**从未被调用**（staticcheck
+// U1000），即这些解题能力写在代码里却从未参与过任何一次扫描。
+//
+// 接线清单是 11 个适配函数筛掉 2 个的结果，筛选依据是机验而非感觉：
+//
+//   - solveVigenereDecode **不注册**：结构上命中率恒为 0。它的输入过滤
+//     只收纯字母（^[a-zA-Z\s]+$），而 vigenereDecode 对非字母原样保留、
+//     空格还被提前删掉，故输出必然也是纯字母——永远凑不出 scanFlags
+//     要求的 xxx{...} 形态。接它只会在每道题上白跑 9 次密钥猜测。
+//     证明：TestVigenereDecodeIsStructurallyUnhittable。
+//     注：注册表里另有 vigenere（solveVigenere），那是另一份实现，与本条无关。
+//
+//   - solveROT13 **不注册**：已被注册在册的 caesar（shift 1..25，含 13）
+//     完全覆盖。注册被覆盖项不是补能力，是注水。
+//     证明：TestROT13IsSubsumedByCaesar。
+//
+// 其余 9 个逐个过能力门禁（internal/ctfplatform/solver_classical_decode_test.go）：
+// 正向能解出目标 flag、负向对普通文本不误报、且未被既有求解器覆盖。
+// **能力未验证就不接进生产链路**——接线是运行时行为变更，不是代码整理。
+//
+// Priority 取 140-148（未占用区间）：sweep 已并发全量执行，Priority 仅用于
+// 并列命中时的裁决，不去挤占既有求解器的既有次序。
+//
+// ⚠️ 已知局限（接线不等于获得能力，勿高估）：hex / 二进制 / 八进制 / 十进制
+// 四个要求「整段输入是纯密文」，对「自然语言 + 内嵌密文 token」的真实题面
+// 恒不命中。见 TestWholeTextOnlyDecodersSkipMixedText 的实测记录。
+// 改进方向是先提取候选 token 再逐个解码——会改变行为，需 USER 拍板。
+func init() {
+	RegisterSolver(SolverEntry{Name: "classical_atbash", Category: CategoryCryptoS, Priority: 140, Solver: solveAtbashDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_hex", Category: CategoryMiscS, Priority: 141, Solver: solveHexDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_url", Category: CategoryMiscS, Priority: 142, Solver: solveURLDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_binary", Category: CategoryMiscS, Priority: 143, Solver: solveBinaryDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_octal", Category: CategoryMiscS, Priority: 144, Solver: solveOctalDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_decimal", Category: CategoryMiscS, Priority: 145, Solver: solveDecimalDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_reverse", Category: CategoryMiscS, Priority: 146, Solver: solveReverseText})
+	RegisterSolver(SolverEntry{Name: "classical_piglatin", Category: CategoryCryptoS, Priority: 147, Solver: solvePigLatin})
+	RegisterSolver(SolverEntry{Name: "encoding_base64url", Category: CategoryMiscS, Priority: 148, Solver: solveBase64URLSafe})
+}

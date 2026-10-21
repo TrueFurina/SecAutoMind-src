@@ -1776,14 +1776,21 @@ func tryPigLatin(text string) []string {
 	if len(clean) < 6 {
 		return nil
 	}
-	// 简单 Pig Latin：单词以 ay 结尾，去掉 ay 后把首字母移到末尾
+	// 简单 Pig Latin 解码。
+	//
+	// ⚠️ 2026-10-22 修正（REA #295）：原实现写的是 `core[1:]+core[0]`，
+	// 即「首字母移到末尾」——那恰恰是 Pig Latin 的**编码**动作，不是解码。
+	// 编码规则是「首字母移到末尾 + 接 ay」（flag → agflay），故解码必须是
+	// 其逆：去掉 ay 后把**末字母**移到最前（agfl → flag）。
+	// 用错方向会把 "agflay" 解成 "gfla"，flag 永远扫不出来。
+	// 修前后差异由 TestPigLatinDecodeIsInverseOfEncode 机验锁死。
 	words := strings.Fields(clean)
 	var decoded []string
 	for _, w := range words {
 		lower := strings.ToLower(w)
 		if strings.HasSuffix(lower, "ay") && len(lower) > 3 {
 			core := lower[:len(lower)-2]
-			decoded = append(decoded, core[1:]+string(core[0]))
+			decoded = append(decoded, string(core[len(core)-1])+core[:len(core)-1])
 		} else {
 			decoded = append(decoded, w)
 		}
