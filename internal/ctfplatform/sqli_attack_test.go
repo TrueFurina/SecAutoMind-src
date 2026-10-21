@@ -24,6 +24,7 @@ func startSQLiRange(t *testing.T, port int) (cleanup func()) {
 		t.Fatal(err)
 	}
 	rang := filepath.Join(root, "data", "ctf_benchmark", "live_target", "sqli_range.py")
+	killPortListeners(port) // 防御：清掉上一轮可能残留的监听
 	cmd := exec.Command(py, rang, strconv.Itoa(port))
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动靶场失败: %v", err)
@@ -39,10 +40,10 @@ func startSQLiRange(t *testing.T, port int) (cleanup func()) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if !ready {
-		_ = cmd.Process.Kill()
+		killProcessTree(cmd.Process.Pid)
 		t.Fatalf("靶场未就绪: %s", base)
 	}
-	return func() { _ = cmd.Process.Kill() }
+	return func() { killProcessTree(cmd.Process.Pid) }
 }
 
 // TestSQLiSolverRegistered 反注水门禁：sqli_extract 必须已注册。
