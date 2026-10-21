@@ -131,9 +131,9 @@
   {
    "code": "U1000",
    "file": "*",
-   "symbol": "110 处未使用的函数/类型/变量",
-   "reason": "死代码台账：本轮纪律是**不删除任何东西**，只登记。多数是 ctfplatform 各 solver 的进阶尝试路径与历史工具函数（tryStegoAdvanced / bfxPrintableRuns / md5Finalize 等）。清理需逐个确认是否有外部脚本或反射引用，另立任务。",
-   "reviewed_on": "2026-10-21",
+   "symbol": "110 处未使用的函数/类型/变量（2026-10-22 起**不再是兜底豁免**）",
+   "reason": "**本条已于 2026-10-22 降级为说明性条目，U1000 的实际守门人是 scripts/dead_code_ledger.py --gate。** 原因：file:\"*\" 意味着任何新增死代码都会被这条挡住——今天写一个没人调的函数，明天加十个，门禁一路绿灯。那不是登记，是闭眼。现在 check_staticcheck_baseline.py 会做双向对账：报告里每条 U1000 的 (文件::符号) 必须能在 scripts/dead_code_ledger.json 的 rules 里找到，找不到即 exit 1；台账文件本身缺失同样 exit 1。台账现状 110 条全覆盖，自动分类 dead_root 79 / dead_dependent 22 / dup_of_live 7 / test_only 2，人工裁定 wire_up 57 / investigate 48 / keep 3 / archival_candidate 2。纪律：本轮不删任何代码，archival_candidate 只是候选。",
+   "reviewed_on": "2026-10-22",
    "reviewed_by": "张敏杰"
   }
  ]

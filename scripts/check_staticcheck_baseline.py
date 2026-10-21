@@ -122,6 +122,38 @@ def load_baseline() -> dict:
     return json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
 
 
+def dead_code_reconcile(items: list[dict], root: str | None) -> dict:
+    """U1000 与死代码台账对账。
+
+    为什么要在**这里**再做一次：基线里 U1000 的 key 是 (code, 文件)，粒度只到
+    文件；同一个文件里新增一个未使用函数，基线看不出来。台账的键精确到
+    (文件, 符号)，两边必须对得上——**台账是 U1000 的唯一真源**。
+
+    返回 {"missing": [...不在台账里的 key...], "extra": [...台账里有但报告没有...],
+          "ledger_present": bool}
+    """
+    if str(HERE) not in sys.path:
+        sys.path.insert(0, str(HERE))
+    import dead_code_ledger as dcl
+
+    if not dcl.LEDGER_PATH.is_file():
+        return {"ledger_present": False, "missing": [], "extra": []}
+    ledger = json.loads(dcl.LEDGER_PATH.read_text(encoding="utf-8"))
+    ruled = {r.get("key") for r in ledger.get("rules", []) if r.get("key")}
+
+    report_keys = set()
+    for r in [x for x in items if x["code"] == "U1000"]:
+        # 用 dead_code_ledger 的同款解析，避免两处各写一套符号提取逻辑
+        kind, symbol = dcl.parse_symbol(r["message"])
+        report_keys.add(f"{r['file']}::{symbol}")
+
+    return {
+        "ledger_present": True,
+        "missing": sorted(report_keys - ruled),
+        "extra": sorted(ruled - report_keys),
+    }
+
+
 def evaluate(items: list[dict], baseline: dict) -> dict:
     actual = count_by_code(items)
     blocking = baseline.get("blocking_codes") or {}
@@ -157,6 +189,7 @@ def evaluate(items: list[dict], baseline: dict) -> dict:
         "unknown_hard_codes": unknown_hard,
         "observed_delta": observed_delta,
         "stale_exemptions": stale,
+        "dead_code": dead_code_reconcile(items, None),
     }
 
 
@@ -210,6 +243,26 @@ def main(argv: list[str] | None = None) -> int:
         print("\n[提示] 以下豁免条目在当前报告里已不存在（代码可能被改写/删除，请清理基线）：")
         for e in res["stale_exemptions"]:
             print(f"  {e.get('code')} {e.get('file')} — {e.get('symbol') or ''}")
+
+    dc = res["dead_code"]
+    if not dc["ledger_present"]:
+        print("\n[阻断] 死代码台账缺失（scripts/dead_code_ledger.json）——"
+              "U1000 不接受 file:\"*\" 兜底", file=sys.stderr)
+        verdict = EXIT_BLOCKED
+    else:
+        if dc["missing"]:
+            verdict = EXIT_BLOCKED
+            print(f"\n[阻断] {len(dc['missing'])} 条 U1000 未登记进死代码台账：",
+                  file=sys.stderr)
+            for k in dc["missing"][:40]:
+                print(f"  {k}", file=sys.stderr)
+            print("  处置二选一：修掉它，或在 dead_code_ledger.json 的 rules 里"
+                  "登记 verdict + reason（不得用类级豁免糊过去）", file=sys.stderr)
+        if dc["extra"]:
+            print(f"\n[提示] 台账里 {len(dc['extra'])} 条在当前报告中已消失"
+                  f"（可能已修复/删除，请用 --write 重建明细清理）：")
+            for k in dc["extra"][:20]:
+                print(f"  {k}")
 
     if bad:
         print(f"\n[提示] 报告中有 {bad} 行无法解析（不计入判定）")

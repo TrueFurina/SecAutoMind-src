@@ -117,6 +117,13 @@ jobs:
       # 门禁自身要有"必须被抓到"的用例：永远绿的门禁比没有门禁更坏（REA #253）
       - name: Static gate self-test (bad sample must be red)
         run: python scripts/check_staticcheck_baseline_test.py
+      # 死代码台账自测：门禁自身要有"必须被抓到"的用例（REA #253）
+      - name: Dead code ledger self-test
+        run: python scripts/dead_code_ledger_test.py
+      # U1000 的守门人：基线里那条 file:"*" 已降级为说明性条目，
+      # 真正的判定在这里——报告里每条 U1000 的 (文件::符号) 必须在台账里有裁定。
+      - name: Dead code ledger gate (every U1000 must be ruled)
+        run: python scripts/dead_code_ledger.py --report staticcheck.json --gate
       - name: Static gate vs baseline (new semantic findings block)
         run: python scripts/check_staticcheck_baseline.py --report staticcheck.json
       - name: Upload staticcheck report

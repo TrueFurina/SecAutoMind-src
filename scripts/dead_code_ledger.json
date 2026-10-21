@@ -1,0 +1,1143 @@
+{
+ "_readme": [
+  "U1000 死代码台账（逐条明细）。守卫：scripts/dead_code_ledger.py --report <staticcheck -f json 输出> --gate。",
+  "",
+  "为什么不是一条类级豁免：基线里原本躺着 {code:U1000, file:\"*\", symbol:\"110 处未使用\"}。",
+  "file:\"*\" 意味着**任何新增死代码都会被这条挡住**——今天写一个没人调的函数，门禁一路绿灯。",
+  "那不是登记，是闭眼。所以拆成 110 条，逐条带自动分类 + 人工裁定。",
+  "",
+  "键 = \"文件::符号\"，**不含行号**（REA #258：删两行循环就能让 U1000 行号整体漂移，行号做键会凭空造出新增）。",
+  "",
+  "自动分类（脚本判，人不改）：",
+  "  dead_root      79 —— 无任何调用者。真·接线缺口，修它一个，被拖累的叶子自动复活。",
+  "  dead_dependent 22 —— 只被其他 unused 符号调用。**别去动它**，根活了它就活。",
+  "  dup_of_live     7 —— 同名方法在别的 receiver 上是活的。不是死代码，是**多份同源实现只活了一份**。",
+  "  test_only       2 —— 定义在 _test.go。",
+  "",
+  "人工裁定（verdict）：",
+  "  wire_up             57 —— 接线缺口：实现在，缺注册/装配。接上会改变运行时行为 → 需 USER 拍板后执行。",
+  "  investigate         48 —— 证据不足或有分支选择，需人看。",
+  "  keep                 3 —— 有意保留，理由已写在 reason 里。",
+  "  archival_candidate   2 —— 建议归档；纪律是「不删」，待 USER 拍板。",
+  "",
+  "纪律：本轮**不删除任何代码**。archival_candidate 只是候选，要动先拿 USER 许可。",
+  "复跑见 docs/Go静态检查基线-2026-10-21.md §2；台账明细用 --write 重建（保留 rules）。"
+ ],
+ "generated_on": "2026-10-22",
+ "source_report": "staticcheck 2025.1.1 全仓扫描（服务器 172.16.222.99，与 HEAD 一致的干净副本）。扫描产物不入仓（.gitignore: scans/），复跑命令见 docs/Go静态检查基线-2026-10-21.md §2；扫描结果不入仓不等于结论不可复现——任何人按命令重跑都能得到同一组 110 条。",
+ "tool": "staticcheck 2025.1.1",
+ "auto_class_totals": {
+  "dead_root": 79,
+  "dead_dependent": 22,
+  "dup_of_live": 7,
+  "test_only": 2
+ },
+ "verdict_legend": {
+  "wire_up": "接线缺口：实现齐备但从未被调用，接上即生效。改变运行时 → 需 USER 拍板。",
+  "investigate": "证据不足或存在分支选择（删/接/切），需人看后定。",
+  "keep": "有意保留，reason 写明保留意图（兼容性 / 文档引用 / 未来复用）。",
+  "archival_candidate": "建议归档或删除；纪律「不删」，待 USER 拍板。"
+ },
+ "rules": [
+  {
+   "key": "internal/ctfplatform/presolve_classical.go::affineDecode",
+   "file": "internal/ctfplatform/presolve_classical.go",
+   "symbol": "affineDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的 try 函数调用。根接线后自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryAtbashDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryAtbashDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryBase64URLSafe",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryBase64URLSafe",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryBinaryDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryBinaryDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryDecimalDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryDecimalDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryHexDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryHexDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryOctalDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryOctalDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryPigLatin",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryPigLatin",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryROT13",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryROT13",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryReverseText",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryReverseText",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryURLDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryURLDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryVigenereDecode",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryVigenereDecode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::urlDecodeOnce",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "urlDecodeOnce",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的 try 函数调用。根接线后自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_encoding.go::base58Decode",
+   "file": "internal/ctfplatform/presolve_encoding.go",
+   "symbol": "base58Decode",
+   "auto_class": "dead_dependent",
+   "verdict": "wire_up",
+   "reason": "死链叶：只被未接线的 try 函数调用。根接线后自动复活，**不要单独改它**。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/finalization_helpers.go::(*AgentHandler).finalizeAgentRunForDeliveryWithPolicy",
+   "file": "internal/handler/finalization_helpers.go",
+   "symbol": "(*AgentHandler).finalizeAgentRunForDeliveryWithPolicy",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/monitor.go::(*MonitorHandler).loadExecutionsWithPagination",
+   "file": "internal/handler/monitor.go",
+   "symbol": "(*MonitorHandler).loadExecutionsWithPagination",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/robot.go::wecomEncrypt",
+   "file": "internal/handler/robot.go",
+   "symbol": "wecomEncrypt",
+   "auto_class": "dead_dependent",
+   "verdict": "keep",
+   "reason": "注释明示「被动回包仅保留 sendWecomReply 供未来排查复用」，且 docs/zh-CN/IM机器人接入指引.md 有记载。保留是主动选择，不是遗漏。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/role.go::ensureArray",
+   "file": "internal/handler/role.go",
+   "symbol": "ensureArray",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/skills.go::sanitizeRoleFileName",
+   "file": "internal/handler/skills.go",
+   "symbol": "sanitizeRoleFileName",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/multiagent/no_nested_task.go::noNestedTaskMiddleware",
+   "file": "internal/multiagent/no_nested_task.go",
+   "symbol": "noNestedTaskMiddleware",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "「禁止在 task(sub-agent) 执行链中再次调用 task」的防护中间件，根 newNoNestedTaskMiddleware 无任何调用者→ **该防护从未装配**。这不是死代码，是缺失的防递归护栏：需确认是否应有地方调用它。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/termout/style.go::(*Style).boxBottom",
+   "file": "internal/termout/style.go",
+   "symbol": "(*Style).boxBottom",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/termout/style.go::(*Style).boxTop",
+   "file": "internal/termout/style.go",
+   "symbol": "(*Style).boxTop",
+   "auto_class": "dead_dependent",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/agent/agent.go::extractQuotedToolName",
+   "file": "internal/agent/agent.go",
+   "symbol": "extractQuotedToolName",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/c2/payload_oneliner.go::urlEncodeForShell",
+   "file": "internal/c2/payload_oneliner.go",
+   "symbol": "urlEncodeForShell",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/forensics_binary.go::bfxPrintableRuns",
+   "file": "internal/ctfplatform/forensics_binary.go",
+   "symbol": "bfxPrintableRuns",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "单个正则/工具函数无调用点。可能是对应检测路径未接线，也可能是该路径已改用别的实现。需看同文件上下文后定。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/gcm_nonce_reuse.go::gcmNonceRe",
+   "file": "internal/ctfplatform/gcm_nonce_reuse.go",
+   "symbol": "gcmNonceRe",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "单个正则/工具函数无调用点。可能是对应检测路径未接线，也可能是该路径已改用别的实现。需看同文件上下文后定。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/hash_ext_attack.go::md5Finalize",
+   "file": "internal/ctfplatform/hash_ext_attack.go",
+   "symbol": "md5Finalize",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "哈希长度扩展攻击的 finalize 实现。需确认 hash_ext_attack 是否已改用别的 finalize 路径；若属被取代的旧实现则归档，若属未接线的攻击步骤则接线。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/hash_ext_attack.go::sha1Finalize",
+   "file": "internal/ctfplatform/hash_ext_attack.go",
+   "symbol": "sha1Finalize",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "哈希长度扩展攻击的 finalize 实现。需确认 hash_ext_attack 是否已改用别的 finalize 路径；若属被取代的旧实现则归档，若属未接线的攻击步骤则接线。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve.go::tryForensicsAdvanced",
+   "file": "internal/ctfplatform/presolve.go",
+   "symbol": "tryForensicsAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve.go::tryKernelExploit",
+   "file": "internal/ctfplatform/presolve.go",
+   "symbol": "tryKernelExploit",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve.go::tryObfuscationAdvanced",
+   "file": "internal/ctfplatform/presolve.go",
+   "symbol": "tryObfuscationAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve.go::tryStegoAdvanced",
+   "file": "internal/ctfplatform/presolve.go",
+   "symbol": "tryStegoAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_classical.go::tryAffine",
+   "file": "internal/ctfplatform/presolve_classical.go",
+   "symbol": "tryAffine",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_classical.go::tryBacon",
+   "file": "internal/ctfplatform/presolve_classical.go",
+   "symbol": "tryBacon",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_classical.go::tryMorseVariant",
+   "file": "internal/ctfplatform/presolve_classical.go",
+   "symbol": "tryMorseVariant",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryHastadBroadcast",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryHastadBroadcast",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryHastadCRT",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryHastadCRT",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryHighExponentComplete",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryHighExponentComplete",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryLatticeAdvanced",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryLatticeAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryLowExponentBroadcast",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryLowExponentBroadcast",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::tryRainbowTable",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "tryRainbowTable",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_crypto.go::trySideChannel",
+   "file": "internal/ctfplatform/presolve_crypto.go",
+   "symbol": "trySideChannel",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_encoding.go::tryAutoEncodingDetect",
+   "file": "internal/ctfplatform/presolve_encoding.go",
+   "symbol": "tryAutoEncodingDetect",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_encoding.go::tryBase58",
+   "file": "internal/ctfplatform/presolve_encoding.go",
+   "symbol": "tryBase58",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_forensics.go::tryEntropyAnalysis",
+   "file": "internal/ctfplatform/presolve_forensics.go",
+   "symbol": "tryEntropyAnalysis",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_forensics.go::tryFilenameChain",
+   "file": "internal/ctfplatform/presolve_forensics.go",
+   "symbol": "tryFilenameChain",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_forensics.go::tryGridResample",
+   "file": "internal/ctfplatform/presolve_forensics.go",
+   "symbol": "tryGridResample",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_misc.go::tryAudioSpectrum",
+   "file": "internal/ctfplatform/presolve_misc.go",
+   "symbol": "tryAudioSpectrum",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_misc.go::tryMultipartBoundary",
+   "file": "internal/ctfplatform/presolve_misc.go",
+   "symbol": "tryMultipartBoundary",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_misc.go::tryQRCode",
+   "file": "internal/ctfplatform/presolve_misc.go",
+   "symbol": "tryQRCode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_misc.go::trySecondOrderInjection",
+   "file": "internal/ctfplatform/presolve_misc.go",
+   "symbol": "trySecondOrderInjection",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_pwn.go::tryGoSymbolTable",
+   "file": "internal/ctfplatform/presolve_pwn.go",
+   "symbol": "tryGoSymbolTable",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_pwn.go::tryPwnKernel",
+   "file": "internal/ctfplatform/presolve_pwn.go",
+   "symbol": "tryPwnKernel",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_pwn.go::tryReverseAdvanced",
+   "file": "internal/ctfplatform/presolve_pwn.go",
+   "symbol": "tryReverseAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_registry.go::groupByPriority",
+   "file": "internal/ctfplatform/presolve_registry.go",
+   "symbol": "groupByPriority",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "注册表按优先级分组执行（同优先级并行）。未接线 = 当前 sweep 可能是逐个串行跑的，分组并行这条路径从未生效。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_web.go::tryAPISecurity",
+   "file": "internal/ctfplatform/presolve_web.go",
+   "symbol": "tryAPISecurity",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_web.go::tryGraphQL",
+   "file": "internal/ctfplatform/presolve_web.go",
+   "symbol": "tryGraphQL",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_web.go::tryJavaDeserialization",
+   "file": "internal/ctfplatform/presolve_web.go",
+   "symbol": "tryJavaDeserialization",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_web.go::tryWebAdvanced",
+   "file": "internal/ctfplatform/presolve_web.go",
+   "symbol": "tryWebAdvanced",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/presolve_web.go::tryWebSocket",
+   "file": "internal/ctfplatform/presolve_web.go",
+   "symbol": "tryWebSocket",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "预分析检测函数：实现完整但没有任何调用点，等于该检测路径从未生效。接线 = 注册进 presolve 注册表或接到对应 category 的扫描入口；会改变扫描覆盖面与耗时 → 需 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveAtbashDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveAtbashDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveBase64URLSafe",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveBase64URLSafe",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveBinaryDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveBinaryDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveDecimalDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveDecimalDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveHexDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveHexDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveOctalDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveOctalDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solvePigLatin",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solvePigLatin",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveROT13",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveROT13",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveReverseText",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveReverseText",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveURLDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveURLDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/solver_registry.go::solveVigenereDecode",
+   "file": "internal/ctfplatform/solver_registry.go",
+   "symbol": "solveVigenereDecode",
+   "auto_class": "dead_root",
+   "verdict": "wire_up",
+   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/web_exploit.go::reSSTIProbe",
+   "file": "internal/ctfplatform/web_exploit.go",
+   "symbol": "reSSTIProbe",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "单个正则/工具函数无调用点。可能是对应检测路径未接线，也可能是该路径已改用别的实现。需看同文件上下文后定。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/database/asset.go::assetRiskLevelQueryExpr",
+   "file": "internal/database/asset.go",
+   "symbol": "assetRiskLevelQueryExpr",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/database/monitor.go::truncateCallsTimelineBucket",
+   "file": "internal/database/monitor.go",
+   "symbol": "truncateCallsTimelineBucket",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/chat_uploads.go::chatUploadItemIsInternal",
+   "file": "internal/handler/chat_uploads.go",
+   "symbol": "chatUploadItemIsInternal",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/config_read.go::(*ConfigHandler).calculateExternalToolEnabled",
+   "file": "internal/handler/config_read.go",
+   "symbol": "(*ConfigHandler).calculateExternalToolEnabled",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/config_yaml.go::findBoolInMap",
+   "file": "internal/handler/config_yaml.go",
+   "symbol": "findBoolInMap",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/config_yaml.go::updateOpenAIConfig",
+   "file": "internal/handler/config_yaml.go",
+   "symbol": "updateOpenAIConfig",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/finalization_helpers.go::(*AgentHandler).decideAgentRunForDelivery",
+   "file": "internal/handler/finalization_helpers.go",
+   "symbol": "(*AgentHandler).decideAgentRunForDelivery",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/finalization_helpers.go::(*AgentHandler).finalizeAgentRunForDelivery",
+   "file": "internal/handler/finalization_helpers.go",
+   "symbol": "(*AgentHandler).finalizeAgentRunForDelivery",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/finalization_helpers.go::(*AgentHandler).finalizeCandidateForDelivery",
+   "file": "internal/handler/finalization_helpers.go",
+   "symbol": "(*AgentHandler).finalizeCandidateForDelivery",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/hitl.go::(*AgentHandler).handleHITLToolCall",
+   "file": "internal/handler/hitl.go",
+   "symbol": "(*AgentHandler).handleHITLToolCall",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/monitor.go::(*MonitorHandler).loadExecutions",
+   "file": "internal/handler/monitor.go",
+   "symbol": "(*MonitorHandler).loadExecutions",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/notification.go::(*NotificationHandler).loadFailedExecutionItems",
+   "file": "internal/handler/notification.go",
+   "symbol": "(*NotificationHandler).loadFailedExecutionItems",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/robot.go::(*RobotHandler).sendWecomReply",
+   "file": "internal/handler/robot.go",
+   "symbol": "(*RobotHandler).sendWecomReply",
+   "auto_class": "dead_root",
+   "verdict": "keep",
+   "reason": "注释明示「被动回包仅保留 sendWecomReply 供未来排查复用」，且 docs/zh-CN/IM机器人接入指引.md 有记载。保留是主动选择，不是遗漏。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/robot.go::wecomReplyXML",
+   "file": "internal/handler/robot.go",
+   "symbol": "wecomReplyXML",
+   "auto_class": "dead_root",
+   "verdict": "keep",
+   "reason": "注释明示「被动回复 XML（仅用于兼容，当前使用手动构造 XML）」。保留是为了解码对端回调时能复用结构体，删掉会让字段含义散落成裸字符串。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/role.go::updateRolesConfig",
+   "file": "internal/handler/role.go",
+   "symbol": "updateRolesConfig",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/skills.go::(*SkillsHandler).saveRolesConfig",
+   "file": "internal/handler/skills.go",
+   "symbol": "(*SkillsHandler).saveRolesConfig",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/handler/webshell.go::quoteWebshellPath",
+   "file": "internal/handler/webshell.go",
+   "symbol": "quoteWebshellPath",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/knowledge/schema_migrate.go::ensureKnowledgeEmbeddingsSubIndexesColumn",
+   "file": "internal/knowledge/schema_migrate.go",
+   "symbol": "ensureKnowledgeEmbeddingsSubIndexesColumn",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/server.go::(*Server).loadHistoricalData",
+   "file": "internal/mcp/server.go",
+   "symbol": "(*Server).loadHistoricalData",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/multiagent/no_nested_task.go::newNoNestedTaskMiddleware",
+   "file": "internal/multiagent/no_nested_task.go",
+   "symbol": "newNoNestedTaskMiddleware",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "「禁止在 task(sub-agent) 执行链中再次调用 task」的防护中间件，根 newNoNestedTaskMiddleware 无任何调用者→ **该防护从未装配**。这不是死代码，是缺失的防递归护栏：需确认是否应有地方调用它。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/project/fact_edges.go::min",
+   "file": "internal/project/fact_edges.go",
+   "symbol": "min",
+   "auto_class": "dead_root",
+   "verdict": "archival_candidate",
+   "reason": "Go 1.21 起内置 min，本函数在其包作用域内**遮蔽内置**（同包任何 min(a,b) 都会走这个自定义版本）。staticcheck 报 unused 说明本包当前无任何调用点 → 删掉行为不变。但它是包级遮蔽源，删前需确认无 _test 或未来改动依赖。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/robot/reconnect.go::bumpBackoff",
+   "file": "internal/robot/reconnect.go",
+   "symbol": "bumpBackoff",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/security/executor.go::limitOutputString",
+   "file": "internal/security/executor.go",
+   "symbol": "limitOutputString",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "同文件上方存在内联重复实现（`if maxBytes>0 && len(out)>maxBytes { return tooloutput.BoundWithSpill(...) }`）。两种处置：内联处改调本函数（消除重复），或删本函数承认内联。需要确认 spill 参数是否应沿用调用方的 SpillOpts——内联版本传的是零值 SpillOpts，与本函数签名（可传 spill）**语义不同**，不能无脑替换。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/skillpackage/io.go::countNonDirFiles",
+   "file": "internal/skillpackage/io.go",
+   "symbol": "countNonDirFiles",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/termout/style.go::(*Style).printBox",
+   "file": "internal/termout/style.go",
+   "symbol": "(*Style).printBox",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "零散未使用定义，无保留意图的书面证据。按纪律不删，先登记；是否有隐藏调用路径（反射/配置驱动）需人确认。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/workflow/eino_runtime.go::newWorkflowRuntime",
+   "file": "internal/workflow/eino_runtime.go",
+   "symbol": "newWorkflowRuntime",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "workflow 包整块（newWorkflowRuntime / hasTerminalNode / toStateInputs / waitWorkflowHITLDecision）四条互为邻居且全部不可达——像是写了一半的工作流引擎。其中 hasTerminalNode 是**图完整性校验**，未调用意味着「无终节点的工作流」可能在别处靠约定而非校验拦住。需确认这是预留设计还是漏装配。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/workflow/engine.go::hasTerminalNode",
+   "file": "internal/workflow/engine.go",
+   "symbol": "hasTerminalNode",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "workflow 包整块（newWorkflowRuntime / hasTerminalNode / toStateInputs / waitWorkflowHITLDecision）四条互为邻居且全部不可达——像是写了一半的工作流引擎。其中 hasTerminalNode 是**图完整性校验**，未调用意味着「无终节点的工作流」可能在别处靠约定而非校验拦住。需确认这是预留设计还是漏装配。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/workflow/hitl_wait.go::waitWorkflowHITLDecision",
+   "file": "internal/workflow/hitl_wait.go",
+   "symbol": "waitWorkflowHITLDecision",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "workflow 包整块（newWorkflowRuntime / hasTerminalNode / toStateInputs / waitWorkflowHITLDecision）四条互为邻居且全部不可达——像是写了一半的工作流引擎。其中 hasTerminalNode 是**图完整性校验**，未调用意味着「无终节点的工作流」可能在别处靠约定而非校验拦住。需确认这是预留设计还是漏装配。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/workflow/types.go::WorkflowInput.toStateInputs",
+   "file": "internal/workflow/types.go",
+   "symbol": "WorkflowInput.toStateInputs",
+   "auto_class": "dead_root",
+   "verdict": "investigate",
+   "reason": "workflow 包整块（newWorkflowRuntime / hasTerminalNode / toStateInputs / waitWorkflowHITLDecision）四条互为邻居且全部不可达——像是写了一半的工作流引擎。其中 hasTerminalNode 是**图完整性校验**，未调用意味着「无终节点的工作流」可能在别处靠约定而非校验拦住。需确认这是预留设计还是漏装配。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).applyAbortUserNoteToCancelledToolResult",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).applyAbortUserNoteToCancelledToolResult",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).cleanupOldExecutions",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).cleanupOldExecutions",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).readAbortUserNote",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).readAbortUserNote",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).registerRunningCancel",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).registerRunningCancel",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).takeAbortUserNote",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).takeAbortUserNote",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/mcp/external_manager.go::(*ExternalMCPManager).unregisterRunningCancel",
+   "file": "internal/mcp/external_manager.go",
+   "symbol": "(*ExternalMCPManager).unregisterRunningCancel",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "dup_of_live：ExternalMCPManager / Server / ExecutionService 三个 receiver 各写了一份同名实现，只有 Server/ExecutionService 那份活着。需确认 ExternalMCPManager 这套是历史遗留（可归档）还是应当切换过去（那就要动调用点）。三份并存会让「改一处忘两处」成为常态。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/multiagent/no_nested_task.go::(*noNestedTaskMiddleware).WrapInvokableToolCall",
+   "file": "internal/multiagent/no_nested_task.go",
+   "symbol": "(*noNestedTaskMiddleware).WrapInvokableToolCall",
+   "auto_class": "dup_of_live",
+   "verdict": "investigate",
+   "reason": "「禁止在 task(sub-agent) 执行链中再次调用 task」的防护中间件，根 newNoNestedTaskMiddleware 无任何调用者→ **该防护从未装配**。这不是死代码，是缺失的防递归护栏：需确认是否应有地方调用它。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/ctfplatform/live_target_test.go::item",
+   "file": "internal/ctfplatform/live_target_test.go",
+   "symbol": "item",
+   "auto_class": "test_only",
+   "verdict": "investigate",
+   "reason": "ctfplatform 内未分类项，需结合同文件上下文判定是接线缺口还是历史遗留。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  },
+  {
+   "key": "internal/multiagent/eino_turn_loop_runtime_test.go::(*turnLoopHangingStreamModel).snapshotInputs",
+   "file": "internal/multiagent/eino_turn_loop_runtime_test.go",
+   "symbol": "(*turnLoopHangingStreamModel).snapshotInputs",
+   "auto_class": "test_only",
+   "verdict": "archival_candidate",
+   "reason": "测试文件内的未使用定义。删除风险最低（不影响生产路径），但也可能是断言/ fixture 预留。待 USER 拍板。",
+   "reviewed_on": "2026-10-22",
+   "reviewed_by": "张敏杰"
+  }
+ ]
+}
