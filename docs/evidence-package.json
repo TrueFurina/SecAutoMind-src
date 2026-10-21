@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-21T02:07:27+08:00",
+  "generated_at": "2026-10-21T10:40:16+08:00",
   "caliber": {
-    "head": "3438702",
+    "head": "e11fc77",
     "tools_yaml": 90,
     "builtin_tools": 52,
     "runtime_tools": 142,
@@ -10,14 +10,14 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 35,
-    "go_packages": null,
+    "go_packages": 44,
     "internal_packages": 38,
     "test_packages": 38,
-    "go_files": 779,
-    "test_files": 318,
-    "non_test_lines": 130001,
-    "test_lines": 47270,
-    "total_lines": 177271,
+    "go_files": 782,
+    "test_files": 320,
+    "non_test_lines": 130306,
+    "test_lines": 47487,
+    "total_lines": 177793,
     "ctf_solvers": 181,
     "ctf_real_solvers": 122,
     "ctf_detectors": 59,
@@ -215,7 +215,5 @@
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": [
-    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
-  ]
+  "notes": []
 }
