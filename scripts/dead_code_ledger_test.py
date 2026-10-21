@@ -246,11 +246,20 @@ class TestRealLedger(unittest.TestCase):
         self.assertTrue(d["rules"])
         for r in d["rules"]:
             self.assertTrue(r.get("key"), f"缺 key: {r}")
+            # 枚举封闭：新增状态必须先在这里登记，否则本用例红。
+            # wired          = 已接线进生产注册表（REA #296）
+            # blocked_by     = 裁定不接线，且理由可被机验守住（REA #297/#298）
             self.assertIn(r.get("verdict"),
                           {"wire_up", "investigate", "keep",
-                           "archival_candidate"})
+                           "archival_candidate", "wired", "blocked_by"})
             self.assertTrue(r.get("reason"), f"缺 reason: {r['key']}")
             self.assertTrue(r.get("reviewed_on"), f"缺 reviewed_on: {r['key']}")
+            # 已接线/被阻断都必须能说清依据，否则无法与「未处置」区分
+            if r.get("verdict") == "wired":
+                self.assertTrue(r.get("wired_on"), f"缺 wired_on: {r['key']}")
+                self.assertTrue(r.get("wired_as"), f"缺 wired_as: {r['key']}")
+            if r.get("verdict") == "blocked_by":
+                self.assertTrue(r.get("blocked_by"), f"缺 blocked_by: {r['key']}")
 
     def test_no_duplicate_keys(self):
         d = json.loads((HERE / "dead_code_ledger.json").read_text(encoding="utf-8"))

@@ -21,7 +21,8 @@
   "  archival_candidate   2 —— 建议归档；纪律是「不删」，待 USER 拍板。",
   "",
   "纪律：本轮**不删除任何代码**。archival_candidate 只是候选，要动先拿 USER 许可。",
-  "复跑见 docs/Go静态检查基线-2026-10-21.md §2；台账明细用 --write 重建（保留 rules）。"
+  "复跑见 docs/Go静态检查基线-2026-10-21.md §2；台账明细用 --write 重建（保留 rules）。",
+  "2026-10-22（REA #296-#300）：11 个 P1 适配函数筛掉 2 个后接线 9 个。\n  U1000 110 → 87，但降幅 23 条里只有 19 条是真接线：\n  - 19 条：9 个适配函数注册进注册表 + 各自叶子随根复活（verdict=wired）\n  -  4 条：solveROT13/tryROT13/solveVigenereDecode/tryVigenereDecode\n           **只因 _test.go 引用而复活**——staticcheck 的 U1000 把测试引用算作可达。\n           它们在生产链路从未被调用，台账标 reachable_from_test_only。\n  教训：给死代码写测试，会让它看起来不是死代码。台账的 wired / reachable_from_test_only\n  两态就是为了防止把「测试可达」误读成「生产上线」。"
  ],
  "generated_on": "2026-10-22",
  "source_report": "staticcheck 2025.1.1 全仓扫描（服务器 172.16.222.99，与 HEAD 一致的干净副本）。扫描产物不入仓（.gitignore: scans/），复跑命令见 docs/Go静态检查基线-2026-10-21.md §2；扫描结果不入仓不等于结论不可复现——任何人按命令重跑都能得到同一组 110 条。",
@@ -36,7 +37,10 @@
   "wire_up": "接线缺口：实现齐备但从未被调用，接上即生效。改变运行时 → 需 USER 拍板。",
   "investigate": "证据不足或存在分支选择（删/接/切），需人看后定。",
   "keep": "有意保留，reason 写明保留意图（兼容性 / 文档引用 / 未来复用）。",
-  "archival_candidate": "建议归档或删除；纪律「不删」，待 USER 拍板。"
+  "archival_candidate": "建议归档或删除；纪律「不删」，待 USER 拍板。",
+  "wired": "REA #296 已接线：注册进生产注册表，且有正向能力证明。",
+  "blocked_by": "裁定不接线：有明确理由（被覆盖/结构性不可命中），可由机验门禁守住。",
+  "reachable_from_test_only": "该符号已从 U1000 报告消失，但只因 _test.go 引用；生产链路从未调用。"
  },
  "rules": [
   {
@@ -54,120 +58,144 @@
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryAtbashDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveAtbashDecode → 注册为 classical_atbash）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryBase64URLSafe",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryBase64URLSafe",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveBase64URLSafe → 注册为 encoding_base64url）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryBinaryDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryBinaryDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveBinaryDecode → 注册为 encoding_binary）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryDecimalDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryDecimalDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveDecimalDecode → 注册为 encoding_decimal）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryHexDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryHexDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveHexDecode → 注册为 encoding_hex）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryOctalDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryOctalDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveOctalDecode → 注册为 encoding_octal）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryPigLatin",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryPigLatin",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solvePigLatin → 注册为 classical_piglatin）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryROT13",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryROT13",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "blocked_by",
+   "reason": "死链叶：只被未注册的 solveROT13 调用，故裁定**不注册**。⚠️ 它会从 U1000 报告里消失，但那不是因为它上线了：staticcheck 把 _test.go 引用也算作可达，而本仓为证明它不配接线恰恰在测试里大量引用了它。从 110→87 的降幅里有 4 条是这么来的。生产可达性由 TestUnwiredSolversRemainUnwired 在注册表层面机验，不看静态检查的脸色。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "blocked_by": "REA #297/#298 裁定不接线",
+   "reachable_from_test_only": true
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryReverseText",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryReverseText",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveReverseText → 注册为 encoding_reverse）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryURLDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryURLDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveURLDecode → 注册为 encoding_url）"
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::tryVigenereDecode",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "tryVigenereDecode",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的适配函数调用。根（适配函数）接进注册表后本条自动复活，**不要单独改它**。",
+   "verdict": "blocked_by",
+   "reason": "死链叶：只被未注册的 solveVigenereDecode 调用，故裁定**不注册**。⚠️ 它会从 U1000 报告里消失，但那不是因为它上线了：staticcheck 把 _test.go 引用也算作可达，而本仓为证明它不配接线恰恰在测试里大量引用了它。从 110→87 的降幅里有 4 条是这么来的。生产可达性由 TestUnwiredSolversRemainUnwired 在注册表层面机验，不看静态检查的脸色。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "blocked_by": "REA #297/#298 裁定不接线",
+   "reachable_from_test_only": true
   },
   {
    "key": "internal/ctfplatform/presolve_crypto.go::urlDecodeOnce",
    "file": "internal/ctfplatform/presolve_crypto.go",
    "symbol": "urlDecodeOnce",
    "auto_class": "dead_dependent",
-   "verdict": "wire_up",
-   "reason": "死链叶：只被未接线的 try 函数调用。根接线后自动复活，**不要单独改它**。",
+   "verdict": "wired",
+   "reason": "REA #296 随根复活：它本身不需要单独接线，根（适配函数）注册进注册表后它自动进入生产链路。这正是台账区分 dead_root 与 dead_dependent 的价值——别去动叶子。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "（经由 solveURLDecode → 注册为 encoding_url）"
   },
   {
    "key": "internal/ctfplatform/presolve_encoding.go::base58Decode",
@@ -644,110 +672,132 @@
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveAtbashDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 classical_atbash（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "classical_atbash"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveBase64URLSafe",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveBase64URLSafe",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_base64url（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_base64url"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveBinaryDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveBinaryDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_binary（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_binary"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveDecimalDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveDecimalDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_decimal（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_decimal"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveHexDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveHexDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_hex（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_hex"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveOctalDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveOctalDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_octal（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_octal"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solvePigLatin",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solvePigLatin",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 classical_piglatin（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "classical_piglatin"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveROT13",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveROT13",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "blocked_by",
+   "reason": "被在册 caesar（shift 1..25，含 13）完全覆盖，故裁定**不注册**。⚠️ 它会从 U1000 报告里消失，但那不是因为它上线了：staticcheck 把 _test.go 引用也算作可达，而本仓为证明它不配接线恰恰在测试里大量引用了它。从 110→87 的降幅里有 4 条是这么来的。生产可达性由 TestUnwiredSolversRemainUnwired 在注册表层面机验，不看静态检查的脸色。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "blocked_by": "REA #297/#298 裁定不接线",
+   "reachable_from_test_only": true
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveReverseText",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveReverseText",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_reverse（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_reverse"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveURLDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveURLDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "wired",
+   "reason": "REA #296 接线：RegisterSolver 注册为 encoding_url（priority 140-148）。接线前过能力门禁（正向能解出目标 flag / 负向对普通文本不误报）。⚠️ 已知局限：其中 hex/二进制/八进制/十进制 四个要求整段输入为纯密文，对「自然语言+内嵌 token」的真实题面恒不命中（见 TestWholeTextOnlyDecodersSkipMixedText）。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "wired_on": "2026-10-22",
+   "wired_as": "encoding_url"
   },
   {
    "key": "internal/ctfplatform/solver_registry.go::solveVigenereDecode",
    "file": "internal/ctfplatform/solver_registry.go",
    "symbol": "solveVigenereDecode",
    "auto_class": "dead_root",
-   "verdict": "wire_up",
-   "reason": "P1 求解器适配函数：底层 try 实现与本适配函数都在，缺 RegisterSolver 一行。当前 11 个解题能力写在代码里但从未参与扫描；接上后 presolve sweep 会新增 11 个 solver，改变耗时与命中率 → 需 USER 拍板后执行。",
+   "verdict": "blocked_by",
+   "reason": "结构上命中率恒为 0（输入只收纯字母，输出必为纯字母，永远凑不出 xxx{...}），故裁定**不注册**。⚠️ 它会从 U1000 报告里消失，但那不是因为它上线了：staticcheck 把 _test.go 引用也算作可达，而本仓为证明它不配接线恰恰在测试里大量引用了它。从 110→87 的降幅里有 4 条是这么来的。生产可达性由 TestUnwiredSolversRemainUnwired 在注册表层面机验，不看静态检查的脸色。",
    "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
+   "reviewed_by": "张敏杰",
+   "blocked_by": "REA #297/#298 裁定不接线",
+   "reachable_from_test_only": true
   },
   {
    "key": "internal/ctfplatform/web_exploit.go::reSSTIProbe",
