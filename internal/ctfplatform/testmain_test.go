@@ -22,6 +22,11 @@ import (
 var testRangePorts = []int{18089, 18090, 18095, 18098, 18099, 18220, 18221, 18222, 18223, 18224}
 
 func TestMain(m *testing.M) {
+	// 子进程替身（rangeproc_ready_test.go 的 re-exec）直接跑，不做端口清理：
+	// 否则每个替身启动都要多花 ~2s 做 10 次 netstat，把「快速失败」测成慢速失败。
+	if os.Getenv("RANGEPROC_CHILD_MODE") != "" {
+		os.Exit(m.Run())
+	}
 	if os.Getenv("SECAUTOMIND_REGISTRY_SWEEP_MS") == "" {
 		_ = os.Setenv("SECAUTOMIND_REGISTRY_SWEEP_MS", "60000")
 	}
