@@ -7,7 +7,8 @@
   "观察档（只提示）：风格类与死代码；--strict 下也判红，供本地自查。",
   "file = \"*\" 表示类级豁免（死代码台账 / 上游弃用），不做 stale 判定。",
   "新增语义类告警时：要么修掉，要么在此登记豁免（reason + reviewed_on）。不得删判据了事（REA #257）。",
-  "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。"
+  "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。",
+  "2026-10-22：SA1019 8 → 7（exporter.go 的 header.SetModTime → header.Modified 已修，豁免条目随之删除）。U1000 110 条已拆成逐条台账，见 scripts/dead_code_ledger.json。"
  ],
  "tool": "staticcheck 2025.1.1（go install honnef.co/go/tools/cmd/staticcheck@2025.1.1）",
  "generated_on": "2026-10-21",
@@ -27,7 +28,7 @@
   "S1017": 0,
   "S1039": 0,
   "SA1012": 10,
-  "SA1019": 8,
+  "SA1019": 7,
   "ST1005": 2,
   "U1000": 110
  },
@@ -117,14 +118,6 @@
    "file": "internal/multiagent/hitl_middleware.go",
    "symbol": "adk.State",
    "reason": "adk 明示该字段仅为 checkpoint 向后兼容保留、不应直接使用；改造面大，登记观察。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/workflow/package/exporter.go",
-   "symbol": "header.SetModTime",
-   "reason": "archive/zip 自 Go 1.10 起弃用 → 改用 Modified 字段。改动小但需与打包产物回归一起验，登记观察。",
    "reviewed_on": "2026-10-21",
    "reviewed_by": "张敏杰"
   },
