@@ -9,6 +9,8 @@ package ctfplatform
 // 与 flag 判分无关：这是靶场演练能力，不产生 WebFinding。
 
 import (
+	"bufio"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -119,6 +121,121 @@ func CrackHtpasswd(entries []HtpasswdEntry, words []string, workers int) []Crack
 		if pw, tries := crackOne(e, words, workers); pw != "" {
 			out = append(out, CrackedCred{User: e.User, Password: pw, Hash: e.Hash, Tries: tries})
 		}
+	}
+	return out
+}
+
+// LoadWordlist 从文件读字典（每行一个口令，忽略空行与 # 注释）。
+func LoadWordlist(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 64*1024), 1<<20)
+	var out []string
+	for sc.Scan() {
+		line := strings.TrimRight(sc.Text(), "\r")
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out, sc.Err()
+}
+
+// mangleSuffixes 是常见后缀（数字年份、符号、重复）。
+var mangleSuffixes = []string{
+	"", "1", "12", "123", "1234", "12345", "0", "01", "007", "!",
+	"!!", "1!", "123!", "@123", "2020", "2021", "2022", "2023", "2024", "2025", "2026",
+}
+
+// leetMap 是常见 leet 替换。
+var leetMap = map[rune]rune{'a': '@', 'e': '3', 'i': '1', 'o': '0', 's': '$', 't': '7'}
+
+// MangleWord 对单个词生成变形候选（保持与 john 常见规则一致的基本集合）。
+// 目的不是穷举，而是把 10 万词的词典放大到百万级可试空间。
+func MangleWord(w string) []string {
+	if w == "" {
+		return nil
+	}
+	lower := strings.ToLower(w)
+	var forms []string
+	forms = append(forms, lower)
+	if len(lower) > 0 {
+		forms = append(forms, strings.ToUpper(lower[:1])+lower[1:])
+	}
+	forms = append(forms, strings.ToUpper(lower))
+
+	// leet 变形（仅全小写形式）
+	var leet []rune
+	for _, r := range lower {
+		if m, ok := leetMap[r]; ok {
+			leet = append(leet, m)
+		} else {
+			leet = append(leet, r)
+		}
+	}
+	forms = append(forms, string(leet))
+
+	seen := map[string]bool{}
+	var out []string
+	for _, f := range forms {
+		for _, suf := range mangleSuffixes {
+			c := f + suf
+			if seen[c] {
+				continue
+			}
+			seen[c] = true
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// BuildCandidates 把词典展开成候选口令序列（mangle=true 时附加变形规则）。
+func BuildCandidates(words []string, mangle bool) []string {
+	if !mangle {
+		return words
+	}
+	out := make([]string, 0, len(words)*40)
+	for _, w := range words {
+		out = append(out, MangleWord(w)...)
+	}
+	return out
+}
+
+// CrackHtpasswdBatched 按批展开词典做破解，避免一次性物化百万级候选导致内存爆掉。
+// mangle=true 时每批词先变形；batchSize<=0 时默认 20000 词/批。
+// 已破解的条目不再参与后续批次。
+func CrackHtpasswdBatched(entries []HtpasswdEntry, words []string, mangle bool,
+	batchSize, workers int) []CrackedCred {
+
+	if batchSize <= 0 {
+		batchSize = 20000
+	}
+	if workers <= 0 {
+		workers = runtime.NumCPU()
+	}
+	remaining := append([]HtpasswdEntry{}, entries...)
+	var out []CrackedCred
+
+	for lo := 0; lo < len(words) && len(remaining) > 0; lo += batchSize {
+		hi := lo + batchSize
+		if hi > len(words) {
+			hi = len(words)
+		}
+		cands := BuildCandidates(words[lo:hi], mangle)
+		var next []HtpasswdEntry
+		for _, e := range remaining {
+			if pw, tries := crackOne(e, cands, workers); pw != "" {
+				out = append(out, CrackedCred{User: e.User, Password: pw, Hash: e.Hash, Tries: tries})
+			} else {
+				next = append(next, e)
+			}
+		}
+		remaining = next
 	}
 	return out
 }
