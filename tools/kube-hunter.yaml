@@ -6,6 +6,9 @@ source: "upstream"
 license: "Apache-2.0"
 upstream: "https://github.com/aquasecurity/kube-hunter"
 trust: "builtin"
+# 条件必填：remote/cidr/interface 至少给一个，否则 kube-hunter 进入交互式菜单
+# 等待输入，会让 MCP 调用挂死。exec 层按此原语在拼命令前校验。
+requires_any_of: ["target", "cidr", "interface"]
 short_description: "Kubernetes渗透测试工具"
 description: |
   Kube-hunter是一个Kubernetes渗透测试工具，用于发现Kubernetes集群中的安全问题。

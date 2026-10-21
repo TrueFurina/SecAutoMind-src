@@ -24,7 +24,7 @@ description: |
 parameters:
   - name: "action"
     type: "string"
-    description: "要执行的操作（collect, prepare, webserver, find_admins等）"
+    description: "要执行的操作（collect, prepare, webserver, find_admins等）。collect/prepare 必须同时提供 account，否则工具报错非零退出"
     required: false
     default: "collect"
     position: 0

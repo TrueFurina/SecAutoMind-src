@@ -1415,9 +1415,13 @@ type ToolConfig struct {
 	ShortDescription string            `yaml:"short_description,omitempty"` // 简短描述（用于工具列表，减少token消耗）
 	Description      string            `yaml:"description"`                 // 详细描述（用于工具文档）
 	Enabled          bool              `yaml:"enabled"`
-	Parameters       []ParameterConfig `yaml:"parameters,omitempty"`         // 参数定义（可选）
-	ArgMapping       string            `yaml:"arg_mapping,omitempty"`        // 参数映射方式: "auto", "manual", "template"（可选）
-	AllowedExitCodes []int             `yaml:"allowed_exit_codes,omitempty"` // 允许的退出码列表（某些工具在成功时也返回非零退出码）
+	Parameters       []ParameterConfig `yaml:"parameters,omitempty"`  // 参数定义（可选）
+	ArgMapping       string            `yaml:"arg_mapping,omitempty"` // 参数映射方式: "auto", "manual", "template"（可选）
+	// 条件必填原语：列出的参数名中至少一个被实质性提供，否则执行前失败（不拼命令）。
+	// 用于「零参要么报错、要么进交互模式挂死」的工具（arp-scan 需 target/-l 二选一，
+	// kube-hunter 零参进交互菜单挂死）。缺省空 = 不启用该约束。
+	RequiresAnyOf    []string `yaml:"requires_any_of,omitempty"`
+	AllowedExitCodes []int    `yaml:"allowed_exit_codes,omitempty"` // 允许的退出码列表（某些工具在成功时也返回非零退出码）
 
 	// 资产元数据（来源可追溯）。仅用于展示与审计，不参与执行语义。
 	// 缺省值语义：Version 空=未标注；Source 空=未判定；License 空=未核实；

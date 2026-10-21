@@ -31,8 +31,8 @@ description: |
 parameters:
   - name: "domain"
     type: "string"
-    description: "目标域名"
-    required: false
+    description: "目标域名（必填：bloodhound-python 缺 -d 必失败）"
+    required: true
     flag: "-d"
     format: "flag"
   - name: "username"

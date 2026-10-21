@@ -6,6 +6,9 @@ source: "upstream"
 license: "GPL-3.0"
 upstream: "https://github.com/royhills/arp-scan"
 trust: "builtin"
+# 条件必填：target 与 local_network(-l) 至少给一个，否则 arp-scan 直接报错。
+# exec 层按此原语在拼命令前校验（见 internal/security/executor.go）。
+requires_any_of: ["target", "local_network"]
 short_description: "ARP网络发现工具"
 description: |
   Arp-scan是一个ARP网络发现工具，用于发现本地网络中的活动主机。

@@ -1,0 +1,69 @@
+{
+  "reviewed_on": "2026-10-21",
+  "reviewer": "human (张敏杰) + agent 合议",
+  "scope": "tools/*.yaml 中「有参数却无一个 required」的 13 份配方（tools_all_optional_params）。零参配方（tools_zero_param，实测 0 份）不在此表。",
+  "verdict_semantics": {
+    "ok": "零参（或仅 additional_args）调用是合法运行形态，全可选是事实而非漏标",
+    "ok_with_note": "全可选成立，但存在取值依赖，已在 description 写明约束（工具自身报错，不挂死，可被 exec 层按非零退出捕获）",
+    "missing_required": "漏标必填：零参会直接失败且无默认兜底，必须标 required: true",
+    "conditional_any_of": "存在「至少给一个」的互斥/并列必填，零参要么报错要么进入交互模式挂死，需 requires_any_of 原语约束",
+    "disabled": "enabled: false 置灰留档，不判缺陷"
+  },
+  "entries": {
+    "arp-scan": {
+      "verdict": "conditional_any_of",
+      "requires_any_of": ["target", "local_network"],
+      "reason": "arp-scan 无参数即报错（需 target 或 -l 至少一个），零参不是合法运行形态"
+    },
+    "bloodhound": {
+      "verdict": "missing_required",
+      "should_be_required": ["domain"],
+      "reason": "bloodhound-python 缺 -d 域必失败（-u/-p 可用 kerberos/匿名替代，但 -d 是硬必填）"
+    },
+    "checkov": {
+      "verdict": "ok",
+      "reason": "directory 默认 '.'，零参即扫描当前目录，合法"
+    },
+    "cloudmapper": {
+      "verdict": "ok_with_note",
+      "reason": "action 默认 collect 有默认值，但 collect/prepare 需要 --account（工具自身报错非零退出，不挂死）；已加 description 约束"
+    },
+    "falco": {
+      "verdict": "ok",
+      "reason": "零参用默认 /etc/falco/falco.yaml 运行；duration 默认 60 秒给出上界，不会无限挂死"
+    },
+    "kube-bench": {
+      "verdict": "ok",
+      "reason": "零参自动探测节点类型跑对应 CIS benchmark，合法"
+    },
+    "kube-hunter": {
+      "verdict": "conditional_any_of",
+      "requires_any_of": ["target", "cidr", "interface"],
+      "reason": "零参进入交互式菜单等待输入 → 会导致 MCP 调用挂死；必须给 remote/cidr/interface 至少一个"
+    },
+    "linpeas": {
+      "verdict": "ok",
+      "reason": "零参即全量提权枚举、输出 stdout，合法"
+    },
+    "pacu": {
+      "verdict": "disabled",
+      "reason": "enabled: false 置灰；零参进交互式会话 CLI 会挂死，但置灰不对外调用，不判缺陷"
+    },
+    "prowler": {
+      "verdict": "ok",
+      "reason": "provider 默认 aws（position 0），零参即扫描默认账号，合法"
+    },
+    "responder": {
+      "verdict": "ok",
+      "reason": "interface 默认 eth0、duration 默认 300 秒，全部参数有默认值，零参合法且上界明确"
+    },
+    "scout-suite": {
+      "verdict": "ok",
+      "reason": "provider 默认 aws，零参即评估默认账号，合法"
+    },
+    "terrascan": {
+      "verdict": "ok",
+      "reason": "scan_type 默认 all、iac_dir 默认 '.'，零参即扫描当前目录，合法"
+    }
+  }
+}

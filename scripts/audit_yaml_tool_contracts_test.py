@@ -233,5 +233,109 @@ class ReconcileCase(unittest.TestCase):
         self.assertEqual(r["unreconciled"], [])
 
 
+# 有参数却全可选（无一个 required）的样本：正是「漏标必填还是本就合法」要裁定的对象。
+ALL_OPTIONAL = """\
+name: "{name}"
+command: "{name}"
+enabled: true
+source: "upstream"
+license: "MIT"
+upstream: "https://example.invalid/{name}"
+trust: "builtin"
+short_description: "说明"
+description: |
+  多行说明
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标"
+    required: false
+    flag: "-t"
+    format: "flag"
+  - name: "mode"
+    type: "string"
+    description: "模式"
+    required: false
+    flag: "-m"
+    format: "flag"
+"""
+
+
+def _run_with_ledger(root: Path, ledger, *args: str) -> subprocess.CompletedProcess:
+    """与 _run 相同，但额外接管台账路径：可指向假台账或一个不存在的路径（=台账缺失）。"""
+    env = dict(os.environ)
+    env["SECAUTOMIND_YAML_TOOL_SCAN_ROOT"] = str(root)
+    env["PYTHONIOENCODING"] = "utf-8"
+    if ledger is None:
+        env["SECAUTOMIND_OPTIONAL_LEDGER"] = str(root / "_no_such_ledger.json")
+    else:
+        lp = root / "_ledger.json"
+        lp.write_text(json.dumps(ledger, ensure_ascii=False), encoding="utf-8")
+        env["SECAUTOMIND_OPTIONAL_LEDGER"] = str(lp)
+    return subprocess.run([sys.executable, "-X", "utf8", str(SCRIPT), *args],
+                          capture_output=True, text=True, encoding="utf-8", env=env)
+
+
+class OptionalParamsRulingCase(unittest.TestCase):
+    """「有参数却全可选」裁定门禁：没裁定的、裁定要改却没改的，都必须红。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        _write(self.root, "tools/scanner.yaml", ALL_OPTIONAL.format(name="scanner"))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_unruled_optional_blocks_gate(self):
+        out = _run_with_ledger(self.root, {"entries": {}}, "--json")
+        s = json.loads(out.stdout)["summary"]
+        self.assertIn("scanner", s["tools_all_optional_params"])
+        self.assertEqual(s["optional_params_unruled"], ["scanner"])
+        kinds = {(h["tool"], h["kind"]) for h in s["hard_defects"]}
+        self.assertIn(("scanner", "有参数却全可选但未裁定"), kinds)
+        self.assertEqual(_run_with_ledger(self.root, {"entries": {}}, "--gate").returncode, 1,
+                         "未裁定必须让门禁红")
+
+    def test_missing_ledger_blocks_gate(self):
+        s = json.loads(_run_with_ledger(self.root, None, "--json").stdout)["summary"]
+        self.assertFalse(s["optional_params_ledger_present"])
+        self.assertIn("scanner", s["optional_params_unruled"],
+                      "台账缺失 = 全部未裁定 = 门禁红")
+
+    def test_missing_required_ruled_but_unfixed_blocks(self):
+        ledger = {"entries": {"scanner": {
+            "verdict": "missing_required", "should_be_required": ["target"]}}}
+        s = json.loads(_run_with_ledger(self.root, ledger, "--json").stdout)["summary"]
+        kinds = {(h["tool"], h["kind"]) for h in s["hard_defects"]}
+        self.assertIn(("scanner", "已裁定 missing_required 但未标 required"), kinds)
+
+    def test_conditional_any_of_ruled_but_missing_primitive_blocks(self):
+        ledger = {"entries": {"scanner": {
+            "verdict": "conditional_any_of", "requires_any_of": ["target", "mode"]}}}
+        s = json.loads(_run_with_ledger(self.root, ledger, "--json").stdout)["summary"]
+        kinds = {(h["tool"], h["kind"]) for h in s["hard_defects"]}
+        self.assertIn(("scanner", "已裁定 conditional_any_of 但缺 requires_any_of 原语"), kinds)
+
+    def test_ok_verdict_passes(self):
+        ledger = {"entries": {"scanner": {"verdict": "ok"}}}
+        out = _run_with_ledger(self.root, ledger, "--json")
+        s = json.loads(out.stdout)["summary"]
+        self.assertEqual(s["optional_params_unruled"], [])
+        self.assertEqual(s["optional_params_ruled"]["scanner"], "ok")
+        self.assertNotIn("scanner", {h["tool"] for h in s["hard_defects"]})
+
+    def test_conditional_any_of_fixed_passes(self):
+        ledger = {"entries": {"scanner": {
+            "verdict": "conditional_any_of", "requires_any_of": ["target", "mode"]}}}
+        _write(self.root, "tools/scanner.yaml",
+               ALL_OPTIONAL.format(name="scanner").replace(
+                   'trust: "builtin"\n',
+                   'trust: "builtin"\nrequires_any_of: ["target", "mode"]\n'))
+        s = json.loads(_run_with_ledger(self.root, ledger, "--json").stdout)["summary"]
+        self.assertNotIn("scanner", {h["tool"] for h in s["hard_defects"]})
+        self.assertEqual(s["optional_params_ruled"]["scanner"], "conditional_any_of")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

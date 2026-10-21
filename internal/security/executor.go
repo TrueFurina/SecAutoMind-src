@@ -160,6 +160,12 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		return e.executeInternalTool(ctx, toolName, toolConfig.Command, args)
 	}
 
+	// 条件必填校验：requires_any_of 列出的参数至少一个被实质提供，否则 fail-closed，
+	// 直接返回错误、绝不执行命令（零参可能进交互模式挂死）。
+	if err := e.validateRequiresAnyOf(toolName, toolConfig, args); err != nil {
+		return nil, err
+	}
+
 	// 构建命令 - 根据工具类型使用不同的参数格式
 	cmdArgs := e.buildCommandArgs(toolName, toolConfig, args)
 
@@ -716,6 +722,38 @@ func (e *Executor) parseAdditionalArgs(argsStr string) []string {
 }
 
 // getParamValue 获取参数值，支持默认值
+// paramProvided 判断参数是否被"实质性提供"（用于 requires_any_of 条件必填）。
+// bool 仅 true 算提供（false 等于没开启该开关）；string 须非空白；其余类型非 nil 即算。
+func paramProvided(v interface{}) bool {
+	if v == nil {
+		return false
+	}
+	switch t := v.(type) {
+	case bool:
+		return t
+	case string:
+		return strings.TrimSpace(t) != ""
+	default:
+		return true
+	}
+}
+
+// validateRequiresAnyOf 校验条件必填原语：列出的参数至少一个被实质提供。
+// 注意用 args 原始值而非 getParamValue（后者会回填 Default，而 default 不该算"用户提供"）。
+func (e *Executor) validateRequiresAnyOf(toolName string, toolConfig *config.ToolConfig,
+	args map[string]interface{}) error {
+	if len(toolConfig.RequiresAnyOf) == 0 {
+		return nil
+	}
+	for _, name := range toolConfig.RequiresAnyOf {
+		if paramProvided(args[name]) {
+			return nil
+		}
+	}
+	return fmt.Errorf("工具 %s 需至少提供 %s 之一", toolName,
+		strings.Join(toolConfig.RequiresAnyOf, " / "))
+}
+
 func (e *Executor) getParamValue(args map[string]interface{}, param config.ParameterConfig) interface{} {
 	// 从参数中获取值
 	if value, ok := args[param.Name]; ok && value != nil {

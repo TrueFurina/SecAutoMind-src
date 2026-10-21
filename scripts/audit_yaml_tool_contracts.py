@@ -90,6 +90,14 @@ BASELINE_PROVENANCE_GAPS: dict[str, str] = {}
 #: 原样透传参数名：把调用方字符串直接拼进命令行末尾。
 RAW_PASSTHROUGH_PARAMS = ("additional_args",)
 
+#: 条件必填原语字段名（tool 顶层，值 = 参数名列表，至少提供一个）。
+REQUIRES_ANY_OF_KEY = "requires_any_of"
+
+#: 「有参数却全可选」裁定台账路径（与脚本同目录，可用环境变量覆盖供自测造假仓）。
+OPTIONAL_PARAMS_LEDGER = Path(
+    os.environ.get("SECAUTOMIND_OPTIONAL_LEDGER")
+    or Path(__file__).resolve().parent / "optional_params_ledger.json")
+
 #: 一份"像工具声明"的 YAML 至少要有这两个顶层键（与 count_stats 的守卫同判据）。
 TOOL_TOP_KEYS = ("name", "command")
 
@@ -161,6 +169,14 @@ def _reconcile(declared_files: set[str]) -> dict:
     }
 
 
+def _load_optional_ledger() -> dict | None:
+    """读「有参数却全可选」裁定台账。缺失/坏 JSON 返回 None → 门禁按「未裁定」红。"""
+    try:
+        return json.loads(OPTIONAL_PARAMS_LEDGER.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def scan() -> dict:
     yaml_mod = _load_yaml()
     records: list[dict] = []
@@ -179,6 +195,8 @@ def scan() -> dict:
             "enabled": True,
             "param_count": 0,
             "required_declared": False,
+            "required_params": [],
+            "requires_any_of": [],
             "params_missing_type": [],
             "params_missing_desc": [],
             "raw_passthrough": [],
@@ -212,8 +230,11 @@ def scan() -> dict:
                     rec["params_missing_desc"].append(pname or "<无名>")
                 if p.get("required"):
                     rec["required_declared"] = True
+                    rec["required_params"].append(pname)
                 if pname in RAW_PASSTHROUGH_PARAMS:
                     rec["raw_passthrough"].append(pname)
+        rao = doc.get(REQUIRES_ANY_OF_KEY)
+        rec["requires_any_of"] = sorted(str(x) for x in rao) if isinstance(rao, list) else []
         rec["budget_field_present"] = any(
             str(k).lower() in ("output_limit", "max_output", "truncate", "response_budget")
             for k in keys)
@@ -247,6 +268,35 @@ def summarize(result: dict) -> dict:
                          "detail": r["source"]})
         if r["provenance_gap"]:
             hard.append({"tool": key, "kind": "source=upstream 但缺 upstream URL"})
+    # ④「有参数却全可选」裁定门禁（REA #281 起）：
+    # 全可选 ≠ 一定错（很多工具零参合法），但「是漏标还是本就合法」必须逐个人工
+    # 裁定过、并登记进台账；没裁定的、或裁定要改却没改的，都是硬缺陷（门禁红）。
+    ledger = _load_optional_ledger()
+    entries = (ledger or {}).get("entries", {})
+    all_optional = sorted(n for n, r in tools.items()
+                          if r["enabled"] and not r["required_declared"]
+                          and r["param_count"] > 0)
+    for name in all_optional:
+        ruling = entries.get(name)
+        if ruling is None:
+            hard.append({"tool": name, "kind": "有参数却全可选但未裁定"})
+            continue
+        verdict = ruling.get("verdict")
+        if verdict == "missing_required":
+            need = set(ruling.get("should_be_required", []))
+            got = set(tools[name]["required_params"])
+            if not need <= got:
+                hard.append({"tool": name, "kind": "已裁定 missing_required 但未标 required",
+                             "detail": {"missing": sorted(need - got)}})
+        elif verdict == "conditional_any_of":
+            want = sorted(ruling.get("requires_any_of", []))
+            if tools[name]["requires_any_of"] != want:
+                hard.append({"tool": name,
+                             "kind": "已裁定 conditional_any_of 但缺 requires_any_of 原语",
+                             "detail": {"want": want, "got": tools[name]["requires_any_of"]}})
+        # verdict ∈ {ok, ok_with_note}：零参合法或工具自身报错（不挂死），pass
+        # 其余未知 verdict：不拦（台账是人工写死的，未知值说明人写错了，但不应
+        # 让门禁因为"人写了不认识的字"而假绿——这里放宽，留给台账本身校验）
     baselined = [h for h in hard
                  if h["kind"] == "source=upstream 但缺 upstream URL"
                  and h["tool"] in BASELINE_PROVENANCE_GAPS]
@@ -285,6 +335,11 @@ def summarize(result: dict) -> dict:
         "tools_all_optional_params": sorted(n for n, r in tools.items()
                                             if not r["required_declared"]
                                             and r["param_count"] > 0),
+        # ④「有参数却全可选」裁定状态（只算 enabled；disabled 走 disabled_tools 不判）
+        "optional_params_ledger_present": ledger is not None,
+        "optional_params_unruled": sorted(n for n in all_optional if n not in entries),
+        "optional_params_ruled": {n: entries[n].get("verdict") for n in all_optional
+                                  if n in entries},
         # 置灰留档：不对外可用，故不判缺陷，但要被看见（否则"89 份"里混着 10 份
         # 谁也调不动的，对外宣称工具数时容易虚报）。
         "disabled_tools": sorted(n for n, r in tools.items() if not r["enabled"]),
@@ -343,9 +398,13 @@ def main(argv: list[str] | None = None) -> int:
               f"{', '.join(summary['tools_without_required']) or '无'}")
         print(f"  ├ 真·零参（跑就完了）：{len(summary['tools_zero_param'])} → "
               f"{', '.join(summary['tools_zero_param']) or '无'}")
-        print(f"  └ 有参数却全可选（**需人工确认是否漏标必填**）："
+        print(f"  └ 有参数却全可选（已逐份裁定，见 optional_params_ledger.json）："
               f"{len(summary['tools_all_optional_params'])} → "
               f"{', '.join(summary['tools_all_optional_params']) or '无'}")
+        if summary["optional_params_unruled"]:
+            print(f"     ⚠️ 未裁定（门禁会红）：{', '.join(summary['optional_params_unruled'])}")
+        elif not summary["optional_params_ledger_present"]:
+            print("     ⚠️ 台账缺失，全部按未裁定处理（门禁会红）")
         if summary["disabled_tools"]:
             print(f"置灰留档（enabled: false，不判缺陷但须被看见，"
                   f"{len(summary['disabled_tools'])} 份）："
