@@ -80,7 +80,6 @@ func TestLiveKillChain(t *testing.T) {
 	opts := KillChainOptions{
 		BaseURL:       base,
 		SSHAddr:       sshAddr,
-		TargetUser:    "achen",
 		KnownUser:     os.Getenv("CTF4_SSH_USER"),
 		KnownPassword: os.Getenv("CTF4_SSH_PASS"),
 		AllowInsecure: true,

