@@ -8,7 +8,8 @@
   "file = \"*\" 表示类级豁免（死代码台账 / 上游弃用），不做 stale 判定。",
   "新增语义类告警时：要么修掉，要么在此登记豁免（reason + reviewed_on）。不得删判据了事（REA #257）。",
   "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。",
-  "2026-10-22：SA1019 8 → 7（exporter.go 的 header.SetModTime → header.Modified 已修，豁免条目随之删除）。U1000 110 条已拆成逐条台账，见 scripts/dead_code_ledger.json。"
+  "2026-10-22：SA1019 8 → 7（exporter.go 的 header.SetModTime → header.Modified 已修，豁免条目随之删除）。U1000 110 → 87：9 个 P1 适配函数接线后，它们连同 10 个叶子随根复活（19 条）；另有 4 条（solveROT13/tryROT13/solveVigenereDecode/tryVigenereDecode）**只因 _test.go 引用**才从 U1000 消失——staticcheck 把测试引用算作可达，而它们在生产链路从未被调用。逐条明细见 scripts/dead_code_ledger.json。",
+  "⚠️ U1000 的已知局限（REA #300）：它把 _test.go 引用也算作可达。一个只在测试里被调用、生产从不调用的函数，在 U1000 里看起来是「活」的。故**U1000 数量下降 ≠ 能力上线**，判断生产可达性要看注册表等运行时证据，本仓由 ctfplatform 的 TestUnwiredSolversRemainUnwired 在注册表层面机验。"
  ],
  "tool": "staticcheck 2025.1.1（go install honnef.co/go/tools/cmd/staticcheck@2025.1.1）",
  "generated_on": "2026-10-21",
@@ -30,7 +31,7 @@
   "SA1012": 10,
   "SA1019": 7,
   "ST1005": 2,
-  "U1000": 110
+  "U1000": 87
  },
  "exemptions": [
   {
