@@ -121,7 +121,7 @@ func TestDeserAttackAgainstRange(t *testing.T) {
 		}
 		func() {
 			defer func() {
-				_ = cmd.Process.Kill()
+				killProcessTree(cmd.Process.Pid)
 				_, _ = cmd.Process.Wait()
 			}()
 			if !deserWaitReady(t, port) {
@@ -176,7 +176,7 @@ func TestDeserAttackViaProductionText(t *testing.T) {
 		}
 		func() {
 			defer func() {
-				_ = cmd.Process.Kill()
+				killProcessTree(cmd.Process.Pid)
 				_, _ = cmd.Process.Wait()
 			}()
 			if !deserWaitReady(t, port) {

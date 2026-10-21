@@ -103,7 +103,7 @@ func TestXXEAttackAgainstRange(t *testing.T) {
 		}
 		func() {
 			defer func() {
-				_ = cmd.Process.Kill()
+				killProcessTree(cmd.Process.Pid)
 				_, _ = cmd.Process.Wait()
 			}()
 			if !xxeWaitReady(t, port) {
@@ -158,7 +158,7 @@ func TestXXEAttackViaProductionText(t *testing.T) {
 		}
 		func() {
 			defer func() {
-				_ = cmd.Process.Kill()
+				killProcessTree(cmd.Process.Pid)
 				_, _ = cmd.Process.Wait()
 			}()
 			if !xxeWaitReady(t, port) {

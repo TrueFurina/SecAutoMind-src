@@ -71,7 +71,7 @@ func TestHintDrivenWebExploit(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动线索靶场失败: %v", err)
 	}
-	defer func() { _ = cmd.Process.Kill() }()
+	defer func() { killProcessTree(cmd.Process.Pid) }()
 
 	baseURL := "http://127.0.0.1:" + port
 	ready := false

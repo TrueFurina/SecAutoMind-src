@@ -130,7 +130,7 @@ func TestLiveExploitation(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动靶机失败: %v", err)
 	}
-	defer cmd.Process.Kill()
+	defer killProcessTree(cmd.Process.Pid)
 	ready := false
 	for i := 0; i < 50; i++ {
 		if _, err := http.Get("http://127.0.0.1:18099/"); err == nil {

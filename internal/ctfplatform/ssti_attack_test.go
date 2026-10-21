@@ -39,10 +39,10 @@ func startSSTIRange(t *testing.T, port int) (cleanup func()) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if !ready {
-		_ = cmd.Process.Kill()
+		killProcessTree(cmd.Process.Pid)
 		t.Fatalf("靶场未就绪: %s", base)
 	}
-	return func() { _ = cmd.Process.Kill() }
+	return func() { killProcessTree(cmd.Process.Pid) }
 }
 
 // TestSSTISolverRegistered 反注水门禁：ssti_eval_escape 必须已注册。
