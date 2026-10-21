@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-21T10:51:44+08:00",
+  "generated_at": "2026-10-21T11:21:22+08:00",
   "caliber": {
-    "head": "e24704c",
+    "head": "0e693b0",
     "tools_yaml": 90,
     "builtin_tools": 52,
     "runtime_tools": 142,
@@ -13,11 +13,11 @@
     "go_packages": 44,
     "internal_packages": 38,
     "test_packages": 38,
-    "go_files": 784,
-    "test_files": 321,
-    "non_test_lines": 130512,
-    "test_lines": 47650,
-    "total_lines": 178162,
+    "go_files": 789,
+    "test_files": 324,
+    "non_test_lines": 130942,
+    "test_lines": 47835,
+    "total_lines": 178777,
     "ctf_solvers": 181,
     "ctf_real_solvers": 122,
     "ctf_detectors": 59,
@@ -25,13 +25,13 @@
     "exe": {
       "present": true,
       "path": "installer/secautomind-ai.exe",
-      "md5": "502f5a5f06c1a5a7fe0236e89f4c3846",
+      "md5": "ac24970b1c476bd9ff66e2100c1d369b",
       "size_mib": 85.4,
       "size_mb": 89.6,
-      "vcs_revision": "34387026b0dc",
-      "vcs_time": "20261020174654",
+      "vcs_revision": "0e693b0c74fb",
+      "vcs_time": "20261021025502",
       "dirty": false,
-      "mod_version": "v1.7.28-0.20261020174654-34387026b0dc"
+      "mod_version": "v1.7.28-0.20261021025502-0e693b0c74fb"
     },
     "exe_mb": 89.6,
     "setup_mb": 20.3
@@ -193,16 +193,16 @@
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89594880,
-      "md5": "502f5a5f06c1a5a7fe0236e89f4c3846",
-      "sha256": "fd05ef8072e9eee91486bfc5b8b5718d357eda9c006938e1eb3a748886037af1"
+      "size_bytes": 89596928,
+      "md5": "ac24970b1c476bd9ff66e2100c1d369b",
+      "sha256": "5e1b03a7f87b1efbe20f875f4607e95908d1d776900f5df1f82af865929e74cc"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
       "present": true,
-      "size_bytes": 20337134,
-      "md5": "be651bcd84742d47edfe7138801f1ae0",
-      "sha256": "ec9faedb06023abba448d6c7b17c7540aad4a45b5e8b27c0eef25ccf857e71b1"
+      "size_bytes": 20330277,
+      "md5": "793067d63ecf338d450461c6d60fff9f",
+      "sha256": "1bab642ccba360b076fd3087cccb119601e325ae2d913278004161b476a1b90e"
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
