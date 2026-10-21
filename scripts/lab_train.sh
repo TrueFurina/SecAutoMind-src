@@ -56,10 +56,10 @@ echo "[env] 靶机就绪: $BASE"
 overall=0
 for r in $(seq 1 "$ROUNDS"); do
   OUT="$TMP/lab_train_round${r}.out"
-  go test -p 1 -count=1 -timeout 300s -run TestLiveSensitiveFileRead -v \
+  go test -p 1 -count=1 -timeout 300s -run 'TestLiveSensitiveFileRead|TestLiveSQLError' -v \
       ./internal/ctfplatform/ > "$OUT" 2>&1
   rc=$?
-  ev=$(grep -c 'kind=lfi_sensitive_file' "$OUT" 2>/dev/null || echo 0)
+  ev=$(grep -c 'kind=' "$OUT" 2>/dev/null || echo 0)
   sigs=$(grep -oE 'signal=[a-z_]+' "$OUT" 2>/dev/null | sed 's/signal=//' | sort -u | paste -sd, -)
   [ -z "$sigs" ] && sigs="-"
   elapsed=$(grep -oE 'elapsed=[0-9.]+[a-zµ]+' "$OUT" 2>/dev/null | head -1 | sed 's/elapsed=//')
@@ -67,7 +67,7 @@ for r in $(seq 1 "$ROUNDS"); do
   if [ "$rc" = "0" ]; then res="PASS"; else res="FAIL(rc=$rc)"; overall=1; fi
 
   echo "[round $r] $res  证据=$ev  信号=$sigs  耗时=$elapsed"
-  grep -E '  #[0-9]+ kind=' "$OUT" 2>/dev/null | sed 's/^ *//' | head -6
+  grep -E '  #[0-9]+ kind=' "$OUT" 2>/dev/null | sed 's/^ *//' | head -8
 
   printf '| %s | %s | %s | %s | %s | %s |\n' \
     "$(date '+%Y-%m-%d %H:%M:%S')" "$r" "$ev" "${sigs:--}" "${elapsed:--}" "$res" >> "$LOG"
