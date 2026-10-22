@@ -1599,24 +1599,40 @@ func tryROT13(text string) []string {
 }
 
 // tryHexDecode Hex 解码后扫 flag。
+// tryHexDecode 从文本中提取 hex 候选 token 逐个解码后扫 flag。
+//
+// 2026-10-22 契约变更（REA #303 / 总账 #10）：原实现要求整段输入为纯 hex
+// （^[0-9a-fA-F]+$），对「自然语言 + 内嵌 hex token」的真实题面恒不命中。
+// 改为提取候选 token（连续 hex 串）逐个解码，使混合题面里的 hex 密文可被解出。
+// 只返回 scanFlags 命中（真 flag）；解码产物非可打印（isPrintableRatio<0.8）
+// 直接丢弃——真 flag 全可打印，此门控滤掉绝大多数巧合命中。
+// 不再返回「Hex解码: ...」诊断串：诊断串 likeness<3，注册表 runner 本就丢弃，
+// 留着只会给结果列表添噪声。契约变更验证见 TestTokenDecodersHitEmbeddedCiphertext
+// （取代原 TestWholeTextOnlyDecodersSkipMixedText）。
 func tryHexDecode(text string) []string {
-	clean := strings.TrimSpace(text)
-	hexRe := regexp.MustCompile(`^[0-9a-fA-F]+$`)
-	if !hexRe.MatchString(clean) || len(clean) < 8 || len(clean)%2 != 0 {
-		return nil
+	hexRe := regexp.MustCompile(`[0-9a-fA-F]{6,}`)
+	var out []string
+	for _, tok := range hexRe.FindAllString(text, -1) {
+		if len(tok) > 4096 {
+			continue
+		}
+		raw := tok
+		if len(raw)%2 != 0 {
+			raw = raw[:len(raw)-1]
+		}
+		if len(raw) < 6 || len(raw)%2 != 0 {
+			continue
+		}
+		decoded, err := hex.DecodeString(raw)
+		if err != nil {
+			continue
+		}
+		if isPrintableRatio(string(decoded)) < 0.8 {
+			continue
+		}
+		out = append(out, scanFlags(string(decoded))...)
 	}
-	decoded, err := hex.DecodeString(clean)
-	if err != nil {
-		return nil
-	}
-	result := string(decoded)
-	if flags := scanFlags(result); len(flags) > 0 {
-		return flags
-	}
-	if isPrintableRatio(result) > 0.8 && len(result) > 3 {
-		return []string{"Hex解码: " + result[:minInt(80, len(result))]}
-	}
-	return nil
+	return out
 }
 
 // tryURLDecode URL 解码后扫 flag。
@@ -1657,100 +1673,100 @@ func urlDecodeOnce(s string) string {
 	return sb.String()
 }
 
-// tryBinaryDecode 二进制字符串解码（01串转 ASCII）。
+// tryBinaryDecode 二进制字符串解码（01 串转 ASCII），支持从混合文本提取。
+//
+// 契约同 REA #303：提取「01 + 空白」整段 run，去空白后按 8 位分组解码。
+// 这样 encBinary 用空格分隔的字节组（"01000110 01001100 ..."）能整段还原成
+// flag，而非每字节单独解（那样永不成 flag 形态）。输出字符限定 [32,127)，
+// 故结果恒可打印，只返回 scanFlags 命中。
 func tryBinaryDecode(text string) []string {
-	clean := strings.TrimSpace(text)
-	// 二进制字符串：仅含 0 和 1，长度为 8 的倍数
-	binRe := regexp.MustCompile(`^[01\s]+$`)
-	if !binRe.MatchString(clean) {
-		return nil
-	}
-	clean = strings.ReplaceAll(clean, " ", "")
-	if len(clean) < 16 || len(clean)%8 != 0 {
-		return nil
-	}
-	var sb strings.Builder
-	for i := 0; i+7 < len(clean); i += 8 {
-		val := 0
-		for j := 0; j < 8; j++ {
-			if clean[i+j] == '1' {
-				val |= 1 << (7 - j)
+	binRe := regexp.MustCompile(`[01\s]+`)
+	var out []string
+	for _, tok := range binRe.FindAllString(text, -1) {
+		clean := strings.ReplaceAll(strings.TrimSpace(tok), " ", "")
+		if len(clean) < 16 || len(clean)%8 != 0 || len(clean) > 32768 {
+			continue
+		}
+		var sb strings.Builder
+		for i := 0; i+7 < len(clean); i += 8 {
+			val := 0
+			for j := 0; j < 8; j++ {
+				if clean[i+j] == '1' {
+					val |= 1 << (7 - j)
+				}
+			}
+			if val >= 32 && val < 127 {
+				sb.WriteByte(byte(val))
 			}
 		}
-		if val >= 32 && val < 127 {
-			sb.WriteByte(byte(val))
-		}
+		out = append(out, scanFlags(sb.String())...)
 	}
-	result := sb.String()
-	if flags := scanFlags(result); len(flags) > 0 {
-		return flags
-	}
-	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
-		return []string{"二进制解码: " + result}
-	}
-	return nil
+	return out
 }
 
-// tryOctalDecode 八进制解码。
+// tryOctalDecode 八进制解码（REA #303）。
+//
+// 提取「0-7 + 空白」整段 run，去空白后按 3 位一组解码（每字节 ≤ 0377）。
+// encOctal 用空格分隔的字节组（"106 102 114 ..."）整段还原成 flag。
+// 输出字符限定 [32,127)，只返回 scanFlags 命中。
 func tryOctalDecode(text string) []string {
-	clean := strings.TrimSpace(text)
-	octRe := regexp.MustCompile(`^[0-7\s]+$`)
-	if !octRe.MatchString(clean) || len(clean) < 6 {
-		return nil
-	}
-	parts := strings.Fields(clean)
-	if len(parts) < 3 {
-		return nil
-	}
-	var sb strings.Builder
-	for _, p := range parts {
-		val := 0
-		for _, c := range p {
-			val = val*8 + int(c-'0')
+	octRe := regexp.MustCompile(`[0-7\s]+`)
+	var out []string
+	for _, tok := range octRe.FindAllString(text, -1) {
+		clean := strings.ReplaceAll(strings.TrimSpace(tok), " ", "")
+		if len(clean) < 3 || len(clean) > 12288 {
+			continue
 		}
-		if val >= 32 && val < 127 {
-			sb.WriteByte(byte(val))
+		var sb strings.Builder
+		for i := 0; i+2 < len(clean); i += 3 {
+			val := 0
+			for _, c := range clean[i : i+3] {
+				val = val*8 + int(c-'0')
+			}
+			if val >= 32 && val < 127 {
+				sb.WriteByte(byte(val))
+			}
 		}
+		out = append(out, scanFlags(sb.String())...)
 	}
-	result := sb.String()
-	if flags := scanFlags(result); len(flags) > 0 {
-		return flags
-	}
-	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
-		return []string{"八进制解码: " + result}
-	}
-	return nil
+	return out
 }
 
-// tryDecimalDecode 十进制 ASCII 解码（空格分隔的十进制数转字符）。
+// tryDecimalDecode 十进制 ASCII 解码（REA #303）。
+//
+// 提取「数字 + 空白」整段 run，按空格分隔的 token 逐个解码为字符（≤ 126）。
+// encDecimal 用空格分隔的字节组（"70 76 65 ..."）整段还原成 flag。
+// 连续无空格的十进制串因歧义（1/2/3 位分组）不解码——与原始「整段纯数字」
+// 契约的精神一致（原始也要求整段可字段切分）。输出字符限定 [32,127)，
+// 只返回 scanFlags 命中。
 func tryDecimalDecode(text string) []string {
-	clean := strings.TrimSpace(text)
-	decRe := regexp.MustCompile(`^[\d\s]+$`)
-	if !decRe.MatchString(clean) || len(clean) < 6 {
-		return nil
-	}
-	parts := strings.Fields(clean)
-	if len(parts) < 3 {
-		return nil
-	}
-	var sb strings.Builder
-	for _, p := range parts {
-		val := 0
-		for _, c := range p {
-			val = val*10 + int(c-'0')
+	decRe := regexp.MustCompile(`[0-9\s]+`)
+	var out []string
+	for _, tok := range decRe.FindAllString(text, -1) {
+		clean := strings.TrimSpace(tok)
+		if clean == "" {
+			continue
 		}
-		if val >= 32 && val < 127 {
-			sb.WriteByte(byte(val))
+		parts := strings.Fields(clean)
+		if len(parts) == 0 {
+			continue
 		}
+		var sb strings.Builder
+		for _, p := range parts {
+			if len(p) > 3 {
+				continue
+			}
+			val := 0
+			for _, c := range p {
+				val = val*10 + int(c-'0')
+			}
+			if val >= 32 && val < 127 {
+				sb.WriteByte(byte(val))
+			}
+		}
+		out = append(out, scanFlags(sb.String())...)
 	}
-	result := sb.String()
-	if flags := scanFlags(result); len(flags) > 0 {
-		return flags
-	}
-	if len(result) > 3 && isPrintableRatio(result) > 0.8 {
-		return []string{"十进制解码: " + result}
-	}
-	return nil
+	return out
 }
 
 // tryReverseText 文本反转解码。

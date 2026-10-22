@@ -195,9 +195,10 @@ func TestClassicalDecodeSolversHitTarget(t *testing.T) {
 }
 
 // hasFlagShape 判断求解器输出里是否含真 flag 外形。
-// 存在必要：Hex/二进制/八进制/十进制/Base64URL 五者在扫不到 flag 时会返回
-// 形如 "Hex解码: ..." 的**诊断文本**——那不是命中，只是过程信息。
-// 不区分二者就会把诊断当成解题能力，门禁形同虚设。
+// 存在必要：这 8 个解码器（hex/二进制/八进制/十进制/url/reverse/piglatin/
+// base64url）在扫不到 flag 时返回 nil（不再返回诊断文本——诊断文本 likeness<3，
+// 注册表 runner 本就丢弃，留着只会添噪声，REA #303 已移除）。故"输出非空"
+// 不等于"命中"，必须检查是否真含 flag 外形，否则门禁形同虚设。
 func hasFlagShape(outs []string) bool {
 	for _, o := range outs {
 		if len(scanFlags(o)) > 0 {
@@ -242,8 +243,8 @@ func TestClassicalDecodeSolversNoFalsePositive(t *testing.T) {
 
 // TestDiagnosticOutputNeverPassesTheHitGate 诊断文本不得被当成命中。
 //
-// 五个解码器在扫不到 flag 时会返回 "Hex解码: ..." 这类诊断。
-// flagLikeness 给这类文本打 1 分（不匹配任何 flag 正则），
+// 各解码器（含未接线的关键词命中器）在扫不到 flag 时可能返回 "Hex解码: ..."
+// 这类诊断文本。flagLikeness 给这类文本打 1 分（不匹配任何 flag 正则），
 // 低于 minFlagLikenessForHit=3，故会被 sweep 丢弃。
 // 本用例把这个推理**机验**，而不是靠读代码相信它——
 // 一旦有人给诊断文本加了 flag 外形（比如把 "FLAG{...}" 拼进去），
@@ -331,21 +332,43 @@ func TestVigenereDecodeIsStructurallyUnhittable(t *testing.T) {
 	}
 }
 
-// ── 门禁 ④：诚实披露已知局限（不粉饰，也不假装它不存在）─────────────
+// TestTokenDecodersHitEmbeddedCiphertext 正向验证 REA #303（总账 #10）契约变更：
+// hex/二进制/八进制/十进制 现在从「自然语言 + 内嵌密文 token」的混合题面里
+// 提取 token 并解出 flag，而不再要求整段纯密文。
+//
+// 反向回归：原 TestWholeTextOnlyDecodersSkipMixedText 锁的正是「整段才命中」的
+// 旧契约——契约已改，故该用例被本正向用例 + TestTokenDecodersNoFalsePositiveOnBenignMixed 取代。
+func TestTokenDecodersHitEmbeddedCiphertext(t *testing.T) {
+	cases := []struct {
+		name   string
+		mixed  string
+		solver ContextSolverFunc
+	}{
+		{"hex", "Decode this message: " + encHex("FLAG{hexdecoded}") + " and send the result back.", solveHexDecode},
+		{"binary", "The payload is " + encBinary("FLAG{binarydecoded}") + " transmitted over the wire.", solveBinaryDecode},
+		{"octal", "Stored as " + encOctal("FLAG{octaldecoded}") + " in the old format.", solveOctalDecode},
+		{"decimal", "Coordinates " + encDecimal("FLAG{decimaldecoded}") + " mark the spot.", solveDecimalDecode},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := c.solver(context.Background(), c.mixed, nil)
+			if !hasFlagShape(got) {
+				t.Fatalf("%s 未能从混合题面解出内嵌密文：题面=%q 返回=%v",
+					c.name, c.mixed, got)
+			}
+		})
+	}
+}
 
-// TestWholeTextOnlyDecodersSkipMixedText 记录一条**已知局限**，不是失败。
-//
-// hex / 二进制 / 八进制 / 十进制 四个解码器都要求「整段输入是纯密文」
-// （各自的输入正则以 ^...$ 锚定）。而真实 CTF 题面是自然语言与密文的
-// 混合体，密文只是其中的一个 token。因此这四个求解器在真实题面上
-// 命中率恒为 0——它们只在「题面恰好就是一整段密文」时才工作。
-//
-// 这个断言不是为了夸它们，恰恰是为了防止有人误以为接线 9 个就获得
-// 9 份能力。若将来有人把契约改成「先提取候选 token 再解码」，
-// 本测试会转红——那正是设计意图：契约变了，文档与台账必须同步更新。
-func TestWholeTextOnlyDecodersSkipMixedText(t *testing.T) {
-	// 典型真实题面：自然语言 + 内嵌密文 token
-	mixed := "The secret message is 48656c6c6f20576f726c64 please decode it to find the flag."
+// TestTokenDecodersNoFalsePositiveOnBenignMixed 负向验证：混合题面里没有密文
+// token 时，4 个解码器必须保持沉默（不得从普通英文/数字里凑出 flag 外形）。
+func TestTokenDecodersNoFalsePositiveOnBenignMixed(t *testing.T) {
+	benign := []string{
+		"The secret message is 48656c6c6f20576f726c64 please decode it to find the flag.",
+		"The binary is 0101 and the octal 1234 with decimal 5678 in the log.",
+		"In 2021 we observed 3 nodes sending 45 packets each over 12 hops.",
+		"Room 404 held 2 files; version 1 2 3 4 shipped on 2024-09-30.",
+	}
 	cases := map[string]ContextSolverFunc{
 		"hex":     solveHexDecode,
 		"binary":  solveBinaryDecode,
@@ -353,15 +376,12 @@ func TestWholeTextOnlyDecodersSkipMixedText(t *testing.T) {
 		"decimal": solveDecimalDecode,
 	}
 	for name, fn := range cases {
-		got := fn(context.Background(), mixed, nil)
-		if hasFlagShape(got) {
-			t.Errorf("%s 对混合文本产出 flag 外形（契约若已改为提取 token，"+
-				"请同步更新本用例与 docs 说明）：%v", name, got)
+		for _, b := range benign {
+			if got := fn(context.Background(), b, nil); hasFlagShape(got) {
+				t.Errorf("%s 对普通混合文本误报：输入=%q 返回=%v", name, b, got)
+			}
 		}
 	}
-	t.Logf("已知局限：hex/二进制/八进制/十进制 要求整段输入为纯密文，" +
-		"对「自然语言+内嵌 token」的真实题面恒不命中。" +
-		"改进方向=先从题面提取候选 token 再逐个解码（会改变行为，需 USER 拍板）。")
 }
 
 // TestWiredSolversHaveCapabilityProof 能力证明表门禁（REA #299）。

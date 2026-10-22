@@ -1036,10 +1036,15 @@ func solveBase64URLSafe(ctx context.Context, text string, attachments map[string
 // Priority 取 140-148（未占用区间）：sweep 已并发全量执行，Priority 仅用于
 // 并列命中时的裁决，不去挤占既有求解器的既有次序。
 //
-// ⚠️ 已知局限（接线不等于获得能力，勿高估）：hex / 二进制 / 八进制 / 十进制
-// 四个要求「整段输入是纯密文」，对「自然语言 + 内嵌密文 token」的真实题面
-// 恒不命中。见 TestWholeTextOnlyDecodersSkipMixedText 的实测记录。
-// 改进方向是先提取候选 token 再逐个解码——会改变行为，需 USER 拍板。
+// ⚠️ 已知局限（接线不等于获得能力，勿高估）——已于 REA #303 / 总账 #10 消除：
+// hex / 二进制 / 八进制 / 十进制 四个原本要求「整段输入是纯密文」，对「自然语言
+// + 内嵌密文 token」的真实题面恒不命中。现改为「提取候选 token 再逐个解码」
+// （见 tryHexDecode/tryBinaryDecode/tryOctalDecode/tryDecimalDecode 的 REA #303
+// 注释），混合题面里的密文 token 可被解出。约束：十进制只解码**空格分隔**的
+// token（连续无空格十进制串因 1/2/3 位分组歧义不解码）；hex 解码产物非可打印
+// （isPrintableRatio<0.8）直接丢弃，滤掉巧合命中。负向由
+// TestTokenDecodersNoFalsePositiveOnBenignMixed 机验，外基准由
+// TestExternalBench_NoPlaceholderShortCircuit 机验。
 func init() {
 	RegisterSolver(SolverEntry{Name: "encoding_hex", Category: CategoryMiscS, Priority: 141, Solver: solveHexDecode})
 	RegisterSolver(SolverEntry{Name: "encoding_url", Category: CategoryMiscS, Priority: 142, Solver: solveURLDecode})
