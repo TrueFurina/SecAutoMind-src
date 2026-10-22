@@ -165,7 +165,6 @@ func TestClassicalDecodeSolversHitTarget(t *testing.T) {
 		enc    func(string) string
 		solver ContextSolverFunc
 	}{
-		{"atbash", "FLAG{atbashdecoded}", encAtbash, solveAtbashDecode},
 		{"hex", "FLAG{hexdecoded}", encHex, solveHexDecode},
 		{"url", "FLAG{urldecoded}", encPercent, solveURLDecode},
 		{"binary", "FLAG{binarydecoded}", encBinary, solveBinaryDecode},
@@ -216,7 +215,6 @@ func hasFlagShape(outs []string) bool {
 // 整道题走向错误的方向。故接线前必须先证明它们对普通文本保持沉默。
 func TestClassicalDecodeSolversNoFalsePositive(t *testing.T) {
 	solvers := map[string]ContextSolverFunc{
-		"atbash":    solveAtbashDecode,
 		"hex":       solveHexDecode,
 		"url":       solveURLDecode,
 		"binary":    solveBinaryDecode,
@@ -376,9 +374,9 @@ func TestWholeTextOnlyDecodersSkipMixedText(t *testing.T) {
 // 所以本门禁要求：凡进入本表的求解器，必须有本文件里的正向用例作证。
 // 这是「注册即需举证」的闸门，防止把未验证的东西接进生产链路。
 func TestWiredSolversHaveCapabilityProof(t *testing.T) {
-	// 本次接线的 9 个：每个都必须能在 proved 里找到名字。
+	// 本次接线的 8 个：每个都必须能在 proved 里找到名字。
+	// （classical_atbash 因 REA #302 解接线，不在此列；见 TestUnwiredSolversRemainUnwired）
 	wired := []string{
-		"classical_atbash",
 		"encoding_hex",
 		"encoding_url",
 		"encoding_binary",
@@ -390,7 +388,6 @@ func TestWiredSolversHaveCapabilityProof(t *testing.T) {
 	}
 	// 有正向用例作证的能力（对应 TestClassicalDecodeSolversHitTarget 的子用例名）
 	proved := map[string]bool{
-		"classical_atbash":   true,
 		"encoding_hex":       true,
 		"encoding_url":       true,
 		"encoding_binary":    true,
@@ -450,6 +447,10 @@ func TestUnwiredSolversRemainUnwired(t *testing.T) {
 			"永远凑不出 xxx{...}）——接线只会白跑 9 次密钥猜测", "solveVigenereDecode"},
 		{solveROT13, "已被在册的 caesar（shift 1..25，含 13）完全覆盖——" +
 			"注册被覆盖项是注水，不是补能力", "solveROT13"},
+		{solveAtbashDecode, "atbash 是双射，对题面里已呈 flag 外形的诱饵（如 \"CTF{fzlg}\"）" +
+			"做 atbash 得另一个 flag 外形 \"XGU{uozt}\"，无法靠形状区分诱饵变换与真解码" +
+			"（REA #302，属「不可拒」性质）——外部基准 2 例假阳性会短路 Agent 回假答案，" +
+			"故解接线；单密文输入仍有解能力，但整段混合题面管线里是假阳性发生器", "solveAtbashDecode"},
 	}
 	for _, s := range GetSolvers() {
 		if s.Solver == nil {
@@ -493,5 +494,48 @@ func TestPigLatinDecodeIsInverseOfEncode(t *testing.T) {
 		if got[0] != plain {
 			t.Fatalf("PigLatin 解码方向错误：%q 解成 %q，期望 %q", enc, got[0], plain)
 		}
+	}
+}
+
+// TestPigLatinSkipsCodeBlockWithoutAyWords 锁死 REA #301 的负向修复。
+//
+// 外部基准里 tiramisu / least-common-genominator / zip 三题的附件是 Go/Python
+// 代码块，含 {…}。原生 piglatin 解码对整段题面做变换，代码块里的 {…} 原样
+// 保留被 scanFlags 当 flag 命中 → 假阳性。修复后 piglatin 只在「输入确有以
+// ay 结尾的词」（真·猪拉丁密文）时才产出结论；代码块不含 ay 词，必须静默。
+//
+// 这条用例在本地（无附件）也能复现机制，不依赖外部基准数据。
+func TestPigLatinSkipsCodeBlockWithoutAyWords(t *testing.T) {
+	blocks := []string{
+		// Go 代码块（tiramisu 形态）
+		"EcdhKey_CurveID { p := new(EcdhKey_CurveID) *p = x return p }",
+		// Python assert（least-common-genominator / zip 形态）
+		"CTF{\") assert config.flag.endswith(b\"}",
+		"CTF{\" assert flag[-1:] == \"}",
+	}
+	for _, b := range blocks {
+		if got := solvePigLatin(context.Background(), b, nil); hasFlagShape(got) {
+			t.Errorf("piglatin 对不含 ay 词的代码块误报：输入=%q 输出=%v", b, got)
+		}
+	}
+	// 混合题面（zip 真实触发路径）：无关 ay 词（display/payload）+ 代码块 {…}。
+	// 仅靠 decodedAny 判据会漏（display 含 ay → decodedAny 置真），必须靠
+	// verbatim 比对原文是否逐字包含候选来拦截透传的代码块。
+	mixed := "please display the payload and CTF{\" assert flag[-1:] == \"} to verify"
+	if got := solvePigLatin(context.Background(), mixed, nil); hasFlagShape(got) {
+		t.Errorf("piglatin 对含 ay 词的混合题面误报（透传代码块）：输入=%q 输出=%v", mixed, got)
+	}
+}
+
+// TestAtbashDecodeCapabilityRetainedThoughUnwired 证明 REA #302 的解接线
+// 不丢能力证据：solveAtbashDecode 对「单密文输入」仍能解出目标 flag。
+// 它只是不进生产注册表（整段混合题面里是假阳性发生器），单密文路径仍成立。
+// 与 TestROT13IsSubsumedByCaesar 对称——被裁定不接线的求解器，能力也要有
+// 机验兜底，不能只靠注释声称。
+func TestAtbashDecodeCapabilityRetainedThoughUnwired(t *testing.T) {
+	plain := "FLAG{atbashdecoded}"
+	cipher := encAtbash(plain)
+	if got := solveAtbashDecode(context.Background(), cipher, nil); !hasFlagShape(got) {
+		t.Fatalf("atbash 单密文能力退化：明文=%q 密文=%q 返回=%v", plain, cipher, got)
 	}
 }

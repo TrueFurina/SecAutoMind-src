@@ -1003,8 +1003,34 @@ func solveBase64URLSafe(ctx context.Context, text string, attachments map[string
 //     完全覆盖。注册被覆盖项不是补能力，是注水。
 //     证明：TestROT13IsSubsumedByCaesar。
 //
-// 其余 9 个逐个过能力门禁（internal/ctfplatform/solver_classical_decode_test.go）：
-// 正向能解出目标 flag、负向对普通文本不误报、且未被既有求解器覆盖。
+//   - solveAtbashDecode **不注册**（REA #302）：atbash 是双射，对题面里
+//     已呈 flag 外形的诱饵（如附件里的 "CTF{fzlg}"）做 atbash 会得到另一个
+//     flag 外形 "XGU{uozt}"，无法靠输入形状区分「诱饵变换」与「真解码」——
+//     属「不可拒」性质，与 externalBenchKnownFalsePositive 里已登记的两例
+//     同构。外部基准实测 2 例假阳性（bpfbox / numerology）会短路 Agent 回
+//     假答案。合法 atbash 密文（"UZOT{zgszihwvwxvw}" 类）也呈 flag 外形，
+//     任何「跳过已呈 flag 外形的输入」的判据都会连它一起误杀，故形状判据
+//     无解。它作为**单密文输入**确有解能力（TestClassicalDecodeSolversHitTarget
+//     作证），但在「整段混合题面」管线里是假阳性发生器，故裁定不接进生产链路。
+//     与 ROT13 / solveVigenereDecode 同处理（blocked_by），由
+//     TestUnwiredSolversRemainUnwired 在注册表层面机验。若将来要先提取候选
+//     token 再逐个解码、并对 atbash 加「跳过已知 flag 前缀诱饵」的判据，
+//     可重新评估接线——属行为变更，需 USER 拍板。
+//
+//   - solvePigLatin（classical_piglatin）**注册**，但带负向判据（REA #301）：
+//     piglatin 解码对整段题面（含附件代码块）做变换时，代码块里的 {…} 会
+//     原样保留被 scanFlags 当 flag 命中 → 外部基准 3 例假阳性（tiramisu /
+//     least-common-genominator / zip）。修复=两层：① token 化，只在「字母+
+//     空格+花括号、不含代码标点/数字」的密文形态片段上解码（代码块因含
+//     ()=*:[]". 被切分，不会形成完整 {…}）；② 只接受「真被解码出来」的 flag，
+//     候选若在原文空白归一化后逐字出现（透传的诱饵/代码块）则丢弃。合法
+//     piglatin（"agflay" 解码成 "flag"，输出与输入不同→非透传）不受影响。
+//     接线前由 TestClassicalDecodeSolversHitTarget 正向作证，负向由
+//     TestPigLatinSkipsCodeBlockWithoutAyWords 机验。
+//
+// 其余 7 个（hex/url/binary/octal/decimal/reverse/base64url）逐个过能力门禁
+// （internal/ctfplatform/solver_classical_decode_test.go）：正向能解出目标
+// flag、负向对普通文本不误报、且未被既有求解器覆盖。
 // **能力未验证就不接进生产链路**——接线是运行时行为变更，不是代码整理。
 //
 // Priority 取 140-148（未占用区间）：sweep 已并发全量执行，Priority 仅用于
@@ -1015,7 +1041,6 @@ func solveBase64URLSafe(ctx context.Context, text string, attachments map[string
 // 恒不命中。见 TestWholeTextOnlyDecodersSkipMixedText 的实测记录。
 // 改进方向是先提取候选 token 再逐个解码——会改变行为，需 USER 拍板。
 func init() {
-	RegisterSolver(SolverEntry{Name: "classical_atbash", Category: CategoryCryptoS, Priority: 140, Solver: solveAtbashDecode})
 	RegisterSolver(SolverEntry{Name: "encoding_hex", Category: CategoryMiscS, Priority: 141, Solver: solveHexDecode})
 	RegisterSolver(SolverEntry{Name: "encoding_url", Category: CategoryMiscS, Priority: 142, Solver: solveURLDecode})
 	RegisterSolver(SolverEntry{Name: "encoding_binary", Category: CategoryMiscS, Priority: 143, Solver: solveBinaryDecode})

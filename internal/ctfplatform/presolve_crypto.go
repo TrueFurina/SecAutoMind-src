@@ -1770,10 +1770,17 @@ func tryReverseText(text string) []string {
 	return nil
 }
 
+// pigLatinRunRe 提取 piglatin 候选片段：纯字母 + 空格 + 花括号，
+// 不含代码标点/数字。2026-10-22 负向门禁修复（REA #301）：原生实现对整段
+// 题面（含附件代码块）做变换，代码块里的 {…} 原样保留被 scanFlags 当 flag
+// 命中 → 外部基准 3 例假阳性。改为只在「密文形态」片段上解码（代码块因含
+// ( ) = * : " [ ] . 等被切分，不会形成完整 {…}），与 hex 家族「纯密文正则」
+// 同纪律：自然语言+代码混合题面恒不命中。
+var pigLatinRunRe = regexp.MustCompile(`[A-Za-z{} ]{6,}`)
+
 // tryPigLatin Pig Latin 解码（ay 后缀移除）。
 func tryPigLatin(text string) []string {
-	clean := strings.TrimSpace(text)
-	if len(clean) < 6 {
+	if len(strings.TrimSpace(text)) < 6 {
 		return nil
 	}
 	// 简单 Pig Latin 解码。
@@ -1784,20 +1791,41 @@ func tryPigLatin(text string) []string {
 	// 其逆：去掉 ay 后把**末字母**移到最前（agfl → flag）。
 	// 用错方向会把 "agflay" 解成 "gfla"，flag 永远扫不出来。
 	// 修前后差异由 TestPigLatinDecodeIsInverseOfEncode 机验锁死。
-	words := strings.Fields(clean)
-	var decoded []string
-	for _, w := range words {
-		lower := strings.ToLower(w)
-		if strings.HasSuffix(lower, "ay") && len(lower) > 3 {
-			core := lower[:len(lower)-2]
-			decoded = append(decoded, string(core[len(core)-1])+core[:len(core)-1])
-		} else {
-			decoded = append(decoded, w)
+	//
+	// ⚠️ 2026-10-22 负向门禁修复（REA #301）：只在密文形态片段上解码，且
+	// 只接受「真被解码出来」的 flag（候选若在原文空白归一化后逐字出现，说明
+	// 是透传的诱饵/代码块，丢弃）。token 化切分代码块 + verbatim 归一化判据
+	// 双保险，消除外部基准 3 例假阳性（tiramisu / least-common-genominator /
+	// zip）；合法 piglatin（"agflay" 解码成 "flag"，输出与输入不同→非透传）
+	// 不受影响。
+	norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	for _, run := range pigLatinRunRe.FindAllString(text, -1) {
+		clean := strings.TrimSpace(run)
+		if len(clean) < 6 {
+			continue
 		}
-	}
-	result := strings.Join(decoded, " ")
-	if flags := scanFlags(result); len(flags) > 0 {
-		return flags
+		words := strings.Fields(clean)
+		var decoded []string
+		for _, w := range words {
+			lower := strings.ToLower(w)
+			if strings.HasSuffix(lower, "ay") && len(lower) > 3 {
+				core := lower[:len(lower)-2]
+				decoded = append(decoded, string(core[len(core)-1])+core[:len(core)-1])
+			} else {
+				decoded = append(decoded, w)
+			}
+		}
+		result := strings.Join(decoded, " ")
+		cands := scanFlags(result)
+		if len(cands) == 0 {
+			continue
+		}
+		for _, f := range cands {
+			if strings.Contains(norm(text), norm(f)) {
+				continue // 透传诱饵/代码块，非解码产物
+			}
+			return []string{f}
+		}
 	}
 	return nil
 }
