@@ -41,6 +41,8 @@
 #   bash scripts/clean_checkout_gate_sim.sh --list    # 只列将要跑的命令，不执行（验证抽取+解析）
 #   bash scripts/clean_checkout_gate_sim.sh --go      # 追加 go 步骤（build + 演练台）
 #   bash scripts/clean_checkout_gate_sim.sh --full    # 追加整包 go test -p 1（数分钟~十余分钟）
+#       注：归档不含 gitignored 的 data/，本脚本会从工作树补入（约 22MB），
+#       否则 ctfplatform 的 exec/cross-bench 用例会因缺夹具结构性假红（2026-10-22 实测）。
 #   bash scripts/clean_checkout_gate_sim.sh --preflight  # 追加决赛预检（--phase pre）
 #
 # 退出码：0 = 仿真全绿；1 = 有失败；2 = 抽取/环境准备失败（fail-closed）。
@@ -104,6 +106,14 @@ echo "    抽取完成（$(find "$OUT" -type f | wc -l) 个文件，纯 LF）"
 # 仅覆盖 scripts/；数据类文件（golden/evidence 等 autocrlf 敏感项）仍取自纯 LF 归档。
 cp -r "$REPO_ROOT/scripts/." "$OUT/scripts/" 2>/dev/null \
   || echo "    [warn] 覆盖 scripts/ 失败，沿用归档版本（门禁修复可能未生效）"
+
+# 补入 gitignored 的 data/ 夹具：git archive 只含受跟踪文件，而 `go test ./internal/ctfplatform/`
+# 的 exec / cross-bench / suite-parity 用例要读 data/ctf_benchmark/ 下的附件与题目。
+# 缺了会报「读取附件 exec_git_repo 失败 … 执行基准集(文件型)命中 13/15，期望全命中」——
+# 这是**结构性假红**（2026-10-22 实测），不是代码回归。data/ 约 22MB，复制成本可忽略；
+# 只读不改，且 count_stats 已按目录名排除 data/questions_*_bench/，不会污染口径数字。
+cp -r "$REPO_ROOT/data/." "$OUT/data/" 2>/dev/null \
+  || echo "    [warn] 补入 data/ 失败，--go/--full 的 ctfplatform 用例可能结构性假红"
 
 # ---- 在干净检出里跑门禁 -----------------------------------------------------
 cd "$OUT" || { echo "[FAIL] 无法 cd 到 $OUT" >&2; exit 2; }
