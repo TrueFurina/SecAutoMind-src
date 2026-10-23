@@ -313,6 +313,17 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 11-b 跨原语递归解码链（2026-10-23 能力提升）：多层编码/加密复合链
+	// （八进制→Vigenère / A·B摩斯→单表 / base64→ROT13 等）。静态题最高频类型，
+	// 深度≤8、层间可读性门槛、只收 flag 形态，低误报。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryCodingChain(text, attachments); len(flags) > 0 {
+			chResult <- result{"coding_chain", flags}
+		}
+	}()
+
 	// 注册表全量扫描（与快速路径并发启动）：确保「对外宣称的 N 个注册求解器」
 	// 在生产链路真的被跑到，而不是只有硬编码快速路径那 25 个。
 	chSweep := make(chan result, 1)
