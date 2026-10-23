@@ -453,9 +453,19 @@ go test ./internal/app/ -run TestTmpEmbedWhichSettingsJS   # 证伪：读嵌入�
 ## 8. 未验证项（如实标注）
 
 1. ~~前端是否已有工具详情面板~~ → **已核清**：真正运行时前端是 `internal/app/web/static/js/`（`go:embed` 进二进制），**不是** `web/templates/index.html`；且前端请求的是 `/api/config/tools`（`GetTools`），**不是** `/api/config`（`GetConfig`）。已按真实链路接线，并补了 HTTP 往返验证。
-2. `plugins/` 目录的加载发现机制 —— **仍未查**，不清楚 burp 插件如何被运行时识别。
-3. 运行时连接器密钥的落盘方式（对照 WorkBuddy 的 `~/.workbuddy-key-fallback/connector-keys`）—— **仍未查**。
-   `secret_guard.py` 管的是交付包，管不到运行期。
+2. ~~`plugins/` 目录的加载发现机制~~ → **已核清（2026-10-24）**：**没有运行时加载机制，也不需要**。
+   Go 侧对 `plugins/` **零引用**（`grep -rn "plugins/" --include=*.go internal/ cmd/` 无命中）。
+   它是**手工安装的客户端产物**目录：Burp 扩展（`build-mvn.sh` → jar，装进 Burp）与浏览器扩展
+   （`chrome://extensions` → Load unpacked）。两者都以 HTTP + 令牌回连本服务 ——
+   属"客户端"，不是"插件宿主"。因此不存在"burp 插件如何被运行时识别"这个问题。
+3. ~~运行时连接器密钥的落盘方式~~ → **已核清（2026-10-24）**：**明文写 `config.yaml`，无加密**。
+   `internal/handler/config_yaml.go:saveConfig()` 先把现有文件复制成 `config.yaml.backup`，
+   再逐节把 `api_key` 写回 YAML，最后 `os.WriteFile(path, buf.Bytes(), 0644)`（该文件第 143 行）。
+   即：无 keyring、无加密；FOFA / ZoomEye / Quake / Shodan / AI 的 key 与 `.backup` 副本同为 **0644**。
+   `secret_guard.py` 只管交付包，管不到运行期 —— 与 WorkBuddy 的 `~/.workbuddy-key-fallback/connector-keys`
+   相比，本项目暴露面是「配置文件权限」。
+   **建议（未做）**：把落盘权限由 `0644` 收紧为 `0600`。本次不改：动 `.go` 会触发交付二进制重建，
+   开赛前不动代码，已记入待办。
 4. `trust` 三档的判定标准 —— **已定义**（§3.6 字段语义表）；当前 90/90 为 `builtin`，尚无 `verified`。
 5. **全量测试未跑**。按实验服务器规则，涉及全库的测试应在 `172.16.222.99`（Go 1.25.4）执行；本机仅跑了 config / handler / app 三包。
 6. ~~前端徽章无视觉回归验证~~ → **已闭环（2026-10-18 第六轮）**：用 Playwright 加载真实 `auth.js`+`settings.js`+`style.css` 在真实 Chromium（`chromium_headless_shell-1243`）里按 `renderToolsList` 的 DOM 模板渲染 6 个样本工具（ffuf/nmap/exec/dnsenum/gdb/burp-ext），断言三种新徽章的计算样式。实测全部正确——lic-badge 绿 `rgb(76,175,80)`、lic-unverified 灰 `rgb(158,158,158)`、upstream-link 蓝 `rgb(0,102,255)`；nmap 长许可证截断为「Nmap Public Sou…」且 title 留全文「已核实许可证：Nmap Public Source License」；深色主题下三色均在场可读。唯一 console 报错是 harness 的 `file://` fetch 警告（无害，非 JS 错误）。
