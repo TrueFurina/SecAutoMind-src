@@ -418,10 +418,17 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// CTF presolve 钩子：在 Agent 推理前先跑确定性预解层（0 token），命中则跳过 Agent。
 	ctfPresolve := ctfplatform.NewPresolver(log.Logger)
 	ctfAnalyzer := ctfplatform.NewTaskAnalyzer()
-	// 接线平台层：构造真实 DasCTFPlatform（baseURL/token 仅从环境变量读取——
-	// DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN，绝不硬编码），
-	// 取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
-	ctfPlatform := ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	// 接线平台层：构造真实平台客户端（baseURL/token 仅从环境变量读取——
+	// DASCTF: DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN；
+	// CTF²: CTF2_BASE_URL / CTF2_AGENT_TOKEN，二者均设置时优先用 CTF²——
+	// 绝不硬编码），取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
+	// 平台选择：CTF²（1024 快闪赛等新赛事）配置齐全时优先；否则回退 DASCTF（挑战杯）。
+	var ctfPlatform ctfplatform.PlatformClient
+	if ctfplatform.CTF2Configured() {
+		ctfPlatform = ctfplatform.NewCTF2Platform("", "", log.Logger)
+	} else {
+		ctfPlatform = ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	}
 	// 抗打击治理配置面（总纲 §2.4）：config.yaml 的 ctf_platform 段 → 客户端。
 	// 不配置即 7 项全开，与接线前逐字节一致；enabled: false（或 env
 	// CTF_AGENT_ANTI_BLOCK=0）一键回退为朴素直连。
