@@ -149,6 +149,7 @@ def main():
     case("T6 config.yaml 排除 / .env.example 例外", t6_config_rules)
     case("T7 Setup 版本同源规则", t7_setup_versions)
     case("T8 变异：摘掉条目后必须泄漏", t8_mutation)
+    case("T9 可再生扫描产物 scans/ 被排除", lambda: _expect("scans/sc_v5.json", True))
 
     failed = [n for n, ok, _ in _results if not ok]
     print("-" * 70)

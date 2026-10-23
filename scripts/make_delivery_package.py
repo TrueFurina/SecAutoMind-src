@@ -79,6 +79,10 @@ EXCLUDE_DIRS = {
     # → 下次重打包会把会话记忆连同凭证一起发给评委。
     # 该目录同时是 git 未跟踪状态，本就不属于「仓库交付面」。
     "data", "data_backup_boot", "data_backup_boot2",
+    # `scans/`（2026-10-24 补）：staticcheck 等静态扫描的**临时产物**，`.gitignore`
+    # 已注明「每次重跑都会变，入仓只会污染 diff」。它不属于交付面：
+    # 接收方拿到的是一堆过期扫描快照，既不能复现结论、又容易被误当成"当前基线"。
+    "scans",
     "logs", "chat_uploads", "tmp", "temp", "work",
     "__pycache__", ".pytest_cache", "node_modules", "venv", ".venv",
     "dist", "build", ".build", "target", ".gradle",
