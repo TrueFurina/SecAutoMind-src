@@ -55,6 +55,13 @@ func loadRealBenchmark(t *testing.T) map[string]realBenchProblem {
 
 // runRealBenchmark 对全部真题跑指定 presolve 函数，返回 (命中数, 总数, 详情)。
 func runRealBenchmark(t *testing.T, fn func(*Challenge) *PresolveResult) (hits int, total int, detail []string) {
+	// 🔴 关掉西湖论剑 Python 兜底：本 helper 的所有用例都在测「Go 预解路径的覆盖率」，
+	// 而兜底是**另一条机制**（起 runner.py 子进程，光加载 79 个 skill 模块就 9.7s/次）。
+	// 2026-10-23 实测：不关的话 55 题 × 2 条路径 × 10s ≫ 600s，两个基准用例双双超时；
+	// 而且兜底若解出题会污染「Go 路径覆盖率」这个口径（数字不再对应它声称的东西）。
+	// 兜底通道自身有独立用例：presolve_python_test.go 6 例（含 Vigenère 端到端）。
+	t.Setenv(envPythonFallback, "0")
+
 	probs := loadRealBenchmark(t)
 	total = len(probs)
 	ids := make([]string, 0, total)
@@ -168,6 +175,8 @@ func TestBenchParityGapDetection(t *testing.T) {
 //   接线缺口，需人工裁决；三路（Go×2 + Python 镜像）完整 parity 见
 //   scripts/check_benchmark_parity.py。
 func TestRealBenchmark_RegistryPresolve(t *testing.T) {
+	// 注：Python 兜底由 runRealBenchmark 统一关闭（理由见那里的注释）——本用例测的是
+	// **注册表口径**，兜底通道不得混入，也不该让 55 题各付 10s 子进程成本。
 	pr := NewPresolver(nil)
 	hits, total, detail := runRealBenchmark(t, func(ch *Challenge) *PresolveResult {
 		return pr.PresolveWithRegistry(context.Background(), ch, nil)
