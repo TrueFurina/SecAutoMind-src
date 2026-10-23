@@ -1,0 +1,16 @@
+{
+  "problems": {
+    "xss_reflected": {
+      "category": "web",
+      "flag_sha256": "d9ccc3f3b415a8625476e080e88c4afadebcf4f9882310284ed4b6cb68f6e8b1"
+    },
+    "xss_stored": {
+      "category": "web",
+      "flag_sha256": "b26f122bedfa035138b30315ef1844fae0c3b5613363dd9f5dd97f2d39dc210b"
+    },
+    "xss_to_sqli": {
+      "category": "web",
+      "flag_sha256": "1343c6051a94ef3edd8030ba08f992a9ddd0389f61aaceac05f2e75376e97fe5"
+    }
+  }
+}

@@ -431,6 +431,9 @@ jobs:
       # 门禁自身也要有回归测试：证明基准集达标判定真能杀死退化，而不是恒 PASS/恒 FAIL
       - name: Benchmark baseline gate self-test (prove it can fail)
         run: python scripts/check_benchmark_baseline_test.py
+      # XSS 基准集自测（2026-10-23）：回归 3/3 + 变异 --safe 必须 0/3（证明判题器非空洞绿）
+      - name: XSS benchmark self-test (regression + mutation)
+        run: python scripts/check_xss_benchmark_test.py
 
   caliber-gate:
     runs-on: ubuntu-latest
