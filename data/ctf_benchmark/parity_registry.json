@@ -327,10 +327,12 @@
       "key": "xss",
       "benchmark": "xss_benchmark.json",
       "python_judge": "judge_xss.py",
-      "go_tests": [],
-      "parity": "unwired",
-      "wired_by": "",
-      "note": "Go 侧 XSS 外带引擎待接线（web_exploit.go 尚未覆盖反射/存储 XSS 链）；Python 侧 judge_xss.py 已 3/3 机验。浏览器执行用最小 JS 子集模拟（非真实浏览器），见 live_target/xss_range.py 诚实边界。"
+      "go_tests": ["TestXSSSuiteParityAgainstBenchmark"],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "两侧逐题机验一致（3/3）。Go 侧 xss_exploit.go（攻击链）+ 测试内 httptest 原生靶机（含管理员 bot 与最小 JS 子集执行器，只认 fetch / new Image().src / location 三类外带写法）。反注水三条：① safe 变异（回显/留言转义）后三场景必须全部打不通；② 干净页面不得产生外带；③ 不带会话打 /admin/panel 必须 403。诚实边界：浏览器执行为最小 JS 子集模拟（非真实浏览器），不覆盖 DOM 型/ CSP 绕过。"
     },
     {
       "id": 24,
