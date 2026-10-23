@@ -2,23 +2,26 @@ package config
 
 import "testing"
 
-// TestToolsMetadataConsistency 对受版本控制的 89 个工具配方做元数据一致性断言。
+// TestToolsMetadataConsistency 对受版本控制的 90 个工具配方做元数据一致性断言。
 //
 // 这里刻意不断言具体覆盖率数字（每次核实上游许可证都会变），
 // 只断言不变量：已核实许可证的工具必须同时标注 source=upstream 与 upstream 仓库，
 // 否则就会造出"有许可证却无来源"的死数据。
 //
-// ⚠️ 89 vs 对外口径 90 的差异是**既有设计**，不是笔误：
+// ⚠️ 90 vs 对外口径 91 的差异是**既有设计**，不是笔误：
 // `scripts/count_stats.py` 的 tools_yaml 把 tools/_shared_args.yaml（YAML anchor 锚点文件，
-// 无 name/command）也计入，故对外报 90；本测试断言的是**真实可加载配方**数。
-// 2026-10-18 删除幻影条目 tools/lightx.yaml 后：对外 91->90，真实配方 90->89。
+// 无 name/command）也计入（它同时排除 tools/risk_policy.yaml），故对外报 91；
+// 本测试断言的是**真实可加载配方**数（= 92 个 yaml − risk_policy − _shared_args）。
+// 变更史：2026-10-18 删 tools/lightx.yaml（对外 91->90，配方 90->89）；
+//         2026-10-24 增 tools/bkcrack.yaml（对外 90->91，配方 89->90）。
+// 下次增删 tools/*.yaml 时本数字与 AGENTS.md 第二条的分解式需同步更新。
 func TestToolsMetadataConsistency(t *testing.T) {
 	tools, err := LoadToolsFromDir("../../tools")
 	if err != nil {
 		t.Fatalf("LoadToolsFromDir: %v", err)
 	}
-	if len(tools) != 89 {
-		t.Fatalf("工具配方数量应为 89，实际 %d（是否增删了 tools/*.yaml？）", len(tools))
+	if len(tools) != 90 {
+		t.Fatalf("工具配方数量应为 90，实际 %d（是否增删了 tools/*.yaml？改这里前先看本文件头部的口径说明）", len(tools))
 	}
 
 	var self, upstream, licKnown, licUnknown, hasUpstream int
