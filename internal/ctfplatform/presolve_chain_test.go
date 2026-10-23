@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // 构造：Vigenère 加密 "flag{anwang_crypto1}"（key=FLagDecodeKeey）后整体做八进制 ASCII。
@@ -123,4 +124,52 @@ func encodeMorseAB(msg string, aChar, bChar rune) string {
 		sb.WriteRune(' ')
 	}
 	return strings.TrimSpace(sb.String())
+}
+
+// ── 大输入防护（2026-10-23 实测回归）────────────────────────────────
+//
+// 背景：服务器上 `go test ./...` 在 600s 默认上限被撞死，panic 栈显示
+// `chainCollect` 正在处理一个 **0x76c37 = 486,455 字节** 的字符串，且已递归到深度 7。
+// 根因：递归链成本 ≈ 深度 × 分支 × 输入长度，题干几百字节时无感，但**附件**可达几百 KB
+// → 单题 >5 分钟，整包测试直接超时（本机与 128 核服务器均复现）。
+// 修法：输入 > chainMaxInputBytes 直接放弃 + 全局节点预算 chainNodeBudget。
+// 本组用例钉住"大输入必须快速返回"，防止有人日后把这两道闸拆掉。
+
+func TestCodingChainHugeAttachmentSkipsFast(t *testing.T) {
+	// 构造 540KB 左右的"附件"（真实场景就是二进制/大文本被塞进 attachments）
+	big := strings.Repeat("The quick brown fox jumps over the lazy dog. ", 12000)
+	if len(big) <= chainMaxInputBytes {
+		t.Fatalf("前置：构造的输入 %d 字节必须超过阈值 %d", len(big), chainMaxInputBytes)
+	}
+	t0 := time.Now()
+	got := tryCodingChain("flag 格式 flag{test}", map[string]string{"blob.bin": big})
+	d := time.Since(t0)
+	t.Logf("540KB 输入耗时 %v（阈值 %d 字节）", d, chainMaxInputBytes)
+	if d > 2*time.Second {
+		t.Fatalf("大输入未快速放弃：耗时 %v —— 输入长度闸失效（实测未修时单题 >5 分钟）", d)
+	}
+	// 放弃是"不解"，但**不得**返回假 flag（截断/硬解出的东西绝不能冒充结果）
+	for _, f := range got {
+		if f != "flag{test}" {
+			t.Fatalf("大输入放弃时却返回了非预期候选 %q（可能是截断后解出的假 flag）", f)
+		}
+	}
+}
+
+// TestCodingChainJustUnderCapIsBounded 阈值以内的"大文本"也必须被预算收住，
+// 不能出现"差 1 字节就爆炸"的悬崖。
+func TestCodingChainJustUnderCapIsBounded(t *testing.T) {
+	// 用接近阈值（128KB）的可读文本：caesar/rot13/atbash/rot47 都会命中，
+	// 若没有节点预算，深度 8 的分支会把它拖到几十秒以上。
+	body := strings.Repeat("abcdefghij klmnopqrst uvwxyz0123 456789 ", 4000)
+	if len(body) > chainMaxInputBytes {
+		body = body[:chainMaxInputBytes-1]
+	}
+	t0 := time.Now()
+	_ = tryCodingChain(body, nil)
+	d := time.Since(t0)
+	t.Logf("接近阈值（%d 字节）耗时 %v（预算 %d 节点）", len(body), d, chainNodeBudget)
+	if d > 15*time.Second {
+		t.Fatalf("阈值内大文本耗时 %v —— 节点预算失效，链式爆炸未被收住", d)
+	}
 }

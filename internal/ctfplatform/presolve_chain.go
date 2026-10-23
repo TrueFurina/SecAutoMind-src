@@ -19,7 +19,33 @@ import (
 	"strings"
 )
 
-const chainMaxDepth = 8
+const (
+	chainMaxDepth = 8
+
+	// chainMaxInputBytes 超过此长度的输入**直接放弃**递归链。
+	//
+	// 为什么必须有（2026-10-23 实测，服务器上 `go test ./...` 打红才发现）：
+	// 递归链对每层都跑全部原语，成本 ≈ 深度 × 分支 × 输入长度。题干通常几百字节，
+	// 但**附件**可以是几百 KB：实测某道外部真题的附件拼进来后 `chainCollect` 在
+	// 486KB 文本上递归到深度 7，单题跑 >5 分钟，直接把 `go test ./...` 撞死在
+	// 600s 默认上限上（本机与 128 核服务器都复现）。
+	// 多层编码链本质是"小文本谜题"，几百 KB 的二进制块不是它要解的东西——跳过是正解，
+	// 不是妥协（截断反而可能把半截数据解成假 flag）。
+	chainMaxInputBytes = 128 << 10 // 128 KiB
+
+	// chainNodeBudget 单次 tryCodingChain 的节点上限（第二道闸，防任何形式的组合爆炸）。
+	// 即使输入在阈值内，分支 × 深度也可能指数增长；预算耗尽即停止展开，
+	// 已收集的候选照常返回（不丢已得结果）。
+	chainNodeBudget = 4096
+
+	// chainByteBudget 单次 tryCodingChain 允许**累计扫描的字节数**（第三道闸）。
+	//
+	// 为什么光有节点数不够（2026-10-23 实测）：单节点成本 ≈ O(输入长度)，
+	// 128KB 输入 × 4096 节点实测要 **38.9s**——节点预算形同虚设。
+	// 改成按字节记账后：1KB 的小谜题仍能跑满 4096 节点（4MB 用量），
+	// 而 128KB 的大文本只允许 ~64 个节点（8MB 用量）→ 秒级收敛。
+	chainByteBudget = 8 << 20 // 8 MiB
+)
 
 var (
 	hexBlockRe    = regexp.MustCompile(`[0-9a-fA-F]{6,}`)
@@ -39,9 +65,15 @@ func tryCodingChain(text string, attachments map[string]string) []string {
 	if strings.TrimSpace(full) == "" {
 		return nil
 	}
+	// 大输入直接放弃（见 chainMaxInputBytes 注释：486KB 附件实测会把单题拖到 >5 分钟）。
+	if len(full) > chainMaxInputBytes {
+		return nil
+	}
 	seen := map[string]bool{}
 	var out []string
-	chainCollect(full, 0, seen, &out)
+	nodes := chainNodeBudget
+	bytesLeft := chainByteBudget
+	chainCollect(full, 0, seen, &out, &nodes, &bytesLeft)
 	uniq := make([]string, 0, len(out))
 	uSeen := map[string]bool{}
 	for _, f := range out {
@@ -54,10 +86,18 @@ func tryCodingChain(text string, attachments map[string]string) []string {
 }
 
 // chainCollect 递归解包：depth 上限内逐层尝试全部原语。
-func chainCollect(s string, depth int, seen map[string]bool, out *[]string) {
+//
+// budget 是**全局**节点预算（指针跨递归共享）：每进入一个节点扣 1，耗尽即停止展开。
+// 这是链式爆炸的第二道闸——只卡 depth 不够，分支数也会随输入膨胀。
+func chainCollect(s string, depth int, seen map[string]bool, out *[]string, nodes, bytesLeft *int) {
 	if depth > chainMaxDepth || s == "" {
 		return
 	}
+	if *nodes <= 0 || *bytesLeft <= 0 {
+		return
+	}
+	*nodes--
+	*bytesLeft -= len(s) // 单节点成本 ≈ O(len(s))，按字节记账才收得住大输入
 	// 1) 当前层直接扫 flag 形态。
 	// ⚠️ 不做 seen 拦截：seen 是「递归防环」，而候选本身可能正是 flag（vigenere 解出的
 	// 明文）——采纳时已 seen=true，若此处再查 seen 会把这条唯一正确路径挡死
@@ -70,6 +110,9 @@ func chainCollect(s string, depth int, seen map[string]bool, out *[]string) {
 	}
 	// 2) 单层原语展开
 	for _, cand := range chainDecodeOnce(s) {
+		if *nodes <= 0 || *bytesLeft <= 0 {
+			return // 预算耗尽：停止展开，已收集的候选照常返回
+		}
 		if cand.decoded == "" || cand.decoded == s || seen[cand.decoded] {
 			continue
 		}
@@ -77,7 +120,7 @@ func chainCollect(s string, depth int, seen map[string]bool, out *[]string) {
 			continue // 更乱码的解码不采纳，防误报
 		}
 		seen[cand.decoded] = true
-		chainCollect(cand.decoded, depth+1, seen, out)
+		chainCollect(cand.decoded, depth+1, seen, out, nodes, bytesLeft)
 	}
 }
 
