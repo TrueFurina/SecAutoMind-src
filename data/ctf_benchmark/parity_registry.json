@@ -337,10 +337,12 @@
       "key": "ecb",
       "benchmark": "ecb_benchmark.json",
       "python_judge": "judge_ecb.py",
-      "go_tests": [],
-      "parity": "unwired",
-      "wired_by": "",
-      "note": "Go 侧 ECB 检测镜像待接线；Python 侧 judge_ecb.py 已 1/1 机验（ECB 图与同构 CBC 对照成对判定，反注水）。工件由 gen_ecb_image.py 生成。"
+      "go_tests": ["TestECBSuiteParityAgainstBenchmark"],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "两侧逐题机验一致（1/1）。Go 侧 ecb_detect.go：图像转 H*W*3 RGB 字节（同 PIL convert('RGB').tobytes()）→ 16B 切块 → 重复率。双向反注水：① 两张都 ECB 必须拒（CBC_MAX 失效则纯色图白拿分）；② 两张都 CBC 必须拒（ECB_MIN 形同虚设）；③ 实测值与 Python 交叉校验（ECB 0.934 / CBC 0.000，取字节口径漂了就红）。"
     },
     {
       "id": 25,
