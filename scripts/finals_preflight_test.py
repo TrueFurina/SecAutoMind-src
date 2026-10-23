@@ -98,6 +98,50 @@ def main():
     v = pf.evaluate("PRE", MISS3, [], [])   # 大写不得被当成 pre
     check("大写 PRE 不被当成 pre → NO-GO", v[0], "NO-GO")
 
+    # ── 凭证检查（2026-10-24 事故回归）───────────────────────────────────
+    # 事故现场：DASCTF_BASE_URL 与令牌**都未设置**时，预检仍输出
+    # 「无阻塞项 —— 可上场 / ✅ GO」。缺凭证上场 = 拉不到题、提交不了 flag = 0 分。
+    miss, warns = pf.credential_issues({})
+    check("空环境 → 缺 2 项凭证", len(miss), 2)
+    check("空环境 → 地址与令牌都被点名",
+          (any("BASE_URL" in m for m in miss), any("TOKEN" in m for m in miss)),
+          (True, True))
+    check("空环境 → 无形态警告", warns, [])
+
+    good = {"DASCTF_BASE_URL": "https://ycb-bk.dasctf.com", "DASCTF_TOKEN": "ak_" + "x" * 37}
+    miss, warns = pf.credential_issues(good)
+    check("齐全且形态正确 → 无缺失", miss, [])
+    check("齐全且形态正确 → 无警告", warns, [])
+
+    # 令牌别名：只设 CTF_AGENT_PLATFORM_TOKEN 也必须认
+    alias = {"DASCTF_BASE_URL": "https://ycb-bk.dasctf.com",
+             "CTF_AGENT_PLATFORM_TOKEN": "ak_abc"}
+    check("仅 CTF_AGENT_PLATFORM_TOKEN 也算有令牌", pf.credential_issues(alias)[0], [])
+
+    # 形态告警（不阻塞，但必须说出来）
+    _, warns = pf.credential_issues({"DASCTF_BASE_URL": "ycb-bk.dasctf.com",
+                                     "DASCTF_TOKEN": "ak_x"})
+    check("地址缺 scheme → 警告", any("http" in w for w in warns), True)
+    _, warns = pf.credential_issues({"DASCTF_BASE_URL": "https://x/slab-match",
+                                     "DASCTF_TOKEN": "ak_x"})
+    check("地址含 /slab-match → 警告（会双拼路径）",
+          any("slab-match" in w for w in warns), True)
+    _, warns = pf.credential_issues({"DASCTF_BASE_URL": "https://x",
+                                     "DASCTF_TOKEN": "plain-password-123"})
+    check("令牌不像 ak_ → 警告（疑似门户口令）", any("ak_" in w for w in warns), True)
+
+    # 定级：final 缺凭证必须 NO-GO；pre 只列待填
+    v = pf.evaluate("final", [], [], [], missing_credentials=["DASCTF_BASE_URL（平台地址）"])
+    check("final + 缺凭证 → NO-GO（本次事故回归）", v[0], "NO-GO")
+    check("final + 缺凭证 → 阻塞项含「缺少凭证」",
+          any("缺少凭证" in x for x in v[1]), True)
+    v = pf.evaluate("pre", [], [], [], missing_credentials=["DASCTF_BASE_URL（平台地址）"])
+    check("pre + 缺凭证 → GO（赛前可缺）", v[0], "GO")
+    check("pre + 缺凭证 → 列为待填", any("需填" in x for x in v[2]), True)
+    # 向后兼容：不传该参数时行为不变（既有调用点不会因新增参数改变结论）
+    check("向后兼容：不传 missing_credentials → 仍 GO",
+          pf.evaluate("final", [], [], [])[0], "GO")
+
     # ── 打印 ────────────────────────────────────────────────────────────
     for name, ok, got, want in CASES:
         print("  [%s] %-52s got=%r" % ("OK" if ok else "FAIL", name, got))
@@ -108,7 +152,7 @@ def main():
         for name, ok, got, want in failed:
             print("  ✗ %s：期望 %r，实得 %r" % (name, want, got))
         return 1
-    print("决赛预检自测：PASS（%d 项用例全过，含 3 项差异性/严格性验证）" % len(CASES))
+    print("决赛预检自测：PASS（%d 项用例全过，含差异性/严格性/凭证事故回归验证）" % len(CASES))
     return 0
 
 

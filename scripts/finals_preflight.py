@@ -92,15 +92,57 @@ def check_switches():
     return out
 
 
-def evaluate(phase, missing_blocking, hard_failures, warnings):
-    """把「门禁类硬失败」与「开关未开」分开定级，返回 (verdict, blocking, pending)。
+# ── 凭证（2026-10-24 补）─────────────────────────────────────────────
+# 实测事故：`DASCTF_BASE_URL` 与令牌**都没设置**时，预检仍输出
+# 「无阻塞项 —— 可上场 / ✅ GO」。根因是 evaluate() 只看开关与门禁，
+# **根本没有"凭证"这一维**；确认表虽打了 ⚠，但现场只会看最后那行结论。
+# 缺凭证上场的后果是确定的：拉不到题、提交不了 flag = 0 分。
+BASE_URL_ENV = "DASCTF_BASE_URL"
+TOKEN_ENVS = ("DASCTF_TOKEN", "CTF_AGENT_PLATFORM_TOKEN")
+
+
+def credential_issues(env=None):
+    """返回 (missing, warns)。missing 非空 ⇒ final 阶段必须 NO-GO。
+
+    只判「有没有 / 形态像不像」，**绝不回显令牌值**（日志与终端都可能被投屏）。
+    """
+    env = os.environ if env is None else env
+    missing, warns = [], []
+
+    base = (env.get(BASE_URL_ENV) or "").strip()
+    if not base:
+        missing.append("%s（平台地址）" % BASE_URL_ENV)
+    else:
+        if not base.lower().startswith(("http://", "https://")):
+            warns.append("%s 未以 http(s):// 开头：%s" % (BASE_URL_ENV, base))
+        if "/slab-match" in base:
+            warns.append("%s 含 /slab-match —— 驱动会再拼一次路径、易 404；只填 host"
+                         % BASE_URL_ENV)
+
+    token, used = "", ""
+    for k in TOKEN_ENVS:
+        v = (env.get(k) or "").strip()
+        if v:
+            token, used = v, k
+            break
+    if not token:
+        missing.append(" 或 ".join(TOKEN_ENVS) + "（Agent 令牌）")
+    elif not token.startswith("ak_"):
+        warns.append("%s 不以 ak_ 开头（历史实测形态为 ak_ + 约 40 位）—— "
+                     "确认填的不是门户口令" % used)
+    return missing, warns
+
+
+def evaluate(phase, missing_blocking, hard_failures, warnings, missing_credentials=()):
+    """把「门禁类硬失败」与「开关未开」「凭证缺失」分开定级，返回 (verdict, blocking, pending)。
 
     抽成纯函数是为了能单测：这一层若写反，脚本会给出与事实相反的 GO/NO-GO 结论，
     而门禁全绿时没人会去核对结论 —— 属最危险的"看起来能用"。
 
     规则：
-      final 阶段（默认）：必需开关未开 = 阻塞（开赛那一刻还没开 = 上场即残废）。
-      pre   阶段：必需开关是当天才设的，赛前 OFF 属正常 → 只列 pending，不阻塞。
+      final 阶段（默认）：必需开关未开 = 阻塞（开赛那一刻还没开 = 上场即残废）；
+                          **凭证缺失 = 阻塞**（拉不到题/提交不了 = 0 分）。
+      pre   阶段：必需开关与凭证都是当天才配的，赛前缺属正常 → 只列 pending，不阻塞。
       门禁类硬失败（演练/密钥/口径/证据包/整包测试）**在两个阶段都阻塞**。
     """
     blocking = list(hard_failures)
@@ -110,6 +152,11 @@ def evaluate(phase, missing_blocking, hard_failures, warnings):
             pending.append("当天需开：%s（赛前不阻塞）" % n)
         else:
             blocking.append("必需开关未设置：%s" % n)
+    for c in missing_credentials:
+        if phase == "pre":
+            pending.append("开赛前需填：%s" % c)
+        else:
+            blocking.append("缺少凭证：%s（缺了就是拉不到题/提交不了 flag）" % c)
     verdict = "GO" if not blocking else "NO-GO"
     return verdict, blocking, pending
 
@@ -203,9 +250,19 @@ def main():
     # ⑥ 开关检查结论（按阶段定级，见 evaluate）
     missing_blocking = [s["name"] for s in results["switches"] if s["blocking"] and not s["on"]]
 
+    # ⑦ 凭证（平台地址 + Agent 令牌）：缺了开赛即 0 分，final 阶段必须阻塞
+    missing_creds, cred_warns = credential_issues()
+    warnings.extend(cred_warns)
+    results["credentials"] = {
+        "base_url_set": bool((os.environ.get(BASE_URL_ENV) or "").strip()),
+        "token_set": any((os.environ.get(k) or "").strip() for k in TOKEN_ENVS),
+        "missing": missing_creds,
+    }
+
     results["warnings"] = warnings
     results["phase"] = phase
-    verdict, blocking_fail, pending = evaluate(phase, missing_blocking, blocking_fail, warnings)
+    verdict, blocking_fail, pending = evaluate(phase, missing_blocking, blocking_fail, warnings,
+                                               missing_credentials=missing_creds)
     results["verdict"] = verdict
     results["blocking"] = blocking_fail
     results["pending"] = pending
@@ -223,6 +280,11 @@ def main():
         mark = "ON " if s["on"] else "OFF"
         need = "必需" if s["blocking"] else "可选"
         print("  [%s/%s] %-28s %s" % (mark, need, s["name"], s["desc"]))
+    print("\n[凭证]")
+    print("  [%s] %-28s %s" % ("SET " if results["credentials"]["base_url_set"] else "MISS",
+                               BASE_URL_ENV, "平台地址"))
+    print("  [%s] %-28s %s" % ("SET " if results["credentials"]["token_set"] else "MISS",
+                               "/".join(TOKEN_ENVS), "Agent 令牌（值不回显）"))
     print("\n[检查项]")
     for c in results["checks"]:
         print("  [%s] %-16s rc=%d" % ("OK" if c["rc"] == 0 else "FAIL", c["name"], c["rc"]))
