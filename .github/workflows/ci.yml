@@ -176,8 +176,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，依设计不入库，
       # 重新生成后 judge_exec.py 的 execution 块才能 15/15（否则静默 13/15 漏检）。
       - name: Regenerate execution fixtures (nested .git repos not committed by design)
@@ -209,8 +209,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: Regenerate execution fixtures (nested .git repos not committed by design)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Regenerate dual-language benchmark summary
@@ -433,8 +433,8 @@ jobs:
       - name: Regenerate execution fixtures (git-repo fixtures are not committed)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       # 基准集套件 claim 会真跑 run_all_benchmarks.py，其中 padding-oracle judge 依赖 pycryptodome
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: 对外量化陈述机验（声明 vs 实测，全量）
         run: python scripts/check_quant_effect.py --full
       # 空洞绿自测（2026-10-14 门禁审计）：全 slow / 缺 command 曾让本门禁"零机验却报全绿"
@@ -800,8 +800,8 @@ jobs:
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       # padding_oracle judge 需 pycryptodome（与 quant-gate / evidence-gate / evidence-package-gate 同）。
       # 后续若接线更多集，按各 judge 的 [DEPS-MISSING] 提示补齐这里。
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: Cross-suite dual-language parity (ledger-driven, all 【N】 suites enumerated)
         run: python scripts/check_suite_parity.py --check
       - name: Suite parity gate regression + mutation check (prove the gate can fail)
@@ -826,8 +826,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 600s 实测不够：TextOnly ~3m45s + AttachmentSubset ~6m15s，慢 runner 上合计
+      # 会顶满 10m 闹钟（PR #58 首跑 panic）。job 是 report-only，给足余量不 weaken 断言。
       - name: External bench scoring (text-only + attachment subset, report-only)
-        run: go test -count=1 -v -run 'TestExternalBench' ./internal/ctfplatform/ -timeout 600s
+        run: go test -count=1 -v -run 'TestExternalBench' ./internal/ctfplatform/ -timeout 1800s
       - name: External bench artifact consistency (payload ledger / manifest / no KPI mixing)
         run: python scripts/check_external_bench.py
       - name: External bench gate regression + mutation check (prove the gate can fail)

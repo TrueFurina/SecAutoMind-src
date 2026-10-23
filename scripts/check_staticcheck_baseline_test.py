@@ -44,12 +44,17 @@ def _write_report(tmp: Path, rows: list[dict], *, garbage: str = "") -> str:
     return str(path)
 
 
-def _run(report: str, *extra: str, env_root: str | None = None) -> subprocess.CompletedProcess:
+def _run(report: str, *extra: str, env_root: str | None = None,
+         env_ledger: str | None = None) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     if env_root:
         env["SECAUTOMIND_STATICCHECK_ROOT"] = env_root
     else:
         env.pop("SECAUTOMIND_STATICCHECK_ROOT", None)
+    if env_ledger:
+        env["SECAUTOMIND_DEAD_CODE_LEDGER"] = env_ledger
+    else:
+        env.pop("SECAUTOMIND_DEAD_CODE_LEDGER", None)
     return subprocess.run(
         [sys.executable, "-X", "utf8", str(SCRIPT), "--report", report, *extra],
         capture_output=True, text=True, env=env, timeout=120)
@@ -93,15 +98,30 @@ class GateTest(unittest.TestCase):
                 rows.append(_row(code, "internal/x/z.go"))
         return rows
 
+    def _ledger_with(self, keys: list[str]) -> str:
+        """临时死代码台账（与真台账同 schema）：登记合成 U1000 的 (file::symbol)。
+
+        2026-10-23 起门禁语义：U1000 的唯一真源是 dead_code_ledger.json，
+        基线计数只是观察档。合成报告里的 U1000 不在台账 → 阻断，所以凡
+        _baseline_rows() 出场的用例都必须挂一份含对应 key 的临时台账，
+        否则测的是"台账缺失"而非用例本身想测的事。
+        """
+        p = self.root / "ledger.json"
+        rules = [{"key": k, "file": k.split("::")[0], "symbol": k.split("::")[-1],
+                  "auto_class": "synthetic_test", "verdict": "keep",
+                  "reason": "self-test synthetic fixture"} for k in keys]
+        p.write_text(json.dumps({"rules": rules}, ensure_ascii=False), encoding="utf-8")
+        return str(p)
+
     def test_baseline_report_passes(self):
         report = _write_report(self.root, self._baseline_rows())
-        out = _run(report)
+        out = _run(report, env_ledger=self._ledger_with(["internal/x/z.go::x"]))
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
 
     def test_new_blocking_finding_is_red(self):
         rows = self._baseline_rows() + [_row("SA4006", "internal/app/new_file.go", 42)]
         report = _write_report(self.root, rows)
-        out = _run(report)
+        out = _run(report, env_ledger=self._ledger_with(["internal/x/z.go::x"]))
         self.assertEqual(out.returncode, 1, "新增语义类告警必须红")
         self.assertIn("SA4006", out.stderr)
 
@@ -109,21 +129,23 @@ class GateTest(unittest.TestCase):
         """基线里没登记的 SA5xxx = 未知语义类，不许靠"没登记"蒙混过关。"""
         rows = self._baseline_rows() + [_row("SA5001", "internal/app/new.go")]
         report = _write_report(self.root, rows)
-        out = _run(report)
+        out = _run(report, env_ledger=self._ledger_with(["internal/x/z.go::x"]))
         self.assertEqual(out.returncode, 1, "未登记的语义类 code 必须先裁定归属")
         self.assertIn("SA5001", out.stderr)
 
     def test_observed_code_drift_warns_but_passes(self):
         rows = self._baseline_rows() + [_row("U1000", "internal/app/another.go")]
         report = _write_report(self.root, rows)
-        out = _run(report)
+        out = _run(report, env_ledger=self._ledger_with(
+            ["internal/x/z.go::x", "internal/app/another.go::x"]))
         self.assertEqual(out.returncode, 0, "死代码新增属观察档，不阻断")
         self.assertIn("观察", out.stdout)
 
     def test_strict_makes_observed_drift_red(self):
         rows = self._baseline_rows() + [_row("U1000", "internal/app/another.go")]
         report = _write_report(self.root, rows)
-        out = _run(report, "--strict")
+        out = _run(report, "--strict", env_ledger=self._ledger_with(
+            ["internal/x/z.go::x", "internal/app/another.go::x"]))
         self.assertEqual(out.returncode, 1, "--strict 下观察档变化也应红")
 
     def test_absolute_paths_are_normalized(self):
@@ -137,7 +159,8 @@ class GateTest(unittest.TestCase):
             for _ in range(n):
                 rows.append(_row(code, f"{abs_root}/internal/x/z.go"))
         report = _write_report(self.root, rows)
-        out = _run(report, env_root=abs_root)
+        out = _run(report, env_root=abs_root,
+                   env_ledger=self._ledger_with(["internal/x/z.go::x"]))
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
 
     def test_msys_converted_root_still_normalizes(self):
@@ -154,14 +177,16 @@ class GateTest(unittest.TestCase):
         # 真实路径（仓库内存在的文件）才能在"最长后缀"兜底里被定位
         rows.append(_row("SA4006", f"{fake_root}/internal/app/tool_error.go"))
         report = _write_report(self.root, rows)
-        out = _run(report, env_root=fake_root)
+        out = _run(report, env_root=fake_root,
+                   env_ledger=self._ledger_with(
+                       [f"{fake_root}/internal/x/z.go::x", "internal/x/z.go::x"]))
         # tool_error.go 是基线之外的新增 → 必须红（证明归一化生效、比对真的在跑）
         self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
 
     def test_bad_lines_are_counted_not_silent(self):
         rows = self._baseline_rows()
         report = _write_report(self.root, rows, garbage="{oops")
-        out = _run(report)
+        out = _run(report, env_ledger=self._ledger_with(["internal/x/z.go::x"]))
         self.assertEqual(out.returncode, 0, "少量坏行不该让门禁误红")
         self.assertIn("无法解析", out.stdout)
 

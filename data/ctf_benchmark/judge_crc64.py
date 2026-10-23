@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -57,11 +58,17 @@ def wait_ready(port, timeout=10.0):
 
 def main():
     bench = json.load(open(BENCH, encoding="utf-8"))["problems"]
+    # range 的 stderr 落临时文件：靶场起不来时给出真实原因（CI 曾报「未就绪」
+    # 却零线索——web_hints judge 同款默认端口 18097 已改 18098 消除碰撞，
+    # 但可诊断性必须保留，否则下次还是盲猜）。
+    errf = tempfile.TemporaryFile()
     proc = subprocess.Popen([sys.executable, RANGE_PY, str(PORT)],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=subprocess.DEVNULL, stderr=errf)
     try:
         if not wait_ready(PORT):
-            print("靶场未就绪")
+            errf.seek(0)
+            tail = errf.read().decode("utf-8", "ignore").strip()[-600:]
+            print("靶场未就绪（range stderr 尾部：%s）" % (tail or "<空>"))
             return 1
         base = "http://127.0.0.1:%d" % PORT
         # 1. guest cookie
@@ -90,6 +97,7 @@ def main():
         return 0 if hits == total else 1
     finally:
         proc.kill()
+        errf.close()
 
 
 if __name__ == "__main__":

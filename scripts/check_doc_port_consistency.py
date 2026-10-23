@@ -49,6 +49,10 @@ SKIP_DIRS = {"competition-2026", ".git", "node_modules", "__pycache__"}
 EXEMPTIONS = [
     ("docs/evidence/E1E2-summary-deepseek-20260905.md", "127.0.0.1:8501",
      "本地授权靶场的地址（8501 是靶场端口，不是 SecAutoMind 服务端口）"),
+    ("docs/真实靶场_LAMPSecurity_CTF4_可用性验证_20261021.md", "127.0.0.1:8080",
+     "CTF4 授权靶场的目标地址（8080 是靶机 Web 端口，不是 SecAutoMind 服务端口；靶场由 scripts/ctf4_lab.sh 拉起）"),
+    ("docs/非flag靶场证据探测_设计与训练记录_20261021.md", "127.0.0.1:8080",
+     "CTF4 授权靶场的目标地址（8080 是靶机 Web 端口，不是 SecAutoMind 服务端口；BaseURL/ExploitURLsInText 均指向靶机）"),
 ]
 MAX_EXEMPTIONS = 5
 

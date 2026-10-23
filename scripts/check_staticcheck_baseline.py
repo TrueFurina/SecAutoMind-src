@@ -136,9 +136,12 @@ def dead_code_reconcile(items: list[dict], root: str | None) -> dict:
         sys.path.insert(0, str(HERE))
     import dead_code_ledger as dcl
 
-    if not dcl.LEDGER_PATH.is_file():
+    # 台账路径可用环境变量覆盖（自测注入临时台账，不碰仓库真台账）；
+    # 未设置时用仓库台账。fail-closed 语义不变：文件缺失 → ledger_present=False → 阻断。
+    ledger_file = Path(os.environ.get("SECAUTOMIND_DEAD_CODE_LEDGER", str(dcl.LEDGER_PATH)))
+    if not ledger_file.is_file():
         return {"ledger_present": False, "missing": [], "extra": []}
-    ledger = json.loads(dcl.LEDGER_PATH.read_text(encoding="utf-8"))
+    ledger = json.loads(ledger_file.read_text(encoding="utf-8"))
     ruled = {r.get("key") for r in ledger.get("rules", []) if r.get("key")}
 
     report_keys = set()

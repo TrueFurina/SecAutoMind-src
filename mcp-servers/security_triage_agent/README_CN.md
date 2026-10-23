@@ -149,12 +149,12 @@ python mcp_security_triage_agent.py --selftest
 }
 ```
 
-| `authority` | 含义 | 当前工具 |
+| authority（等级，非工具） | 含义 | 当前工具 |
 |---|---|---|
-| `observed` | 直接读取落盘事实，未经推断加工 | asset / log / intel / history_alert / ioc_search / command_executor |
-| `derived` | 由确定性规则推导，可复现 | false_positive_check / playbook_matcher / ticket_generator / host_isolation_simulator |
-| `inferred` | 由模型或启发式推断，存在不确定性 | incident_triage |
-| `unknown` | 本次调用未形成结论（降级 / 异常 / 证据缺失） | 任一工具降级时 |
+| observed | 直接读取落盘事实，未经推断加工 | asset / log / intel / history_alert / ioc_search / command_executor |
+| derived | 由确定性规则推导，可复现 | false_positive_check / playbook_matcher / ticket_generator / host_isolation_simulator |
+| inferred | 由模型或启发式推断，存在不确定性 | incident_triage |
+| unknown | 本次调用未形成结论（降级 / 异常 / 证据缺失） | 任一工具降级时 |
 
 三条硬规则：
 
