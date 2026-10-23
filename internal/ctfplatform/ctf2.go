@@ -646,15 +646,25 @@ func (p *CTF2Platform) GetChallenge(ctx context.Context, challengeID string) (*C
 // flagRe 从题干描述中提取 flag 格式（如 DASCTF{...} / flag{...}）。
 var flagRe = regexp.MustCompile(`(?i)([a-zA-Z0-9_]{2,20})\{([^}]*\.[^}]*)|\{([^}]+)\}`)
 
+// flagFormatCtxRe 匹配「flag/格式 … 花括号 token」的上下文写法；第 1 组是 token 本体。
+// 取第 1 组而非整段：整段会把「格式：」这类中文标签也带进 FlagFormat（提示词噪声）。
+var flagFormatCtxRe = regexp.MustCompile(`(?i)(?:flag|格式)[^\n]{0,60}?(DASCTF\{[^}\n]{0,20}\}|flag\{[^}\n]{0,20}\}|[A-Za-z0-9_]+\{[^}\n]{0,20}\})`)
+
+// flagTokenRe 兜底：题干直接写「请提交 flag{...}」——此时前缀 "flag" **紧贴** "{",
+// 上下文正则里的 `[^\n]{0,60}?` 后面拿不到「标识符+{」（"{" 不是标识符字符），
+// 于是整条匹配失败、返回空（2026-10-23 实测：这是题干最常见的写法，反而识别不了）。
+var flagTokenRe = regexp.MustCompile(`[A-Za-z0-9_]{2,20}\{[^}\n]{0,40}\}`)
+
 func extractFlagFormat(desc string) string {
 	if desc == "" {
 		return ""
 	}
-	// 常见形式：flag 格式：DASCTF{...}、flag{xxx} 等
-	if m := regexp.MustCompile(`(?i)(?:flag|格式)[^\n]{0,60}?(DASCTF\{[^}\n]{0,20}\}|flag\{[^}\n]{0,20}\}|[A-Za-z0-9_]+\{[^}\n]{0,20}\})`).FindString(desc); m != "" {
-		return m
+	// 常见形式：flag 格式：DASCTF{...}、格式：N1CTF{...}
+	if m := flagFormatCtxRe.FindStringSubmatch(desc); m != nil {
+		return m[1]
 	}
-	return ""
+	// 兜底：取第一个「标识符+花括号」token（限定标识符 2–20 位，避免误吃零散花括号）
+	return flagTokenRe.FindString(desc)
 }
 
 // CreateInstance 启动比赛靶机环境（首次 start 自动参赛）。
