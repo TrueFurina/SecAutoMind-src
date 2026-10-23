@@ -71,7 +71,13 @@ CLEAN_CONFIG = os.path.join(ROOT, "config.share.yaml")
 
 # ── 排除：目录名（任一父级命中即整棵剪掉）────────────────────────────
 EXCLUDE_DIRS = {
-    ".git", ".workbuddy", ".atomcode", ".idea", ".vscode",
+    ".git", ".workbuddy", ".workbuddy-ai", ".atomcode", ".idea", ".vscode",
+    # `.workbuddy-ai/`（2026-10-24 补）：AI 协作会话的本地记忆目录，**不是**可交付内容。
+    # 实锤风险：`.workbuddy-ai/memory/2026-10-22.md` 里明文记着赛事门户的手机号与密码
+    # （为向用户解释「门户账号 ≠ Agent 令牌」而写下的原值）。此前只排除了 `.workbuddy/`，
+    # 而 `EXCLUDE_PATH_SUBSTR` 里的 `.workbuddy/` 子串匹配不到 `.workbuddy-ai/`
+    # → 下次重打包会把会话记忆连同凭证一起发给评委。
+    # 该目录同时是 git 未跟踪状态，本就不属于「仓库交付面」。
     "data", "data_backup_boot", "data_backup_boot2",
     "logs", "chat_uploads", "tmp", "temp", "work",
     "__pycache__", ".pytest_cache", "node_modules", "venv", ".venv",

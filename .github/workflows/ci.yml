@@ -384,6 +384,12 @@ jobs:
         run: python scripts/secret_guard_test.py
       - name: Secret guard mutation check (prove the self-test can kill regressions)
         run: python scripts/secret_guard_mutation_check.py
+      # 交付包排除面门禁（2026-10-24）：secret_guard 只按密钥形态匹配，判不出
+      # 「会话记忆里中文写着的账号/密码」。而交付包此前只排除 `.workbuddy/`，
+      # `.workbuddy-ai/`（AI 协作记忆目录）不在列 → 重打包会把凭证随包发给评委。
+      # 本步锁住排除表本身，并含变异验证（摘掉条目必须泄漏），防止它被改回摆设。
+      - name: Delivery package exclusion gate (agent state must never ship)
+        run: python scripts/make_delivery_package_test.py
 
   # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
   # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
