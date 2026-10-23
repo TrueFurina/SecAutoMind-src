@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-24T02:18:18+08:00",
+  "generated_at": "2026-10-24T05:03:33+08:00",
   "caliber": {
-    "head": "5c6dced",
+    "head": "e9b8dac",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -10,7 +10,7 @@
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 35,
-    "go_packages": null,
+    "go_packages": 44,
     "internal_packages": 38,
     "test_packages": 38,
     "go_files": 821,
@@ -25,13 +25,13 @@
     "exe": {
       "present": true,
       "path": "installer/secautomind-ai.exe",
-      "md5": "cc2927d9c80e59a780b0a23e3063fefc",
+      "md5": "bd1a8c07bc2691661062de5b1335beca",
       "size_mib": 85.7,
       "size_mb": 89.8,
-      "vcs_revision": "960c175d33ca",
-      "vcs_time": "20261023153353",
+      "vcs_revision": "e9b8dac684a8",
+      "vcs_time": "20261023205529",
       "dirty": false,
-      "mod_version": "v1.7.28-0.20261023153353-960c175d33ca"
+      "mod_version": "v1.7.28-0.20261023205529-e9b8dac684a8"
     },
     "exe_mb": 89.8,
     "setup_mb": 20.4
@@ -193,16 +193,16 @@
     "exe_installer": {
       "path": "installer/secautomind-ai.exe",
       "present": true,
-      "size_bytes": 89847296,
-      "md5": "cc2927d9c80e59a780b0a23e3063fefc",
-      "sha256": "363f882f9171189a6eb8afe04a1a7a86b8cf325db9bc4b1751e51c00ae506f25"
+      "size_bytes": 89849344,
+      "md5": "bd1a8c07bc2691661062de5b1335beca",
+      "sha256": "8af445c7f0d668d7a236f78d02f0a1e69e8d82d114289b4485cf80b75dfd255b"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
       "present": true,
-      "size_bytes": 20406152,
-      "md5": "cda0aa6ab994196057bc2a840e0383fb",
-      "sha256": "6443470f709fd4a9b23e082ba9b8d2790afb74abac8036295e33eb31085096c1"
+      "size_bytes": 20398543,
+      "md5": "ea064f80f141d603b8ec408ee9d163c1",
+      "sha256": "cf6efcc08b73b67cea14eccb750f7a747113fbc1d944dcf6824bc0c5ac2877f8"
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
@@ -215,7 +215,5 @@
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": [
-    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
-  ]
+  "notes": []
 }
