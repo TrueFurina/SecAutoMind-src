@@ -1,0 +1,26 @@
+{
+  "version": "v1_xhlj_legacy_index",
+  "created": "2026-10-23",
+  "source_ledger": "E:/Program/西湖论剑/ctf_agent/REAL_SOLVES_LEDGER.md",
+  "source_repo_status": "FROZEN (2026-10-23, read-only knowledge base)",
+  "kpi_note": "strict KPI = 14 offline_verified (A6+B8); 10732/10735 reproducible but no official sha256 closure (excluded); platform accepted = 0 (historical baseline)",
+  "kpi_problems": [
+    {"id": "real_crypto_specialcurve2", "category": "crypto", "type": "complex_mult_group_rsa", "kpi_class": "A", "flag_sha256_prefix": "cd7e815f4a5a378b", "verify_cmd": "scripts/verify_specialcurve2.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "needs factordb/DLP; P1 candidate"},
+    {"id": "10733", "category": "crypto", "type": "high_exponent_rsa_hint", "kpi_class": "A", "flag_sha256_prefix": "ac232bd941738e22", "verify_cmd": "scripts/verify_10733.py", "secautomind_coverage": "yes", "secautomind_solver": "rsa_hint_high_exp"},
+    {"id": "real_misc_vnctf_flag", "category": "misc", "type": "grid_resample", "kpi_class": "A", "flag_sha256_prefix": "7d9ce4e1a4e7369e", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "yes", "secautomind_solver": "grid_resample"},
+    {"id": "real_misc_xuanhun_signin", "category": "misc", "type": "jpeg_png_embedded", "kpi_class": "A", "flag_sha256_prefix": "d5e1894ae1bb4e4d", "verify_cmd": "skills/jpeg_png_embedded.run()", "secautomind_coverage": "partial", "secautomind_solver": "stego_detect", "note": "extraction chain unverified"},
+    {"id": "real_reverse_sheng", "category": "reverse", "type": "static_analysis", "kpi_class": "A", "flag_sha256_prefix": "d65b30ccdac4d74e", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "no binary analysis execution; P2"},
+    {"id": "real_reverse_upx", "category": "reverse", "type": "upx_unpack", "kpi_class": "A", "flag_sha256_prefix": "7130218010da8eea", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "no UPX unpack execution; P2"},
+    {"id": "real_crypto_anwang_crypto1", "category": "crypto", "type": "octal_vigenere", "kpi_class": "B", "flag_sha256_prefix": "2e9f80ef4619805c", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "partial", "secautomind_solver": "encoding_octal+vigenere", "note": "chain unverified"},
+    {"id": "real_crypto_ezrsa", "category": "crypto", "type": "hastad_broadcast", "kpi_class": "B", "flag_sha256_prefix": "93be5f3ad422c43e", "verify_cmd": "_regress_one.py real_crypto_ezrsa", "secautomind_coverage": "yes", "secautomind_solver": "hastad_broadcast_attack"},
+    {"id": "real_crypto_simplelegendre", "category": "crypto", "type": "legendre_bits", "kpi_class": "B", "flag_sha256_prefix": "75e6aa4de894faf2", "verify_cmd": "_regress_one.py real_crypto_simplelegendre", "secautomind_coverage": "yes", "secautomind_solver": "legendre_phi"},
+    {"id": "real_crypto_ezmult", "category": "crypto", "type": "base64_rot13", "kpi_class": "B", "flag_sha256_prefix": "60b6c2c15e658b87", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "partial", "secautomind_solver": "b64_caesar_alphabet", "note": "chain unverified"},
+    {"id": "real_crypto_exciting_inverse", "category": "crypto", "type": "phi_pinv_qinv", "kpi_class": "B", "flag_sha256_prefix": "4b84616cccbe84a9", "verify_cmd": "_regress_one.py real_crypto_exciting_inverse", "secautomind_coverage": "yes", "secautomind_solver": "rsa_phi_pinv"},
+    {"id": "real_crypto_filterrandom", "category": "crypto", "type": "lfsr_noise", "kpi_class": "B", "flag_sha256_prefix": "768a21b901963eb9", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "yes", "secautomind_solver": "lfsr_correlation"},
+    {"id": "real_crypto_qiangwang_classic", "category": "crypto", "type": "morse_mono_sub", "kpi_class": "B", "flag_sha256_prefix": "f4adf0d868f5b0ac", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "partial", "secautomind_solver": "morse+caesar", "note": "chain unverified"},
+    {"id": "real_reverse_vnctf_cm1", "category": "reverse", "type": "android_xxttea", "kpi_class": "B", "flag_sha256_prefix": "a9bb88af16508d85", "verify_cmd": "_regress_one.py real_reverse_vnctf_cm1", "secautomind_coverage": "no", "secautomind_solver": null, "note": "XXTEA/Android; P2"},
+    {"id": "10732", "category": "crypto", "type": "pkcs1_aes", "kpi_class": "reproducible_no_kpi", "flag_sha256_prefix": "self-discovered-2e9af0b34fa6476a", "verify_cmd": "scripts/verify_10732.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "no official sha256 closure; reproducible"},
+    {"id": "10735", "category": "misc", "type": "logbool_pcap", "kpi_class": "reproducible_no_kpi", "flag_sha256_prefix": "67f3e126d51a6169", "verify_cmd": "scripts/verify_10735.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "no official sha256 closure; reproducible (19s)"}
+  ],
+  "summary": {"total": 16, "kpi_14": 14, "covered_yes": 6, "covered_partial": 4, "covered_no": 4, "reproducible_no_kpi": 2}
+}

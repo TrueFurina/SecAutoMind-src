@@ -1347,6 +1347,51 @@ function filterToolsByStatus(status) {
 }
 
 // 渲染工具列表
+// 资产元数据徽章（纯函数，便于测试）。数据来自 /api/config/tools 的
+// ToolConfigInfo：source / trust / license / upstream。
+// 设计取舍：
+//   - 外部 MCP 工具没有这些字段，值为空时自动不渲染（保持原有外观）。
+//   - license 只渲染"已核实 / 未核实"二态。90 个工具里 30 个是 unknown，
+//     逐个渲染"未知"只会制造噪音；且 version 是配方自身版本（全部 1.0.0），
+//     对使用者无信息量，故刻意不渲染，完整数据仍可从接口取。
+const TOOL_TRUST_META = {
+    builtin: { label: '内置', title: '随发行版分发，随版本发布' },
+    verified: { label: '已验证', title: '有可复现验证证据（evidence 字段）' },
+    community: { label: '外部', title: '外部导入，未经本项目验证' }
+};
+
+function buildToolMetaBadges(tool) {
+    if (!tool) return '';
+    let metaBadge = '';
+    if (tool.source) {
+        const isSelf = tool.source === 'self';
+        const sourceTitle = isSelf
+            ? '配方由本仓库编写（含 python3/sh 内联脚本）'
+            : '封装外部 CLI 工具' + (tool.upstream ? '：' + tool.upstream : '（上游地址未登记）');
+        metaBadge += `<span class="external-tool-badge" title="${settingsEscapeAttr(sourceTitle)}">${isSelf ? '自研' : '上游'}</span>`;
+    }
+    if (tool.trust && TOOL_TRUST_META[tool.trust]) {
+        metaBadge += `<span class="external-tool-badge" title="${settingsEscapeAttr(TOOL_TRUST_META[tool.trust].title)}">${TOOL_TRUST_META[tool.trust].label}</span>`;
+    }
+    // 许可证与上游仓库仅对 upstream 工具有意义（self 工具无上游许可证）
+    if (tool.source === 'upstream') {
+        if (tool.license && tool.license !== 'unknown') {
+            const licFull = String(tool.license);
+            const licLabel = licFull.length > 16
+                ? settingsEscapeAttr(licFull.slice(0, 15) + '…')
+                : settingsEscapeAttr(licFull);
+            metaBadge += `<span class="external-tool-badge lic-badge" title="${settingsEscapeAttr('已核实许可证：' + licFull)}">${licLabel}</span>`;
+        } else {
+            metaBadge += `<span class="external-tool-badge lic-unverified" title="上游许可证尚未逐个人工核实（audit_asset_metadata.py 盘点为 unknown）">许可证未核实</span>`;
+        }
+        // 上游仓库：渲染为可点击短链图标，避免行内 URL 撑爆工具列表
+        if (tool.upstream) {
+            metaBadge += `<a class="external-tool-badge upstream-link" href="${settingsEscapeAttr(tool.upstream)}" target="_blank" rel="noopener noreferrer" title="${settingsEscapeAttr('上游仓库：' + tool.upstream)}" onclick="event.stopPropagation()">↗</a>`;
+        }
+    }
+    return metaBadge;
+}
+
 function renderToolsList() {
     const toolsList = document.getElementById('tools-list');
     if (!toolsList) return;
@@ -1409,6 +1454,9 @@ function renderToolsList() {
             }
         }
 
+        // 资产元数据徽章：来源/信任级/许可证/上游仓库
+        const metaBadge = buildToolMetaBadges(tool);
+
         // 生成唯一的checkbox id，使用工具唯一标识符
         const checkboxId = `tool-${settingsEscapeAttr(toolKey).replace(/::/g, '--')}`;
 
@@ -1418,6 +1466,7 @@ function renderToolsList() {
                 <div class="tool-item-name">
                     ${escapeHtml(tool.name)}
                     ${externalBadge}
+                    ${metaBadge}
                     <label class="tool-resident-toggle" title="${typeof window.t === 'function' ? window.t('mcp.alwaysVisibleHint') : '始终常驻在 Tool Search 可见列表'}" onclick="event.stopPropagation()">
                         <input type="checkbox" class="theme-checkbox" ${alwaysVisibleChecked ? 'checked' : ''} ${alwaysVisibleLocked ? 'disabled' : ''} onchange="handleToolAlwaysVisibleChange(${settingsEscapeJsStringAttr(toolKey)}, this.checked)" />
                         <span>${typeof window.t === 'function' ? window.t('mcp.alwaysVisibleLabel') : '常驻'}</span>

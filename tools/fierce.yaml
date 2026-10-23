@@ -1,6 +1,11 @@
 name: "fierce"
 command: "fierce"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://github.com/mschwager/fierce"
+license: "GPL-3.0"
+trust: "builtin"
 short_description: "DNS侦察工具"
 description: |
   Fierce是一个DNS侦察工具，用于发现目标域名的子域名。

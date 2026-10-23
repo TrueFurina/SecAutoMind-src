@@ -1,6 +1,11 @@
 name: "arjun"
 command: "arjun"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "AGPL-3.0"
+upstream: "https://github.com/s0md3v/Arjun"
+trust: "builtin"
 short_description: "HTTP参数发现工具"
 description: |
   Arjun是一个HTTP参数发现工具，用于发现Web应用中的隐藏参数。

@@ -11,6 +11,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"secautomind-ai/internal/paths"
+
 	"github.com/google/uuid"
 )
 
@@ -31,7 +33,7 @@ type SpillOpts struct {
 func SessionRoot(configuredBase, projectID, conversationID string) string {
 	base := strings.TrimSpace(configuredBase)
 	if base == "" {
-		base = defaultRootDir
+		base = paths.Resolve(defaultRootDir)
 	}
 	if pid := strings.TrimSpace(projectID); pid != "" {
 		return filepath.Join(base, "projects", sanitizeSegment(pid))

@@ -74,6 +74,85 @@ def run_web():
     return total, hit, miss, pct
 
 
+def run_xss():
+    """跑 XSS 实战基准集（judge_xss.py），返回 (total, hit, miss, pct)。
+
+    三场景：反射型 / 存储型 / XSS 偷管理端会话 → 管理面板 SQLi。
+    ⚠️ 浏览器执行是最小 JS 子集模拟（见 live_target/xss_range.py 诚实边界），
+    不是真实浏览器；Go 侧镜像待接线（台账 parity=unwired）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_xss.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0 and not r.stdout:
+        print("[WARN] judge_xss.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    total = len(json.load(open(os.path.join(HERE, "xss_benchmark.json"), encoding="utf-8"))["problems"])
+    hit = out.count("✅ HIT")
+    miss = total - hit
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct
+
+
+def run_ecb():
+    """跑 AES-ECB 企鹅图识别基准集（judge_ecb.py），返回 (total, hit, miss, pct)。
+
+    真题对照：aes_ecb_penguin（static 集 MISS 的能力面）。
+    判定纪律（反注水）：ECB 图与同构 CBC 对照图成对提供，须同时满足
+    「ECB 16B 重复块率 ≥ 0.30 且 CBC 重复块率 ≤ 0.05」才命中。
+    Python judge_ecb.py（Go 侧镜像待接线；台账 parity=unwired）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_ecb.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0 and not r.stdout:
+        print("[WARN] judge_ecb.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    total = len(json.load(open(os.path.join(HERE, "ecb_benchmark.json"), encoding="utf-8"))["problems"])
+    hit = out.count("✅ HIT")
+    miss = total - hit
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct
+
+
+def run_morse_image():
+    """跑 Morse 时序图识别基准集（judge_morse_image.py），返回 (total, hit, miss, pct)。
+
+    真题对照：SpookyCTF 2024 - whispers-in-morse（public_morse_image 能力面）。
+    判定路径：PNG 像素 → 中间行 run-length → dot/dash 与符号/字符间隔分类
+              → Morse 解码 → flag{解码小写} → SHA-256 比对（与 exec_morse 同表）。
+    Python judge_morse_image.py（Go 侧镜像待接线；台账 parity=unwired）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_morse_image.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0 and not r.stdout:
+        print("[WARN] judge_morse_image.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    total = len(json.load(open(os.path.join(HERE, "morse_image_benchmark.json"), encoding="utf-8"))["problems"])
+    hit = out.count("✅ HIT")
+    miss = total - hit
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct
+
+
+def run_crc64():
+    """跑 CRC64 线性性伪造基准集（judge_crc64.py），返回 (total, hit, miss, pct)。
+
+    真题对照：CyberNova 2026 - Lazarus Phantom DB（crc_forgery_real 能力面）。
+    攻击链：crc(admin)=crc(guest)⊕crc(Δ)（GF(2) 线性）+ 自定义多项式 oracle 学习；
+    反注水：标准 crc64 库算不出自定义多项式，data 必须精确翻转成 admin 块。
+    Python judge_crc64.py（Go 侧镜像待接线；台账 parity=unwired）。
+    """
+    r = subprocess.run([sys.executable, os.path.join(HERE, "judge_crc64.py")],
+                       cwd=HERE, capture_output=True, text=True)
+    if r.returncode != 0 and not r.stdout:
+        print("[WARN] judge_crc64.py 运行异常:\n", r.stderr, file=sys.stderr)
+    out = r.stdout or ""
+    total = len(json.load(open(os.path.join(HERE, "crc64_benchmark.json"), encoding="utf-8"))["problems"])
+    hit = out.count("✅ HIT")
+    miss = total - hit
+    pct = 100.0 * hit / total if total else 0.0
+    return total, hit, miss, pct
+
+
 def run_attachment():
     """跑附件取证基准集（judge_attachment.py），返回 (total, hit, miss, pct)。
 
@@ -667,6 +746,10 @@ def main():
     st_total, st_hit, st_miss, st_pct, st_res = run_static()
     ex_total, ex_hit, ex_miss, ex_pct, ex_res = run_execution()
     wb_total, wb_hit, wb_miss, wb_pct = run_web()
+    xs_total, xs_hit, xs_miss, xs_pct = run_xss()
+    eb_total, eb_hit, eb_miss, eb_pct = run_ecb()
+    mi_total, mi_hit, mi_miss, mi_pct = run_morse_image()
+    c64_total, c64_hit, c64_miss, c64_pct = run_crc64()
     at_total, at_hit, at_miss, at_pct, at_water = run_attachment()
     wh_total, wh_a, wh_b = run_web_hints()
     jt_total, jt_hit = run_jwt()
@@ -688,7 +771,7 @@ def main():
     cr_total, cr_hit = run_crc32()
 
     print("=" * 64)
-    print("  SecAutoMind 夺旗能力二十二基准集 · 统一机验汇总")
+    print("  SecAutoMind 夺旗能力二十三基准集 · 统一机验汇总")
     print("=" * 64)
     print()
     print("【1】静态确定性基准集 (real_benchmark.json, 仅 description, 需 SHA-256)")
@@ -868,6 +951,35 @@ def main():
     print("              L(X)=d 得唯一 4 字节后缀 → 校验值被改成任意目标（无需密钥）")
     print()
 
+    print("【23】XSS 实战基准集 (xss_benchmark.json, 反射/存储/Cookie 窃取→SQLi 三场景)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (xs_total, xs_hit, xs_miss, xs_pct))
+    print("    Python judge_xss.py（Go 侧镜像待接线；台账 parity=unwired，不引用『==』为已核验证据）")
+    print("    攻破维度：反射型回显外带 / 存储型留言外带 / XSS 偷管理端会话 → 管理面板 SQLi")
+    print("    诚实边界：浏览器执行用最小 JS 子集模拟（fetch/Image/location + document.cookie），非真实浏览器")
+    print()
+
+    print("【24】AES-ECB 企鹅图识别 (ecb_benchmark.json, 相同明文块→相同密文块)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (eb_total, eb_hit, eb_miss, eb_pct))
+    print("    Python judge_ecb.py（Go 侧镜像待接线；台账 parity=unwired）")
+    print("    攻破维度：16B 块重复率（ECB 图 ≥0.30 且同构 CBC 对照图 ≤0.05 才命中，反注水成对判定）")
+    print()
+
+    print("【25】Morse 时序图识别 (morse_image_benchmark.json, 像素 run-length → Morse)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (mi_total, mi_hit, mi_miss, mi_pct))
+    print("    Python judge_morse_image.py（Go 侧镜像待接线；台账 parity=unwired）")
+    print("    攻破维度：像素流 → dot/dash 与符号/字符间隔分类 → Morse 解码（与 exec_morse 同表）")
+    print()
+
+    print("【26】CRC64 线性性伪造 (crc64_benchmark.json, 自定义多项式 oracle + bit-flip)")
+    print("    总数 %2d | 命中 %2d | 未命中 %2d | 覆盖率 %.1f%%" %
+          (c64_total, c64_hit, c64_miss, c64_pct))
+    print("    Python judge_crc64.py（Go 侧镜像待接线；台账 parity=unwired）")
+    print("    攻破维度：crc(admin)=crc(guest)⊕crc(Δ)，GF(2) 线性性 + oracle 学自定义多项式参数")
+    print()
+
     # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
     flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
     real_solver = st_hit - len(flag_scan)
@@ -878,9 +990,11 @@ def main():
     print()
 
     print("【结论】静态确定性 %.1f%% + 执行确定性 %.1f%% + Web 实战 %.1f%% + 附件取证 %.1f%% "
+          "+ XSS %d/%d + AES-ECB %d/%d + Morse图像 %d/%d + CRC64 %d/%d"
           "+ JWT %d/%d + 反序列化 %d/%d + XXE %d/%d + 上传RCE %d/%d + GraphQL %d/%d"
           " + SSRF %d/%d + SQLi深度 %d/%d + SSTI深度 %d/%d + ECDSA %d/%d + PaddingOracle %d/%d + BlindOOB %d/%d + HashExt %d/%d + GCMNR %d/%d + MT19937 %d/%d + LFSR %d/%d + LCG %d/%d + CRC32 %d/%d" %
-          (st_pct, ex_pct, wb_pct, at_pct, jt_hit, jt_total, de_hit, de_total,
+          (st_pct, ex_pct, wb_pct, at_pct, xs_hit, xs_total, eb_hit, eb_total, mi_hit, mi_total,
+           c64_hit, c64_total, jt_hit, jt_total, de_hit, de_total,
            xe_hit, xe_total, up_hit, up_total, gq_hit, gq_total,
            sr_hit, sr_total, sq_hit, sq_total, si_hit, si_total, ec_hit, ec_total,
            po_hit, po_total, bo_hit, bo_total, he_hit, he_total, gnr_hit, gnr_total,
@@ -888,7 +1002,7 @@ def main():
     print("    Web 题目感知渗透: A组(无线索)%d → B组(读题)%d (增量 +%d)，证明『读题取线索定向打』是实打实能力" %
           (wh_a, wh_b, wh_b - wh_a))
     print("    执行层、Web 实战层、附件取证层、题目感知层、JWT、反序列化、XXE、上传RCE、GraphQL、SSRF、SQLi、SSTI、"
-          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey、LCG 预测、CRC32 伪造 十七大利用层是冠军差异点：")
+          "ECDSA、Padding Oracle、Blind OOB、Hash Length Extension、GCM nonce 复用、MT19937 状态恢复、LFSR/Berlekamp–Massey、LCG 预测、CRC32 伪造、XSS、AES-ECB 识别、Morse 时序图、CRC64 伪造 二十四大利用层是冠军差异点：")
     print("    西湖论剑类关键词求解器天花板即静态集，SecAutoMind 额外验证了")
     print("    『真跑工具 + 真打靶机 + 真攻 Web + 真解析二进制 + 读题定向渗透 + 真绕过 JWT")
     print("     + 真反序列化 RCE + 真 XXE（含 Blind OOB）+ 真上传 RCE + 真 GraphQL 利用"
@@ -911,7 +1025,8 @@ def main():
     # 「工程链路可跑通」，不构成真实赛场竞争力证据；对外引用必须标注来源。
     # 判定依据：real_benchmark.json 每题带 `source`（如 "picoCTF 2024 - interencdec"）
     # 与公开 writeup 来源 → 真题；其余基准集为 gen_*.py 生成 / 自建靶场 / 自造工件 → 自产。
-    synth_total = (ex_total + wb_total + at_total + wh_total
+    synth_total = (ex_total + wb_total + xs_total + eb_total + mi_total + c64_total
+                   + at_total + wh_total
                    + jt_total + de_total + xe_total + up_total + gq_total
                    + sr_total + sq_total + si_total + ec_total + po_total
                    + bo_total + he_total + gnr_total + mt_total + lf_total
@@ -960,6 +1075,10 @@ def main():
                    "flag_scan_only": len(flag_scan), "real_solver_hit": real_solver},
         "execution": {"total": ex_total, "hit": ex_hit, "miss": ex_miss, "coverage_pct": ex_pct},
         "web": {"total": wb_total, "hit": wb_hit, "miss": wb_miss, "coverage_pct": wb_pct},
+        "xss": {"total": xs_total, "hit": xs_hit, "miss": xs_miss, "coverage_pct": xs_pct},
+        "ecb": {"total": eb_total, "hit": eb_hit, "miss": eb_miss, "coverage_pct": eb_pct},
+        "morse_image": {"total": mi_total, "hit": mi_hit, "miss": mi_miss, "coverage_pct": mi_pct},
+        "crc64": {"total": c64_total, "hit": c64_hit, "miss": c64_miss, "coverage_pct": c64_pct},
         "attachment": {"total": at_total, "hit": at_hit, "miss": at_miss,
                        "coverage_pct": at_pct, "water_filled": at_water},
         "web_hints": {"total": wh_total, "group_a_no_hint": wh_a, "group_b_with_hint": wh_b,
@@ -1006,7 +1125,7 @@ def main():
             },
             "synthetic": {
                 "label": "自产题（gen_*.py 生成 / 自建靶场 / 自造工件）",
-                "benchmarks": ["execution", "web", "attachment", "web_hints", "jwt", "deser",
+                "benchmarks": ["execution", "web", "xss", "attachment", "web_hints", "jwt", "deser",
                                "xxe", "upload", "graphql", "ssrf", "sqli_deep", "ssti_deep",
                                "ecdsa_nonce_reuse", "padding_oracle", "blind_oob", "hash_ext",
                                "gcm_nonce_reuse", "mt19937_recover", "lfsr_predict",

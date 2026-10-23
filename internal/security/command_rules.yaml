@@ -1,0 +1,69 @@
+# 保底最小集拦截规则 —— isDangerousShellCommand 的数据源（go:embed 编译期嵌入）。
+#
+# 设计口径（与 executor.go 中 executeSystemCommand 头注释一致，改一侧必须同步另一侧）：
+#   exec 工具是设计内 RCE 接口，本规则集仅兜底拦截"意外外联/反连/解释器任意代码执行"
+#   类最危险特征，不是沙箱。合法 shell 语法（分号/重定向/算术展开/变量展开）为设计内
+#   用法，一律放行。
+#
+# 语义约定：
+#   1. pattern 为 Go regexp（RE2）正则；按列表顺序首个命中即返回其 reason，
+#      因此元字符规则必须排在程序名规则之前（shell_interception_test.go 依赖该顺序）。
+#   2. 程序名规则一律带 \b 词边界 + \s+。旧实现用 strings.Contains 子串匹配，会把
+#      `sync /data` 误判成 netcat、`spy -c x` 误判成 Python 代码执行；词边界修掉这类误报，
+#      同时不影响 `nc -e /bin/sh` 这类真实命中的检出（行首即词边界）。
+#   3. unless_contains：命令包含该子串时跳过本规则。仅 $() 规则使用——RE2 无负向
+#      先行断言，无法用单条正则表达"含 $( 但不含含 $(("；这里的语义与旧实现
+#      （全局判定）完全一致，不是新增绕过面。
+#   4. 新增规则请同时补 shell_interception_test.go 的拦/放两侧用例。
+rules:
+  - pattern: '\|'
+    reason: "管道（|）"
+
+  - pattern: '&&'
+    reason: "逻辑与（&&）"
+
+  - pattern: '\|\|'
+    reason: "逻辑或（||）"
+
+  - pattern: '`'
+    reason: "反引号替换"
+
+  - pattern: '\bcurl\s'
+    reason: "curl（可能外联）"
+
+  - pattern: '\bwget\s'
+    reason: "wget（可能外联）"
+
+  - pattern: '\bnc\s'
+    reason: "netcat（可能建立反向shell）"
+
+  - pattern: '\bsocat\s'
+    reason: "socat（可能建立反向shell）"
+
+  - pattern: '\btelnet\s'
+    reason: "telnet（可能外联）"
+
+  - pattern: '/dev/tcp'
+    reason: "bash反向shell"
+
+  - pattern: '\bbash\s+-i'
+    reason: "交互式bash"
+
+  - pattern: '\bpython\s+-c'
+    reason: "Python代码执行"
+
+  - pattern: '\bpython3\s+-c'
+    reason: "Python代码执行"
+
+  - pattern: '\bpy\s+-c'
+    reason: "Python代码执行"
+
+  - pattern: '\bperl\s+-e'
+    reason: "Perl代码执行"
+
+  - pattern: '\bruby\s+-e'
+    reason: "Ruby代码执行"
+
+  - pattern: '\$\('
+    reason: "子shell替换（$()）"
+    unless_contains: '$(('

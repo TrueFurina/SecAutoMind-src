@@ -429,6 +429,12 @@ func (p *Presolver) PresolveWithRegistry(ctx context.Context, ch *Challenge, att
 			zap.String("engine", r.Engine), zap.Strings("flags", r.Flags))
 		return r
 	}
+	// 兜底：西湖论剑 Python skills（吞并接入，fail-closed，无命中/环境缺失返回 nil）
+	if pr := pythonFallbackResult(tryPythonLegacyFallback(text, attachments)); pr != nil {
+		p.logger.Info("presolve 命中（xhlj_python 兜底）",
+			zap.Strings("flags", pr.Flags))
+		return pr
+	}
 	return &PresolveResult{
 		Solved: false,
 		Detail: "presolve 未命中（注册表驱动，共 " + fmt.Sprintf("%d", len(GetSolvers())) + " 个求解器）",

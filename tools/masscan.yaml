@@ -1,6 +1,11 @@
 name: "masscan"
 command: "masscan"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "AGPL-3.0"
+upstream: "https://github.com/robertdavidgraham/masscan"
+trust: "builtin"
 short_description: "高速互联网级端口扫描工具"
 description: |
   Masscan是一个高速端口扫描工具，可以在几分钟内扫描整个互联网。

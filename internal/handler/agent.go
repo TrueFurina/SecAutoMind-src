@@ -49,7 +49,8 @@ func safeTruncateString(s string, maxLen int) string {
 	}
 
 	// 截断到最大长度
-	truncated := string(runes[:maxLen])
+	// 初值必被下方 found 分支覆盖（两条路径都会走到 found），故不预置（SA4006）。
+	var truncated string
 
 	// 尝试在标点符号或空格处截断，使截断更自然
 	// 在截断点往前查找合适的断点（不超过20%的长度）

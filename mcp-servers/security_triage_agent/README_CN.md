@@ -122,6 +122,53 @@ python mcp_security_triage_agent.py --selftest
 
 用于区分「服务本身有问题」与「客户端配置有问题」——避免只在客户端里看到一句「启动失败」而无从排查。
 
+## 出口契约（每条结论自带可信度声明）
+
+2026-10-19 起，`tools/call` 的每个成功出口都会在业务字段旁**追加**一个 `_contract` 对象。原始字段（`tool_name` / `summary` / `details`，或 `ioc_search` 的数组）结构不变，老客户端按原格式解析不受影响。
+
+```json
+{
+  "tool_name": "asset_lookup",
+  "summary": "已获取 DC-01 的资产画像",
+  "details": ["..."],
+  "_contract": {
+    "schemaVersion": "tool-contract/1",
+    "authority": "observed",
+    "authorityMeaning": "直接读取落盘事实（知识库 / 命令输出），未经推断加工",
+    "coverage": { "status": "complete", "truncated": false, "omittedCount": 0 },
+    "degraded": false,
+    "degradationReason": null,
+    "limitations": ["仅覆盖知识库已纳管主机；未纳管主机返回空结果，不代表主机不存在"],
+    "evidence": {
+      "tool": "asset_lookup",
+      "toolVersion": "0.1.0",
+      "inputDigest": "sha256:4a82c5c5157c5c9f",
+      "generatedAt": "2026-10-19T14:26:24+00:00"
+    }
+  }
+}
+```
+
+| authority（等级，非工具） | 含义 | 当前工具 |
+|---|---|---|
+| observed | 直接读取落盘事实，未经推断加工 | asset / log / intel / history_alert / ioc_search / command_executor |
+| derived | 由确定性规则推导，可复现 | false_positive_check / playbook_matcher / ticket_generator / host_isolation_simulator |
+| inferred | 由模型或启发式推断，存在不确定性 | incident_triage |
+| unknown | 本次调用未形成结论（降级 / 异常 / 证据缺失） | 任一工具降级时 |
+
+三条硬规则：
+
+1. **降级必须自报**。`degraded=true` 时，`authority` 强制为 `unknown`、`coverage.status` 不得为 `complete`、`degradationReason` 必须非空。允许降级，不允许**假装没降级**——这正是 `incident_triage` 兜底分支此前的缺陷（返回 `isError=false` + `risk_level=medium`，实际一步研判都没做）。
+2. **空结果 ≠ 不可用**。`ioc_search` 的空数组保留「检索过、未命中」原语义；「事件四个指标全为空所以没检索」这层歧义由 `limitations` 写明。
+3. **契约层不持有工具知识**。等级由工具自己声明（`Tool.authority` / `Tool.limitations`），出口层只负责搬运；契约层自身出错只会降级为 `unknown` 并写明，不会让工具不可用。
+
+对应门禁：
+
+```bash
+python contract_test.py                 # 53 条断言，含 5 类坏契约的变异自检
+python mcp_security_triage_agent.py --selftest   # 出口矩阵 208 条（原 164 + 契约 44）
+```
+
 ## 边界与诚实声明
 
 接入前请知悉以下事实，避免对能力产生误判：

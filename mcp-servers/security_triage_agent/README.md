@@ -122,6 +122,31 @@ This replaces the earlier "list the tools, call `asset_lookup` once" self-test, 
 
 Use it to tell "the service is broken" apart from "the client config is broken", instead of staring at a bare "startup failed" in the client.
 
+## Output contract (every conclusion declares its own confidence)
+
+Since 2026-10-19, every successful `tools/call` result carries an extra `_contract` object alongside the business fields. The original fields (`tool_name` / `summary` / `details`, or the `ioc_search` array) keep their exact shape, so existing clients are unaffected.
+
+```json
+"_contract": {
+  "schemaVersion": "tool-contract/1",
+  "authority": "observed",
+  "authorityMeaning": "Read directly from stored facts (knowledge base / command output), no inference",
+  "coverage": { "status": "complete", "truncated": false, "omittedCount": 0 },
+  "degraded": false,
+  "degradationReason": null,
+  "limitations": ["Only hosts already registered in the knowledge base are covered; an empty result does not prove the host is absent"],
+  "evidence": { "tool": "asset_lookup", "toolVersion": "0.1.0", "inputDigest": "sha256:...", "generatedAt": "..." }
+}
+```
+
+`authority` is one of `observed` / `derived` / `inferred` / `unknown`. Three hard rules:
+
+1. **Degradation must self-report.** With `degraded=true`, `authority` is forced to `unknown`, `coverage.status` may not be `complete`, and `degradationReason` must be non-empty. Degrading is allowed; pretending otherwise is not.
+2. **Empty is not unavailable.** An empty `ioc_search` array still means "searched, no hit"; the ambiguity with "no indicators to search" is spelled out in `limitations`.
+3. **The contract layer owns no tool knowledge.** Levels are declared by each tool (`Tool.authority` / `Tool.limitations`); the exit layer only transports them.
+
+Gates: `python contract_test.py` (53 assertions, incl. 5 mutated-bad-contract cases) and `python mcp_security_triage_agent.py --selftest` (208 assertions).
+
 ## Boundaries and honest disclosures
 
 Please read before connecting, so capability is not misjudged:

@@ -1,6 +1,11 @@
 name: "xsser"
 command: "xsser"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/epsylon/xsser"
+trust: "builtin"
 short_description: "XSS漏洞测试工具"
 description: |
   XSSer是一个自动化XSS漏洞测试工具。

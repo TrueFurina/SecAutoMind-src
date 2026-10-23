@@ -34,7 +34,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 RANGE_PY = os.path.join(HERE, "live_target", "web_range_hints.py")
 BENCH = os.path.join(HERE, "web_hint_benchmark.json")
-PORT = int(os.environ.get("HINT_PORT", "18097"))
+PORT = int(os.environ.get("HINT_PORT", "18098"))
 
 FLAG_RE = re.compile(r"(?:flag|FLAG|picoCTF|ctf)\{[^}]{3,80}\}")
 LINK_RE = re.compile(r"""(?:href|src|action)\s*=\s*["'](/[^"'#>]{1,120})""", re.I)

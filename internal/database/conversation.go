@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"secautomind-ai/internal/paths"
+
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -797,7 +799,7 @@ func (db *DB) einoReductionBaseDir() string {
 	if base := strings.TrimSpace(db.einoReductionRootDir); base != "" {
 		return base
 	}
-	return filepath.Join("tmp", "reduction")
+	return paths.Resolve(filepath.Join("tmp", "reduction"))
 }
 
 // EinoReductionBaseDir returns the configured reduction cache root.
@@ -825,7 +827,7 @@ func (db *DB) einoWorkspaceBaseDir() string {
 	if base := strings.TrimSpace(db.einoWorkspaceRootDir); base != "" {
 		return base
 	}
-	return filepath.Join("tmp", "workspace")
+	return paths.Resolve(filepath.Join("tmp", "workspace"))
 }
 
 func (db *DB) removeConversationScopedDirs(conversationID, projectID string) {

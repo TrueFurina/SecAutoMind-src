@@ -28,6 +28,21 @@ Preferred report contents:
 
 If the project repository has private vulnerability reporting enabled, use that channel. Otherwise, open a minimal public issue that states there is a security concern and avoid posting exploit details, credentials, target data, or weaponized payloads.
 
+#### Log hygiene before attaching anything (2026-10-20)
+
+Logs and config dumps are the most common accidental leak vector in a security
+product. Before pasting logs into an issue, a report, or a chat with support,
+remove or mask:
+
+- credentials and tokens: passwords, API keys, session cookies, JWT/Auth headers;
+- C2 / WebShell / socket tokens and callback URLs (they are operational secrets);
+- target identifiers: hostnames, IPs, internal domains, bucket names;
+- personal data and machine paths (`C:\Users\<name>`, `/home/<name>`, browser profiles);
+- payload bytes and captured traffic contents — describe them, do not paste them.
+
+If a value is essential to reproduce the issue, replace it with a stable
+placeholder of the same shape (e.g. `ak_live_<redacted-32>`) and say so.
+
 ### Scope
 
 In scope:
@@ -53,6 +68,12 @@ Out of scope:
 ### Authorized Use Boundary
 
 SecAutoMind must only be used for education, research, and authorized security testing. Do not use it against systems without explicit permission.
+
+CTF practice is in scope **only against the competition's own challenge targets**.
+A CTF flag is not an authorization to touch the scoring platform, other teams, or
+any infrastructure outside the provided instances — bypassing a platform's access
+control (rate limits, submission endpoints, anti-bot) is out of scope even during
+a competition.
 
 High-risk capabilities such as Shell execution, WebShell management, C2, payload generation, external MCP tools, and batch scanning should be enabled only in controlled, authorized environments.
 
@@ -103,6 +124,18 @@ SecAutoMind 是一个安全测试与自动化平台。它可以执行工具、�
 
 如果仓库启用了私有漏洞报告，请优先使用该渠道。否则可以提交一个最小公开 Issue，说明存在安全问题，但不要发布利用细节、凭证、目标数据或武器化载荷。
 
+#### 附日志前的清洗清单（2026-10-20）
+
+日志与配置导出是安全产品最常见的意外泄露面。粘贴到 Issue / 报告 / 客服聊天前先删或打码：
+
+- 凭证与令牌：口令、API Key、会话 Cookie、JWT / Authorization 头；
+- C2 / WebShell / socket 令牌与回连地址（属运行期机密）；
+- 目标标识：主机名、IP、内网域名、bucket 名；
+- 个人信息与机器路径（`C:\Users\<name>`、`/home/<name>`、浏览器配置目录）；
+- 载荷字节与被捕获流量内容——**描述它，不要粘贴它**。
+
+若某个值对复现确有必要，用同形状占位符替换并注明（如 `ak_live_<redacted-32>`）。
+
 ## 范围
 
 范围内：
@@ -128,6 +161,10 @@ SecAutoMind 是一个安全测试与自动化平台。它可以执行工具、�
 ## 授权使用边界
 
 SecAutoMind 仅可用于教育、研究和授权安全测试。不要在没有明确授权的系统上使用。
+
+CTF 演练**只在赛题自带靶机范围内**成立。拿到 flag 不等于获得对计分平台、其他队伍
+或靶机之外任何设施的授权——即使在比赛期间，绕过平台的访问控制（限流、提交接口、
+反机器人）也属于范围外。
 
 Shell 执行、WebShell 管理、C2、payload 生成、外部 MCP 工具、批量扫描等高风险能力，只应在受控且授权明确的环境中启用。
 

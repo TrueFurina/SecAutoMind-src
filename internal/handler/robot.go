@@ -912,7 +912,7 @@ func (h *RobotHandler) recordRobotCommandAudit(access *database.RBACAccess, plat
 }
 
 func (h *RobotHandler) cmdRoles() string {
-	if h.config.Roles == nil || len(h.config.Roles) == 0 {
+	if len(h.config.Roles) == 0 {
 		return "暂无可用角色。"
 	}
 	names := make([]string, 0, len(h.config.Roles))

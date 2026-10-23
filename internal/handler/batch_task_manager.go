@@ -972,7 +972,11 @@ func (m *BatchTaskManager) PrepareSingleTaskRun(queueID, taskID string) error {
 	}
 
 	var task *BatchTask
-	taskIndex := -1
+	// 第一次查找只为判存在；索引在此赋值后**必然**被下方二次查找覆盖——
+	// 那次查找是在重新加锁后重做的（防止加锁间隙队列被换），不是冗余。
+	// staticcheck SA4006 报此赋值为死存储属实，但删掉会让 for 循环里的
+	// 赋值与二次查找看起来像重复代码，故保留并在此说明。
+	var taskIndex int
 	for i, t := range queue.Tasks {
 		if t.ID == taskID {
 			taskIndex = i

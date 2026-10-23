@@ -1,6 +1,11 @@
 name: "graphql-scanner"
 command: "graphqlmap"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/swisskyrepo/GraphQLmap"
+trust: "builtin"
 short_description: "GraphQL安全扫描和自省工具"
 description: |
   高级GraphQL安全扫描和自省工具，用于检测GraphQL API中的安全问题。

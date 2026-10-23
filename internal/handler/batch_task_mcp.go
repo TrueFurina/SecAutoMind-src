@@ -76,7 +76,7 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 		if offset > 100000 {
 			offset = 100000
 		}
-		queues := []*BatchTaskQueue{}
+		var queues []*BatchTaskQueue
 		total := 0
 		var err error
 		if principal, ok := authctx.PrincipalFromContext(ctx); ok {

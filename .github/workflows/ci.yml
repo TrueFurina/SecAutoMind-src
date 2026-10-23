@@ -2,6 +2,12 @@ name: ci
 
 # PR 门禁：每次 PR / push 到 main 自动跑 vet + 测试 + race 检测
 # 对齐 release.yml 的 test-linux 逻辑，但触发范围更广、响应更快
+#
+# 缓存纪律（REA #142，2026-10-20 核对）：本文件**不使用** actions/cache 或
+# setup-* 的 cache: 选项。匿名门禁 / 密钥扫描 / 证据哈希这类门禁的输入是
+# 「当前工作树的字节」，缓存它们的中间产物（依赖安装、检查结果、生成报告）
+# 等于让门禁看旧世界——缓存命中时它们会基于过期内容放行。若要加缓存，
+# 只允许缓存**与判定无关**的东西（如 Go module 下载），且必须与门禁步骤分离。
 on:
   pull_request:
     branches: [main]
@@ -53,6 +59,20 @@ jobs:
         run: python scripts/check_golden_freeze_test.py
       - name: Cross-language golden freeze check (blocks hand-edited golden)
         run: python scripts/check_golden_freeze.py
+      # CTF 密码攻击模板库（scripts/ctf_sage/，计划 P0-2）：每个模板用合成参数造题→解题→断言，
+      # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy、
+      # t1 根提取主路径 _roots_numpy 依赖 numpy（缺 numpy 时退化 _roots_float，只对
+      # double 安全范围的系数有效——大格必 miss，PR #58 实测 2/6 假红）。
+      # requirements.txt 是工具运行时依赖，不含它们，故此处局部安装。
+      - name: Install crypto template deps (sympy for t4 Boneh-Durfee, numpy for t1 root extraction)
+        run: python -m pip install sympy numpy
+      - name: CTF crypto templates self-test (t1-t6)
+        run: |
+          set -e
+          for f in t1_coppersmith t2_ecdsa_hnp t3_truncated_lfsr t4_boneh_durfee t5_dlp_bsgs_ph t6_hastad_broadcast; do
+            echo "=== $f ==="
+            python scripts/ctf_sage/$f.py --selftest
+          done
       - name: Vet
         run: go vet ./...
       - name: Test with race detector
@@ -62,7 +82,14 @@ jobs:
         # 2026-10-17 同因追加 TestExternalBench_AttachmentSubset（外部尺附件子集实测
         # 65~67s，-race 下按 3~5x 计会吃掉 200~330s 预算）—— 同样**不在本 job 跑 ≠ 不跑**：
         # 它由 external-bench job 全量实跑（含文本口径 + 载荷台账 + 反注水钉子 + 门禁自测）。
-        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset'
+        #
+        # 2026-10-23 再追加 3 个「纯测量」基准（TestRealBenchmark_*）：它们只统计命中率，
+        # **不测并发**，在 -race 下纯属 3~5x 浪费；其口径由 quant-gate job
+        # （`check_quant_effect.py --full` 的 real_static_shipped / real_static_registry /
+        # real_static_real_solver 三条陈述）在 CI 里逐条机验 —— 同样"不在本 job 跑 ≠ 不跑"。
+        # 同时把总预算 900s → 1800s：本会话实测（128 核服务器）该命令已需 ~990s，
+        # 900s 会红；新增的链式求解器/4 个 Go 基准镜像都增加了真实工作量。
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 1800s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset|TestRealBenchmark_ShippedPresolve|TestRealBenchmark_RegistryPresolve|TestRealBenchmarkHitNotInflatedByPlaintextFlag'
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
@@ -85,6 +112,48 @@ jobs:
         run: python scripts/run_hitl_boundary.py --check
       - name: Build
         run: CGO_ENABLED=1 go build -trimpath ./cmd/server
+
+  # Go 全系静态检查门禁（2026-10-21 新增，通道见 E:\Program\实验服务器与全局配置.md §九）。
+  # 首跑 156 条 → 修掉 21 条后基线 135 条。**只拦新增语义类告警**
+  # （SA4xxx/SA5xxx/SA9xxx/ST1008），风格类与死代码只计量不阻断——
+  # 首日就把门禁设成"零告警"，唯一的下场是被 --no-verify 绕过（REA #169）。
+  # 报告上传为 artifact，红了可以直接下载定位。
+  staticcheck-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      # 固定版本：staticcheck 的新版会新增检查项，不固定则基线无意义
+      - name: Install staticcheck (pinned 2025.1.1)
+        run: go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+      - name: Run staticcheck
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          staticcheck -version
+          # staticcheck 有告警时退出码非 0；判定交给下面的基线守卫，这里只保证报告生成
+          staticcheck -f json ./... > staticcheck.json || true
+          echo "告警条数: $(grep -c . staticcheck.json || echo 0)"
+      # 门禁自身要有"必须被抓到"的用例：永远绿的门禁比没有门禁更坏（REA #253）
+      - name: Static gate self-test (bad sample must be red)
+        run: python scripts/check_staticcheck_baseline_test.py
+      # 死代码台账自测：门禁自身要有"必须被抓到"的用例（REA #253）
+      - name: Dead code ledger self-test
+        run: python scripts/dead_code_ledger_test.py
+      # U1000 的守门人：基线里那条 file:"*" 已降级为说明性条目，
+      # 真正的判定在这里——报告里每条 U1000 的 (文件::符号) 必须在台账里有裁定。
+      - name: Dead code ledger gate (every U1000 must be ruled)
+        run: python scripts/dead_code_ledger.py --report staticcheck.json --gate
+      - name: Static gate vs baseline (new semantic findings block)
+        run: python scripts/check_staticcheck_baseline.py --report staticcheck.json
+      - name: Upload staticcheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staticcheck-report
+          path: staticcheck.json
+          if-no-files-found: warn
 
   # 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证。
   # 防止「求解器注水 / 误报 / 注册表死代码」回归，每次 PR/push 自动拦。
@@ -116,8 +185,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，依设计不入库，
       # 重新生成后 judge_exec.py 的 execution 块才能 15/15（否则静默 13/15 漏检）。
       - name: Regenerate execution fixtures (nested .git repos not committed by design)
@@ -149,8 +218,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: Regenerate execution fixtures (nested .git repos not committed by design)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       - name: Regenerate dual-language benchmark summary
@@ -373,8 +442,8 @@ jobs:
       - name: Regenerate execution fixtures (git-repo fixtures are not committed)
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       # 基准集套件 claim 会真跑 run_all_benchmarks.py，其中 padding-oracle judge 依赖 pycryptodome
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: 对外量化陈述机验（声明 vs 实测，全量）
         run: python scripts/check_quant_effect.py --full
       # 空洞绿自测（2026-10-14 门禁审计）：全 slow / 缺 command 曾让本门禁"零机验却报全绿"
@@ -383,6 +452,9 @@ jobs:
       # 门禁自身也要有回归测试：证明基准集达标判定真能杀死退化，而不是恒 PASS/恒 FAIL
       - name: Benchmark baseline gate self-test (prove it can fail)
         run: python scripts/check_benchmark_baseline_test.py
+      # XSS 基准集自测（2026-10-23）：回归 3/3 + 变异 --safe 必须 0/3（证明判题器非空洞绿）
+      - name: XSS benchmark self-test (regression + mutation)
+        run: python scripts/check_xss_benchmark_test.py
 
   caliber-gate:
     runs-on: ubuntu-latest
@@ -391,6 +463,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 配方契约审计要解析 tools/*.yaml，而 PyYAML 不在 requirements.txt
+      # （那份只管工具运行时，不管审计脚本）。ubuntu runner 的 Python 不保证预装，
+      # 故显式装——与本文件其它「pip install pycryptodome」步同一惯例。
+      # 脚本本身在缺 PyYAML 时 exit 2（fail-closed），不会静默放行。
+      - name: Install PyYAML for recipe contract audit
+        run: python -m pip install --upgrade pip && pip install pyyaml
       # 门禁自身也要有回归测试（2026-10-14 门禁审计）：本门禁结论全由「违规项计数」
       # 构成，扫到 0 个文件（目录名写错 / 被 gitignore / 扩展名被改空）时会无条件全绿。
       # 现 fail-closed（覆盖数为 0 即红）并由本步实跑自测，同时锁死豁免机制不退化。
@@ -398,6 +476,49 @@ jobs:
         run: python scripts/check_material_numbers_test.py
       - name: Material numbers vs single source of truth
         run: python scripts/check_material_numbers.py
+      # 文档事实门禁（2026-10-20 新增）：AGENTS.md 是材料门禁的 EXEMPT_FILES
+      # （规范文档必须列举旧数字才能说明规则，列举 ≠ 使用），但豁免制造了盲区——
+      # 其「N YAML + K 内置 = R 运行时」分解式示范是**现行事实的示范**而非枚举，
+      # 实测 91/143 已漂移过一轮且无任何判据能看见。由本门禁兜底。
+      - name: Doc-facts gate self-test (6 mutations + 2 fail-closed)
+        run: python scripts/check_doc_facts_test.py
+      - name: Doc facts vs single source of truth
+        run: python scripts/check_doc_facts.py
+      # 范围边界准入清单（2026-10-20 新增，REA #169）：豁免必须有审计日期、
+      # 准入理由、到期日。缺字段或过期 = 没有准入（过期条目比新增条目更危险：
+      # 它看起来"已经被批准过"）。空清单是合法状态——没裁定过就不该有准入。
+      - name: Scope allow-list self-test (missing expiry / vague reason must FAIL)
+        run: python -X utf8 scripts/scope_allowlist_test.py
+      - name: Scope allow-list validity (expired entries block)
+        run: python -X utf8 scripts/scope_allowlist.py --check
+      # 工具契约四件套（2026-10-20 新增，REA #176）：MCP 对外契约 = 错误投影 /
+      # 入参 schema / 响应预算 / 溯源，不是"能跑通"。这里只把**硬缺陷**设为阻断：
+      # T0 常驻工具缺 InputSchema 或 required。错误投影现状（12 个 T0 拼 err.Error()）
+      # 是已登记缺口，见 docs/工具契约与输出边界-2026-10-20.md，暂不阻断。
+      - name: Tool contract sampler self-test (constant names / fail-closed)
+        run: python -X utf8 scripts/audit_tool_contracts_test.py
+      - name: T0 tool contracts (InputSchema + required)
+        run: python -X utf8 scripts/audit_tool_contracts.py --gate
+      # 错误投影（2026-10-21 收窄，REA #10/#176）：26 处 `textResult("错误: "+err.Error())`
+      # 已收敛到 toolInternalError（对外只出可行动文案、原文进日志），只保留 4 处入参
+      # 校验直出并登记基线。**纯 Python 守卫，不占 Go 额度**：Go 侧改动已由服务器
+      # `go build` + `go vet` + `go test ./...` 验证（本机无 Go 工具链，见总账 HUNG 项）。
+      - name: Error-projection gate self-test (new leak must be red)
+        run: python -X utf8 scripts/check_error_projection_test.py
+      - name: Error projection (no new err.Error() leaks beyond baseline)
+        run: python -X utf8 scripts/check_error_projection.py --gate
+      # 工具**配方**（tools/*.yaml，89 份真声明）的契约：与上面的内置 MCP 工具
+      # 是两条完全不同的链路（注册表 vs 命令行拼装），四维度不能照抄，故单独一套
+      # 解析与门禁。除四维度外还做「与 count_stats.tools_yaml 的口径对账」——两个
+      # 独立计数器差值无法逐项解释时变红（这正是 risk_policy 虚报 92 的复现路径）。
+      - name: Recipe contract sampler self-test (bad samples must be red)
+        run: python -X utf8 scripts/audit_yaml_tool_contracts_test.py
+      - name: Tool recipe contracts + count reconciliation
+        run: python -X utf8 scripts/audit_yaml_tool_contracts.py --gate
+      # 环境指纹（2026-10-20 新增，REA #33/#239）：块会随基准产物公开，故必须自测
+      # "不含绝对路径、不写环境变量原值、取不到的项进 unknown 而不是填默认值"。
+      - name: Env fingerprint self-test (no path/secret leak)
+        run: python -X utf8 scripts/env_fingerprint_test.py
       # 门禁自身也要有回归测试：修复器复用门禁的 ANCHORS 表，若哪天两者判定分叉，
       # 会出现「修复器说修好了、门禁说还红」的隐蔽失效。10 项含 4 项变异验证
       # （故意注入漂移数字、故意破坏千分位逻辑，测试必须变红）。
@@ -465,6 +586,48 @@ jobs:
         run: python scripts/check_web_asset_parity.py
       - name: Web parity gate mutation check (prove the gate can fail)
         run: python scripts/check_web_asset_parity_test.py
+
+  # CSS 影子块门禁（2026-10-19 新增）。背景：style.css 里两个同名同特异性
+  # `.external-tool-badge` 定义靠出现顺序决胜，靠后的蓝色定义把全局徽章刷成错色
+  # （HANDOFF §16/§17）。全量审计：6,696 个顶层块里 130 组同名选择器。
+  # 本门禁只拦「可证明安全」的那一类（每属性都被更靠后、**重要性不更低**的
+  # 同选择器块覆盖 ⇒ 删除无任何副作用），--check 发现即红；
+  # 「部分存活」组（前块有属性未被可靠覆盖）是需人工判定的技术债，只报告不动。
+  # 🔴 importance 必须参与判定：2026-10-19 首版 analyse() 只按"后来者必胜"，
+  # 实删前复核发现被删块含 15 处 !important —— 若某处只被后来块的普通声明覆盖，
+  # 删除会把生效值从 important 旧值换成普通新值，而等价性验证（同样 importance
+  # 盲）看不见。自测含该反向变异用例 + 级联表 4 项 + 端到端 --apply + 空扫防呆。
+  css-shadow-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: CSS shadow-block gate self-test (importance-aware, 24 cases incl. mutation)
+        run: python scripts/css_shadow_audit_test.py
+      - name: No provably-dead CSS shadow blocks (new ones => BLOCK)
+        run: python scripts/css_shadow_audit.py --check
+
+  # 前端运行时测试：`internal/app/web/static/js/*.test.cjs` 曾长期是**孤儿测试**——
+  # ci.yml 全文没有 node --test，全靠人手跑，于是两条断言在实现重构后**静默腐烂**。
+  # 2026-10-18 首次全量跑（131 例）实测 2 处 FAIL：
+  #   · hitl-approval-ui：仍断言 `csaiHitlDefaultReviewerReady = initHitlDefaultReviewerFromServer()`，
+  #     而实现已改为 ConfigReady 持 promise、ReviewerReady 作别名；
+  #   · hitl-conversation-isolation：仍断言 `window.csaiHitlDefaultReviewer = v`，
+  #     而实现已改为委托 applyHitlDefaultConfigFromServer。
+  # 语义未变、只是断言过期；已按现实现改写（不是放宽断言，而是同时查「委托关系 + 赋值点」）。
+  # 这些测试读 web/static/js/*.js 做文本断言，不需要浏览器，Node 原生 test runner 足够。
+  # 已做 CI 仿真：`git -c core.autocrlf=false archive HEAD` 出纯 LF 检出后 131/131 通过。
+  web-js-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Front-end runtime tests (node --test)
+        run: node --test internal/app/web/static/js/*.test.cjs
 
   # 行尾门禁：脚本行尾此前是「各机器 core.autocrlf 说了算」的盲区（本仓无 .gitattributes）。
   # 实锤缺陷：run.sh / upgrade.sh / plugins/*.sh 等工作副本为 CRLF，而
@@ -544,6 +707,12 @@ jobs:
         run: python scripts/check_mcp_servers.py
       - name: MCP servers gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_mcp_servers_test.py
+      # 出口契约门禁（2026-10-19）：每条工具结论必须自报权威等级 / 覆盖度 /
+      # 限制 / 证据指纹，且降级不得伪装成功。14 项含 5 类变异——伪造
+      # 「degraded 无原因」「unavailable 无限制」等坏契约，校验器必须变红。
+      - name: MCP tool output contract (authority / coverage / limitations)
+        working-directory: mcp-servers/security_triage_agent
+        run: python contract_test.py
 
   # 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着
   # payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析；
@@ -640,8 +809,8 @@ jobs:
         run: python data/ctf_benchmark/regen_exec_fixtures.py
       # padding_oracle judge 需 pycryptodome（与 quant-gate / evidence-gate / evidence-package-gate 同）。
       # 后续若接线更多集，按各 judge 的 [DEPS-MISSING] 提示补齐这里。
-      - name: Install benchmark deps (pycryptodome for padding-oracle judge)
-        run: python -m pip install --upgrade pip && pip install pycryptodome
+      - name: Install benchmark deps (pycryptodome + pillow for judges)
+        run: python -m pip install --upgrade pip && pip install pycryptodome pillow
       - name: Cross-suite dual-language parity (ledger-driven, all 【N】 suites enumerated)
         run: python scripts/check_suite_parity.py --check
       - name: Suite parity gate regression + mutation check (prove the gate can fail)
@@ -666,8 +835,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # 600s 实测不够：TextOnly ~3m45s + AttachmentSubset ~6m15s，慢 runner 上合计
+      # 会顶满 10m 闹钟（PR #58 首跑 panic）。job 是 report-only，给足余量不 weaken 断言。
       - name: External bench scoring (text-only + attachment subset, report-only)
-        run: go test -count=1 -v -run 'TestExternalBench' ./internal/ctfplatform/ -timeout 600s
+        run: go test -count=1 -v -run 'TestExternalBench' ./internal/ctfplatform/ -timeout 1800s
       - name: External bench artifact consistency (payload ledger / manifest / no KPI mixing)
         run: python scripts/check_external_bench.py
       - name: External bench gate regression + mutation check (prove the gate can fail)

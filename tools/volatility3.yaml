@@ -1,6 +1,11 @@
 name: "volatility3"
 command: "volatility3"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Volatility Software License"
+upstream: "https://github.com/volatilityfoundation/volatility3"
+trust: "builtin"
 short_description: "Volatility3内存取证分析工具"
 description: |
   Volatility3是Volatility框架的下一代版本，用于内存取证分析。

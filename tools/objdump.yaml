@@ -1,6 +1,15 @@
+# ── 许可证核实（2026-10-18）──
+# 结论：GPL-2.0-or-later（binutils 整体另含 LGPL-2.1-or-later 与 BSD-3-Clause 组件）。
+# 出处：Alpine aports main/binutils/APKBUILD（binutils 2.45.1）
+#       license="GPL-2.0-or-later AND LGPL-2.1-or-later AND BSD-3-Clause"。
 name: "objdump"
 command: "objdump"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git"
+license: "GPL-2.0-or-later"
+trust: "builtin"
 short_description: "二进制文件反汇编工具"
 description: |
   Objdump是GNU binutils的一部分，用于反汇编二进制文件。

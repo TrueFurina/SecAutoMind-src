@@ -1,6 +1,11 @@
 name: "msfvenom"
 command: "msfvenom"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/rapid7/metasploit-framework"
+trust: "builtin"
 short_description: "Metasploit载荷生成工具"
 description: |
   MSFVenom是Metasploit框架的载荷生成工具，用于创建各种类型的攻击载荷。

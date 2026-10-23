@@ -1,6 +1,11 @@
 name: "zsteg"
 command: "zsteg"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/zed-0xff/zsteg"
+trust: "builtin"
 short_description: "LSB 隐写检测工具，用于检测 PNG/BMP 图片中的隐写数据"
 description: |
   zsteg 是一个用于检测 PNG 和 BMP 图片中 LSB (Least Significant Bit) 隐写的工具。

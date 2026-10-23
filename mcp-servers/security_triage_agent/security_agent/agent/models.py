@@ -95,13 +95,33 @@ class ToolObservation:
     tool_name: str
     summary: str
     details: list[str] = field(default_factory=list)
+    #: 本次调用的证据限制（与 `Tool.limitations` 的固有局限分开：后者不随调用变）。
+    limitations: list[str] = field(default_factory=list)
+    #: 本次是否走了降级/兜底路径。**允许降级，不允许假装没降级**——
+    #: 该字段会进 MCP 出口的 `_contract.degraded`，调用方据此判断结论是否可信。
+    degraded: bool = False
+    #: 降级原因（`degraded=True` 时必须非空，由契约校验强制）。
+    degradation_reason: str = ""
 
     def to_dict(self) -> dict:
+        """业务字段。**刻意不含**契约三字段：老消费者按原结构解析不受影响，
+        契约由 MCP 出口层统一附加（见 `security_agent/mcp/contract.py`）。
+        """
         return {
             "tool_name": self.tool_name,
             "summary": self.summary,
             "details": self.details,
         }
+
+    def contract_overrides(self) -> dict:
+        """供出口层构造 `_contract` 用；只返回工具显式声明过的项。"""
+        overrides: dict = {}
+        if self.limitations:
+            overrides["limitations"] = list(self.limitations)
+        if self.degraded:
+            overrides["degraded"] = True
+            overrides["degradation_reason"] = self.degradation_reason or "工具标记为降级但未说明原因"
+        return overrides
 
 
 @dataclass

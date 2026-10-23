@@ -33,20 +33,21 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 	}, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		asset, err := assetFromCreateArgs(args)
 		if err != nil {
+			// 入参校验错误：err 由本项目产生、本就是写给调用方看的可行动文案
+			// （如"至少提供 host、ip、domain 之一"），**不**走 toolInternalError。
 			return textResult("错误: "+err.Error(), true), nil
 		}
 		access, owner, global := assetAccessFromToolContext(ctx, "asset:write")
 		result, err := db.UpsertAssets([]*database.Asset{asset}, owner, global)
 		if err != nil {
-			logger.Error("Agent 保存资产失败", zap.Error(err))
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "保存资产失败（已记日志）；请稍后重试，或先用 query_assets 确认该资产是否已存在", err), nil
 		}
 		if result.Skipped > 0 || asset.ID == "" {
 			return textResult("资产未保存：同一资产已存在但当前用户无权更新，或目标字段为空", true), nil
 		}
 		saved, err := db.GetAsset(asset.ID, access)
 		if err != nil {
-			return textResult("资产已保存，但无法读取结果: "+err.Error(), true), nil
+			return toolInternalError(logger, "资产已保存，但读取结果失败（已记日志）；可用 get_asset 按 ID 再取一次", err), nil
 		}
 		action := "created"
 		if result.Updated > 0 {
@@ -61,14 +62,14 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 	}, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, projectScoped, err := agentAssetProjectScope(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目范围（已记日志）", err), nil
 		}
 		asset, err := db.GetAsset(strings.TrimSpace(strArg(args, "id")), assetAccessOnly(ctx, "asset:read"))
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return textResult("错误: 资产不存在或无权查看", true), nil
 			}
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "读取资产失败（已记日志）", err), nil
 		}
 		if projectScoped && strings.TrimSpace(asset.ProjectID) != projectID {
 			return textResult("错误: 资产不存在或不属于当前对话绑定的项目", true), nil
@@ -83,11 +84,12 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 	}, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		filter, page, pageSize, err := assetFilterFromToolArgs(args)
 		if err != nil {
+			// 同上：入参校验错误，直出（模型据此自我纠正）。
 			return textResult("错误: "+err.Error(), true), nil
 		}
 		projectID, projectScoped, err := agentAssetProjectScope(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目范围（已记日志）", err), nil
 		}
 		if projectScoped {
 			// 对话绑定项目后，项目范围是服务端强制边界；不能通过工具参数扩大或切换范围。
@@ -95,7 +97,7 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 		}
 		items, total, err := db.ListAssets(pageSize, (page-1)*pageSize, filter, assetAccessOnly(ctx, "asset:read"))
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "查询资产失败（已记日志）；可缩小筛选条件或减少 page_size 后重试", err), nil
 		}
 		totalPages := (total + pageSize - 1) / pageSize
 		if totalPages < 1 {
@@ -127,14 +129,15 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 			return textResult("错误: 资产不存在或无权更新", true), nil
 		}
 		if err := applyAssetPatch(asset, args); err != nil {
+			// 同上：入参校验错误，直出。
 			return textResult("错误: "+err.Error(), true), nil
 		}
 		if err := db.UpdateAsset(id, asset, access); err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "更新资产失败（已记日志）；请稍后重试，或用 get_asset 确认当前值", err), nil
 		}
 		updated, err := db.GetAsset(id, access)
 		if err != nil {
-			return textResult("资产已更新，但无法读取结果: "+err.Error(), true), nil
+			return toolInternalError(logger, "资产已更新，但读取结果失败（已记日志）；可用 get_asset 按 ID 再取一次", err), nil
 		}
 		return assetJSONResult(map[string]interface{}{"action": "updated", "asset": assetToolDetail(updated)})
 	})
@@ -172,11 +175,11 @@ func registerAssetTools(server *mcp.Server, db *database.DB, logger *zap.Logger)
 			if err == sql.ErrNoRows {
 				return textResult("错误: 资产不存在或无权回写扫描结果", true), nil
 			}
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "回写扫描结果失败（已记日志）", err), nil
 		}
 		updated, err := db.GetAsset(id, access)
 		if err != nil {
-			return textResult("扫描结果已回写，但无法读取资产: "+err.Error(), true), nil
+			return toolInternalError(logger, "扫描结果已回写，但读取资产失败（已记日志）；可用 get_asset 按 ID 再取一次", err), nil
 		}
 		return assetJSONResult(map[string]interface{}{
 			"action":  "scan_completed",
@@ -505,7 +508,9 @@ func assetToolDetail(asset *database.Asset) map[string]interface{} {
 func assetJSONResult(value interface{}) (*mcp.ToolResult, error) {
 	encoded, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
-		return textResult("错误: "+err.Error(), true), nil
+		// 无 logger 可注入（包级辅助函数）；nil logger 走 log.Printf 留痕，
+		// 见 toolInternalError。
+		return toolInternalError(nil, "序列化资产结果失败（已记日志）", err), nil
 	}
 	return textResult(string(encoded), false), nil
 }

@@ -65,10 +65,10 @@ func startUploadRange(t *testing.T, port int, scene string) (cleanup func()) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if !ready {
-		_ = cmd.Process.Kill()
+		killProcessTree(cmd.Process.Pid)
 		t.Fatalf("靶场未就绪: %s", base)
 	}
-	return func() { _ = cmd.Process.Kill() }
+	return func() { killProcessTree(cmd.Process.Pid) }
 }
 
 // TestUploadAttackAgainstRange 靶场实战：三场景逐一真利用（SHA-256 校验）。

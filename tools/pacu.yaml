@@ -1,6 +1,11 @@
 name: "pacu"
 command: "pacu"
 enabled: false
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/RhinoSecurityLabs/pacu"
+trust: "builtin"
 short_description: "AWS渗透测试框架"
 description: |
   Pacu是一个AWS渗透测试框架，用于测试AWS环境的安全性。

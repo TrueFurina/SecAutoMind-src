@@ -2,6 +2,11 @@ name: "hydra"
 command: "hydra"
 args: ["-I"]
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "AGPL-3.0"
+upstream: "https://github.com/vanhauser-thc/thc-hydra"
+trust: "builtin"
 short_description: "密码暴力破解工具，支持多种协议和服务"
 description: |
   Hydra 是网络登录口令爆破工具，支持 SSH、FTP、HTTP、SMB 等多种协议。

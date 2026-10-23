@@ -21,7 +21,8 @@ func setupC2Runtime(
 	if !cfg.C2.EnabledEffective() {
 		return nil, nil, nil
 	}
-	c2Manager := c2.NewManager(db, logger, "tmp/c2")
+	// 传空串让 NewManager 走默认值（经 paths.Resolve 归到数据根），避免这里再写死相对路径。
+	c2Manager := c2.NewManager(db, logger, "")
 	c2Manager.Registry().Register(string(c2.ListenerTypeTCPReverse), c2.NewTCPReverseListener)
 	c2Manager.Registry().Register(string(c2.ListenerTypeHTTPBeacon), c2.NewHTTPBeaconListener)
 	c2Manager.Registry().Register(string(c2.ListenerTypeHTTPSBeacon), c2.NewHTTPSBeaconListener)

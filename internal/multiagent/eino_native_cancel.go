@@ -65,14 +65,14 @@ func agentTurnLoopInterruptRegistrarFromContext(ctx context.Context) AgentTurnLo
 	return nil
 }
 
-func requestEinoNativeAgentCancel(cancelFn adk.AgentCancelFunc, cause error) (waitErr error, submitted bool, handled bool) {
+func requestEinoNativeAgentCancel(cancelFn adk.AgentCancelFunc, cause error) (submitted bool, handled bool, waitErr error) {
 	if cancelFn == nil {
-		return nil, false, false
+		return false, false, nil
 	}
 	opts, waitFor := einoNativeCancelOptions(cause)
 	handle, submitted := cancelFn(opts...)
 	if !submitted || handle == nil {
-		return nil, submitted, false
+		return submitted, false, nil
 	}
 	waitCh := make(chan error, 1)
 	go func() {
@@ -81,9 +81,9 @@ func requestEinoNativeAgentCancel(cancelFn adk.AgentCancelFunc, cause error) (wa
 	select {
 	case err := <-waitCh:
 		handled := err == nil || errors.Is(err, adk.ErrCancelTimeout) || errors.Is(err, adk.ErrExecutionEnded)
-		return err, submitted, handled
+		return submitted, handled, err
 	case <-time.After(waitFor):
-		return context.DeadlineExceeded, submitted, false
+		return submitted, false, context.DeadlineExceeded
 	}
 }
 

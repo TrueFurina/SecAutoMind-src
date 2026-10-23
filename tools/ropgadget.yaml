@@ -1,6 +1,11 @@
 name: "ropgadget"
 command: "ROPgadget"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/JonathanSalwan/ROPgadget"
+trust: "builtin"
 short_description: "ROP gadget搜索工具"
 description: |
   ROPgadget是一个用于在二进制文件中搜索ROP gadget的工具。

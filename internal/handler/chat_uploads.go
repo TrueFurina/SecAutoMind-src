@@ -3,6 +3,8 @@ package handler
 import (
 	"archive/zip"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +20,7 @@ import (
 
 	"secautomind-ai/internal/audit"
 	"secautomind-ai/internal/database"
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/security"
 
 	"github.com/gin-gonic/gin"
@@ -167,71 +170,34 @@ func (h *ChatUploadsHandler) conversationArtifactVirtualPathAllowed(c *gin.Conte
 }
 
 func (h *ChatUploadsHandler) absRoot() (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Abs(filepath.Join(cwd, chatUploadsRootDirName))
+	return paths.Abs(chatUploadsRootDirName)
 }
 
 func (h *ChatUploadsHandler) absReductionRoot() (string, error) {
 	if h.db != nil {
 		if base := strings.TrimSpace(h.db.EinoReductionBaseDir()); base != "" {
-			if filepath.IsAbs(base) {
-				return filepath.Abs(base)
-			}
-			cwd, err := os.Getwd()
-			if err != nil {
-				return "", err
-			}
-			return filepath.Abs(filepath.Join(cwd, base))
+			return paths.Abs(base)
 		}
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Abs(filepath.Join(cwd, reductionRootDirName))
+	return paths.Abs(reductionRootDirName)
 }
 
 func (h *ChatUploadsHandler) absWorkspaceRoot() (string, error) {
 	if h.db != nil {
 		if base := strings.TrimSpace(h.db.EinoWorkspaceBaseDir()); base != "" {
-			if filepath.IsAbs(base) {
-				return filepath.Abs(base)
-			}
-			cwd, err := os.Getwd()
-			if err != nil {
-				return "", err
-			}
-			return filepath.Abs(filepath.Join(cwd, base))
+			return paths.Abs(base)
 		}
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Abs(filepath.Join(cwd, workspaceRootDirName))
+	return paths.Abs(workspaceRootDirName)
 }
 
 func (h *ChatUploadsHandler) absConversationArtifactsRoot() (string, error) {
 	if h.db != nil {
 		if base := strings.TrimSpace(h.db.ConversationArtifactsBaseDir()); base != "" {
-			if filepath.IsAbs(base) {
-				return filepath.Abs(base)
-			}
-			cwd, err := os.Getwd()
-			if err != nil {
-				return "", err
-			}
-			return filepath.Abs(filepath.Join(cwd, base))
+			return paths.Abs(base)
 		}
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Abs(filepath.Join(cwd, artifactsRootDirName))
+	return paths.Abs(artifactsRootDirName)
 }
 
 // resolveUnderChatUploads 校验 relativePath（使用 / 分隔）对应文件必须在 chat_uploads 根下
@@ -261,6 +227,27 @@ func (h *ChatUploadsHandler) resolveUnderChatUploads(relativePath string) (abs s
 }
 
 // ChatUploadFileItem 列表项
+// classifyArtifactKind 按扩展名给产物粗分类，仅用于展示与筛选，不参与安全判定。
+func classifyArtifactKind(name string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg":
+		return "image"
+	case ".pcap", ".pcapng", ".cap":
+		return "pcap"
+	case ".zip", ".tar", ".gz", ".tgz", ".7z", ".rar":
+		return "archive"
+	case ".py", ".sh", ".ps1", ".bat", ".js", ".rb", ".pl":
+		return "script"
+	case ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+		".md", ".txt", ".csv", ".json", ".xml", ".yaml", ".yml", ".log":
+		return "doc"
+	case ".exe", ".elf", ".so", ".dll", ".bin":
+		return "binary"
+	default:
+		return "other"
+	}
+}
+
 type ChatUploadFileItem struct {
 	RelativePath      string `json:"relativePath"`
 	AbsolutePath      string `json:"absolutePath"` // 服务器上的绝对路径，便于在对话中引用（与附件落盘路径一致）
@@ -867,6 +854,72 @@ func (h *ChatUploadsHandler) List(c *gin.Context) {
 	})
 }
 
+// Verify GET /api/chat-uploads/verify?path=...
+// 重算文件 sha256 并与登记值比对，用于证据链完整性核验。
+// 范围：仅对话上传目录（UpsertChatUploadArtifact 的登记范围）；虚拟前缀源暂不覆盖。
+func (h *ChatUploadsHandler) Verify(c *gin.Context) {
+	relativePath := strings.TrimSpace(c.Query("path"))
+	if relativePath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path 不能为空"})
+		return
+	}
+	for _, prefix := range []string{artifactVirtualPrefix, reductionVirtualPrefix, workspaceVirtualPrefix} {
+		if strings.HasPrefix(relativePath, prefix) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "完整性校验目前仅覆盖对话上传目录"})
+			return
+		}
+	}
+	if !h.pathAllowed(c, relativePath) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "无权访问该文件"})
+		return
+	}
+	abs, err := h.resolveUnderChatUploads(relativePath)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	f, err := os.Open(abs)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "文件不存在"})
+		return
+	}
+	defer f.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, f); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	actual := hex.EncodeToString(hasher.Sum(nil))
+	var size int64
+	if st, statErr := f.Stat(); statErr == nil {
+		size = st.Size()
+	}
+
+	expected, regSize, kind, registered := h.db.GetChatUploadArtifactMeta(relativePath)
+	// 三态语义：
+	//   registered=false                 → 从未登记
+	//   registered=true, hashAvailable=false → 登记过但内容已变更（哈希已失效）
+	//   hashAvailable=true               → 可比对，match 表示是否一致
+	hashAvailable := registered && expected != ""
+	resp := gin.H{
+		"relativePath":  relativePath,
+		"registered":    registered,
+		"hashAvailable": hashAvailable,
+		"actual":        actual,
+		"size":          size,
+		"kind":          kind,
+	}
+	if hashAvailable {
+		resp["expected"] = expected
+		resp["match"] = expected == actual
+		if regSize > 0 {
+			resp["sizeMatch"] = regSize == size
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // Export GET /api/chat-uploads/export?conversation=...&project=...
 func (h *ChatUploadsHandler) Export(c *gin.Context) {
 	conversationFilter := strings.TrimSpace(c.Query("conversation"))
@@ -1394,6 +1447,15 @@ func (h *ChatUploadsHandler) PutContent(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// 内容已变更：使登记的哈希失效，避免 Verify 拿旧哈希给出"已验证"的假安全感。
+	// 这里选择"置空"而非"重算"：置空在 Verify 里表现为 hashAvailable=false，语义诚实；
+	// 重算则会让一次编辑自动获得"已验证"身份，反而掩盖了变更事实。
+	if h.db != nil {
+		rel := strings.Trim(filepath.ToSlash(filepath.Clean(filepath.FromSlash(body.Path))), "/")
+		if invErr := h.db.InvalidateChatUploadArtifactHash(rel, int64(len(body.Content))); invErr != nil {
+			h.logger.Warn("失效产物哈希失败", zap.String("path", rel), zap.Error(invErr))
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1579,11 +1641,18 @@ func (h *ChatUploadsHandler) Upload(c *gin.Context) {
 		return
 	}
 	defer dst.Close()
-	if _, err := io.Copy(dst, src); err != nil {
+	hasher := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(dst, hasher), src); err != nil {
 		_ = os.Remove(fullPath)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	sumSHA256 := hex.EncodeToString(hasher.Sum(nil))
+	var savedSize int64
+	if st, statErr := dst.Stat(); statErr == nil {
+		savedSize = st.Size()
+	}
+	artifactKind := classifyArtifactKind(unique)
 	rel, _ := filepath.Rel(root, fullPath)
 	absSaved, _ := filepath.Abs(fullPath)
 	if session, ok := security.CurrentSession(c); ok {
@@ -1594,7 +1663,7 @@ func (h *ChatUploadsHandler) Upload(c *gin.Context) {
 				conversationID = parts[1]
 			}
 		}
-		if err := h.db.UpsertChatUploadArtifact(filepath.ToSlash(rel), conversationID, session.UserID); err != nil {
+		if err := h.db.UpsertChatUploadArtifact(filepath.ToSlash(rel), conversationID, session.UserID, sumSHA256, artifactKind, savedSize); err != nil {
 			h.logger.Warn("数据库操作失败", zap.String("method", "UpsertChatUploadArtifact"), zap.Error(err))
 		}
 	}

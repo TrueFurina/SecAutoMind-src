@@ -1,6 +1,11 @@
 name: "subfinder"
 command: "subfinder"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/projectdiscovery/subfinder"
+trust: "builtin"
 short_description: "被动子域名发现工具，使用多个数据源"
 description: |
   Subfinder是一个被动子域名发现工具，通过查询多个数据源来发现子域名。

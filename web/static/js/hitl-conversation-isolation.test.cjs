@@ -25,7 +25,12 @@ test('已有会话缺少本地配置时不会继承其他会话的最近审批�
 test('服务端默认审批人只更新默认值，不覆盖最近会话选择', () => {
     const source = functionSource(hitl, 'applyHitlDefaultReviewerFromServer', 'fetchHitlDefaultReviewer');
 
-    assert.match(source, /window\.csaiHitlDefaultReviewer = v/);
+    // 2026-10-18：实现已重构为「applyHitlDefaultReviewerFromServer 委托
+    // applyHitlDefaultConfigFromServer」，原断言 `window.csaiHitlDefaultReviewer = v`
+    // 只认旧写法，于是这条测试在 CI 之外静默腐烂。语义（只更新默认值、不写最近会话选择）未变，
+    // 断言随之改为「委托关系 + 共享函数内赋值」，两者都查，比只查旧字符串更贴近意图。
+    assert.match(source, /return applyHitlDefaultConfigFromServer\(\{ defaultReviewer: reviewer \}\)/);
+    assert.match(source, /window\.csaiHitlDefaultReviewer = reviewer/);
     assert.doesNotMatch(source, /saveHitlLastGlobalConfig/);
 });
 

@@ -158,15 +158,19 @@ def main(argv=None) -> int:
         "--max-noinput-pct",
         type=float,
         default=BASELINE_C_PCT,
-        help="C 层占比上限（%%）。默认 %.1f 是登记基线（当前实测值，语义为不许恶化，"
-             "非目标值）；理想目标应远低于此" % BASELINE_C_PCT,
+        # 用 f-string 而非 `%` 预格式化：Python 3.14 的 argparse._check_help 会校验
+        # 最终 help 字符串里的 `%`，预格式化后残留的裸 `%` 会直接抛
+        # `ValueError: badly formed help string`（3.13 及以前不校验，故一直没暴露）。
+        # 字面百分号保留 `%%`，交给 argparse 自己的格式化渲染成 `%`。
+        help=f"C 层占比上限（%%）。默认 {BASELINE_C_PCT:.1f} 是登记基线（当前实测值，语义为不许恶化，"
+             "非目标值）；理想目标应远低于此",
     )
     ap.add_argument(
         "--max-a",
         type=int,
         default=BASELINE_A,
-        help="A 层（题面即答案）题数上限。默认 %d 是登记基线（当前实测值）；"
-             "理想目标为 0" % BASELINE_A,
+        help=f"A 层（题面即答案）题数上限。默认 {BASELINE_A} 是登记基线（当前实测值）；"
+             "理想目标为 0",
     )
     ap.add_argument("--detail", action="store_true", help="列出每层题号")
     args = ap.parse_args(argv)

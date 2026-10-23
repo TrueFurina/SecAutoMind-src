@@ -1,6 +1,11 @@
 name: "smbmap"
 command: "smbmap"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/ShawnDEvans/smbmap"
+trust: "builtin"
 short_description: "SMB共享枚举和访问工具"
 description: |
   SMBMap是一个用于枚举SMB共享并提供文件访问功能的工具。

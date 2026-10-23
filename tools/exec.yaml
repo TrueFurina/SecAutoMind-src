@@ -2,6 +2,10 @@ name: "exec"
 command: "sh"
 args: ["-c"]
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 # 简短描述（用于工具列表，减少token消耗）
 short_description: "系统命令执行工具，用于执行Shell命令和系统操作（谨慎使用）"
 # 工具详细描述

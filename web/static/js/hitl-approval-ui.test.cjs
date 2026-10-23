@@ -41,7 +41,12 @@ test('刷新恢复会话时先完成权威审批配置同步再允许发送', ()
     assert.match(chat, /await waitForHitlConfigReady\(hitlConversationAtSendStart\)/);
     assert.match(chat, /hitlConfigSyncConversationId = conversationId;[\s\S]{0,240}await hitlConfigSyncPromise;/);
     assert.match(chat, /await hitlConfigSyncPromise;[\s\S]{0,220}seq !== loadConversationRequestSeq/);
-    assert.match(fs.readFileSync('web/static/js/hitl.js', 'utf8'), /window\.csaiHitlDefaultReviewerReady = initHitlDefaultReviewerFromServer\(\)/);
+    // 2026-10-18：接线已重构为「ConfigReady 持有权威 promise，ReviewerReady 作为其别名」。
+    // 原断言只认 `= initHitlDefaultReviewerFromServer()` 直接赋给 ReviewerReady，重构后失配。
+    // 意图（发送前必须等到权威审批配置就绪）不变，故断言两条：来源 + 别名关系。
+    const hitlSrc = fs.readFileSync('web/static/js/hitl.js', 'utf8');
+    assert.match(hitlSrc, /window\.csaiHitlDefaultConfigReady = initHitlDefaultReviewerFromServer\(\)/);
+    assert.match(hitlSrc, /window\.csaiHitlDefaultReviewerReady = window\.csaiHitlDefaultConfigReady/);
 });
 
 test('同一会话的审批配置写入串行化以防止旧请求后到覆盖新选择', () => {

@@ -1,6 +1,11 @@
 name: "wafw00f"
 command: "wafw00f"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/EnableSecurity/wafw00f"
+trust: "builtin"
 short_description: "WAF识别和指纹识别工具"
 description: |
   Wafw00f是一个Web应用防火墙（WAF）识别和指纹识别工具。

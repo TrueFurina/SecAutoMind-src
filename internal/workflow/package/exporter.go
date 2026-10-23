@@ -60,7 +60,9 @@ func Export(source Document) ([]byte, ExportMetadata, error) {
 		{name: workflowPath, data: payload},
 	} {
 		header := &zip.FileHeader{Name: entry.name, Method: zip.Store}
-		header.SetModTime(time.Unix(0, 0).UTC())
+		// 用 Modified 字段而非 SetModTime：后者自 Go 1.10 起弃用（SA1019）。
+		// 语义等价 —— zip.Writer 写头时会从 Modified 推导 MS-DOS 日期/时间字段。
+		header.Modified = time.Unix(0, 0).UTC()
 		writer, err := zw.CreateHeader(header)
 		if err != nil {
 			return nil, ExportMetadata{}, fmt.Errorf("write %s: %w", entry.name, err)

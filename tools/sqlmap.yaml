@@ -1,6 +1,11 @@
 name: "sqlmap"
 command: "sqlmap"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-2.0-or-later"
+upstream: "https://github.com/sqlmapproject/sqlmap"
+trust: "builtin"
 # 简短描述（用于工具列表，减少token消耗）
 short_description: "自动化SQL注入检测和利用工具，用于发现和利用SQL注入漏洞"
 # 工具详细描述

@@ -984,3 +984,74 @@ func solvePigLatin(ctx context.Context, text string, attachments map[string]stri
 func solveBase64URLSafe(ctx context.Context, text string, attachments map[string]string) []string {
 	return tryBase64URLSafe(text)
 }
+
+// ── P1 真解题求解器注册 ──────────────────────────────────────────
+//
+// 2026-10-22 接线（REA #296）：这批适配函数此前**从未被调用**（staticcheck
+// U1000），即这些解题能力写在代码里却从未参与过任何一次扫描。
+//
+// 接线清单是 11 个适配函数筛掉 2 个的结果，筛选依据是机验而非感觉：
+//
+//   - solveVigenereDecode **不注册**：结构上命中率恒为 0。它的输入过滤
+//     只收纯字母（^[a-zA-Z\s]+$），而 vigenereDecode 对非字母原样保留、
+//     空格还被提前删掉，故输出必然也是纯字母——永远凑不出 scanFlags
+//     要求的 xxx{...} 形态。接它只会在每道题上白跑 9 次密钥猜测。
+//     证明：TestVigenereDecodeIsStructurallyUnhittable。
+//     注：注册表里另有 vigenere（solveVigenere），那是另一份实现，与本条无关。
+//
+//   - solveROT13 **不注册**：已被注册在册的 caesar（shift 1..25，含 13）
+//     完全覆盖。注册被覆盖项不是补能力，是注水。
+//     证明：TestROT13IsSubsumedByCaesar。
+//
+//   - solveAtbashDecode **不注册**（REA #302）：atbash 是双射，对题面里
+//     已呈 flag 外形的诱饵（如附件里的 "CTF{fzlg}"）做 atbash 会得到另一个
+//     flag 外形 "XGU{uozt}"，无法靠输入形状区分「诱饵变换」与「真解码」——
+//     属「不可拒」性质，与 externalBenchKnownFalsePositive 里已登记的两例
+//     同构。外部基准实测 2 例假阳性（bpfbox / numerology）会短路 Agent 回
+//     假答案。合法 atbash 密文（"UZOT{zgszihwvwxvw}" 类）也呈 flag 外形，
+//     任何「跳过已呈 flag 外形的输入」的判据都会连它一起误杀，故形状判据
+//     无解。它作为**单密文输入**确有解能力（TestClassicalDecodeSolversHitTarget
+//     作证），但在「整段混合题面」管线里是假阳性发生器，故裁定不接进生产链路。
+//     与 ROT13 / solveVigenereDecode 同处理（blocked_by），由
+//     TestUnwiredSolversRemainUnwired 在注册表层面机验。若将来要先提取候选
+//     token 再逐个解码、并对 atbash 加「跳过已知 flag 前缀诱饵」的判据，
+//     可重新评估接线——属行为变更，需 USER 拍板。
+//
+//   - solvePigLatin（classical_piglatin）**注册**，但带负向判据（REA #301）：
+//     piglatin 解码对整段题面（含附件代码块）做变换时，代码块里的 {…} 会
+//     原样保留被 scanFlags 当 flag 命中 → 外部基准 3 例假阳性（tiramisu /
+//     least-common-genominator / zip）。修复=两层：① token 化，只在「字母+
+//     空格+花括号、不含代码标点/数字」的密文形态片段上解码（代码块因含
+//     ()=*:[]". 被切分，不会形成完整 {…}）；② 只接受「真被解码出来」的 flag，
+//     候选若在原文空白归一化后逐字出现（透传的诱饵/代码块）则丢弃。合法
+//     piglatin（"agflay" 解码成 "flag"，输出与输入不同→非透传）不受影响。
+//     接线前由 TestClassicalDecodeSolversHitTarget 正向作证，负向由
+//     TestPigLatinSkipsCodeBlockWithoutAyWords 机验。
+//
+// 其余 7 个（hex/url/binary/octal/decimal/reverse/base64url）逐个过能力门禁
+// （internal/ctfplatform/solver_classical_decode_test.go）：正向能解出目标
+// flag、负向对普通文本不误报、且未被既有求解器覆盖。
+// **能力未验证就不接进生产链路**——接线是运行时行为变更，不是代码整理。
+//
+// Priority 取 140-148（未占用区间）：sweep 已并发全量执行，Priority 仅用于
+// 并列命中时的裁决，不去挤占既有求解器的既有次序。
+//
+// ⚠️ 已知局限（接线不等于获得能力，勿高估）——已于 REA #303 / 总账 #10 消除：
+// hex / 二进制 / 八进制 / 十进制 四个原本要求「整段输入是纯密文」，对「自然语言
+// + 内嵌密文 token」的真实题面恒不命中。现改为「提取候选 token 再逐个解码」
+// （见 tryHexDecode/tryBinaryDecode/tryOctalDecode/tryDecimalDecode 的 REA #303
+// 注释），混合题面里的密文 token 可被解出。约束：十进制只解码**空格分隔**的
+// token（连续无空格十进制串因 1/2/3 位分组歧义不解码）；hex 解码产物非可打印
+// （isPrintableRatio<0.8）直接丢弃，滤掉巧合命中。负向由
+// TestTokenDecodersNoFalsePositiveOnBenignMixed 机验，外基准由
+// TestExternalBench_NoPlaceholderShortCircuit 机验。
+func init() {
+	RegisterSolver(SolverEntry{Name: "encoding_hex", Category: CategoryMiscS, Priority: 141, Solver: solveHexDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_url", Category: CategoryMiscS, Priority: 142, Solver: solveURLDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_binary", Category: CategoryMiscS, Priority: 143, Solver: solveBinaryDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_octal", Category: CategoryMiscS, Priority: 144, Solver: solveOctalDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_decimal", Category: CategoryMiscS, Priority: 145, Solver: solveDecimalDecode})
+	RegisterSolver(SolverEntry{Name: "encoding_reverse", Category: CategoryMiscS, Priority: 146, Solver: solveReverseText})
+	RegisterSolver(SolverEntry{Name: "classical_piglatin", Category: CategoryCryptoS, Priority: 147, Solver: solvePigLatin})
+	RegisterSolver(SolverEntry{Name: "encoding_base64url", Category: CategoryMiscS, Priority: 148, Solver: solveBase64URLSafe})
+}

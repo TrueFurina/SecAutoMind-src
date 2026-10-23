@@ -69,25 +69,14 @@ func startSSRFRange(t *testing.T, port int) (cleanup func()) {
 	// 清掉上一次的运行时端口文件，避免读到过期端口
 	_ = os.Remove(filepath.Join(root, "data", "ctf_benchmark",
 		fmt.Sprintf("ssrf_runtime_%d.json", port)))
+	killPortListeners(port) // 防御：清掉上一轮可能残留的监听
 	cmd := exec.Command(py, rang, strconv.Itoa(port))
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("启动靶场失败: %v", err)
-	}
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
-	ready := false
-	for i := 0; i < 100; i++ {
-		cl := webClient(1 * time.Second)
-		if code, _ := httpQuickGet(context.Background(), cl, base+"/"); code == 200 {
-			ready = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
+	cl, err := waitRangeReady(t, cmd, base, 30*time.Second)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
-	if !ready {
-		_ = cmd.Process.Kill()
-		t.Fatalf("靶场未就绪: %s", base)
-	}
-	return func() { _ = cmd.Process.Kill() }
+	return cl
 }
 
 // TestSSRFSolverRegistered 反注水门禁：ssrf_redis_rce 必须已注册。

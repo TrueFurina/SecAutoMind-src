@@ -1023,6 +1023,9 @@ func (db *DB) initTables() error {
 	if err := db.migrateToolExecutionsPartialOutputColumns(); err != nil {
 		db.logger.Warn("迁移tool_executions partial output字段失败", zap.Error(err))
 	}
+	if err := db.migrateChatUploadArtifactMetaColumns(); err != nil {
+		db.logger.Warn("迁移chat_upload_artifacts元数据字段失败", zap.Error(err))
+	}
 	if err := db.migrateRBACOwnershipColumns(); err != nil {
 		db.logger.Warn("迁移RBAC资源归属字段失败", zap.Error(err))
 	}
@@ -1067,6 +1070,25 @@ func (db *DB) migrateToolExecutionsPartialOutputColumns() error {
 		{"partial_output_updated_at", "ALTER TABLE tool_executions ADD COLUMN partial_output_updated_at DATETIME"},
 	} {
 		if err := db.addColumnIfMissing("tool_executions", col.name, col.stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// migrateChatUploadArtifactMetaColumns 为既有库补产物完整性字段。
+// 新库由 rbac.go 的 CREATE TABLE 直接建出同名列；此处只对老库幂等补列。
+// 历史数据 sha256/size/kind 保持空值与 0，表示"未登记"，不伪造。
+func (db *DB) migrateChatUploadArtifactMetaColumns() error {
+	for _, col := range []struct {
+		name string
+		stmt string
+	}{
+		{"sha256", "ALTER TABLE chat_upload_artifacts ADD COLUMN sha256 TEXT NOT NULL DEFAULT ''"},
+		{"size", "ALTER TABLE chat_upload_artifacts ADD COLUMN size INTEGER NOT NULL DEFAULT 0"},
+		{"kind", "ALTER TABLE chat_upload_artifacts ADD COLUMN kind TEXT NOT NULL DEFAULT ''"},
+	} {
+		if err := db.addColumnIfMissing("chat_upload_artifacts", col.name, col.stmt); err != nil {
 			return err
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"secautomind-ai/internal/paths"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -35,9 +37,10 @@ func New(level, output string) *Logger {
 	var writeSyncer zapcore.WriteSyncer
 	if output == "" || output == "stdout" {
 		// GUI（windowsgui）模式下无控制台，stdout 日志不可见——
-		// 兜底写入 logs/secautomind.log，保证日志可查。
-		if err := os.MkdirAll("logs", 0755); err == nil {
-			file, fErr := os.OpenFile("logs/secautomind.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		// 兜底写入 <数据根>/logs/secautomind.log，保证日志可查且不落在只读安装目录。
+		logPath := paths.Resolve(filepath.Join("logs", "secautomind.log"))
+		if err := os.MkdirAll(filepath.Dir(logPath), 0755); err == nil {
+			file, fErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 			if fErr == nil {
 				writeSyncer = zapcore.AddSync(file)
 			} else {
@@ -47,7 +50,8 @@ func New(level, output string) *Logger {
 			writeSyncer = zapcore.AddSync(os.Stdout)
 		}
 	} else {
-		// 输出到文件：确保父目录存在（如 logs/secautomind.log）
+		// 输出到文件：相对路径归到数据根，确保父目录存在（如 logs/secautomind.log）
+		output = paths.Resolve(output)
 		if dir := filepath.Dir(output); dir != "." && dir != "" {
 			_ = os.MkdirAll(dir, 0755)
 		}

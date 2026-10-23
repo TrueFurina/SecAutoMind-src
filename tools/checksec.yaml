@@ -1,6 +1,11 @@
 name: "checksec"
 command: "checksec"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "BSD-3-Clause"
+upstream: "https://github.com/slimm609/checksec.sh"
+trust: "builtin"
 short_description: "二进制安全特性检查工具"
 description: |
   Checksec是一个用于检查二进制文件安全特性的工具。

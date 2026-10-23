@@ -79,8 +79,10 @@ def fix_line(line, truth, anchors=None, strip_html=False):
 
     strip_html=True 时先用门禁同款的"标签→空格"做检测，但**原文 span 无法映射**回
     未剥离的行（例如 `<div>126,659</div><div>行 Go</div>`，数字与"行"被标签隔断），
-    因此退化为"按数字字面量整体替换"。该分支只影响 *.html（本仓仅官网，且被
-    .gitignore 排除，CI 检出里不存在）。
+    因此退化为"按数字字面量整体替换"。该分支只影响 *.html（本仓仅官网）。
+    2026-10-18：检测探针与门禁共享 `cmn.scan_texts`——除剥离后的可见文本外，
+    **还要扫原文**，否则属性值里的漂移（如 og:description 的旧运行时数）会出现
+    「门禁红、修复器看不见」的死循环。替换逻辑不变（按字面量整体替换，幂等）。
     """
     anchors = cmn.ANCHORS if anchors is None else anchors
     changes = []
@@ -102,18 +104,23 @@ def fix_line(line, truth, anchors=None, strip_html=False):
         return v if isinstance(v, float) else int(v)
 
     if strip_html:
-        probe = re.sub(r"<[^>]*>", " ", line)
+        # 探针与门禁逐字同源：可见文本 + HTML 属性值（原文）两份
+        probes = [t for t, _via in cmn.scan_texts(line, True)]
         for pat, key, label in anchors:
             want = want_of(key)
             if want is None:
                 continue
-            for m in re.finditer(pat, probe):
-                got = m.group("n")
-                new = format_like(got, want)
-                if new == got or got not in line:
-                    continue
-                line = _token_rx(got).sub(new, line)
-                changes.append((label, got, new))
+            for probe in probes:
+                for m in re.finditer(pat, probe):
+                    got = m.group("n")
+                    new = format_like(got, want)
+                    if new == got or got not in line:
+                        continue
+                    # 两个探针命中同一处时只改一次（去重，保持 changes 与落盘改动一一对应）
+                    if any(c[0] == label and c[1] == got for c in changes):
+                        continue
+                    line = _token_rx(got).sub(new, line)
+                    changes.append((label, got, new))
         return line, changes
 
     for pat, key, label in anchors:
@@ -158,18 +165,20 @@ def collect(truth):
         if rpath in cmn.EXEMPT_FILES:
             continue
 
-        strip_html = rpath.lower().endswith((".html", ".htm"))
+        strip_html = cmn.is_html_path(rpath)
         edits = []
         for i, raw in enumerate(raw_lines, 1):
             body = raw.rstrip("\r\n")
             banned_here = False
-            for pat, why in cmn.BANNED:
-                if re.search(pat, body):
-                    manual.append((rpath, i, why, body.strip()[:120]))
-                    banned_here = True
-            # 检测与门禁逐字一致：HTML 先剥标签
-            probe = re.sub(r"<[^>]*>", " ", body) if strip_html else body
-            if not any(re.search(p, probe) for p, _, _ in cmn.ANCHORS):
+            # 探针与门禁逐字同源（可见文本 + HTML 属性值两份），
+            # 否则「门禁红、修复器看不见」，两边永远对不齐。
+            probes = [t for t, _via in cmn.scan_texts(body, strip_html)]
+            for text in probes:
+                for pat, why in cmn.BANNED:
+                    if re.search(pat, text):
+                        manual.append((rpath, i, why, body.strip()[:120]))
+                        banned_here = True
+            if not any(re.search(p, t) for p, _, _ in cmn.ANCHORS for t in probes):
                 continue
             if banned_here:
                 # BANNED 命中的行**只上报、不自动改**：旧口径常常语义歧义

@@ -37,6 +37,10 @@ args:
         proc.terminate()
         proc.wait(timeout=10)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "LLMNR/NBT-NS/MDNS投毒和凭据收集工具"
 description: |
   封装 Responder，支持自动在指定持续时间后停止进程，避免占用网络。

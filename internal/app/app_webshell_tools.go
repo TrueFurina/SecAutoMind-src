@@ -221,7 +221,7 @@ func registerWebshellManagementTools(mcpServer *mcp.Server, db *database.DB, web
 		},
 	}
 	listHandler := func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
-		connections := []database.WebShellConnection{}
+		var connections []database.WebShellConnection
 		var err error
 		if principal, ok := authctx.PrincipalFromContext(ctx); ok {
 			projectID := explicitProjectIDFromToolArgs(args)

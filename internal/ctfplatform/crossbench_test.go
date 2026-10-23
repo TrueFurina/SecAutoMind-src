@@ -111,6 +111,14 @@ func runCrossBench(doc crossBenchDoc, fn func(*Challenge) *PresolveResult) (hits
 
 // TestCrossBench_AgainstXihuRealQuestions 输出 A/B 同卷对照的水位与分类差集。
 func TestCrossBench_AgainstXihuRealQuestions(t *testing.T) {
+	// 🔴 关掉西湖论剑 Python 兜底（同 runRealBenchmark / TestExternalBench_TextOnly 的理由）：
+	// 本用例量的是「**Go 预解路径**在西湖论剑真题上的命中率」，兜底是另一条机制。
+	// 2026-10-23 实测：不关的话本用例要跑 **9m55s**，直接把 `go test ./...` 撞死在
+	// `go test` 默认 600s 上限上（全仓测试因此整包 FAIL）——而且兜底的命中会被算进
+	// "Go 路径命中率"，口径不再对应它声称的东西。
+	// 兜底通道自身有独立用例：presolve_python_test.go 5 例 + presolve_python_cache_test.go 3 例。
+	t.Setenv(envPythonFallback, "0")
+
 	doc := loadCrossBench(t)
 	total := len(doc.Problems)
 

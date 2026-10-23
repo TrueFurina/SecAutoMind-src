@@ -27,6 +27,7 @@ import (
 	"secautomind-ai/internal/mcp"
 	"secautomind-ai/internal/monitor"
 	"secautomind-ai/internal/multiagent"
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/security"
 	"secautomind-ai/internal/skillpackage"
 
@@ -86,12 +87,20 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// 初始化数据库
 	dbPath := cfg.Database.Path
 	if dbPath == "" {
-		dbPath = "data/conversations.db"
+		dbPath = paths.Resolve("data/conversations.db")
 	}
 
 	// 确保目录存在
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return nil, fmt.Errorf("创建数据库目录失败: %w", err)
+	}
+
+	// 启动即把数据根与真实库路径打进日志：用户/排障不再需要猜"配置和数据在哪"。
+	if home := paths.Home(); home != "" {
+		log.Logger.Info("应用数据根目录",
+			zap.String("home", home),
+			zap.String("database", dbPath),
+		)
 	}
 
 	db, err := database.NewDB(dbPath, log.Logger)
@@ -117,6 +126,13 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 			if wErr := os.WriteFile(pwFile, []byte(content), 0600); wErr != nil {
 				log.Logger.Warn("写入初始密码提示文件失败", zap.Error(wErr))
 			} else {
+				// 日志与 stdout 双写：windowsgui 构建无控制台，stdout 不可见，
+				// 此时 <数据根>/logs/secautomind.log 是用户唯一能读到该路径的地方。
+				// 只记路径不记口令本身——日志会落盘，口令不进日志。
+				log.Logger.Info("初始密码已保存至提示文件",
+					zap.String("file", pwFile),
+					zap.String("home", paths.Home()),
+				)
 				fmt.Printf("初始密码已保存至: %s\n", pwFile)
 			}
 		}
@@ -402,10 +418,17 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	// CTF presolve 钩子：在 Agent 推理前先跑确定性预解层（0 token），命中则跳过 Agent。
 	ctfPresolve := ctfplatform.NewPresolver(log.Logger)
 	ctfAnalyzer := ctfplatform.NewTaskAnalyzer()
-	// 接线平台层：构造真实 DasCTFPlatform（baseURL/token 仅从环境变量读取——
-	// DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN，绝不硬编码），
-	// 取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
-	ctfPlatform := ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	// 接线平台层：构造真实平台客户端（baseURL/token 仅从环境变量读取——
+	// DASCTF: DASCTF_BASE_URL / DASCTF_TOKEN / CTF_AGENT_PLATFORM_TOKEN；
+	// CTF²: CTF2_BASE_URL / CTF2_AGENT_TOKEN，二者均设置时优先用 CTF²——
+	// 绝不硬编码），取代原先传 nil 的占位，使「预解/推理 → 平台提交」闭环真正可用。
+	// 平台选择：CTF²（1024 快闪赛等新赛事）配置齐全时优先；否则回退 DASCTF（挑战杯）。
+	var ctfPlatform ctfplatform.PlatformClient
+	if ctfplatform.CTF2Configured() {
+		ctfPlatform = ctfplatform.NewCTF2Platform("", "", log.Logger)
+	} else {
+		ctfPlatform = ctfplatform.NewDasCTFPlatform("", "", log.Logger)
+	}
 	// 抗打击治理配置面（总纲 §2.4）：config.yaml 的 ctf_platform 段 → 客户端。
 	// 不配置即 7 项全开，与接线前逐字节一致；enabled: false（或 env
 	// CTF_AGENT_ANTI_BLOCK=0）一键回退为朴素直连。
@@ -440,6 +463,23 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		}
 		pc := ctfplatform.DefaultPollerConfig()
 		pc.PollInterval = pollInterval
+		// 赛时参数环境变量覆盖（快闪赛 60 分钟 19 题：默认 300s×2 并发数学上无法
+		// 做完，赛前 runbook 按 CTF_SOLVE_TIMEOUT=120 / CTF_MAX_CONCURRENCY=4 配置）。
+		if v := strings.TrimSpace(os.Getenv("CTF_SOLVE_TIMEOUT")); v != "" {
+			if secs, e := strconv.Atoi(v); e == nil && secs > 0 {
+				pc.SolveTimeout = time.Duration(secs) * time.Second
+			}
+		}
+		if v := strings.TrimSpace(os.Getenv("CTF_MAX_CONCURRENCY")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n > 0 {
+				pc.MaxConcurrency = n
+			}
+		}
+		if v := strings.TrimSpace(os.Getenv("CTF_MAX_RETRY_SUBMIT")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n >= 0 {
+				pc.MaxRetrySubmit = n
+			}
+		}
 		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
 		// 🔴 决赛关键链（09-17 补的生产缺口）：对 HasInstance 的题自动「起靶机 → 取地址 →
 		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题
@@ -1197,6 +1237,7 @@ func setupRoutes(
 		protected.GET("/chat-uploads", chatUploadsHandler.List)
 		protected.GET("/chat-uploads/export", chatUploadsHandler.Export)
 		protected.GET("/chat-uploads/download", chatUploadsHandler.Download)
+		protected.GET("/chat-uploads/verify", chatUploadsHandler.Verify)
 		protected.GET("/chat-uploads/path", chatUploadsHandler.ResolvePath)
 		protected.GET("/chat-uploads/content", chatUploadsHandler.GetContent)
 		protected.POST("/chat-uploads", chatUploadsHandler.Upload)

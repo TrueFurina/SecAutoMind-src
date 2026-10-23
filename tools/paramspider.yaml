@@ -1,6 +1,11 @@
 name: "paramspider"
 command: "paramspider"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/devanshbatham/ParamSpider"
+trust: "builtin"
 short_description: "从Web档案中挖掘参数"
 description: |
   ParamSpider从Web档案中挖掘参数，用于发现隐藏的参数。

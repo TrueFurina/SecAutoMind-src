@@ -3,6 +3,10 @@
 > 任何在本仓库工作的 AI agent（含并行会话、子代理、未来新会话）**必须先读本文件**。
 > 本文件的每一条都由本项目的**真实事故**倒逼写成，不是通用套话。违反任意一条 = 本次工作作废。
 
+> 🟢 **唯一主体声明（2026-10-23）**：本项目 = 唯一参赛/维护主体。`E:\Program\西湖论剑` 已被全量吞并并
+> **冻结为只读知识库**（README 已加冻结横幅）。凡涉"两套项目对比/迁移/合并"的工作，先读
+> `docs/merge_xhlj_roadmap_20261023.md`（盘点+缺口+分阶段路线），再动手。
+
 ---
 
 ## 第一条 · 诚实高于一切（最高优先级）
@@ -50,8 +54,13 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 
 - 已作废旧口径（出现在材料里即为违规）：`662/242/123,149/153,987`、`677/250/125,954/158,247/166`、`151 求解器`、`140 工具`、`613 文件`。
 - **140 是"三不管数字"的典型**：它既不等于 90（YAML 工具数）也不等于 142，凭空漂移却看起来像有依据。
-  这类数字最危险。**宁可写"91 YAML + 52 内置 = 143 运行时"，也不要写一个没有分解式的整数。**
+  这类数字最危险。**宁可写"90 YAML + 52 内置 = 142 运行时"，也不要写没有分解式的整数。**
+  （本行的示范值由 `scripts/check_doc_facts.py` 对齐 count_stats 真值——写死的示范数字正是本条纪律要防的漂移，2026-10-20 实测 91/143 已漂移过一轮。）
 - 数字会实时过期：本项目出现过**三次**漂移全靠人肉发现。写死的数字在提交完成的下一秒就可能错。
+- **文档是快照，不是实时真值**（REA #89/#90）：本文件与 `docs/` 里写死的数字/结论一律视为
+  「上次核对时的快照」，引用前跑一次上面的真值源命令。快照与实测不一致时**改文档，不改命令**。
+- **doctor 不是仪式**：`python scripts/doctor.py --json` 的 `head` / `ran_at` 是执行基线。
+  `head` 与你要引用的版本不一致 ⇒ 等价于「没跑过」——重跑，不要沿用旧结论。
 
 ---
 
@@ -69,7 +78,7 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 - 门禁自身必须有回归测试。**失效的门禁比没有门禁更危险**——它会持续给出假的安全感。
   实证：旧打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`（第 4 位是连字符），
   一把真 key 从洞里漏过而门禁报 CLEAN。
-- 现有门禁（`ci.yml` **七个** job）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
+- 现有门禁（`ci.yml` 共 **25** 个 job，以下 7 个为核心）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
   `evidence-gate`（基准双语言机验 + `verify_evidence`）· `secret-gate`（密钥三件套：门禁本体 + 自测 + 变异验证）·
   `caliber-gate`（材料数字 vs `count_stats` 真值）· `evidence-package-gate`（冠军证据包一致性 + 变异验证）·
   `freeze-gate`（决赛冻结纪律，见第七条）。
@@ -91,12 +100,13 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 | `refs/tags/main` 歧义 | 必须写全 `refs/heads/main:refs/heads/main` |
 | 远程跟踪引用被静默吞 | `.git/refs/remotes/**` 写入（**含 `git update-ref`**）在本环境 rc=0 但 ref 不变。判 ahead/behind 不可信本地引用，以 push 输出或 `git ls-remote` 为准。绕行：备份后整文件覆盖 `.git/packed-refs` |
 | CGO 测试报 cgo.exe exit 2 | 先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"` |
-| Go 工具链 | `.workbuddy/toolchain/go/bin/go.exe`；`GOPROXY=https://goproxy.cn,direct` |
+| Go 工具链 | 实测 `D:\DevCache\go\bin\go.exe`（go1.25.0，2026-10-18 复核 `go build ./...` rc=0）；~~`.workbuddy/toolchain/go/bin/go.exe`~~ 该路径**已不存在**；`GOPROXY=https://goproxy.cn,direct` |
 | 🔴 **本 shell 缺 `%AppData%` → 所有 go 命令失效**（2026-09-16 实锤） | 症状：`go build/list/test` 报 `go: downloading ...` 或 `module lookup disabled by GOPROXY=off`，**极易误判成"模块缓存被删/网络断了"**。真因：go 找不到自己的 GOENV 配置文件 `%AppData%\go\env`（内含 `GOPATH=D:\DevCache\gopath`、`GOPROXY=goproxy.cn`、`GOTOOLCHAIN=local`）→ GOPATH 回落到空的默认缓存。**正解：先 `export APPDATA="$USERPROFILE/AppData/Roaming"`**（实测 `go list ./...` rc=1→**0**，42 包；`go build ./cmd/server` 恢复 rc=0）。`scripts/count_stats.py` 已内置该回退（`_go_env()`），故 `go_packages` 不再退化为 null。 |
 | Python venv | `C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe` |
-| C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时 `export TMP=TEMP=TMPDIR=D:/tmp_gotest` 再跑测试 |
+| C 盘空间告警 | `/tmp` 在 C 盘。空间紧张时**三条分开**设：`export TMP=D:/tmp_gotest; export TEMP=D:/tmp_gotest; export TMPDIR=D:/tmp_gotest`。
+| 🔴 **禁止 `export TMP=TEMP=TMPDIR=x` 多重赋值**（2026-10-14 事故，2026-10-19 又中一次） | 本 shell 会把它变成一个字面量垃圾串赋给 TMP（TEMP/TMPDIR 根本没设），Go `t.TempDir()` 据此 mkdir 失败 → 一致场景假 FAIL；更糟的是它可能在**仓库根建出名为 `TEMP=TMPDIR=D://tmp_gotest` 的怪目录**。必须逐变量分开 export。 |
 | 🔴 **禁用 `git add -A` / `git add -A <dir>`**（09-24 事故） | 会把并行会话的**未跟踪在途文件**一并卷进提交，违反"不代提交他人 WIP"。一律显式列文件路径，或先 `git status --porcelain` 逐条确认。误加后纠正：`git reset --soft HEAD~1` → `git restore --staged <文件>` → 显式列路径重新提交，并用 `git show --stat HEAD` 复验零交集。 |
-| `官网/` 被 `.gitignore:81` 排除 | 官网**从未进版本库**，改它只在磁盘/交付包生效，不随 git 分发 |
+| `官网/` 曾整目录被排除 | **2026-10-18 已入库**（`3c776a8`，`.gitignore` 注记同步更新）：数字纳入 `check_material_numbers.py` 机验、由 `pages.yml` 部署。历史上它既不受门禁约束也无法分发的状态才是坑 |
 
 ---
 
@@ -147,6 +157,26 @@ done
 - 计数 0 = 生产零调用 → 判断它是否影响得分/资源，影响则修（配置开关默认关 + 演练覆盖 + 反向对照）。
 - 演练替身要**嵌入接口**（`type fake struct { PlatformAPI }`）：被测方一旦新增调用，缺失方法会
   nil panic 立刻暴露，不会静默跳过。
+
+---
+
+## 第九条 · 前端样式：禁止再造同名顶层块
+
+2026-10-18 实证：`style.css` 里有**两个同名同特异性的 `.external-tool-badge` 定义**
+（11329 行橙色药丸 / 29325 行蓝色小标签），CSS 后定义者胜 → 后者把全局徽章刷成蓝，
+设置页的来源/信任级徽章一直显示错色。这类回归**文本断言测试完全看不见**
+（js 测试只查 JS 输出的 HTML 字符串），只能靠浏览器计算样式兜底。
+
+- **新增样式前先 grep 同名选择器**：`grep -n "^\.your-class" internal/app/web/static/css/style.css`。
+  已存在就**改原处**，不要在文件别处再写一份——同名顶层块靠出现顺序决胜，是样式回归的典型形态。
+- **必须分场景时用作用域前缀**（如 `.role-tool-item .external-tool-badge`），不要写裸类名。
+- **改样式必须浏览器验**：计算样式断言脚本放 `.workbuddy/tmp/`，跑过再提交；肉眼截图不算验证。
+- 存量技术债：2026-10-19 已清掉**可证明安全**的 35 个同名顶层块（判定=每属性都被更靠后、
+  `!important` 重要性不更低的同选择器块覆盖），其余 **102 组「部分存活」**未清理
+  （如 `.chat-input-container` 两套互斥布局）——人工判定方法见 `docs/HANDOFF_2026-10-18.md` §17，
+  **只禁止新增，不要求顺手清理**。
+- CI `css-shadow-gate` 会拦新增的「可证明安全」影子块（`scripts/css_shadow_audit.py --check`）；
+  要合法收敛存量时用 `--apply`（自带等价性验证，失败不落盘）+ 浏览器计算样式复验，三步都别省。
 
 ---
 

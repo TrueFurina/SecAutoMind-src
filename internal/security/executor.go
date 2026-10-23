@@ -160,6 +160,12 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		return e.executeInternalTool(ctx, toolName, toolConfig.Command, args)
 	}
 
+	// 条件必填校验：requires_any_of 列出的参数至少一个被实质提供，否则 fail-closed，
+	// 直接返回错误、绝不执行命令（零参可能进交互模式挂死）。
+	if err := e.validateRequiresAnyOf(toolName, toolConfig, args); err != nil {
+		return nil, err
+	}
+
 	// 构建命令 - 根据工具类型使用不同的参数格式
 	cmdArgs := e.buildCommandArgs(toolName, toolConfig, args)
 
@@ -716,6 +722,38 @@ func (e *Executor) parseAdditionalArgs(argsStr string) []string {
 }
 
 // getParamValue 获取参数值，支持默认值
+// paramProvided 判断参数是否被"实质性提供"（用于 requires_any_of 条件必填）。
+// bool 仅 true 算提供（false 等于没开启该开关）；string 须非空白；其余类型非 nil 即算。
+func paramProvided(v interface{}) bool {
+	if v == nil {
+		return false
+	}
+	switch t := v.(type) {
+	case bool:
+		return t
+	case string:
+		return strings.TrimSpace(t) != ""
+	default:
+		return true
+	}
+}
+
+// validateRequiresAnyOf 校验条件必填原语：列出的参数至少一个被实质提供。
+// 注意用 args 原始值而非 getParamValue（后者会回填 Default，而 default 不该算"用户提供"）。
+func (e *Executor) validateRequiresAnyOf(toolName string, toolConfig *config.ToolConfig,
+	args map[string]interface{}) error {
+	if len(toolConfig.RequiresAnyOf) == 0 {
+		return nil
+	}
+	for _, name := range toolConfig.RequiresAnyOf {
+		if paramProvided(args[name]) {
+			return nil
+		}
+	}
+	return fmt.Errorf("工具 %s 需至少提供 %s 之一", toolName,
+		strings.Join(toolConfig.RequiresAnyOf, " / "))
+}
+
 func (e *Executor) getParamValue(args map[string]interface{}, param config.ParameterConfig) interface{} {
 	// 从参数中获取值
 	if value, ok := args[param.Name]; ok && value != nil {
@@ -1109,7 +1147,9 @@ func combinedOutputCancellableWithLimit(ctx context.Context, cmd *exec.Cmd, maxB
 	select {
 	case waitErr = <-done:
 	case <-ctx.Done():
-		waitErr = <-done
+		// 排空 done：避免 wait goroutine 永久阻塞。本分支返回 ctx.Err()，
+		// 原先存进 waitErr 是死存储（staticcheck SA4006）。
+		<-done
 		return finalizeJoinedBoundedOutputs(stdoutBuf, stderrBuf, maxBytes, tee), ctx.Err()
 	}
 	return finalizeJoinedBoundedOutputs(stdoutBuf, stderrBuf, maxBytes, tee), waitErr
@@ -1677,36 +1717,17 @@ func getExitCodeValue(err error) int {
 // 合法 shell 语法（分号/重定向/算术展开/变量展开）为设计内用法，放行——
 // exec 工具是设计内 RCE 接口（见 executeSystemCommand 头注释），本函数仅兜底
 // 拦截"意外外联/反连/解释器任意代码执行"类最危险特征，不是沙箱。
+//
+// 规则数据外置在 command_rules.yaml（go:embed 嵌入），本函数只负责按序匹配；
+// 改拦截口径请改 YAML 并同步 shell_interception_test.go，不要在这里硬编码新规则。
 func isDangerousShellCommand(cmd string) (bool, string) {
-	dangerous := []struct {
-		pattern string
-		reason  string
-	}{
-		{"|", "管道（|）"},
-		{"&&", "逻辑与（&&）"},
-		{"||", "逻辑或（||）"},
-		{"`", "反引号替换"},
-		{"curl ", "curl（可能外联）"},
-		{"wget ", "wget（可能外联）"},
-		{"nc ", "netcat（可能建立反向shell）"},
-		{"socat ", "socat（可能建立反向shell）"},
-		{"telnet ", "telnet（可能外联）"},
-		{"/dev/tcp", "bash反向shell"},
-		{"bash -i", "交互式bash"},
-		{"python -c", "Python代码执行"},
-		{"python3 -c", "Python代码执行"},
-		{"py -c", "Python代码执行"},
-		{"perl -e", "Perl代码执行"},
-		{"ruby -e", "Ruby代码执行"},
-	}
-	for _, d := range dangerous {
-		if strings.Contains(cmd, d.pattern) {
-			return true, d.reason
+	for _, r := range loadCommandRules() {
+		if r.unlessContains != "" && strings.Contains(cmd, r.unlessContains) {
+			continue
 		}
-	}
-	// $(...) 子 shell 替换：排除 $(( 算术展开（合法语法）
-	if strings.Contains(cmd, "$(") && !strings.Contains(cmd, "$((") {
-		return true, "子shell替换（$()）"
+		if r.re.MatchString(cmd) {
+			return true, r.reason
+		}
 	}
 	return false, ""
 }

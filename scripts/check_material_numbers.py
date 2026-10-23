@@ -47,20 +47,33 @@ BANNED = [
     (r"662\s*文件|242\s*(个)?测试|123,149|153,987", "旧口径 A（662/242/123,149/153,987）"),
     (r"677\s*文件|250\s*(个)?测试|125,954|158,247", "旧口径 B（677/250/125,954/158,247）"),
     (r"151\s*(个)?求解器", "旧求解器数 151"),
-    (r"140\s*(个)?(运行时)?工具", "三不管数字 140 工具（既非 90 也非 142）"),
+    (r"140\s*(个)?(运行时)?工具", "三不管数字 140 工具（真值 90 YAML / 142 运行时）"),
+    # 2026-10-18 新增：143 是**删 tools/lightx.yaml 之前**的运行时工具数。官网 og:description
+    # (`<meta property="og:description" content="4 类 Agent × 143 工具 × 13 角色…">`) 里的它
+    # 正是本表修好属性值盲区前的那类漏检——可见文本早已改成 142，属性里还留着 143。
+    # 「N 工具」裸写法没有锚点（90 YAML / 142 运行时 / 52 内置三个口径都简称"工具"，猜哪个都是猜），
+    # 故按禁用旧口径处理：带「工具」二字的 143 在任何口径下都不可能是对的。
+    (r"143\s*(个)?(运行时)?工具", "旧运行时工具数 143（删 lightx 前口径，现 YAML 90 / 运行时 142）"),
     (r"Go\s*613\s*文件|613\s*文件", "手写漂移的 Go 文件数 613"),
     # 09-03 一代旧口径：曾长期存活于根目录《提交前终检清单》，因门禁漏扫根目录而未被发现
-    (r"工具\s*YAML\s*\**\s*90|90\s*(个)?(工具|YAML)", "旧工具数 90（现 YAML 91 / 运行时 143）"),
-    (r"226\s*(个)?测试|228\s*(个)?测试|224\s*(个)?测试", "旧测试文件数（现 257）"),
-    (r"24/26\s*测试|26/26|26\s*包全绿|26\s*(个)?包测试", "旧测试包数 26（现 28）"),
-    # 2026-10-18 更新：原注"现 32"已过期。31 既不是 internal 子目录数（34）
-    # 也不是 internal 包数（37），两个口径都禁止再出现这个值。
-    (r"31\s*internal|internal\s*(子)?(目录|包)\s*\**\s*31", "旧 internal 数 31（现 子目录 34 / 包 37）"),
-    (r"111,933|113,\d{3}", "旧非测试行数（现 122,601）"),
+    # 2026-10-18 口径变更：删除幻影条目 tools/lightx.yaml 后，工具 YAML 真值 91 -> 90，
+    # 故 91 成为**新的**旧口径，90 转正为真值。切勿再让 91 复活。
+    (r"工具\s*YAML\s*\**\s*91|91\s*(个)?(工具|YAML)", "旧工具数 91（现 YAML 90 / 运行时 142）"),
+    (r"226\s*(个)?测试|228\s*(个)?测试|224\s*(个)?测试", "旧测试文件数（现 318）"),
+    # 2026-10-23 收窄：原条目里的裸 `26/26` 会误伤**真值**——基准集扩到 26 集后，
+    # `docs/quant_effect.md` 的「基准集达标 26/26」是完全正确的当值陈述，却被判成
+    # 「旧测试包数 26」复活（同一串数字两种语义）。按本项目一贯纪律「数字必须紧跟单位词
+    # 才判定口径」，改为要求 `26/26` 后面跟「(个)(测试)包」；裸 `26/26` 不再判红。
+    (r"24/26\s*测试|26/26\s*(?:个)?\s*(?:测试)?包|26\s*包全绿|26\s*(个)?包测试",
+     "旧测试包数 26（现 38）"),
+    # 2026-10-18 更新：原注"现 32"已过期。31 既不是 internal 子目录数（35）
+    # 也不是 internal 包数（38），两个口径都禁止再出现这个值。
+    (r"31\s*internal|internal\s*(子)?(目录|包)\s*\**\s*31", "旧 internal 数 31（现 子目录 35 / 包 38）"),
+    (r"111,933|113,\d{3}", "旧非测试行数（现 129,955）"),
     # ── 09-05 一代分发体积：Setup 33.6 MB / 绿色版 158 MB ────────────────────
     # 那一代产物是 159,051,447 B 的 `+dirty` 构建（09-04），早已被 89.5 MB 的
     # 纯 Go 构建取代。体积差近一倍，写错的后果是评委按图索骥找不到对应文件。
-    (r"33\.6\s*MB|158\s*MB", "旧分发体积（33.6MB/158MB，现 20.3MB/89.5MB）"),
+    (r"33\.6\s*MB|158\s*MB", "旧分发体积（33.6MB/158MB，现 20.3MB/89.6MB）"),
     # ── 技术栈断言：cgo ──────────────────────────────────────────────────
     # 2026-10-18 实测：release.yml 三平台一律 `CGO_ENABLED=0`，SQLite 用 glebarez
     # 纯 Go 驱动，全仓 `import "C"` 数量为 0 —— 早已不依赖 cgo。
@@ -99,6 +112,12 @@ ANCHORS = [
     # （如 "攻击链: TTP战术技术程序"），**永远不可能等于真 flag**（flag 为 ASCII）。
     # 材料若宣称「176 求解器全部能解题」即被读成注水；现要求写清 117 真求解器 + 59 检测器，
     # 三者必须自洽（real + detectors == solvers），见 count_stats.py::ctf_solver_breakdown。
+    # 2026-10-23 新增（第 6 处「锚点覆盖不全」盲区，实测）：PPT 数据卡把总数写成
+    # 「N 预解组件」而非「N 求解器」——上面那条锚点只认「求解器」，于是 deck 里
+    # 「181 预解组件 130真求解器+59检测器」长期存活：181 ≠ 130+59=189，**同屏自相矛盾**
+    # 却没有任何判据能发现（本文件第 155 行注释早就点名过这个形态，但当时只补了
+    # 「拆分字面量」（Python 源码）一条，漏了 PPT 里的纯文本写法）。
+    (r"(?<![\d.])(?P<n>\d+)\s*(个)?预解组件", "ctf_solvers", "求解器总数（预解组件）"),
     (r"(?<![\d.])(?P<n>\d+)\s*(个)?真求解", "ctf_real_solvers", "真求解器数"),
     (r"(?<![\d.])(?P<n>\d+)\s*(个)?(启发式\s*)?检测器", "ctf_detectors", "检测器数"),
     # 09-09 新增：此前只锚定 3 个数，导致「测试文件/工具 YAML/技能/Agent/角色/internal」
@@ -127,8 +146,8 @@ ANCHORS = [
     # 负向守卫排除「N YAML 角色/配置/参数/字段」等**非工具**的 YAML 计数，
     # 免得把 roles_yaml(13) 之类误当工具数改掉。
     # 2026-10-18 新增：「N+ YAML」这种**带加号的取整宣称**此前完全无锚点 ——
-    # 实测冻结产物里写着「100+ YAML 配方」，而工具 YAML 真值已降到 91（生成器早已改成
-    # 「91 个 YAML 配方」，产物没重跑）。加号把它伪装成"约数"，比写错数字更难发现：
+    # 实测冻结产物里写着「100+ YAML 配方」，而工具 YAML 真值已降到 90（生成器早已改成
+    # 「90 个 YAML 配方」，产物没重跑）。加号把它伪装成"约数"，比写错数字更难发现：
     # 上面所有锚点都要求「数字紧跟 YAML/个」，`100+` 的 `+` 一律让它们失配。
     (r"(?<![\d.])(?P<n>\d{2,3})\s*\+\s*(?:个)?\s*YAML", "tools_yaml", "工具 YAML 数（N+ YAML 取整宣称）"),
     (r"(?<![\d.])(?P<n>\d{2,3})\s*(个)?\s*YAML\s*(?!\s*(?:角色|配置|参数|字段))",
@@ -171,6 +190,12 @@ ANCHORS = [
     # 「N 包测试全绿」= 有测试的包数（28），**不等于** go list 总包数（41）。
     # 两者混用正是「26 包」长期漂移却无人能自动校验的根因 —— 以前真值源里根本没有这个数。
     (r"(?<![\d.])(?P<n>\d+)\s*(个)?包(测试|全绿|有测)", "test_packages", "有测试的包数"),
+    # 2026-10-23 新增（第 7 处盲区，实测）：材料/PPT 数据卡/官网 stats 另写「N/N 测试包」。
+    # 上面那条要求数字**紧跟**「包」，而这里数字与「包」之间夹了「测试」、且数字是 A/B 形态
+    # → 长期漏检：deck 与官网写「37/37 测试包」而真值已 38，没有任何判据报红。
+    # ⚠️ 必须强制「测试包」二字：`N/M 包` 另有「40 个包里 26 个」的语义（docs 里真实存在
+    #    「26/40 包」），放宽成可选会把那种表述误判成"测试包数"。
+    (r"(?<![\d.])(?P<n>\d+)/\d+\s*测试包", "test_packages", "有测试的包数（N/N）"),
     # 09-15 新增：代码行数此前**完全没有锚点** —— 122,131 / 125,998 / 126,396 这类数字
     # 只能靠人肉比对，正是官网"行数差 7 倍却长期无人发现"的根因之一。
     (r"(?<![\d,.])(?P<n>\d{2,3},\d{3})\s*行", "non_test_lines", "非测试代码行数"),
@@ -297,8 +322,42 @@ def load_truth():
         cwd=ROOT, capture_output=True, text=True,
     )
     if out.returncode != 0:
-        raise SystemExit("FATAL: count_stats.py 执行失败，无法取得真值：\n" + out.stderr)
+        raise SystemExit("FATAL: count_stats.py 执行失败，无法取得真值：\n" % out.stderr)
     return json.loads(out.stdout)
+
+
+_HTML_TAG_RX = re.compile(r"<[^>]*>")
+
+
+def is_html_path(rpath):
+    return rpath.lower().endswith((".html", ".htm"))
+
+
+def scan_texts(line, is_html):
+    """返回该行要做模式匹配的探针序列：[(text, via_attr), ...]。
+
+    非 HTML：原文一份（via_attr=False），语义与 2026-10-18 之前完全一致。
+
+    HTML：两份 —— ①「标签→空格」后的可见文本（via_attr=False）；②**原文**
+    （via_attr=True）。第 ② 份修的是 2026-10-18 发现的属性值盲区：
+    `<[^>]*>` 把整个标签连同属性值换成空格，于是写在属性里的文字
+    （典型如 `<meta content="…143 工具…">`）对 BANNED 与 ANCHORS **双双不可见**。
+    实测官网 og:description 的「143 工具」（删 lightx 前的旧运行时数）正是这样
+    漏检的：同一文件可见文本早已改成 142，属性里还留着 143，门禁常年 PASS。
+
+    方向性保证「只可能更严」：属性文本此前**完全不被检查**，加扫后要么与真值一致
+    （结论不变），要么报出（比此前严）；不存在把旧命中变放行的路径。
+    去重由调用方负责（同一处两边都命中只报一次）。
+
+    本函数是门禁与 fix_material_numbers.py 的**共享检测语义**——两边必须调用同一个，
+    否则会出现「门禁红、修复器看不见」的死循环。
+    """
+    if not is_html:
+        return [(line, False)]
+    stripped = _HTML_TAG_RX.sub(" ", line)
+    if stripped == line:
+        return [(line, False)]
+    return [(stripped, False), (line, True)]
 
 
 def iter_files():
@@ -415,43 +474,66 @@ def main():
         except Exception:
             continue
         is_snapshot = SNAPSHOT_MARK in "".join(lines[:40]) or is_historical(rpath)
-        # HTML 材料：先把标签替换为空格再做锚点匹配。
-        # 实测盲区（2026-09-15）：官网 stats 区 `>268</div><div class="lbl">自动化测试文件`
-        # 因数字与单位被标签隔断，命中不了 `(?P<n>\d{3})\s*(个)?测试文件` → 门禁 PASS 却漏检。
+        # HTML 材料的探针由 scan_texts() 产出（可见文本 + 原文属性值两份），
+        # 语义与修复器 fix_material_numbers.py 共享。
+        # 历史沿革：2026-09-15 曾把「标签→空格」当作 HTML 的完整解法（治的是数字与单位
+        # 被标签隔断那一类盲区，如 `>268</div><div>自动化测试文件`）；2026-10-18 发现它
+        # 顺手挖了另一个坑——属性值里的文字被一起吃掉了，见 scan_texts() 文档字符串。
         # 用"替换为空格"而非"删除"，避免把相邻文本粘起来产生新误报。
-        strip_html = rpath.lower().endswith((".html", ".htm"))
-        for lineno, line in enumerate(lines, 1):
-            if strip_html:
-                line = re.sub(r"<[^>]*>", " ", line)
+        for lineno, raw_line in enumerate(lines, 1):
+            probes = scan_texts(raw_line, is_html_path(rpath))
             if is_snapshot:
-                exempted += len([1 for pat, _ in BANNED if re.search(pat, line)])
+                # 历史档案豁免口径不变：BANNED 命中数豁免（HTML 含属性值探针）
+                exempted += sum(
+                    len([1 for pat, _ in BANNED if re.search(pat, text)])
+                    for text, _via in probes
+                )
                 continue
             if rpath in EXEMPT_FILES:
                 continue
-            for pat, why in BANNED:
-                if re.search(pat, line):
-                    banned_hits.append((rpath, lineno, why, line.strip()[:120]))
-            for pat, key, label in ANCHORS:
-                m = re.search(pat, line)
-                if not m:
-                    continue
-                want = truth.get(key)
-                # 2026-10-18：分发体积（setup_mb / exe_mb）的真值来自 installer/ 下的实物，
-                # 而**二进制不入库**（`.gitignore` `installer/*`）→ CI 检出里这两个字段是
-                # null。此时不能崩（`int(None)` / `float(None)` 都抛异常，实测把 caliber-gate
-                # 直接打红），也不能装作验过：显式记一笔「本检出无法核验」。
-                # 防退化不靠这里——靠自测第 15 条（真值存在时「错必红/对必绿」双向钉）。
-                if want is None:
-                    unverifiable.append((rpath, lineno, label))
-                    continue
-                # 计数字段整数 / 体积字段 1 位小数，统一走 coerce_num（两个门禁共用一个实现）
-                got, want = coerce_num(m.group("n"), want)
-                if got != want:
-                    anchor_hits.append((rpath, lineno, label, got, want, line.strip()[:120]))
+            # 去重：同一处（同行同模式同结论）在「可见文本」与「HTML 属性值」
+            # 两个探针下都命中时只报一次，避免一行被计两遍。
+            seen = set()
+            for text, via_attr in probes:
+                suffix = "（HTML 属性值）" if via_attr else ""
+                for pat, why in BANNED:
+                    if re.search(pat, text):
+                        key = ("B", rpath, lineno, why)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        banned_hits.append((rpath, lineno, why + suffix, text.strip()[:120]))
+                for pat, akey, label in ANCHORS:
+                    m = re.search(pat, text)
+                    if not m:
+                        continue
+                    want = truth.get(akey)
+                    # 2026-10-18：分发体积（setup_mb / exe_mb）的真值来自 installer/ 下的实物，
+                    # 而**二进制不入库**（`.gitignore` `installer/*`）→ CI 检出里这两个字段是
+                    # null。此时不能崩（`int(None)` / `float(None)` 都抛异常，实测把 caliber-gate
+                    # 直接打红），也不能装作验过：显式记一笔「本检出无法核验」。
+                    # 防退化不靠这里——靠自测第 15 条（真值存在时「错必红/对必绿」双向钉）。
+                    if want is None:
+                        ukey = ("U", rpath, lineno, label)
+                        if ukey in seen:
+                            continue
+                        seen.add(ukey)
+                        unverifiable.append((rpath, lineno, label + suffix))
+                        continue
+                    # 计数字段整数 / 体积字段 1 位小数，统一走 coerce_num（两个门禁共用一个实现）
+                    got, want = coerce_num(m.group("n"), want)
+                    if got != want:
+                        akey2 = ("A", rpath, lineno, label, got, want)
+                        if akey2 in seen:
+                            continue
+                        seen.add(akey2)
+                        anchor_hits.append((rpath, lineno, label + suffix, got, want,
+                                            text.strip()[:120]))
 
     # 2026-10-14 补（门禁审计 · 空洞绿）：本门禁的全部结论都由「违规项计数」构成，
     # 因此**扫到 0 个文件时会无条件全绿** —— SCAN_DIRS 写错目录名、目录被 gitignore
-    # （`官网/` 就从未入版本库）、或扫描扩展名被改空，都会让门禁静默失效却报 PASS。
+    # （`官网/` 曾长期未入版本库，2026-10-18 才随材料修正入库；被 .gitignore 排除
+    # 是同类风险的现实来源）、或扫描扩展名被改空，都会让门禁静默失效却报 PASS。
     # 这正是 _audit_llm_pool.py 当年「池文件缺失 → 空池 → 全绿」的同款失效形态。
     # 判据：扫描覆盖数为 0 本身必须算红（fail-closed），绝不允许「没扫到 = 没问题」。
     if scanned == 0:

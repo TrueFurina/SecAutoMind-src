@@ -40,6 +40,10 @@ args:
         sys.stderr.write(proc.stderr)
     sys.exit(proc.returncode)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "Impacket 网络协议工具集，用于网络协议攻击和横向移动"
 description: |
   Impacket 是一个 Python 工具集，用于处理网络协议，常用于渗透测试和横向移动。

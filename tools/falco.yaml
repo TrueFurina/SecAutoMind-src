@@ -1,6 +1,11 @@
 name: "falco"
 command: "falco"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/falcosecurity/falco"
+trust: "builtin"
 short_description: "运行时安全监控工具"
 description: |
   Falco是一个运行时安全监控工具，用于检测容器和主机中的异常行为。

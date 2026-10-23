@@ -17,9 +17,43 @@ import (
 //
 // 这里只影响测试进程的超时预算，**不改变生产默认值**（生产仍 6s，见 presolve_registry.go）。
 // 若需在单个测试内覆盖，用 t.Setenv 即可（优先级更高）。
+// testRangePorts 是各靶场用例使用的固定端口。
+// 集中列在这里，供 TestMain 启动前做一次性残留清理。
+var testRangePorts = []int{18089, 18090, 18095, 18098, 18099, 18220, 18221, 18222, 18223, 18224}
+
 func TestMain(m *testing.M) {
+	// 🔴 整包测试**默认关闭**西湖论剑 Python 兜底（2026-10-23 实测后加的，别删）。
+	//
+	// 兜底每题都要起 `runner.py` 子进程，而它用 importlib 逐个加载 79 个 skill 模块，
+	// **单次约 9.7s**（哪怕输入只有一句话）。包内有多个基准/对照用例会对 40–55 道题
+	// 各跑一遍 Presolve（有的还跑两条路径），叠加后整包直接撞死 `go test` 默认 **600s**
+	// 上限 → `go test ./...` 整包 FAIL。实测（未关时）：
+	//   TestExternalBench_NoPlaceholderShortCircuit   753s
+	//   TestCrossBench_AgainstXihuRealQuestions       9m55s（超时前）
+	//   TestRealBenchmark_RegistryPresolve / ShippedPresolve 各 >280s
+	//
+	// 更严重的是**口径污染**：兜底解出的题会被算进「Go 预解路径命中率」，
+	// 那些用例声称的数字就不再对应它们真正测的东西。
+	//
+	// 需要测兜底自身的用例（presolve_python_test.go）显式 `t.Setenv(envPythonFallback,"1")`；
+	// 外部显式设了该变量时（如 `SECAUTOMIND_PYTHON_FALLBACK=1 go test ...`）尊重外部值。
+	if _, ok := os.LookupEnv(envPythonFallback); !ok {
+		_ = os.Setenv(envPythonFallback, "0")
+	}
+
+	// 子进程替身（rangeproc_ready_test.go 的 re-exec）直接跑，不做端口清理：
+	// 否则每个替身启动都要多花 ~2s 做 10 次 netstat，把「快速失败」测成慢速失败。
+	if os.Getenv("RANGEPROC_CHILD_MODE") != "" {
+		os.Exit(m.Run())
+	}
 	if os.Getenv("SECAUTOMIND_REGISTRY_SWEEP_MS") == "" {
 		_ = os.Setenv("SECAUTOMIND_REGISTRY_SWEEP_MS", "60000")
+	}
+	// 启动前清掉上一轮被强杀（如 CI 超时、Ctrl-C）留下的靶场监听。
+	// 背景（2026-10-21 实测）：cmd.Process.Kill() 在 Windows 上可能杀不干净，
+	// 残留的 python 靶场会占住固定端口，导致后续运行「靶场未就绪」或打到陈旧实例。
+	for _, p := range testRangePorts {
+		killPortListeners(p)
 	}
 	os.Exit(m.Run())
 }

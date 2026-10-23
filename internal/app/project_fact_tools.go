@@ -119,7 +119,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(upsertTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		factKey, _ := args["fact_key"].(string)
 		summary, _ := args["summary"].(string)
@@ -144,21 +144,22 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 		}
 		created, err := db.UpsertProjectFact(f)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "保存项目事实失败（已记日志）", err), nil
 		}
 		if _, hasLinks := args["links"]; hasLinks {
 			linkInputs, err := project.ParseFactLinkInputs(args["links"])
 			if err != nil {
+				// 入参校验错误：links 结构不合法的提示本就是写给调用方看的，直出。
 				return textResult("错误: "+err.Error(), true), nil
 			}
 			convID := agent.ConversationIDFromContext(ctx)
 			if err := project.PersistFactLinksFromParsed(db, projectID, created.FactKey, convID, linkInputs, true); err != nil {
-				return textResult("错误: 保存关系边失败: "+err.Error(), true), nil
+				return toolInternalError(logger, "保存关系边失败（已记日志）", err), nil
 			}
 			created, _ = db.GetProjectFactByKey(projectID, created.FactKey)
 		} else if parsed := project.ParseLinksFromBody(created.Body); len(parsed) > 0 {
 			if err := project.PersistFactIncomingLinks(db, projectID, created.FactKey, parsed, true); err != nil {
-				return textResult("错误: 从 body 解析边失败: "+err.Error(), true), nil
+				return toolInternalError(logger, "从 body 解析边失败（已记日志）", err), nil
 			}
 			created, _ = db.GetProjectFactByKey(projectID, created.FactKey)
 		}
@@ -187,7 +188,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(getTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		key := strings.TrimSpace(strArg(args, "fact_key"))
 		if key == "" {
@@ -195,7 +196,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 		}
 		f, err := db.GetProjectFactByKey(projectID, key)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "读取项目事实失败（已记日志）", err), nil
 		}
 		msg := fmt.Sprintf("fact_key: %s\ncategory: %s\nconfidence: %s\nsummary: %s\nupdated_at: %s",
 			f.FactKey, f.Category, f.Confidence, f.Summary, f.UpdatedAt.Format("2006-01-02 15:04:05"))
@@ -241,7 +242,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(listTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		limit := intArg(args, "limit", 50)
 		offset := intArg(args, "offset", 0)
@@ -251,7 +252,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 		}
 		list, err := db.ListProjectFacts(projectID, filter, limit, offset)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "列出项目事实失败（已记日志）", err), nil
 		}
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("共 %d 条（limit=%d offset=%d）:\n", len(list), limit, offset))
@@ -278,7 +279,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(searchTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		q := strings.TrimSpace(strArg(args, "query"))
 		if q == "" {
@@ -286,7 +287,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 		}
 		list, err := db.ListProjectFacts(projectID, database.ProjectFactListFilter{Search: q}, intArg(args, "limit", 30), intArg(args, "offset", 0))
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "搜索项目事实失败（已记日志）", err), nil
 		}
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("搜索 \"%s\" 命中 %d 条:\n", q, len(list)))
@@ -311,11 +312,11 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(deprecateTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		key := strings.TrimSpace(strArg(args, "fact_key"))
 		if err := db.DeprecateProjectFact(projectID, key); err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "废弃项目事实失败（已记日志）", err), nil
 		}
 		return textResult("事实已标记为 deprecated: "+key, false), nil
 	})
@@ -340,7 +341,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 	mcpServer.RegisterTool(restoreTool, func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
 		projectID, err := projectIDFromConversation(db, ctx)
 		if err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "无法确定当前对话绑定的项目（已记日志）", err), nil
 		}
 		key := strings.TrimSpace(strArg(args, "fact_key"))
 		if key == "" {
@@ -348,7 +349,7 @@ func registerProjectFactTools(mcpServer *mcp.Server, db *database.DB, cfg *confi
 		}
 		conf := strArg(args, "confidence")
 		if err := db.RestoreProjectFact(projectID, key, conf); err != nil {
-			return textResult("错误: "+err.Error(), true), nil
+			return toolInternalError(logger, "恢复项目事实失败（已记日志）", err), nil
 		}
 		if conf == "" {
 			conf = "tentative"

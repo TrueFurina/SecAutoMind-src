@@ -104,6 +104,12 @@ func runExternalBench(doc externalBenchDoc, fn func(*Challenge) *PresolveResult)
 
 // TestExternalBench_TextOnly 文本口径（仅 description）水位——只报告不断言。
 func TestExternalBench_TextOnly(t *testing.T) {
+	// 🔴 关掉西湖论剑 Python 兜底：本用例量的是「**Go 预解路径**在外部真题尺上的命中率」
+	// （对外陈述 0/40 = 0.0%，用来证明"自产集高分 ≠ 解题能力"）。
+	// 兜底是另一条机制（起 runner.py，9.7s/次）；不关则 40 题 × 2 条路径 × 10s ≈ 800s，
+	// quant 门禁的 external_control 会 600s 超时；且兜底若解出题会污染这个对照口径。
+	t.Setenv(envPythonFallback, "0")
+
 	doc := loadExternalBench(t)
 	total := len(doc.Problems)
 	if total == 0 {

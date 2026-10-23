@@ -313,6 +313,17 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 11-b 跨原语递归解码链（2026-10-23 能力提升）：多层编码/加密复合链
+	// （八进制→Vigenère / A·B摩斯→单表 / base64→ROT13 等）。静态题最高频类型，
+	// 深度≤8、层间可读性门槛、只收 flag 形态，低误报。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if flags := tryCodingChain(text, attachments); len(flags) > 0 {
+			chResult <- result{"coding_chain", flags}
+		}
+	}()
+
 	// 注册表全量扫描（与快速路径并发启动）：确保「对外宣称的 N 个注册求解器」
 	// 在生产链路真的被跑到，而不是只有硬编码快速路径那 25 个。
 	chSweep := make(chan result, 1)
@@ -400,6 +411,9 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 
 	// 快速路径若已拿到 flag 外形的可信结果（likeness=3，已是上界），
 	// 全量扫描不可能更好，直接返回、零额外延迟；否则必须等扫描结果。
+	// 说明：本块内对 bestLike 的两次赋值，出了块之后只再读 best、不再读 bestLike
+	// （staticcheck SA4006 报「死存储」属实）。保留赋值是为了让「命中即更新最优解」
+	// 这层意图留在代码里，而不是靠读者从 best 的间接变化里反推。
 	if bestLike < 3 {
 		select {
 		case r := <-chSweep:
@@ -439,6 +453,12 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 			Solved: true,
 			Detail: fmt.Sprintf("[presolve:%s] 命中 %d 个候选", best.engine, len(best.flags)),
 		}
+	}
+
+	// 兜底：西湖论剑 Python skills（吞并接入，fail-closed，无命中/环境缺失返回 nil）
+	if pr := pythonFallbackResult(tryPythonLegacyFallback(text, attachments)); pr != nil {
+		p.logger.Info("presolve 命中（xhlj_python 兜底）", zap.Strings("flags", pr.Flags))
+		return pr
 	}
 
 	return &PresolveResult{Solved: false, Detail: "presolve 未命中，需 LLM 推理"}

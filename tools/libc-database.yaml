@@ -34,6 +34,10 @@ args:
         sys.stderr.write(proc.stderr)
     sys.exit(proc.returncode)
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "libc识别和偏移查找工具"
 description: |
   Libc-database是一个用于libc识别和偏移查找的工具。

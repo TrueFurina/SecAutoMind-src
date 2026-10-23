@@ -27,6 +27,10 @@ args:
 
     exec(script_content, {})
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "CTF和漏洞利用开发框架"
 description: |
   执行自定义pwntools脚本，并通过环境变量注入常用目标信息：

@@ -1,6 +1,11 @@
 name: "ghidra"
 command: "analyzeHeadless"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/NationalSecurityAgency/ghidra"
+trust: "builtin"
 short_description: "高级二进制分析和逆向工程工具"
 description: |
   Ghidra是NSA开发的免费二进制分析和逆向工程工具。

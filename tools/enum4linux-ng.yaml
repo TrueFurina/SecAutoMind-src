@@ -1,6 +1,11 @@
 name: "enum4linux-ng"
 command: "enum4linux-ng"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-3.0"
+upstream: "https://github.com/cddmp/enum4linux-ng"
+trust: "builtin"
 short_description: "高级SMB枚举工具（Enum4linux的下一代版本）"
 description: |
   Enum4linux-ng是Enum4linux的下一代版本，提供更强大的SMB枚举功能。

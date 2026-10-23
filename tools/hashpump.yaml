@@ -1,6 +1,21 @@
 name: "hashpump"
+# ── 上游核实结论（2026-10-18，audit_asset_metadata.py / gh api / Kali 工具库）──
+# 未能核实。license/upstream 留空是核实失败，不是遗漏：
+#   · 规范上游 `github.com/bwall/HashPump` **已消失**（gh api 404、网页 404、
+#     且 `users/bwall/repos` 返回空——该账号下已无任何仓库）。多篇教程写着
+#     `git clone https://github.com/bwall/HashPump.git`，但旧教程引用的链接不等于它还在。
+#   · Kali 未收录该工具（kali.org/tools/hashpump/ 返回 404），各教程均为 `git clone` + `make`
+#     源码安装，故无发行包元数据可反查许可证（Debian 侧亦无法访问，本机 IP 被封）。
+#   · 唯一存活的相关仓库 `sTorro/HashPumpWIN32` 是 2014 年的 Windows 移植、0 星、
+#     2018 年后停更，**不是上游**，不采信为 upstream。
+# ⚠️ 已置灰（2026-10-18 人工定夺）：上游已死、工具需从已消失的源码手工编译，
+#    系统不应对外宣称该工具可用。配方与上述核实记录保留留档，enabled 置 false。
 command: "hashpump"
-enabled: true
+enabled: false
+version: "1.0.0"
+source: "upstream"
+license: "unknown"
+trust: "builtin"
 short_description: "哈希长度扩展攻击工具"
 description: |
   HashPump是一个用于执行哈希长度扩展攻击的工具。

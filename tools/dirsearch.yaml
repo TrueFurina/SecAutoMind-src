@@ -1,6 +1,11 @@
 name: "dirsearch"
 command: "dirsearch"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-2.0"
+upstream: "https://github.com/maurosoria/dirsearch"
+trust: "builtin"
 short_description: "高级目录和文件发现工具"
 description: |
   Dirsearch是一个高级Web内容扫描器，用于发现目录和文件。

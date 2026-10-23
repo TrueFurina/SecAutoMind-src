@@ -1,6 +1,11 @@
 name: "one-gadget"
 command: "one_gadget"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "MIT"
+upstream: "https://github.com/david942j/one_gadget"
+trust: "builtin"
 short_description: "在libc中查找one-shot RCE gadget的工具"
 description: |
   One-gadget是一个用于在libc中查找one-shot RCE gadget的工具。

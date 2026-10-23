@@ -42,6 +42,15 @@ SecAutoMind documentation is organized by user journey. Start with deployment, t
 - [贡献规范](zh-CN/contributing-guide.md)
 - [发布流程](zh-CN/release-process.md)
 
+### 工程纪律（2026-10-20 起）
+
+- [MCP 工具分级注册方案](MCP工具分级注册方案-2026-10-19.md)：注册哪些、驻留哪些、**Tier 迁移判据**、未验证项台账
+- [工具契约与输出边界](工具契约与输出边界-2026-10-20.md)：契约四件套（错误投影/schema/响应预算/溯源）、选定事实视图、`NOT_ENOUGH_INFO`
+- [工具故障分诊模板](../templates/工具故障分诊.md)：六层分诊（注册/授权/入参/provider/数据/运行时）
+- [审计报告模板（findings 四分法）](../templates/审计报告模板-findings四分法.md)：已复现缺陷 / 有据成本 / 假设 / 不可得证据
+- 工具**配方**契约（tools/*.yaml，89 份）与依赖清单盘点：见上条文档 §6 / §7；入口脚本 `scripts/audit_yaml_tool_contracts.py`、`scripts/env_fingerprint.py --root`
+- [Go 静态检查基线](Go静态检查基线-2026-10-21.md)：staticcheck 2025.1.1 首跑 156 条 → 基线 135 条；只拦新增语义缺陷（阻断/观察两档）；复跑命令（服务器 / CI）；豁免台账在 `scripts/staticcheck_baseline.json`
+
 ## English Documentation
 
 ### Choose a path

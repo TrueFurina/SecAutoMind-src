@@ -1,6 +1,11 @@
 name: "john"
 command: "john"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "GPL-2.0-or-later"
+upstream: "https://github.com/openwall/john"
+trust: "builtin"
 short_description: "John the Ripper密码破解工具"
 description: |
   John the Ripper是一个快速的密码破解工具，支持多种哈希算法。

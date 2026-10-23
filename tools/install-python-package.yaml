@@ -57,6 +57,10 @@ args:
     fi
   - "_"
 enabled: true
+version: "1.0.0"
+source: "self"
+license: "unknown"
+trust: "builtin"
 short_description: "在指定虚拟环境中创建/激活并安装Python依赖"
 description: |
   在虚拟环境中安装Python包。

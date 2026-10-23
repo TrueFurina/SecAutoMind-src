@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "id": "secautomind-default",
+  "label": "SecAutoMind 安全工作区",
+  "version": "1.0.0",
+  "description": "SecAutoMind 默认工作区：协调主代理 + 专项子代理 + 角色 + 技能 + 人格文件，可整体打包分发或导入其它实例。",
+  "welcome": "欢迎使用 SecAutoMind 安全工作区。请在授权范围内描述你的安全测试目标。",
+  "quick_prompts": [
+    "对 example.com 做一次授权范围内的资产测绘",
+    "分析这份 pcap，找出可疑的 C2 流量",
+    "审计这段代码里的注入风险并给出修复建议"
+  ],
+  "task_examples": [
+    "侦察 example.com 的子域、端口与服务指纹，产出资产清单",
+    "对给定的 Web 目标做非破坏性漏洞验证并附复现步骤",
+    "解一道 CTF crypto 题并说明完整推导过程"
+  ],
+  "personality": "SOUL.md",
+  "assets": {
+    "agents": "agents/*.md",
+    "roles": "roles/*.yaml",
+    "skills": "skills/*/SKILL.md"
+  },
+  "prompt_files": [
+    "agents/*.md"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+ "_readme": [
+  "MCP 工具 err.Error() 直出的存量基线。守卫 scripts/check_error_projection.py 只拦**新增**：",
+  "新增任何一处直出都必须重新裁定——要么改走 internal/app/tool_error.go 的 toolInternalError",
+  "（err 来自数据库/驱动/序列化/作用域解析），要么确认属入参校验后登记到这里并写明理由与复核日期。",
+  "键 = file + 该行去空白后的文本（不用行号：行号会随任何插入漂移，文本变了才说明代码真变了）。",
+  "条目对不上当前代码时会被记为 stale 并告警——那通常意味着那段代码被改写或删掉了，需清理本表。"
+ ],
+ "entries": [
+  {
+   "file": "internal/app/asset_tools.go",
+   "text": "return textResult(\"错误: \"+err.Error(), true), nil",
+   "kind": "入参校验（err 由本项目校验函数产生）",
+   "reason": "assetFromCreateArgs：入参校验（host/ip/domain 至少之一），本就是写给调用方的可行动文案",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰（本机静态审查 + 服务器 go build/vet/test 验证）"
+  },
+  {
+   "file": "internal/app/asset_tools.go",
+   "text": "return textResult(\"错误: \"+err.Error(), true), nil",
+   "kind": "入参校验（err 由本项目校验函数产生）",
+   "reason": "assetFilterFromToolArgs：入参校验（分页/筛选字段不合法），直出以便模型自我纠正",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰（本机静态审查 + 服务器 go build/vet/test 验证）"
+  },
+  {
+   "file": "internal/app/asset_tools.go",
+   "text": "return textResult(\"错误: \"+err.Error(), true), nil",
+   "kind": "入参校验（err 由本项目校验函数产生）",
+   "reason": "applyAssetPatch：入参校验（字段值不合法），直出以便模型自我纠正",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰（本机静态审查 + 服务器 go build/vet/test 验证）"
+  },
+  {
+   "file": "internal/app/project_fact_tools.go",
+   "text": "return textResult(\"错误: \"+err.Error(), true), nil",
+   "kind": "入参校验（err 由本项目校验函数产生）",
+   "reason": "project.ParseFactLinkInputs：入参校验（links 结构不合法），直出以便模型自我纠正",
+   "reviewed_on": "2026-10-21",
+   "reviewed_by": "张敏杰（本机静态审查 + 服务器 go build/vet/test 验证）"
+  }
+ ]
+}

@@ -13,6 +13,7 @@ import (
 	"secautomind-ai/internal/config"
 	"secautomind-ai/internal/database"
 	"secautomind-ai/internal/logger"
+	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/security"
 	"secautomind-ai/internal/termout"
 	"strings"
@@ -51,6 +52,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Invalid -config path %q.\nIf HTTPS is also needed, use: ./secautomind-ai --https -config config.yaml (-config must be followed by a yaml file path).\n", cp)
 		os.Exit(2)
 	}
+	// 安装包只带 exe：装到 Program Files 且首次启动时，配置目录不可写，
+	// 直接把 config.yaml 落到用户数据目录，避免"连配置都创建不出来"。
+	cp = paths.ConfigPath(cp)
 	localConfig, err := config.EnsureLocalConfig(cp)
 	if err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
@@ -167,7 +171,7 @@ func main() {
 func runResetAdminPassword(cfg *config.Config) error {
 	dbPath := strings.TrimSpace(cfg.Database.Path)
 	if dbPath == "" {
-		dbPath = "data/conversations.db"
+		dbPath = paths.Resolve("data/conversations.db")
 	}
 	if _, err := os.Stat(dbPath); err != nil {
 		if os.IsNotExist(err) {

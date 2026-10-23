@@ -1,6 +1,11 @@
 name: "amass"
 command: "amass"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Apache-2.0"
+upstream: "https://github.com/owasp-amass/amass"
+trust: "builtin"
 short_description: "子域名枚举和网络映射工具"
 description: |
   Amass是一个深度子域名枚举和网络映射工具，通过多种技术发现目标域名的子域名。

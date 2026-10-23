@@ -49,6 +49,14 @@ type ToolConfigInfo struct {
 	ExternalMCP string                 `json:"external_mcp,omitempty"` // 外部MCP名称（如果是外部工具）
 	RoleEnabled *bool                  `json:"role_enabled,omitempty"` // 该工具在当前角色中是否启用（nil表示未指定角色或使用所有工具）
 	InputSchema map[string]interface{} `json:"input_schema,omitempty"` // 工具参数 JSON Schema（用于前端展示详情）
+
+	// 资产元数据（来源可追溯），与 config.ToolConfig 同名字段一一对应。
+	Version  string `json:"version,omitempty"`
+	Source   string `json:"source,omitempty"`
+	Upstream string `json:"upstream,omitempty"`
+	License  string `json:"license,omitempty"`
+	Trust    string `json:"trust,omitempty"`
+	Evidence string `json:"evidence,omitempty"`
 }
 
 // GetConfig 获取当前配置
@@ -70,6 +78,12 @@ func (h *ConfigHandler) GetConfig(c *gin.Context) {
 			Description: h.pickToolDescription(tool.ShortDescription, tool.Description),
 			Enabled:     tool.Enabled,
 			IsExternal:  false,
+			Version:     tool.Version,
+			Source:      tool.Source,
+			Upstream:    tool.Upstream,
+			License:     tool.License,
+			Trust:       tool.Trust,
+			Evidence:    tool.Evidence,
 		}
 		tools = append(tools, info)
 	}
@@ -95,9 +109,7 @@ func (h *ConfigHandler) GetConfig(c *gin.Context) {
 	if h.externalMCPMgr != nil {
 		ctx := context.Background()
 		externalTools := h.getExternalMCPTools(ctx)
-		for _, toolInfo := range externalTools {
-			tools = append(tools, toolInfo)
-		}
+		tools = append(tools, externalTools...)
 	}
 
 	subAgentCount := len(h.config.MultiAgent.SubAgents)
@@ -266,6 +278,12 @@ func (h *ConfigHandler) GetTools(c *gin.Context) {
 			Description: pickDesc(tool.ShortDescription, tool.Description),
 			Enabled:     tool.Enabled,
 			IsExternal:  false,
+			Version:     tool.Version,
+			Source:      tool.Source,
+			Upstream:    tool.Upstream,
+			License:     tool.License,
+			Trust:       tool.Trust,
+			Evidence:    tool.Evidence,
 		}
 
 		// 根据角色配置标注工具状态

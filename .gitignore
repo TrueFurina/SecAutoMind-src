@@ -173,3 +173,7 @@ mcp-servers/security_triage_agent/security_agent/data/review_feedback.jsonl
 # ⚠️ 本否定块刻意放在**文件末尾**：gitignore 以最后匹配者为准，写在 *.pem / *.py[cod]
 #    之前无效（实测过：.pyc 仍被拦，CI 检出缺件 → 门禁 fail-closed 报红）。
 !data/questions_external_bench/_attachments/**
+
+# 静态扫描临时产物（staticcheck 报告等）：每次重跑都会变，入仓只会污染 diff。
+# 复跑命令见 docs/Go静态检查基线-2026-10-21.md §2；扫描结果不入仓不等于结论不可复现。
+scans/

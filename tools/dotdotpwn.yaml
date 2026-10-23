@@ -1,6 +1,11 @@
 name: "dotdotpwn"
 command: "dotdotpwn"
 enabled: true
+version: "1.0.0"
+source: "upstream"
+upstream: "https://github.com/wireghoul/dotdotpwn"
+license: "GPL-3.0"
+trust: "builtin"
 short_description: "目录遍历漏洞测试工具"
 description: |
   DotDotPwn是一个目录遍历漏洞测试工具，支持多种协议。

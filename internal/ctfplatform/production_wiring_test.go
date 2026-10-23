@@ -252,3 +252,35 @@ func TestRobotAutoPrepareFlow(t *testing.T) {
 		t.Error("未触发下附件（DownloadAttachment）")
 	}
 }
+
+// ───────────────────────── 赛时吞吐：静态优先排序 ─────────────────────────
+//
+// 快闪赛 60 分钟 19 题：无需靶机的静态题（presolve 秒级）必须先于靶机题处理，
+// 否则 CreateInstance 启动延迟会拖慢整条解题流水线。排序为纯函数，直接断言。
+
+func TestSortChallengesStaticFirst(t *testing.T) {
+	in := []Challenge{
+		{ID: "env1", HasInstance: true, Category: "web", Description: "需靶机的 web 题"},
+		{ID: "s1", HasInstance: false, Category: "crypto", Description: "静态题 1"},
+		{ID: "env2", HasInstance: true, Category: "pwn", Description: "需靶机的 pwn 题"},
+		{ID: "s2", HasInstance: false, Category: "misc", Description: "静态题 2"},
+	}
+	sortChallengesStaticFirst(in)
+	want := []string{"s1", "s2", "env1", "env2"} // 静态在前（稳定保序），靶机在后
+	if len(in) != len(want) {
+		t.Fatalf("排序后长度 = %d, want %d", len(in), len(want))
+	}
+	for i := range want {
+		if in[i].ID != want[i] {
+			t.Fatalf("排序错误: got %v, want %v（静态题必须先于靶机题）", idsOf(in), want)
+		}
+	}
+}
+
+func idsOf(chs []Challenge) []string {
+	out := make([]string, 0, len(chs))
+	for _, c := range chs {
+		out = append(out, c.ID)
+	}
+	return out
+}

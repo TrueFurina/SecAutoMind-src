@@ -126,7 +126,7 @@ func TestJWTAttackAgainstRange(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动 JWT 靶场失败: %v", err)
 	}
-	defer func() { _ = cmd.Process.Kill() }()
+	defer func() { killProcessTree(cmd.Process.Pid) }()
 
 	baseURL := "http://127.0.0.1:" + port
 	ready := false
@@ -199,7 +199,7 @@ func TestJWTAttackViaProductionText(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("启动失败: %v", err)
 	}
-	defer func() { _ = cmd.Process.Kill() }()
+	defer func() { killProcessTree(cmd.Process.Pid) }()
 
 	baseURL := "http://127.0.0.1:" + port
 	ready := false
