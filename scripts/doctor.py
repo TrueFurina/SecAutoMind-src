@@ -52,6 +52,28 @@ def _git_head() -> str:
 
 
 # ---------- 1. 真值源（count_stats.py） ----------
+def _declared_tool_counts():
+    """读 AGENTS.md 第二条的分解式示范，返回 ((yaml, builtin, runtime), 错误说明)。
+
+    期望值**不写死**。本脚本原先把期望硬编码成 90/142，随 tools/ 增删漂过一次：
+    2026-10-23 删 tools/lightx.yaml → 真值降为 90/142，硬编码恰好蒙对；
+    2026-10-24 加 tools/bkcrack.yaml → 真值回到 91/143，硬编码立刻失配、doctor 转红。
+    改为复用 check_doc_facts 的同一正则，文档一改这里自动跟上，不会再"两处各说各话"。
+    """
+    p = ROOT / "AGENTS.md"
+    if not p.exists():
+        return None, "AGENTS.md 不存在"
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from check_doc_facts import DECOMP_RE  # 同目录门禁脚本，复用同一判据
+    except Exception as e:  # noqa: BLE001
+        return None, f"无法复用 check_doc_facts.DECOMP_RE：{e}"
+    m = DECOMP_RE.search(p.read_text(encoding="utf-8"))
+    if not m:
+        return None, "AGENTS.md 缺分解式示范（fail-closed：没找到 != 没问题）"
+    return (int(m.group("yaml")), int(m.group("builtin")), int(m.group("runtime"))), ""
+
+
 def check_truth_source():
     r = run([sys.executable, "-X", "utf8", "scripts/count_stats.py", "--json"])
     if r.returncode != 0:
@@ -67,11 +89,20 @@ def check_truth_source():
     builtin = data.get("builtin_tools")
     yaml_n = data.get("tools_yaml")
     runtime = data.get("runtime_tools")
-    record(f"内置工具数 = {builtin}（期望 52）", builtin == 52, "observed",
-           "" if builtin == 52 else "constants.go 的 GetAllBuiltinTools 数量已变，需同步 AGENTS.md 与分级方案")
-    record(f"YAML 工具数 = {yaml_n}，运行时合计 = {runtime}（期望 90 + 52 = 142）",
-           yaml_n == 90 and runtime == 142, "observed",
-           "" if (yaml_n == 90 and runtime == 142) else "AGENTS.md 记 91/143，以 count_stats 实测为准")
+
+    declared, why = _declared_tool_counts()
+    if declared is None:
+        record("工具数期望值可解析（AGENTS.md 分解式）", False, "observed", why)
+    else:
+        d_yaml, d_builtin, d_runtime = declared
+        ok = (yaml_n, builtin, runtime) == (d_yaml, d_builtin, d_runtime)
+        record(
+            f"工具数 = {yaml_n} YAML + {builtin} 内置 = {runtime} 运行时"
+            f"（AGENTS.md 声明 {d_yaml} + {d_builtin} = {d_runtime}）",
+            ok, "observed",
+            "" if ok else "文档声明与 count_stats 实测不一致：按 AGENTS.md 第二条改文档（或真值源），"
+                          "再用 scripts/check_doc_facts.py 复核",
+        )
 
     if data.get("go_packages") is None:
         record("go_packages 统计", None, "unknown",
