@@ -90,6 +90,22 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 - ✅ **数据资产索引迁移**：西湖论剑 14 道严格 KPI + 2 可复现题的 flag_sha256 锚/验证命令/覆盖对照
   已落盘 `data/ctf_benchmark/xhlj_legacy/`（ledger_index.md + coverage_map.json；纯索引，未复制字节、
   未动 SecAutoMind 基准 JSON，避免基线漂移影响赛前材料口径）
+- ✅ **求解资产物理迁移**（用户「凭什么不现在」质询后执行）：西湖论剑 79 个 Python skills + 2 个 core
+  依赖（coppersmith/lattice）+ 93 道真题题面 JSON + 16 个附件集已原样迁入
+  `data/ctf_benchmark/xhlj_legacy/`；vigenere 冒烟验证可运行（SMOKE_OK，解密正确）。
+- ✅ **Python 兜底接入生产链路**（用户「凭什么不现在」拍板后 10-23 执行完毕）：
+  - `data/ctf_benchmark/xhlj_legacy/runner.py`：遍历 79 skills 的确定性兜底执行器（统一
+    `{'text': <题干>}` 调用；SKIP 交互/二进制依赖类；coroutine 与单 skill 异常捕获；40s 预算；
+    flag 形态过滤，只收 `DASCTF{..}/flag{..}` 等）
+  - `internal/ctfplatform/presolve_python.go`：fail-closed 通道（开关
+    `SECAUTOMIND_PYTHON_FALLBACK` 默认开；python 缺失/目录缺失/超时/输出非法一律 nil；进程超时
+    `SECAUTOMIND_PYTHON_FALLBACK_TIMEOUT_MS` 默认 45s；候选去重 + flag 外形过滤）
+  - 接入点两处：`PresolveWithRegistry`（registrySweep miss 后）、`Presolve`（best==nil 后）
+  - **验证**：`go build ./...` RC=0；`presolve_python_test.go` 5 用例全 PASS（Vigenere 直接命中
+    2.28s / 开关关闭 / 空文本 / 普通文本无误报 / 端到端经注册表解出期望明文）；赛前关键回归
+    （CTF² 真机链 + presolve + 新兜底）RC=0
+  - 设计意图：Go 求解器优先，Python 兜底仅在 Go 全 miss 后触发（实测 registry sweep 先命中
+    base64_multilayer 即属正常）；赛时如超时拖累可用 `SECAUTOMIND_PYTHON_FALLBACK=0` 关闭
 - ✅ **深度链评估落定**（逐源码核对）：specialcurve2（factordb/DLP+写死 e）、enigma（硬编码
   GoogleCTF2022 crib）、knapsack（flint LLL）、cycling（题设特殊 n 结构）、deflate（GoogleCTF2021
   lipogram）均为题绑定/数学栈依赖 → 赛前一律不移植
@@ -97,12 +113,12 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 - 执行：保持现成链路稳定，开赛即用
 
 ### 赛后 P0（快闪赛结束后 1 周内）
-1. RSA 循环攻击 Go 化（`tryCyclingAttack`，纯算法 ~200 行）
-2. ZIP 已知明文（bkcrack 外调适配器，Go exec 封装）
-3. Deflate/Huffman 隐写解析 Go 化
-4. race 首血策略融入 poller（`PollerConfig` 增加首血扫描模式）
-5. benchmarks/heldout_evidence 结构复用进 `data/ctf_benchmark/`
-6. 更新 AGENTS.md：西湖论剑冻结声明 + 唯一主体确认
+1. ZIP 已知明文（bkcrack 外调适配器，Go exec 封装）
+2. Deflate/Huffman 隐写解析 Go 化（题绑定 GoogleCTF2021，评估后降 P1 备选）
+3. race 首血策略融入 poller（`PollerConfig` 增加首血扫描模式）
+4. benchmarks/heldout_evidence 结构复用进 `data/ctf_benchmark/`
+5. 更新 AGENTS.md：西湖论剑冻结声明 + 唯一主体确认
+6. 4 个「部分覆盖」链（xuanhun_signin/anwang_crypto1/ezmult/qiangwang_classic）用迁移资产做链路验证
 
 ### 赛后 P1（P0 后 2 周内）
 7. 复数组特殊曲线 RSA（含 DLP 平滑阶 BSGS 或外部服务适配）

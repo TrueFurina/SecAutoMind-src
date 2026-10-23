@@ -444,6 +444,12 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}
 
+	// 兜底：西湖论剑 Python skills（吞并接入，fail-closed，无命中/环境缺失返回 nil）
+	if pr := pythonFallbackResult(tryPythonLegacyFallback(text, attachments)); pr != nil {
+		p.logger.Info("presolve 命中（xhlj_python 兜底）", zap.Strings("flags", pr.Flags))
+		return pr
+	}
+
 	return &PresolveResult{Solved: false, Detail: "presolve 未命中，需 LLM 推理"}
 }
 
