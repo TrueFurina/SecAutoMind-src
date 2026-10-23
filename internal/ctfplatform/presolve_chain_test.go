@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 // 构造：Vigenère 加密 "flag{anwang_crypto1}"（key=FLagDecodeKeey）后整体做八进制 ASCII。
@@ -141,12 +140,10 @@ func TestCodingChainHugeAttachmentSkipsFast(t *testing.T) {
 	if len(big) <= chainMaxInputBytes {
 		t.Fatalf("前置：构造的输入 %d 字节必须超过阈值 %d", len(big), chainMaxInputBytes)
 	}
-	t0 := time.Now()
-	got := tryCodingChain("flag 格式 flag{test}", map[string]string{"blob.bin": big})
-	d := time.Since(t0)
-	t.Logf("540KB 输入耗时 %v（阈值 %d 字节）", d, chainMaxInputBytes)
-	if d > 2*time.Second {
-		t.Fatalf("大输入未快速放弃：耗时 %v —— 输入长度闸失效（实测未修时单题 >5 分钟）", d)
+	got, nodes, bytes := tryCodingChainStats("flag 格式 flag{test}", map[string]string{"blob.bin": big})
+	// 判据用**消耗**而不是墙钟：-race 下墙钟会放大 5~10x，写死秒数必假红。
+	if nodes != 0 || bytes != 0 {
+		t.Fatalf("超阈值输入应直接放弃（消耗必须为 0），实际 nodes=%d bytes=%d", nodes, bytes)
 	}
 	// 放弃是"不解"，但**不得**返回假 flag（截断/硬解出的东西绝不能冒充结果）
 	for _, f := range got {
@@ -158,21 +155,28 @@ func TestCodingChainHugeAttachmentSkipsFast(t *testing.T) {
 
 // TestCodingChainJustUnderCapIsBounded 阈值以内的"大文本"也必须被预算收住，
 // 不能出现"差 1 字节就爆炸"的悬崖。
+//
+// ⚠️ 判据刻意**不用墙钟**：同一输入非 race 实测 3.4s、`-race` 下 27.4s（5~8x），
+// 用秒数断言会在 CI 的 -race 里假红（本轮真踩过）。节点数/扫描字节数与竞态无关，
+// 才是"预算生效"的真判据。
 func TestCodingChainJustUnderCapIsBounded(t *testing.T) {
-	// 用接近阈值（128KB）的可读文本：caesar/rot13/atbash/rot47 都会命中，
-	// 若没有节点预算，深度 8 的分支会把它拖到几十秒以上。
 	body := strings.Repeat("abcdefghij klmnopqrst uvwxyz0123 456789 ", 4000)
 	if len(body) > chainMaxInputBytes {
 		body = body[:chainMaxInputBytes-1]
 	}
-	t0 := time.Now()
-	_ = tryCodingChain(body, nil)
-	d := time.Since(t0)
-	t.Logf("接近阈值（%d 字节）耗时 %v（预算 %d 节点）", len(body), d, chainNodeBudget)
-	// 阈值须给慢 runner 留足余量：PR #58 run4 实测 CI 2 核 + -race 下预算内合法
-	// 计算耗时 22.0s（本机 128 核 ~2s）——预算在工作，是墙钟太紧。判别力不受损：
-	// 预算失效（未收住）的实测形态是 >5 分钟（见上方输入闸用例注释），百倍差距。
-	if d > 60*time.Second {
-		t.Fatalf("阈值内大文本耗时 %v —— 节点预算失效，链式爆炸未被收住", d)
+	_, nodes, bytes := tryCodingChainStats(body, nil)
+	t.Logf("接近阈值（%d 字节）→ nodes=%d（预算 %d）/ bytes=%d（预算 %d）",
+		len(body), nodes, chainNodeBudget, bytes, chainByteBudget)
+	if nodes > chainNodeBudget {
+		t.Fatalf("节点数 %d 超过预算 %d —— 节点闸失效", nodes, chainNodeBudget)
+	}
+	// 记账是"进入节点即扣 len(s)"，故最多超出最后一步的一个节点长度
+	if bytes > chainByteBudget+len(body) {
+		t.Fatalf("扫描字节 %d 超过预算 %d（+单节点容差）—— 字节闸失效", bytes, chainByteBudget+len(body))
+	}
+	// 必须真的被字节闸收住（而不是压根没展开）：否则这个用例什么也没验证
+	if bytes < chainByteBudget {
+		t.Fatalf("字节消耗 %d 未触及预算 %d —— 用例没覆盖到闸门，需换更重的输入",
+			bytes, chainByteBudget)
 	}
 }

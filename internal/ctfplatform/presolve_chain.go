@@ -57,22 +57,33 @@ var (
 
 // tryCodingChain 顶层入口：合并题干与附件，递归解包多层编码，返回 flag 形态候选（去重）。
 func tryCodingChain(text string, attachments map[string]string) []string {
+	flags, _, _ := tryCodingChainStats(text, attachments)
+	return flags
+}
+
+// tryCodingChainStats 与 tryCodingChain 同义，额外回报本次**实际消耗**（节点数 / 扫描字节数）。
+//
+// 为什么要这个变体：回归测试必须能**确定性地**断言"预算生效了"。
+// 用墙钟时间断言在 `-race` 下会假红（同一输入非 race 3.4s、race 27s，实测）；
+// 而节点/字节消耗与竞态无关，是真正的判据。
+func tryCodingChainStats(text string, attachments map[string]string) (flags []string, nodesUsed, bytesUsed int) {
 	full := text
 	for _, v := range attachments {
 		full += "\n" + v
 	}
 	if strings.TrimSpace(full) == "" {
-		return nil
+		return nil, 0, 0
 	}
 	// 大输入直接放弃（见 chainMaxInputBytes 注释：486KB 附件实测会把单题拖到 >5 分钟）。
 	if len(full) > chainMaxInputBytes {
-		return nil
+		return nil, 0, 0
 	}
 	seen := map[string]bool{}
 	var out []string
 	nodes := chainNodeBudget
 	bytesLeft := chainByteBudget
 	chainCollect(full, 0, seen, &out, &nodes, &bytesLeft)
+	nodesUsed, bytesUsed = chainNodeBudget-nodes, chainByteBudget-bytesLeft
 	uniq := make([]string, 0, len(out))
 	uSeen := map[string]bool{}
 	for _, f := range out {
@@ -81,7 +92,7 @@ func tryCodingChain(text string, attachments map[string]string) []string {
 			uniq = append(uniq, f)
 		}
 	}
-	return uniq
+	return uniq, nodesUsed, bytesUsed
 }
 
 // chainCollect 递归解包：depth 上限内逐层尝试全部原语。
