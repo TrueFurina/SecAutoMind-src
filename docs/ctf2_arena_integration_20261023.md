@@ -105,11 +105,12 @@ CTF_AUTO_RELEASE_ENV=true      # accepted 后回收靶机，释放平台配额
 不做延迟批量提交（复杂机制引入赛时风险，且与"最短时间做完"目标冲突）。
 
 **零闪失 checklist（开赛前 10 分钟逐项核对）**：
-1. `CTF2_COMPETITION_ID` 指向正式赛（b10634a1-…bab6b，非调试赛 4604a758-…）
-2. `CTF2_AGENT_TOKEN` 可读（回读确认非空）
-3. `CTF_POLL_ENABLED=true` 后再启动；开赛前保持 false 防 WAF
-4. 平台网页端 Agent SecAutoMind（e268e589-…）仍"允许参加比赛"勾选
-5. 浏览器已登录 ctf2.dasctf.com（user_mdn15apo），用于人工兜底查榜
+1. `CTF2_BASE_URL` 非空（=https://ctf2.dasctf.com，2026-10-23 曾因缺失导致 CTF2Configured()=false 会误选 DASCTF，已写回 User 级）
+2. `CTF2_COMPETITION_ID` 指向正式赛（b10634a1-…bab6b，非调试赛 4604a758-…）
+3. `CTF2_AGENT_TOKEN` 可读（回读确认非空）
+4. `CTF_POLL_ENABLED=true` 后再启动；开赛前保持 false 防 WAF
+5. 平台网页端 Agent SecAutoMind（e268e589-…）仍"允许参加比赛"勾选
+6. 浏览器已登录 ctf2.dasctf.com（user_mdn15apo），用于人工兜底查榜
 
 ## 七、遗留与风险
 
