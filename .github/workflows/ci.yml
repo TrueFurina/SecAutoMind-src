@@ -82,7 +82,14 @@ jobs:
         # 2026-10-17 同因追加 TestExternalBench_AttachmentSubset（外部尺附件子集实测
         # 65~67s，-race 下按 3~5x 计会吃掉 200~330s 预算）—— 同样**不在本 job 跑 ≠ 不跑**：
         # 它由 external-bench job 全量实跑（含文本口径 + 载荷台账 + 反注水钉子 + 门禁自测）。
-        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 900s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset'
+        #
+        # 2026-10-23 再追加 3 个「纯测量」基准（TestRealBenchmark_*）：它们只统计命中率，
+        # **不测并发**，在 -race 下纯属 3~5x 浪费；其口径由 quant-gate job
+        # （`check_quant_effect.py --full` 的 real_static_shipped / real_static_registry /
+        # real_static_real_solver 三条陈述）在 CI 里逐条机验 —— 同样"不在本 job 跑 ≠ 不跑"。
+        # 同时把总预算 900s → 1800s：本会话实测（128 核服务器）该命令已需 ~990s，
+        # 900s 会红；新增的链式求解器/4 个 Go 基准镜像都增加了真实工作量。
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 1800s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset|TestRealBenchmark_ShippedPresolve|TestRealBenchmark_RegistryPresolve|TestRealBenchmarkHitNotInflatedByPlaintextFlag'
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。

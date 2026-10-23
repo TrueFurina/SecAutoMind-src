@@ -4,7 +4,7 @@
   "source_ledger": "E:/Program/西湖论剑/ctf_agent/REAL_SOLVES_LEDGER.md",
   "source_repo_status": "FROZEN (2026-10-23, read-only knowledge base)",
   "kpi_note": "strict KPI = 14 offline_verified (A6+B8); 10732/10735 reproducible but no official sha256 closure (excluded); platform accepted = 0 (historical baseline)",
-  "problems": [
+  "kpi_problems": [
     {"id": "real_crypto_specialcurve2", "category": "crypto", "type": "complex_mult_group_rsa", "kpi_class": "A", "flag_sha256_prefix": "cd7e815f4a5a378b", "verify_cmd": "scripts/verify_specialcurve2.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "needs factordb/DLP; P1 candidate"},
     {"id": "10733", "category": "crypto", "type": "high_exponent_rsa_hint", "kpi_class": "A", "flag_sha256_prefix": "ac232bd941738e22", "verify_cmd": "scripts/verify_10733.py", "secautomind_coverage": "yes", "secautomind_solver": "rsa_hint_high_exp"},
     {"id": "real_misc_vnctf_flag", "category": "misc", "type": "grid_resample", "kpi_class": "A", "flag_sha256_prefix": "7d9ce4e1a4e7369e", "verify_cmd": "_verify_presolve_truth.py", "secautomind_coverage": "yes", "secautomind_solver": "grid_resample"},

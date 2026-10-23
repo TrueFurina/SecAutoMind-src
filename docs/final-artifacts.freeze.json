@@ -8,7 +8,7 @@
       "size": 68933,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
-        "sha256": "4a56880f1c1ea74b0d209f9c356fba8f3f86cc5d6af2d9cc3c7e8bf6030cffe1"
+        "sha256": "90ebccdfbdf1330ef72d29dc3895c90a0aae172600c4f6383c460c94a92e5688"
       }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
@@ -17,7 +17,7 @@
       "size": 421331,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
-        "sha256": "019b61fb45c5141439898fa6d778665b7e1efee184241630b94b7b81a3de6e60"
+        "sha256": "3d2f76cc5a8250108fef8104a53b23c79039a693039bba7c01b171010080c2a9"
       }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
@@ -26,7 +26,7 @@
       "size": 78377,
       "generator": {
         "path": "SecAutoMind_PPT/make_final_ppt.py",
-        "sha256": "55cbcbb3057c4a2cfdaceded5ce41c381029e53bef96ca0af8c82a308b1c8ef2"
+        "sha256": "02a4db8ea77fc42803379dd99a1aac8d984a937c01051d4a058db504d7a95e6d"
       }
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
