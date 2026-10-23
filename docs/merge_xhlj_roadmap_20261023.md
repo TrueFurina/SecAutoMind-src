@@ -31,6 +31,17 @@
 
 ### 2.2 真题验证链（REAL_SOLVES_LEDGER，13 道 offline_verified 严格 KPI）
 
+> **口径更新（2026-10-24 复核，以台账为准；本节正文保留 10-23 记录原文不改写）**
+>
+> - 严格 KPI 实为 **14 道**（A 类 6 + B 类 8），不是 13 道；「未覆盖 8 道」= 部分覆盖 4 + 未覆盖 4，该数仍成立。
+> - **A 类名册偏差**：`10732`/`10735` **不在**严格 KPI 内（二者可机器复现、REGRESS_PASS，但无题面官方
+>   sha256 锚，台账单列「可机器复现但不进 KPI」）；严格的 A 类 6 道为 specialcurve2 / 10733 /
+>   vnctf_flag / xuanhun_signin / **sheng / upx**（后两道下文未列）。
+> - **B 类为 8 道**：下文列 7 道，漏 `real_reverse_vnctf_cm1`（Android XXTEA，未覆盖）。
+> - **覆盖为 6 道直接覆盖**（10733 / vnctf_flag / ezrsa / simplelegendre / exciting_inverse / filterrandom），
+>   另有 4 道部分覆盖（xuanhun_signin / anwang_crypto1 / ezmult / qiangwang_classic，原语存在但链路未验证）。
+> - 权威口径：`data/ctf_benchmark/xhlj_legacy/ledger_index.md` 与 `coverage_map.json`（`summary` 字段）。
+
 A 类完整攻击链（6）：10733 高偶指数 RSA（=SecAutoMind `rsa_hint_high_exp` 已覆盖）、
 specialcurve2 复数组 RSA、10732 PKCS#1、10735 logbool 流量、vnctf_flag 网格重采样
 （=`grid_resample` 已覆盖）、xuanhun_signin JPEG 嵌入。
@@ -149,7 +160,7 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 ## 五、验收口径（"各项能力达到最强"如何证明）
 
 1. `python scripts/count_stats.py --json`：ctf_solvers 持续增长（现 189，目标吞并后 ≥ 210）
-2. 基准集：西湖论剑 13 道验证链中未覆盖的 8 道，Go 化后逐道入基准（REGRESS_PASS 口径）
+2. 基准集：西湖论剑 14 道严格 KPI 中未覆盖的 8 道（部分覆盖 4 + 未覆盖 4），Go 化后逐道入基准（REGRESS_PASS 口径）
 3. `go test ./internal/ctfplatform/` 全绿无回归（含 TestCTF2LiveSmoke/TestCTF2LiveTargetChain）
 4. poller 具备 race 首血策略 + 单题止损（`PollerConfig` 新字段）
 5. 西湖论剑冻结声明落地（README + AGENTS.md），两套并存的文档歧义清零

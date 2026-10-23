@@ -6,7 +6,7 @@
   "kpi_note": "strict KPI = 14 offline_verified (A6+B8); 10732/10735 reproducible but no official sha256 closure (excluded); platform accepted = 0 (historical baseline)",
   "verify_cmd_base": "E:/Program/西湖论剑/ctf_agent/（冻结仓，只读）",
   "verify_cmd_materialization": "not_ported_by_design",
-  "verify_cmd_note": "verify_cmd 列是相对冻结仓 ctf_agent/ 的路径——该仓 scripts/ 下 23 个 verify/regress 脚本，2026-10-24 实测存在（verify_specialcurve2.py / verify_10733.py / _verify_presolve_truth.py / _regress_one.py / verify_10732.py / verify_10735.py 等）。按吞并路线图「冻结不是删除：验证脚本保留在只读知识库」，脚本本体不迁入本仓；本仓台账只作溯源索引，CI 不对该列断言可执行。若要在本仓复跑验证链，须先显式迁移对应脚本。",
+  "verify_cmd_note": "verify_cmd 列是相对冻结仓 ctf_agent/ 的路径——该仓 scripts/ 下 24 个 verify/regress 的 .py + 1 个 .sh（共 25 个），2026-10-24 实测存在（verify_specialcurve2.py / verify_10733.py / _verify_presolve_truth.py / _regress_one.py / verify_10732.py / verify_10735.py 等）。按吞并路线图「冻结不是删除：验证脚本保留在只读知识库」，脚本本体不迁入本仓；本仓台账只作溯源索引，CI 不对该列断言可执行。路径写法：scripts/verify_*.py 为自 ctf_agent/ 起的完整相对路径；裸文件名 _verify_presolve_truth.py / _regress_one.py 实际位于 ctf_agent/scripts/ 下，字面拼接须补 scripts/ 前缀。若要在本仓复跑验证链，须先显式迁移对应脚本。",
   "kpi_problems": [
     {"id": "real_crypto_specialcurve2", "category": "crypto", "type": "complex_mult_group_rsa", "kpi_class": "A", "flag_sha256_prefix": "cd7e815f4a5a378b", "verify_cmd": "scripts/verify_specialcurve2.py", "secautomind_coverage": "no", "secautomind_solver": null, "note": "needs factordb/DLP; P1 candidate"},
     {"id": "10733", "category": "crypto", "type": "high_exponent_rsa_hint", "kpi_class": "A", "flag_sha256_prefix": "ac232bd941738e22", "verify_cmd": "scripts/verify_10733.py", "secautomind_coverage": "yes", "secautomind_solver": "rsa_hint_high_exp"},
