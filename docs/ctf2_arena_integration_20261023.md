@@ -17,6 +17,7 @@
 | 靶机链专项 | ✅ 开环境→取地址→回收全通 | `TestCTF2LiveTargetChain` PASS（5.8s） |
 | 调试赛参赛 | ✅ SecAutoMind 已出现在调试赛 Agent 榜单（进行中） | 平台 flag 比赛 tab |
 | 正式赛预配 | ✅ `CTF2_COMPETITION_ID=b10634a1-7534-46af-950e-8395367bab6b` 已写入用户级环境变量 | 环境变量回读 |
+| 跨原语递归解码链（`presolve_chain.go`，692c498） | ✅ 多层编码/加密复合链求解器（hex/octal/binary/base64/摩斯/AB摩斯/caesar/rot13/rot47/atbash/url/html/qp/key-data-Vigenère，深度≤8） | `TestCodingChain` 4/4 PASS（Anwang/Ezmult/QiangwangABMorse/NoFalsePositive）；关键集 14.8s 全绿 |
 
 ## 二、协议要点（CTF² 与西湖论剑/DASCTF 的差异）
 
@@ -114,6 +115,9 @@ CTF_AUTO_RELEASE_ENV=true      # accepted 后回收靶机，释放平台配额
 
 ## 七、遗留与风险
 
+- **编码链验证口径**：`TestCodingChain` 4/4 用构造链（与西湖论剑真题同构：anwang=octal→key/data→Vigenère、
+  ezmult=base64→ROT13、qiangwang=AB摩斯）；西湖论剑三真题附件不在 `xhlj_legacy` 16 集迁移内，
+  真实密文不可得，链验证以构造等价用例为准（同构赛题赛时同样路径可解）。
 - **stage_id 自动发现**：正式赛阶段未开放前无法预取；19:00 开赛后首次 `ListChallenges`
   自动发现（已预配 competition_id，不会误选调试赛）。若发现失败，手动设 `CTF2_STAGE_ID`。
 - **WAF 风控是真实的**：2026-10-23 多次快速探测触发 403 冷却 5 分钟；赛时务必节流。
