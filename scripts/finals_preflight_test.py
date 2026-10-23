@@ -142,6 +142,24 @@ def main():
     check("向后兼容：不传 missing_credentials → 仍 GO",
           pf.evaluate("final", [], [], [])[0], "GO")
 
+    # ── 鉴权实探分类（2026-10-24：存在≠可用）──────────────────────────
+    # 事故背景：环境里那把 ak_ 令牌对 pro 与 ycb-bk 都返回 40403，
+    # 而"凭证存在"检查照样报 SET。必须能区分「通过鉴权」与「被拒」。
+    check("40403 → invalid（无权操作）",
+          pf.classify_auth_response(200, '{"code":"40403","message":"无权操作"}')[0], "invalid")
+    check("40001 → ok（鉴权已过，只缺参数）",
+          pf.classify_auth_response(200, '{"code":"40001","message":"方法参数传递不正确"}')[0], "ok")
+    check("带空格的 JSON 也能判",
+          pf.classify_auth_response(200, '{ "code" : "40403" , "message" : "无权操作" }')[0], "invalid")
+    check("非 200 且无业务码 → unknown（不谎报红绿）",
+          pf.classify_auth_response(502, "bad gateway")[0], "unknown")
+    check("200 但是 HTML 壳 → unknown",
+          pf.classify_auth_response(200, "<!DOCTYPE html><html>")[0], "unknown")
+    # 因果验证：把 40403 误判成 ok 会让"废令牌"变绿 —— 这里显式钉住两者不相等
+    check("差异性：40403 与 40001 的判定必须不同",
+          pf.classify_auth_response(200, '{"code":"40403"}')[0]
+          != pf.classify_auth_response(200, '{"code":"40001"}')[0], True)
+
     # ── 打印 ────────────────────────────────────────────────────────────
     for name, ok, got, want in CASES:
         print("  [%s] %-52s got=%r" % ("OK" if ok else "FAIL", name, got))

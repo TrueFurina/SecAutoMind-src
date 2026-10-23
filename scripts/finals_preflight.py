@@ -133,6 +133,54 @@ def credential_issues(env=None):
     return missing, warns
 
 
+# ── 鉴权实探（2026-10-24 补，opt-in：--check-auth）───────────────────
+# 「凭证存在」≠「凭证可用」：实测本机环境里那把 ak_ 令牌对 pro 与 ycb-bk
+# **都**返回 40403 无权操作，而 credential_issues() 只看有没有值 → 照常报 SET。
+# 现场据此以为"凭证齐了"就上场，等于 0 分。本函数做一次**只读** GET（公告信息），
+# 不拉题、不提交、不回显令牌。
+AUTH_PROBE_PATH = "/slab-match/api/v1/agent/match/notice/match-info"
+AUTH_OK_CODE = "40001"      # 参数不全 ⇒ 鉴权已通过（只是缺参数）
+AUTH_DENY_CODE = "40403"    # 无权操作 ⇒ 令牌无效 / 过期 / 无该赛事权限
+
+
+def classify_auth_response(http_status, body):
+    """纯函数：把探测响应分类为 (verdict, detail)，verdict ∈ ok / invalid / unknown。
+
+    抽成纯函数是为了能单测 —— 真实网络不能作为 CI 依赖。
+    判定只看平台业务码，不看 HTTP 状态：DASCTF 用 200 + code 表达业务错误。
+    """
+    b = (body or "").replace(" ", "")
+    if AUTH_DENY_CODE in b:
+        return "invalid", "40403 无权操作（令牌无效/过期/无该赛事权限）"
+    if AUTH_OK_CODE in b:
+        return "ok", "40001 参数不全（鉴权已通过，只缺参数）"
+    if http_status != 200:
+        return "unknown", "HTTP %s（非 200，无法判定）" % http_status
+    return "unknown", "响应无法识别：%s" % (body or "")[:120]
+
+
+def probe_auth(base_url, token, timeout=15):
+    """只读探测鉴权。返回 (verdict, detail)；网络异常一律归 unknown，绝不谎报红绿。"""
+    import urllib.error
+    import urllib.request
+
+    url = base_url.rstrip("/") + AUTH_PROBE_PATH
+    req = urllib.request.Request(
+        url, headers={"X-Agent-AccessKey": token,
+                      "User-Agent": "SecAutoMind-preflight/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return classify_auth_response(resp.status, resp.read(4096).decode("utf-8", "replace"))
+    except urllib.error.HTTPError as exc:
+        try:
+            body = exc.read(4096).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+        return classify_auth_response(exc.code, body)
+    except Exception as exc:                       # 超时 / DNS / TLS —— 都算无法判定
+        return "unknown", "网络或解析异常：%s" % type(exc).__name__
+
+
 def evaluate(phase, missing_blocking, hard_failures, warnings, missing_credentials=()):
     """把「门禁类硬失败」与「开关未开」「凭证缺失」分开定级，返回 (verdict, blocking, pending)。
 
@@ -259,6 +307,28 @@ def main():
         "missing": missing_creds,
     }
 
+    # ⑧ 可选：鉴权实探（--check-auth）——「存在」不等于「可用」
+    auth_probe = None
+    if "--check-auth" in argv:
+        base = (os.environ.get(BASE_URL_ENV) or "").strip()
+        token = ""
+        for k in TOKEN_ENVS:
+            v = (os.environ.get(k) or "").strip()
+            if v:
+                token = v
+                break
+        if not base or not token:
+            warnings.append("--check-auth 已请求，但缺地址或令牌 → 未实探")
+        else:
+            verdict_a, detail_a = probe_auth(base, token)
+            auth_probe = {"verdict": verdict_a, "detail": detail_a, "base_url": base}
+            if verdict_a == "invalid":
+                blocking_fail.append("令牌鉴权失败：%s（--check-auth 实测 %s）"
+                                     % (detail_a, base))
+            elif verdict_a == "unknown":
+                warnings.append("--check-auth 无法判定（%s）—— 需人工确认" % detail_a)
+    results["auth_probe"] = auth_probe
+
     results["warnings"] = warnings
     results["phase"] = phase
     verdict, blocking_fail, pending = evaluate(phase, missing_blocking, blocking_fail, warnings,
@@ -285,6 +355,10 @@ def main():
                                BASE_URL_ENV, "平台地址"))
     print("  [%s] %-28s %s" % ("SET " if results["credentials"]["token_set"] else "MISS",
                                "/".join(TOKEN_ENVS), "Agent 令牌（值不回显）"))
+    if results.get("auth_probe"):
+        ap = results["auth_probe"]
+        print("  [%-4s] %-28s %s" % (ap["verdict"].upper()[:4], "鉴权实探(--check-auth)",
+                                     ap["detail"]))
     print("\n[检查项]")
     for c in results["checks"]:
         print("  [%s] %-16s rc=%d" % ("OK" if c["rc"] == 0 else "FAIL", c["name"], c["rc"]))
