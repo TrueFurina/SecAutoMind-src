@@ -349,10 +349,12 @@
       "key": "morse_image",
       "benchmark": "morse_image_benchmark.json",
       "python_judge": "judge_morse_image.py",
-      "go_tests": [],
-      "parity": "unwired",
-      "wired_by": "",
-      "note": "Go 侧 Morse 时序图解码镜像待接线；Python 侧 judge_morse_image.py 已 1/1 机验（像素 run-length → Morse，与 exec_morse 同表）。工件由 gen_morse_image.py 生成。"
+      "go_tests": ["TestMorseImageSuiteParityAgainstBenchmark"],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "两侧逐题机验一致（1/1）。Go 侧 morse_image_decode.go：中间行亮度(>127) → run-length → dot/dash（阈值 4）与符号/字符间隔（阈值 5）→ 复用 presolve_classical.morseTable 解码（不另立第二张表）。反注水四条：解码文本逐字比对；纯白/纯黑图不得命中基准集；dot/dash 阈值改坏必须解出不同结果；间隔阈值同理。"
     },
     {
       "id": 26,
