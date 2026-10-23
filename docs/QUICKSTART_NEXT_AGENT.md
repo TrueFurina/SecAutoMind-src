@@ -104,7 +104,28 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 - **`go` 命令全废**：本 shell 缺 `%AppData%` → go 读不到 `GOENV`，GOPATH 回落空缓存，报"downloading / module lookup disabled"。先 `export APPDATA="$USERPROFILE/AppData/Roaming"`。
 - **Go 工具链不在 PATH**：`D:\DevCache\go\bin\go.exe`（go1.25.0）。`GOPROXY=https://goproxy.cn,direct`。
 - **`git push` 到 github.com 失败**（代理）。上游提交用 `gh api` 重建 commit 绕行（`D:/tmp_pr/push_via_api.py`）。
-- **CGO 测试**报 `cgo.exe exit 2`：先 `export PATH="/d/miniconda3_new/Library/mingw-w64/bin:$PATH"`。
+- **🔴 CGO / `-race` 在本机原本是坏的（2026-10-23 查明根因并修好）**：
+  conda 自带的 mingw **gcc 5.3.0** 的 `cc1.exe` 在 Win11 上**访问违例**（`0xC0000005`，
+  bash 报 Segmentation fault）——`gcc -c t.c` 就 rc=1 零输出，`cc1.exe --version` rc=139。
+  于是 `go build/test -race` 一律 `runtime/cgo: ...cgo.exe: exit status 2`（Windows 上
+  `-race` 必须走 cgo），等于**本机完全没有 race 检测能力**。
+  **修法**（一条命令，产物约 700MB 落在 `D:/mingw64-gcc16`，不入仓库）：
+  ```bash
+  eval "$(bash scripts/setup_mingw_race.sh --export)"   # 装好并导出 PATH + CC
+  bash scripts/setup_mingw_race.sh --verify             # 自检 gcc 版本 + race 构建
+  go test ./internal/ctfplatform/ -race -count=1
+  ```
+  它从 conda-forge 装 **gcc 16.2.0**（binutils 2.46.1）。
+  ⚠️ **必须同时设 `CC=x86_64-w64-mingw32-gcc`**：新包只提供带前缀的可执行文件名，
+  **没有 `gcc.exe` 别名**——只把目录加进 PATH 会静默回落到那个坏掉的 5.3.0（表现为
+  版本仍是 5.3.0、race 依旧失败，极易误判"修了也没用"）。
+  ⚠️ **别对整包跑 `-race`**：实测 `go test ./internal/ctfplatform/ -race` 在 25 分钟
+  上限内跑不完（正常 90s 的包，race 下 10× 以上，且 `TestSSRFAttackAgainstRange` 单个就
+  60s+）。**只跑并发敏感子集**（2026-10-23 实测 97s 全绿、0 竞争）：
+  ```bash
+  go test ./internal/ctfplatform/ -race -count=1 -timeout 600s \
+    -run "TestPresolve|TestPyFallbackCache|TestXSSSuite|TestCRC64|TestECB|TestMorse|TestCTF2"
+  ```
 - **C 盘空间**紧张时全量测试假 FAIL：**三条分开** `export TMP=D:/tmp_gotest; export TEMP=D:/tmp_gotest; export TMPDIR=D:/tmp_gotest`（⚠️ `export TMP=TEMP=TMPDIR=x` 多重赋值在本 shell 会变成字面量垃圾串，TEMP/TMPDIR 根本没设上，还能在仓库根建出怪目录——2026-10-14 与 10-19 各中过一次），并 `go list ./... | grep -v ctfplatform` 分流跑。
 - **🔴 全量 `go test ./internal/...` 会 OOM 假红**（2026-10-19 实测）：并行链多个大测试二进制时 `VirtualAlloc ... errno=1455`，`internal/handler` 等 8 个包报 `[build failed]`。**加 `-p 1` 串行链即全绿**（实测 8/8 ok，41 秒）。这不是代码问题，别去"修"代码；判红前先看报错是 OOM 还是真 FAIL。
 - **🔴 多会话并行时的口径纪律（2026-10-23 实测，被"追着跑"三轮才总结出来）**：

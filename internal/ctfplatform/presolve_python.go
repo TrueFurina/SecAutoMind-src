@@ -106,6 +106,31 @@ var (
 
 const pyFallbackCacheMax = 512
 
+// pyCacheGet / pyCachePut 是缓存的唯一读写入口（抽出来才能被单测与并发压力用例直接打）。
+// 两者都必须持锁；调用方不得直接碰 pyFallbackCache。
+func pyCacheGet(key [32]byte) ([]string, bool) {
+	pyFallbackMu.Lock()
+	defer pyFallbackMu.Unlock()
+	v, ok := pyFallbackCache[key]
+	return v, ok
+}
+
+func pyCachePut(key [32]byte, flags []string) {
+	pyFallbackMu.Lock()
+	defer pyFallbackMu.Unlock()
+	if len(pyFallbackCache) >= pyFallbackCacheMax {
+		pyFallbackCache = map[[32]byte][]string{}
+	}
+	pyFallbackCache[key] = flags
+}
+
+// pyCacheReset 清空缓存（仅供测试隔离，生产无调用点）。
+func pyCacheReset() {
+	pyFallbackMu.Lock()
+	defer pyFallbackMu.Unlock()
+	pyFallbackCache = map[[32]byte][]string{}
+}
+
 // tryPythonLegacyFallback 调 xhlj_legacy/runner.py 遍历 Python skills，返回 flag 形态候选。
 // fail-closed：任何失败返回 nil。
 func tryPythonLegacyFallback(text string, attachments map[string]string) []string {
@@ -123,23 +148,15 @@ func tryPythonLegacyFallback(text string, attachments map[string]string) []strin
 	// 命中缓存直接返回（含"上次也没解出"的负结果——runner.py 对同一输入是确定性的，
 	// 缓存 nil 同样能省掉 9.7s 的模块加载）。
 	key := sha256.Sum256([]byte(fullText))
-	pyFallbackMu.Lock()
-	if cached, ok := pyFallbackCache[key]; ok {
-		pyFallbackMu.Unlock()
+	if cached, ok := pyCacheGet(key); ok {
 		return cached
 	}
-	pyFallbackMu.Unlock()
 
 	flags, ran := runPythonLegacyRunner(fullText)
 	// 只缓存"确定执行过"的结果：runPythonLegacyRunner 在环境缺失/超时/出错时 ran=false，
 	// 那类 nil 不应被当成"这题确实没解"而长期记忆（否则一次临时故障会永久挡死该题）。
 	if ran {
-		pyFallbackMu.Lock()
-		if len(pyFallbackCache) >= pyFallbackCacheMax {
-			pyFallbackCache = map[[32]byte][]string{}
-		}
-		pyFallbackCache[key] = flags
-		pyFallbackMu.Unlock()
+		pyCachePut(key, flags)
 	}
 	return flags
 }

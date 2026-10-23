@@ -27,6 +27,8 @@ func skipNoPython(t *testing.T) {
 }
 
 func TestPythonLegacyFallbackVigenere(t *testing.T) {
+	// TestMain 默认关兜底（见 main_test.go）；本用例专测兜底，显式打开。
+	t.Setenv(envPythonFallback, "1")
 	skipNoPython(t)
 	t.Setenv(envPythonBin, testPyVenv)
 	t.Setenv(envXHLJLegacyDir, testXHLJLegacy)
@@ -64,6 +66,7 @@ func TestPythonLegacyFallbackEmpty(t *testing.T) {
 }
 
 func TestPythonLegacyFallbackNoMatch(t *testing.T) {
+	t.Setenv(envPythonFallback, "1")
 	skipNoPython(t)
 	t.Setenv(envPythonBin, testPyVenv)
 	t.Setenv(envXHLJLegacyDir, testXHLJLegacy)
@@ -78,6 +81,7 @@ func TestPythonLegacyFallbackNoMatch(t *testing.T) {
 }
 
 func TestPythonLegacyFallbackThroughRegistry(t *testing.T) {
+	t.Setenv(envPythonFallback, "1")
 	skipNoPython(t)
 	t.Setenv(envPythonBin, testPyVenv)
 	t.Setenv(envXHLJLegacyDir, testXHLJLegacy)

@@ -22,6 +22,25 @@ import (
 var testRangePorts = []int{18089, 18090, 18095, 18098, 18099, 18220, 18221, 18222, 18223, 18224}
 
 func TestMain(m *testing.M) {
+	// 🔴 整包测试**默认关闭**西湖论剑 Python 兜底（2026-10-23 实测后加的，别删）。
+	//
+	// 兜底每题都要起 `runner.py` 子进程，而它用 importlib 逐个加载 79 个 skill 模块，
+	// **单次约 9.7s**（哪怕输入只有一句话）。包内有多个基准/对照用例会对 40–55 道题
+	// 各跑一遍 Presolve（有的还跑两条路径），叠加后整包直接撞死 `go test` 默认 **600s**
+	// 上限 → `go test ./...` 整包 FAIL。实测（未关时）：
+	//   TestExternalBench_NoPlaceholderShortCircuit   753s
+	//   TestCrossBench_AgainstXihuRealQuestions       9m55s（超时前）
+	//   TestRealBenchmark_RegistryPresolve / ShippedPresolve 各 >280s
+	//
+	// 更严重的是**口径污染**：兜底解出的题会被算进「Go 预解路径命中率」，
+	// 那些用例声称的数字就不再对应它们真正测的东西。
+	//
+	// 需要测兜底自身的用例（presolve_python_test.go）显式 `t.Setenv(envPythonFallback,"1")`；
+	// 外部显式设了该变量时（如 `SECAUTOMIND_PYTHON_FALLBACK=1 go test ...`）尊重外部值。
+	if _, ok := os.LookupEnv(envPythonFallback); !ok {
+		_ = os.Setenv(envPythonFallback, "0")
+	}
+
 	// 子进程替身（rangeproc_ready_test.go 的 re-exec）直接跑，不做端口清理：
 	// 否则每个替身启动都要多花 ~2s 做 10 次 netstat，把「快速失败」测成慢速失败。
 	if os.Getenv("RANGEPROC_CHILD_MODE") != "" {
