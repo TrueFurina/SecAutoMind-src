@@ -357,10 +357,12 @@
       "key": "crc64",
       "benchmark": "crc64_benchmark.json",
       "python_judge": "judge_crc64.py",
-      "go_tests": [],
-      "parity": "unwired",
-      "wired_by": "",
-      "note": "Go 侧 CRC64 伪造镜像待接线；Python 侧 judge_crc64.py 已 1/1 机验（自定义多项式 oracle + GF(2) 线性性 bit-flip）。靶场 live_target/crc64_range.py。"
+      "go_tests": ["TestCRC64SuiteParityAgainstBenchmark"],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
+      "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
+      "note": "两侧逐题机验一致（1/1）。Go 侧用 httptest 原生靶场复刻 Python live_target/crc64_range.py 的四条路由与自定义多项式（POLY=0x1AD3D94CBCA9B8F1，INIT=XOROUT=0 ⇒ 严格线性）。反注水三条：① 标准库 ECMA/ISO CRC64 算出的 cookie 必须打不通；② 非 admin 块即使 crc 自洽也拒绝；③ 线性性 crc(a⊕b)=crc(a)⊕crc(b) 单独断言（参数被改动即红）。"
     }
   ]
 }
