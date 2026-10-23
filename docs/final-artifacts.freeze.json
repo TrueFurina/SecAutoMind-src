@@ -31,7 +31,7 @@
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx",
-      "sha256": "4e97e9ed5157269d0ac7e0e31d7eb178b6d75bd3b30ce0e155522941da0dcdac",
+      "sha256": "e57d0b01116180ba3607118868963ae29baafae39233a8ef765d68c8e298d7be",
       "size": 63308978
     },
     "ppt/演示模板版.pptx": {
@@ -41,18 +41,18 @@
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "fa5130ac2e5ad4755dd8e0b841a9cebd4139f3bd9b0baff51a95543d23516f3d",
-      "size": 78349
+      "sha256": "4f390d28d4ce0835bc25bee86ba5f9a9653af1b501d2ff57745234d84773cbea",
+      "size": 78350
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
       "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
-      "sha256": "79f63ff4d1e01c3d118ef7a778aef35b5c65b0e30d8e7d498bba51343416e53b",
-      "size": 53753543
+      "sha256": "c8f7fc04911ba92470ec9a36232c61596ffbafab9eb7de4720a91acdeb30a8e6",
+      "size": 53753542
     },
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "sha256": "7f1bd6679d50a45c842f931c2414abdc8a28b1298ad20fb0edddf177e70984cb",
-      "size": 180388651
+      "sha256": "f88872c586a2e44df85c3371ebe5e694ddc5660b756b167e831cade41237ab12",
+      "size": 178996481
     }
   },
   "retired": {}
