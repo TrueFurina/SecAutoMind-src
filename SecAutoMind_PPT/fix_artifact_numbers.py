@@ -103,9 +103,13 @@ def build_rules(truth):
 
     # ── 门禁看不见的产物专有形态（门禁未锚定 ⇒ 只能靠本脚本自证，改错没有第二道闸）──
     # ① 「N/N 测试包全绿」：数字对，且两数必须相等（真值 = 有测试的包数）。
+    #    🔴 2026-10-23 修死正则：原写 `(?P<n>\d+)(?<![\d])/...`——那个 lookbehind 检查的是
+    #    数字自身末尾（当前位前一个字符正是刚匹配的末位数字），**永远失败** ⇒ 这条规则
+    #    自 2026-10-18 起从未命中过一次，deck/官网的「37/37 测试包」因此一直没被修（真值 38）。
+    #    现改为「数字 + / + 数字 + 前置断言 测试包」，且与门禁新增锚点逐字同源。
     pkgs = truth.get("test_packages")
     if pkgs:
-        rules.append((r"(?<![\d.])(?P<n>\d+)(?<![\d])/\d+(?=\s*(?:个)?(?:测试)?包)",
+        rules.append((r"(?<![\d.])(?P<n>\d+)/\d+(?=\s*测试包)",
                       "cast_pair", pkgs, "测试包（N/N）"))
     # ② 「N 个 internal 包」：门禁只锚定后置写法（internal 目录 34），前置写法看不见。
     #    注意口径：internal 子目录数(34) ≠ go list ./internal/... 的包数(37)，PPT 说"包"取后者。
@@ -256,7 +260,9 @@ def neighbor_stat_edits(prs, rules, apply):
         return out
 
     def num_of(txt):
-        if re.fullmatch(r"\d{1,3}(?:,\d{3})*|\d+", txt):
+        # 2026-10-23：新增「N/N」形态（测试包数据卡）——此前只认纯数字/千分位，
+        # 于是「37/37」卡片在邻接机制里被当成"标签"跳过，永远改不到。
+        if re.fullmatch(r"\d{1,3}(?:,\d{3})*|\d+|\d+/\d+", txt):
             return txt
         return None
 
