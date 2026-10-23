@@ -463,6 +463,23 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		}
 		pc := ctfplatform.DefaultPollerConfig()
 		pc.PollInterval = pollInterval
+		// 赛时参数环境变量覆盖（快闪赛 60 分钟 19 题：默认 300s×2 并发数学上无法
+		// 做完，赛前 runbook 按 CTF_SOLVE_TIMEOUT=120 / CTF_MAX_CONCURRENCY=4 配置）。
+		if v := strings.TrimSpace(os.Getenv("CTF_SOLVE_TIMEOUT")); v != "" {
+			if secs, e := strconv.Atoi(v); e == nil && secs > 0 {
+				pc.SolveTimeout = time.Duration(secs) * time.Second
+			}
+		}
+		if v := strings.TrimSpace(os.Getenv("CTF_MAX_CONCURRENCY")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n > 0 {
+				pc.MaxConcurrency = n
+			}
+		}
+		if v := strings.TrimSpace(os.Getenv("CTF_MAX_RETRY_SUBMIT")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n >= 0 {
+				pc.MaxRetrySubmit = n
+			}
+		}
 		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
 		// 🔴 决赛关键链（09-17 补的生产缺口）：对 HasInstance 的题自动「起靶机 → 取地址 →
 		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题

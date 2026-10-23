@@ -73,13 +73,43 @@ Go 前置（AGENTS.md 第五条）：`APPDATA`、TMP/TEMP/TMPDIR 分开设 `D:\t
 ## 六、赛时建议（基于平台规则与本次实测）
 
 1. **开赛前不启动 poller**（`CTF_POLL_ENABLED` 保持 false），19:00 开赛后再启，避免 WAF 冷却。
-2. **请求节流**：实测过密请求会触发平台 403 WAF 风控（冷却 5 分钟）。poller 间隔建议 ≥30s，
-   靶机启动（写操作）排队分散；`CTF_POLL_INTERVAL=30` 起。
+2. **请求节流**：实测过密请求会触发平台 403 WAF 风控（冷却 5 分钟）。poller 拉题为只读 GET，
+   正式赛间隔 10s 起步（见下方正式赛参数块）；靶机启动（写操作）排队分散。
 3. **优先价值排序**：闪电战窗口内的题（双倍分）> 卡点题（19:24 精准提交）> 常规题。
    建议 poller 开启时按 `Extra["score_multiplier"]` 排序。
 4. **动态 flag 题**：环境就绪后 flag 与靶机绑定，poller 的 InstanceChain 已覆盖（演练验证过）。
 5. **附件题**：调试赛实测 `kind=generated` 个人附件可下载（`AutoFetchAttachment=true` 时自动并入描述）。
 6. **WAF 冷却已内建**：客户端检测 403 自动冷却 5 分钟并跳过请求，防雪崩封禁。
+
+### 6-b 快闪赛正式赛参数块（2026-10-24 19:00-20:00，冠军目标=最短时间做完 19 题）
+
+启动 SecAutoMind 时设置以下环境变量（一次设置，零闪失口径）：
+
+```
+CTF_POLL_ENABLED=true          # 启用轮询
+CTF_POLL_INTERVAL=10           # 拉题间隔 10s（开赛后尽快发现全部题目）
+CTF_AUTOSOLVE_SUBMIT=true      # 解出即自动提交（正式赛必须）
+CTF_SOLVE_TIMEOUT=120          # 单题求解超时 120s（默认 300s×2 并发数学上做不完 19 题）
+CTF_MAX_CONCURRENCY=4          # 跨题并发 4（本地求解+LLM，平台仅受提交/起靶机影响）
+CTF_MAX_RETRY_SUBMIT=1         # 错误提交会触发平台冷却，候选重试收敛为 1
+CTF_AUTO_BUILD_ENV=true        # 靶机题自动起环境（CreateInstance→GetAccess 真机链已验证）
+CTF_AUTO_FETCH_DETAIL=true     # 详情补全（列表描述是摘要，完整题干/靶机标记在详情）
+CTF_AUTO_FETCH_ATTACHMENT=true # 附件自动下载并入描述（CTF² 附件端点真机可用）
+CTF_AUTO_RELEASE_ENV=true      # accepted 后回收靶机，释放平台配额
+```
+
+**吞吐核算**：19 题 × 120s 上限 ÷ 4 并发 ≈ 9.5 分钟求解主体；静态题（presolve 秒级）经
+「静态优先排序」先做完，靶机题（起环境有延迟）排后——60 分钟内全做完有充分余量。
+
+**得分策略**：解出即提交（简单可靠）；19:10:24-19:27:28 闪电战窗口内解出的题自然拿双倍分；
+不做延迟批量提交（复杂机制引入赛时风险，且与"最短时间做完"目标冲突）。
+
+**零闪失 checklist（开赛前 10 分钟逐项核对）**：
+1. `CTF2_COMPETITION_ID` 指向正式赛（b10634a1-…bab6b，非调试赛 4604a758-…）
+2. `CTF2_AGENT_TOKEN` 可读（回读确认非空）
+3. `CTF_POLL_ENABLED=true` 后再启动；开赛前保持 false 防 WAF
+4. 平台网页端 Agent SecAutoMind（e268e589-…）仍"允许参加比赛"勾选
+5. 浏览器已登录 ctf2.dasctf.com（user_mdn15apo），用于人工兜底查榜
 
 ## 七、遗留与风险
 

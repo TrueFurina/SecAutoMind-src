@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -77,6 +78,16 @@ type Poller struct {
 	records   map[string]*PollRecord // 审计记录
 }
 
+// sortChallengesStaticFirst 静态优先排序：无需靶机的题在前，同类保持原序（stable）。
+func sortChallengesStaticFirst(chs []Challenge) {
+	sort.SliceStable(chs, func(i, j int) bool {
+		if chs[i].HasInstance != chs[j].HasInstance {
+			return !chs[i].HasInstance
+		}
+		return false
+	})
+}
+
 // NewPoller 创建轮询器。
 func NewPoller(platform PlatformAPI, solver SolverFunc, config PollerConfig, logger *zap.Logger) *Poller {
 	if logger == nil {
@@ -125,6 +136,11 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 		p.logger.Debug("轮询：无新题", zap.Int("已处理", n))
 		return nil, nil
 	}
+
+	// 静态优先：无需靶机的题先处理（presolve 秒级），需要起靶机的题排后
+	// （CreateInstance 有启动延迟与平台频率限制）。最大化单位时间解题吞吐，
+	// 服务「60 分钟 19 题全做完」的赛时目标（快闪赛 2026-10-24 实测依据）。
+	sortChallengesStaticFirst(newChallenges)
 
 	p.logger.Info("轮询：发现新题", zap.Int("count", len(newChallenges)))
 
