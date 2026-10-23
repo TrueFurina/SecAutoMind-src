@@ -60,10 +60,12 @@ jobs:
       - name: Cross-language golden freeze check (blocks hand-edited golden)
         run: python scripts/check_golden_freeze.py
       # CTF 密码攻击模板库（scripts/ctf_sage/，计划 P0-2）：每个模板用合成参数造题→解题→断言，
-      # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy
-      # （requirements.txt 是工具运行时依赖，不含它，故此处局部安装）。
-      - name: Install crypto template deps (sympy for t4 Boneh-Durfee)
-        run: python -m pip install sympy
+      # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy、
+      # t1 根提取主路径 _roots_numpy 依赖 numpy（缺 numpy 时退化 _roots_float，只对
+      # double 安全范围的系数有效——大格必 miss，PR #58 实测 2/6 假红）。
+      # requirements.txt 是工具运行时依赖，不含它们，故此处局部安装。
+      - name: Install crypto template deps (sympy for t4 Boneh-Durfee, numpy for t1 root extraction)
+        run: python -m pip install sympy numpy
       - name: CTF crypto templates self-test (t1-t6)
         run: |
           set -e

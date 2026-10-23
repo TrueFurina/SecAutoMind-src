@@ -60,17 +60,17 @@ type CTF2Platform struct {
 	StageID       string
 
 	// ── 抗打击治理（镜像 DasCTFPlatform）──
-	MaxRetries       int
-	RetryBackoff     time.Duration
-	WAFTimeout       time.Duration
-	listCacheTTL     time.Duration
-	mu               sync.Mutex
-	consec429        int
-	wafBlockedUntil  time.Time
-	lastListOK       bool
-	listCache        []Challenge
-	listCacheAt      time.Time
-	lastError        string
+	MaxRetries        int
+	RetryBackoff      time.Duration
+	WAFTimeout        time.Duration
+	listCacheTTL      time.Duration
+	mu                sync.Mutex
+	consec429         int
+	wafBlockedUntil   time.Time
+	lastListOK        bool
+	listCache         []Challenge
+	listCacheAt       time.Time
+	lastError         string
 	antiBlockDisabled bool
 
 	ctxOnce sync.Once
@@ -109,10 +109,10 @@ func NewCTF2Platform(baseURL, token string, logger *zap.Logger) *CTF2Platform {
 		logger = zap.NewNop()
 	}
 	return &CTF2Platform{
-		BaseURL:    strings.TrimRight(baseURL, "/"),
-		Token:      token,
-		HTTPClient: &http.Client{Timeout: 30 * time.Second},
-		Logger:     logger,
+		BaseURL:       strings.TrimRight(baseURL, "/"),
+		Token:         token,
+		HTTPClient:    &http.Client{Timeout: 30 * time.Second},
+		Logger:        logger,
 		CompetitionID: os.Getenv(envCTF2CompetitionID),
 		StageID:       os.Getenv(envCTF2StageID),
 		MaxRetries:    5,
@@ -446,7 +446,7 @@ func (p *CTF2Platform) discoverStage(ctx context.Context, compID string) (string
 	}
 	var compResp struct {
 		Data struct {
-			Name string `json:"name"`
+			Name   string `json:"name"`
 			Stages []struct {
 				ID     string `json:"id"`
 				Name   string `json:"name"`
@@ -522,19 +522,19 @@ func (p *CTF2Platform) ListChallenges(ctx context.Context) ([]Challenge, error) 
 	var listResp struct {
 		Data struct {
 			Items []struct {
-				ID            string `json:"id"`
-				Name          string `json:"name"`
-				Category      string `json:"category"`
-				Difficulty    string `json:"difficulty"`
-				Points        int    `json:"points"`
-				HasAttach     bool   `json:"has_attachments"`
-				HasContainer  bool   `json:"has_container"`
-				IsSolved      bool   `json:"is_solved"`
-				SolveCount    int    `json:"solve_count"`
-				SubmissionT   string `json:"submission_type"`
+				ID            string  `json:"id"`
+				Name          string  `json:"name"`
+				Category      string  `json:"category"`
+				Difficulty    string  `json:"difficulty"`
+				Points        int     `json:"points"`
+				HasAttach     bool    `json:"has_attachments"`
+				HasContainer  bool    `json:"has_container"`
+				IsSolved      bool    `json:"is_solved"`
+				SolveCount    int     `json:"solve_count"`
+				SubmissionT   string  `json:"submission_type"`
 				ScoreMult     float64 `json:"score_multiplier"`
-				CompetitionID string `json:"competition_id"`
-				StageID       string `json:"stage_id"`
+				CompetitionID string  `json:"competition_id"`
+				StageID       string  `json:"stage_id"`
 			} `json:"items"`
 			Total int `json:"total"`
 		} `json:"data"`
@@ -545,11 +545,11 @@ func (p *CTF2Platform) ListChallenges(ctx context.Context) ([]Challenge, error) 
 	challenges := make([]Challenge, 0, len(listResp.Data.Items))
 	for _, it := range listResp.Data.Items {
 		extra := map[string]interface{}{
-			"submission_type": it.SubmissionT,
-			"competition_id":  it.CompetitionID,
-			"stage_id":        it.StageID,
-			"is_solved":       it.IsSolved,
-			"solve_count":     it.SolveCount,
+			"submission_type":  it.SubmissionT,
+			"competition_id":   it.CompetitionID,
+			"stage_id":         it.StageID,
+			"is_solved":        it.IsSolved,
+			"solve_count":      it.SolveCount,
 			"score_multiplier": it.ScoreMult,
 		}
 		challenges = append(challenges, Challenge{
@@ -588,17 +588,17 @@ func (p *CTF2Platform) GetChallenge(ctx context.Context, challengeID string) (*C
 	}
 	var detailResp struct {
 		Data struct {
-			ID                string `json:"id"`
-			Name              string `json:"name"`
-			Category          string `json:"category"`
-			Difficulty        string `json:"difficulty"`
-			Description       string `json:"description"`
-			Points            int    `json:"points"`
-			HasAttach         bool   `json:"has_attachments"`
-			HasContainer      bool   `json:"has_container"`
-			SubmissionT       string `json:"submission_type"`
-			PersonalFilesSt   string `json:"personal_files_status"`
-			Files             []struct {
+			ID              string `json:"id"`
+			Name            string `json:"name"`
+			Category        string `json:"category"`
+			Difficulty      string `json:"difficulty"`
+			Description     string `json:"description"`
+			Points          int    `json:"points"`
+			HasAttach       bool   `json:"has_attachments"`
+			HasContainer    bool   `json:"has_container"`
+			SubmissionT     string `json:"submission_type"`
+			PersonalFilesSt string `json:"personal_files_status"`
+			Files           []struct {
 				FileID   string `json:"file_id"`
 				FileName string `json:"file_name"`
 				Kind     string `json:"kind"`
@@ -623,10 +623,10 @@ func (p *CTF2Platform) GetChallenge(ctx context.Context, challengeID string) (*C
 		})
 	}
 	extra := map[string]interface{}{
-		"submission_type":      d.SubmissionT,
+		"submission_type":       d.SubmissionT,
 		"personal_files_status": d.PersonalFilesSt,
-		"files":                files,
-		"solve_count":          d.SolveCount,
+		"files":                 files,
+		"solve_count":           d.SolveCount,
 	}
 	ch := &Challenge{
 		ID:            d.ID,
@@ -642,9 +642,6 @@ func (p *CTF2Platform) GetChallenge(ctx context.Context, challengeID string) (*C
 	}
 	return ch, nil
 }
-
-// flagRe 从题干描述中提取 flag 格式（如 DASCTF{...} / flag{...}）。
-var flagRe = regexp.MustCompile(`(?i)([a-zA-Z0-9_]{2,20})\{([^}]*\.[^}]*)|\{([^}]+)\}`)
 
 // flagFormatCtxRe 匹配「flag/格式 … 花括号 token」的上下文写法；第 1 组是 token 本体。
 // 取第 1 组而非整段：整段会把「格式：」这类中文标签也带进 FlagFormat（提示词噪声）。
@@ -735,11 +732,11 @@ func (p *CTF2Platform) GetAccess(ctx context.Context, instanceID string) (*Acces
 	acc := &Access{
 		URL: d.AccessURL,
 		Extra: map[string]interface{}{
-			"environment_id":  d.EnvironmentID,
-			"access_type":     d.AccessType,
-			"access_ready":    d.AccessReady,
+			"environment_id":    d.EnvironmentID,
+			"access_type":       d.AccessType,
+			"access_ready":      d.AccessReady,
 			"remaining_seconds": d.RemainingSeconds,
-			"status":          d.Status,
+			"status":            d.Status,
 		},
 	}
 	if host, port, err := parseHostPort(d.AccessURL); err == nil {
@@ -919,12 +916,12 @@ func (p *CTF2Platform) SubmitFlag(ctx context.Context, challengeID string, flag 
 	}
 	var submitResp struct {
 		Data struct {
-			Accepted    bool   `json:"accepted"`
-			Attempt     int    `json:"attempt"`
-			AttemptsLeft int   `json:"attempts_left"`
-			EarnedPoints int   `json:"earned_points"`
-			IsSolved    bool   `json:"is_solved"`
-			Points      int    `json:"points"`
+			Accepted     bool   `json:"accepted"`
+			Attempt      int    `json:"attempt"`
+			AttemptsLeft int    `json:"attempts_left"`
+			EarnedPoints int    `json:"earned_points"`
+			IsSolved     bool   `json:"is_solved"`
+			Points       int    `json:"points"`
 			SubmissionID string `json:"submission_id"`
 		} `json:"data"`
 	}
@@ -939,12 +936,12 @@ func (p *CTF2Platform) SubmitFlag(ctx context.Context, challengeID string, flag 
 			d.SubmissionID, d.Attempt, d.Points),
 		RemainingAttempts: d.AttemptsLeft,
 		Extra: map[string]interface{}{
-			"submission_id":  d.SubmissionID,
-			"attempt":        d.Attempt,
-			"earned_points":  d.EarnedPoints,
-			"is_solved":      d.IsSolved,
-			"points":         d.Points,
-			"attempts_left":  d.AttemptsLeft,
+			"submission_id": d.SubmissionID,
+			"attempt":       d.Attempt,
+			"earned_points": d.EarnedPoints,
+			"is_solved":     d.IsSolved,
+			"points":        d.Points,
+			"attempts_left": d.AttemptsLeft,
 		},
 	}
 	return res, nil

@@ -4,6 +4,7 @@
 //   - anwang_crypto1:  八进制 ASCII → 提取 key/data → Vigenère
 //   - qiangwang_classic: A/B 摩斯（A=点/B=划）→ 单表密文（UUID 含 flag）
 //   - ezmult:          base64 → ROT13
+//
 // 通用机制：对文本递归应用全部解码原语（hex/octal/binary/base64/morse/AB摩斯/caesar/
 // rot13/rot47/atbash/url/html/quoted-printable/key-data-vigenere），任一层出现 flag
 // 形态即收集；深度 ≤ 8；层间解码必须提升可打印率，杜绝乱码误报。
@@ -48,12 +49,10 @@ const (
 )
 
 var (
-	hexBlockRe    = regexp.MustCompile(`[0-9a-fA-F]{6,}`)
-	octalBlockRe  = regexp.MustCompile(`[0-7]{2,3}`)
-	binaryBlockRe = regexp.MustCompile(`[01]{8}`)
-	morseOnlyRe   = regexp.MustCompile(`^[\s./\-]{3,}$`)
-	abMorseRe     = regexp.MustCompile(`^[\sABab]{5,}$`)
-	keyDataRe     = regexp.MustCompile(`(?i)key\s*[:：=]\s*([^\s,，;；]+)\s+(?:data|ct|text|cipher|flagtxt|flag\.txt)\s*[:：=]\s*(\S+)`)
+	hexBlockRe  = regexp.MustCompile(`[0-9a-fA-F]{6,}`)
+	morseOnlyRe = regexp.MustCompile(`^[\s./\-]{3,}$`)
+	abMorseRe   = regexp.MustCompile(`^[\sABab]{5,}$`)
+	keyDataRe   = regexp.MustCompile(`(?i)key\s*[:：=]\s*([^\s,，;；]+)\s+(?:data|ct|text|cipher|flagtxt|flag\.txt)\s*[:：=]\s*(\S+)`)
 )
 
 // tryCodingChain 顶层入口：合并题干与附件，递归解包多层编码，返回 flag 形态候选（去重）。
