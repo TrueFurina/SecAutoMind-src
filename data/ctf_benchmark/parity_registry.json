@@ -15,178 +15,352 @@
   },
   "suites": [
     {
-      "id": 1, "key": "static", "benchmark": "real_benchmark.json", "python_judge": "judge.py",
-      "go_tests": ["TestRealBenchmark_ShippedPresolve", "TestRealBenchmark_RegistryPresolve"],
-      "parity": "wired", "wired_by": "scripts/check_benchmark_parity.py",
+      "id": 1,
+      "key": "static",
+      "benchmark": "real_benchmark.json",
+      "python_judge": "judge.py",
+      "go_tests": [
+        "TestRealBenchmark_ShippedPresolve",
+        "TestRealBenchmark_RegistryPresolve"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_benchmark_parity.py",
       "reason": "static_three_way"
     },
     {
-      "id": 2, "key": "execution", "benchmark": "execution_benchmark.json", "python_judge": "judge_exec.py",
-      "go_tests": ["TestExecSolversAgainstBenchmark", "TestLiveExploitation"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 2,
+      "key": "execution",
+      "benchmark": "execution_benchmark.json",
+      "python_judge": "judge_exec.py",
+      "go_tests": [
+        "TestExecSolversAgainstBenchmark",
+        "TestLiveExploitation"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+(\\S+)",
       "go_hit_re": "✅\\s+(\\S+)\\s+->",
       "note": "17 题 = 15 离线 + 2 live（live_sqli/live_ssti）；Go 侧两测试各覆盖离线/live 子集，并集 == Python 全集"
     },
     {
-      "id": 3, "key": "web", "benchmark": "web_benchmark.json", "python_judge": "judge_web.py",
-      "go_tests": ["TestWebExploitAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 3,
+      "key": "web",
+      "benchmark": "web_benchmark.json",
+      "python_judge": "judge_web.py",
+      "go_tests": [
+        "TestWebExploitAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "range 自包含靶场（Go 端口 18098 / Python 18088）；Go 侧同构打印 ✅ HIT <scene>。<TestPresolveAutoExploitsWebTarget 为单题生产路径冒烟（仅 1 行、语义不同），不纳入逐题集合>"
     },
     {
-      "id": 4, "key": "attachment", "benchmark": "attachment_benchmark.json", "python_judge": "judge_attachment.py",
-      "go_tests": ["TestAttachmentForensicsBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 4,
+      "key": "attachment",
+      "benchmark": "attachment_benchmark.json",
+      "python_judge": "judge_attachment.py",
+      "go_tests": [
+        "TestAttachmentForensicsBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+(\\S+)",
       "go_hit_re": "✅\\s+(\\S+)\\s+engine=",
       "note": "**离线确定性**（judge 网络调用=0，读本地 artifacts/*）；两侧各 10 题一致。旧 reason『range_needs_python』对它失真（无靶场需求）"
     },
     {
-      "id": 5, "key": "web_hint", "benchmark": "web_hint_benchmark.json", "python_judge": "judge_web_hints.py",
-      "go_tests": ["TestHintDrivenWebExploit"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 5,
+      "key": "web_hint",
+      "benchmark": "web_hint_benchmark.json",
+      "python_judge": "judge_web_hints.py",
+      "go_tests": [
+        "TestHintDrivenWebExploit"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "range 自包含靶场（Go 端口 18099 / Python 18097）；跨语言互证对象 = **B 组（读题取线索）逐题命中集**，两侧 6/6 一致。A 组（无线索基线）两侧口径不同（Go 硬编码端点猜测 4/6 vs Python 首页爬链+类型回退 3/6），故『增量』不跨语言互证、只作各侧内部对照；两侧均以 fail-closed 断言『增量必须为正』（无此断言时 A 组漂到全中也不报红）"
     },
     {
-      "id": 6, "key": "jwt", "benchmark": "jwt_benchmark.json", "python_judge": "judge_jwt.py",
-      "go_tests": ["TestJWTAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 6,
+      "key": "jwt",
+      "benchmark": "jwt_benchmark.json",
+      "python_judge": "judge_jwt.py",
+      "go_tests": [
+        "TestJWTAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+HIT\\b",
       "go_hit_re": "✅\\s+(\\S+)\\s+绕过成功",
       "note": "range 自包含靶场（Go 端口 18090 / Python 18088）；两侧 3 题一致"
     },
     {
-      "id": 7, "key": "deser", "benchmark": "deser_benchmark.json", "python_judge": "judge_deser.py",
-      "go_tests": ["TestDeserAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 7,
+      "key": "deser",
+      "benchmark": "deser_benchmark.json",
+      "python_judge": "judge_deser.py",
+      "go_tests": [
+        "TestDeserAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+(\\S+)\\s+命中=",
       "go_hit_re": "✅\\s+(\\S+)\\s+反序列化利用命中",
       "note": "range 自包含靶场（Go 端口 portBase+i / Python 动态端口）；两侧 3 题一致"
     },
     {
-      "id": 8, "key": "xxe", "benchmark": "xxe_benchmark.json", "python_judge": "judge_xxe.py",
-      "go_tests": ["TestXXEAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 8,
+      "key": "xxe",
+      "benchmark": "xxe_benchmark.json",
+      "python_judge": "judge_xxe.py",
+      "go_tests": [
+        "TestXXEAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "✅\\s+(\\S+)\\s+命中=",
       "go_hit_re": "✅\\s+(\\S+)\\s+XXE 利用命中",
       "note": "range 自包含靶场；两侧 3 题一致"
     },
     {
-      "id": 9, "key": "upload", "benchmark": "upload_benchmark.json", "python_judge": "judge_upload.py",
-      "go_tests": ["TestUploadAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 9,
+      "key": "upload",
+      "benchmark": "upload_benchmark.json",
+      "python_judge": "judge_upload.py",
+      "go_tests": [
+        "TestUploadAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+✅\\s+SHA-256",
       "go_hit_re": "✅\\s+(\\S+)：上传",
       "note": "range 自包含靶场；两侧 3 题一致（打印格式含全角冒号）"
     },
     {
-      "id": 10, "key": "graphql", "benchmark": "graphql_benchmark.json", "python_judge": "judge_graphql.py",
-      "go_tests": ["TestGraphQLAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 10,
+      "key": "graphql",
+      "benchmark": "graphql_benchmark.json",
+      "python_judge": "judge_graphql.py",
+      "go_tests": [
+        "TestGraphQLAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+✅\\s+SHA-256",
       "go_hit_re": "✅\\s+(\\S+)：GraphQL",
       "note": "range 自包含靶场；两侧 3 题一致"
     },
     {
-      "id": 11, "key": "ssrf", "benchmark": "ssrf_benchmark.json", "python_judge": "judge_ssrf.py",
-      "go_tests": ["TestSSRFAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 11,
+      "key": "ssrf",
+      "benchmark": "ssrf_benchmark.json",
+      "python_judge": "judge_ssrf.py",
+      "go_tests": [
+        "TestSSRFAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
       "go_hit_re": "✅\\s+(\\S+)：SSRF",
       "note": "range 自包含靶场；两侧 3 题一致。⚠️ Python 侧命中行**无 ✅/HIT 标记**（纯 `SHA-256 校验通过`，MISS 行为 `MISS`），故正则按短语锚定"
     },
     {
-      "id": 12, "key": "sqli", "benchmark": "sqli_benchmark.json", "python_judge": "judge_sqli.py",
-      "go_tests": ["TestSQLiAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 12,
+      "key": "sqli",
+      "benchmark": "sqli_benchmark.json",
+      "python_judge": "judge_sqli.py",
+      "go_tests": [
+        "TestSQLiAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
       "go_hit_re": "✅\\s+(\\S+)：SQL",
       "note": "range 自包含靶场；两侧 3 题一致。Python 命中行同 ssrf（无 ✅/HIT）"
     },
     {
-      "id": 13, "key": "ssti", "benchmark": "ssti_benchmark.json", "python_judge": "judge_ssti.py",
-      "go_tests": ["TestSSTIAttackAgainstRange"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 13,
+      "key": "ssti",
+      "benchmark": "ssti_benchmark.json",
+      "python_judge": "judge_ssti.py",
+      "go_tests": [
+        "TestSSTIAttackAgainstRange"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+SHA-256 校验通过",
       "go_hit_re": "✅\\s+(\\S+)：SSTI",
       "note": "range 自包含靶场；两侧 3 题一致。Python 命中行同 ssrf（无 ✅/HIT）"
     },
     {
-      "id": 14, "key": "ecdsa", "benchmark": "ecdsa_benchmark.json", "python_judge": "judge_ecdsa.py",
-      "go_tests": ["TestECDSANonceReuseAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 14,
+      "key": "ecdsa",
+      "benchmark": "ecdsa_benchmark.json",
+      "python_judge": "judge_ecdsa.py",
+      "go_tests": [
+        "TestECDSANonceReuseAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^\\s*(\\S+)\\s+HIT\\b",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；两侧逐题命中行同构"
     },
     {
-      "id": 15, "key": "padding_oracle", "benchmark": "padding_oracle_benchmark.json", "python_judge": "judge_padding_oracle.py",
-      "go_tests": ["TestPaddingOracleAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 15,
+      "key": "padding_oracle",
+      "benchmark": "padding_oracle_benchmark.json",
+      "python_judge": "judge_padding_oracle.py",
+      "go_tests": [
+        "TestPaddingOracleAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^\\s*(\\S+)\\s+HIT\\b",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；两侧逐题命中行同构"
     },
     {
-      "id": 16, "key": "blind_oob", "benchmark": "blind_oob_benchmark.json", "python_judge": "judge_blind_oob.py",
-      "go_tests": ["TestBlindOOBAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 16,
+      "key": "blind_oob",
+      "benchmark": "blind_oob_benchmark.json",
+      "python_judge": "judge_blind_oob.py",
+      "go_tests": [
+        "TestBlindOOBAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^(\\S+)\\s+HIT\\b",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "json 无 description（需实时靶机交互）；两侧硬编码秘密的 sha256 == json flag_sha256，逐题机验用内建靶机分派"
     },
     {
-      "id": 17, "key": "hash_ext", "benchmark": "hash_ext_benchmark.json", "python_judge": "judge_hash_ext.py",
-      "go_tests": ["TestHashExtSuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 17,
+      "key": "hash_ext",
+      "benchmark": "hash_ext_benchmark.json",
+      "python_judge": "judge_hash_ext.py",
+      "go_tests": [
+        "TestHashExtSuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
     },
     {
-      "id": 18, "key": "gcm_nonce_reuse", "benchmark": "gcm_nonce_reuse_benchmark.json", "python_judge": "judge_gcm_nr.py",
-      "go_tests": ["TestGCMNonceReuseSuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 18,
+      "key": "gcm_nonce_reuse",
+      "benchmark": "gcm_nonce_reuse_benchmark.json",
+      "python_judge": "judge_gcm_nr.py",
+      "go_tests": [
+        "TestGCMNonceReuseSuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
     },
     {
-      "id": 19, "key": "mt19937", "benchmark": "mt19937_benchmark.json", "python_judge": "judge_mt19937.py",
-      "go_tests": ["TestMT19937SuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 19,
+      "key": "mt19937",
+      "benchmark": "mt19937_benchmark.json",
+      "python_judge": "judge_mt19937.py",
+      "go_tests": [
+        "TestMT19937SuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
     },
     {
-      "id": 20, "key": "lfsr", "benchmark": "lfsr_benchmark.json", "python_judge": "judge_lfsr.py",
-      "go_tests": ["TestLFSRSuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 20,
+      "key": "lfsr",
+      "benchmark": "lfsr_benchmark.json",
+      "python_judge": "judge_lfsr.py",
+      "go_tests": [
+        "TestLFSRSuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
     },
     {
-      "id": 21, "key": "lcg", "benchmark": "lcg_benchmark.json", "python_judge": "judge_lcg.py",
-      "go_tests": ["TestLCGSuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 21,
+      "key": "lcg",
+      "benchmark": "lcg_benchmark.json",
+      "python_judge": "judge_lcg.py",
+      "go_tests": [
+        "TestLCGSuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
     },
     {
-      "id": 22, "key": "crc32", "benchmark": "crc32_benchmark.json", "python_judge": "judge_crc32.py",
-      "go_tests": ["TestCRC32SuiteParityAgainstBenchmark"],
-      "parity": "wired", "wired_by": "scripts/check_suite_parity.py",
+      "id": 22,
+      "key": "crc32",
+      "benchmark": "crc32_benchmark.json",
+      "python_judge": "judge_crc32.py",
+      "go_tests": [
+        "TestCRC32SuiteParityAgainstBenchmark"
+      ],
+      "parity": "wired",
+      "wired_by": "scripts/check_suite_parity.py",
       "python_hit_re": "^HIT\\s+(\\S+)",
       "go_hit_re": "✅\\s+HIT\\s+(\\S+)",
       "note": "离线确定性；json description 自包含"
+    },
+    {
+      "id": 23,
+      "key": "xss",
+      "benchmark": "xss_benchmark.json",
+      "python_judge": "judge_xss.py",
+      "go_tests": [],
+      "parity": "unwired",
+      "wired_by": "",
+      "note": "Go 侧 XSS 外带引擎待接线（web_exploit.go 尚未覆盖反射/存储 XSS 链）；Python 侧 judge_xss.py 已 3/3 机验。浏览器执行用最小 JS 子集模拟（非真实浏览器），见 live_target/xss_range.py 诚实边界。"
+    },
+    {
+      "id": 24,
+      "key": "ecb",
+      "benchmark": "ecb_benchmark.json",
+      "python_judge": "judge_ecb.py",
+      "go_tests": [],
+      "parity": "unwired",
+      "wired_by": "",
+      "note": "Go 侧 ECB 检测镜像待接线；Python 侧 judge_ecb.py 已 1/1 机验（ECB 图与同构 CBC 对照成对判定，反注水）。工件由 gen_ecb_image.py 生成。"
+    },
+    {
+      "id": 25,
+      "key": "morse_image",
+      "benchmark": "morse_image_benchmark.json",
+      "python_judge": "judge_morse_image.py",
+      "go_tests": [],
+      "parity": "unwired",
+      "wired_by": "",
+      "note": "Go 侧 Morse 时序图解码镜像待接线；Python 侧 judge_morse_image.py 已 1/1 机验（像素 run-length → Morse，与 exec_morse 同表）。工件由 gen_morse_image.py 生成。"
+    },
+    {
+      "id": 26,
+      "key": "crc64",
+      "benchmark": "crc64_benchmark.json",
+      "python_judge": "judge_crc64.py",
+      "go_tests": [],
+      "parity": "unwired",
+      "wired_by": "",
+      "note": "Go 侧 CRC64 伪造镜像待接线；Python 侧 judge_crc64.py 已 1/1 机验（自定义多项式 oracle + GF(2) 线性性 bit-flip）。靶场 live_target/crc64_range.py。"
     }
   ]
 }

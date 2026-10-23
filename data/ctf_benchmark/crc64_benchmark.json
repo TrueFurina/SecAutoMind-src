@@ -1,0 +1,8 @@
+{
+  "problems": {
+    "crc64_bitflip": {
+      "category": "crypto",
+      "flag_sha256": "f249b88fda6733bc0e93a13b6d74c0a65acd3f54f71535fd89a91644a5140160"
+    }
+  }
+}

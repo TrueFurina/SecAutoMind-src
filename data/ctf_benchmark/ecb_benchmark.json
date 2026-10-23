@@ -1,0 +1,8 @@
+{
+  "problems": {
+    "ecb_penguin": {
+      "category": "crypto",
+      "flag_sha256": "051a10bf567318164c940a72ed813a22ba3c707388984a77ad3f66f652dce3a3"
+    }
+  }
+}

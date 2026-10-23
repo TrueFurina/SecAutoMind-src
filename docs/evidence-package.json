@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-22T22:03:25+08:00",
+  "generated_at": "2026-10-23T15:18:05+08:00",
   "caliber": {
-    "head": "1fa639b",
+    "head": "a651b15",
     "tools_yaml": 90,
     "builtin_tools": 52,
     "runtime_tools": 142,
@@ -161,11 +161,11 @@
     },
     "provenance": {
       "real_problems": 55,
-      "synthetic_problems": 85,
-      "total_problems": 140,
-      "synthetic_ratio_pct": 60.7
+      "synthetic_problems": 91,
+      "total_problems": 146,
+      "synthetic_ratio_pct": 62.3
     },
-    "summary_sha256": "81468f1877f4b8ea5563ddbf6070bea7b0ac16b9adbc9abd0d5708ef16cfe1c7"
+    "summary_sha256": "ee7ebd3bccfc72d769e66feb49464947fe154d3b9afa1db39cd34534c7bcece2"
   },
   "golden": {
     "freeze_check_rc": 0,

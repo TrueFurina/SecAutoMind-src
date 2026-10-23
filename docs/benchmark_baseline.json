@@ -21,6 +21,26 @@
       "min_hit": 10,
       "why": "Web 集 web_benchmark.json（自产题，自建靶场）。"
     },
+    "xss": {
+      "total": 3,
+      "min_hit": 3,
+      "why": ""
+    },
+    "ecb": {
+      "total": 1,
+      "min_hit": 1,
+      "why": ""
+    },
+    "morse_image": {
+      "total": 1,
+      "min_hit": 1,
+      "why": ""
+    },
+    "crc64": {
+      "total": 1,
+      "min_hit": 1,
+      "why": ""
+    },
     "attachment": {
       "total": 10,
       "min_hit": 10,

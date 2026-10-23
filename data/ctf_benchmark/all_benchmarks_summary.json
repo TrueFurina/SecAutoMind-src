@@ -19,6 +19,30 @@
     "miss": 0,
     "coverage_pct": 100.0
   },
+  "xss": {
+    "total": 3,
+    "hit": 3,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "ecb": {
+    "total": 1,
+    "hit": 1,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "morse_image": {
+    "total": 1,
+    "hit": 1,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
+  "crc64": {
+    "total": 1,
+    "hit": 1,
+    "miss": 0,
+    "coverage_pct": 100.0
+  },
   "attachment": {
     "total": 10,
     "hit": 10,
@@ -147,6 +171,7 @@
       "benchmarks": [
         "execution",
         "web",
+        "xss",
         "attachment",
         "web_hints",
         "jwt",
@@ -167,10 +192,10 @@
         "lcg_predict",
         "crc32_forge"
       ],
-      "problems": 85
+      "problems": 91
     },
-    "total_problems": 140,
-    "synthetic_ratio_pct": 60.7,
+    "total_problems": 146,
+    "synthetic_ratio_pct": 62.3,
     "rule": "无外部 flag 真值不计入 KPI（继承西湖论剑铁律）。自产题的高覆盖率只证明工程链路可跑通，不构成真实赛场竞争力证据；对外引用任何 100% 必须标注来源。"
   },
   "note": "静态/执行/Web/附件 覆盖率不相加；执行层、Web 实战层、附件取证层、题目感知层为冠军差异点；所有命中经 SHA-256 校验；附件集另设反注水门禁（朴素正则不许命中）。"
