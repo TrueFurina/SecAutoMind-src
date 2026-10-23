@@ -1,0 +1,65 @@
+name: "bkcrack"
+command: "bkcrack"
+enabled: true
+version: "1.0.0"
+source: "upstream"
+license: "Zlib"
+upstream: "https://github.com/kimci86/bkcrack"
+trust: "builtin"
+short_description: "ZIP 传统加密（ZipCrypto）已知明文攻击"
+description: |
+  bkcrack 是 Biham–Kocher 已知明文攻击的命令行实现（zlib/png 许可，上游 kimci86/bkcrack）。
+
+  **本仓不随包分发二进制**：需外部安装，或用环境变量 `SECAUTOMIND_BKCRACK` 指向可执行文件。
+  二进制缺失时 Go 适配器（`internal/ctfplatform/bkcrack_adapter.go`）返回
+  `ErrBkcrackUnavailable`（fail-closed），不会静默降级成"解不出"。
+
+  **主要功能：**
+  - 从 ≥12 字节已知明文恢复 ZipCrypto 内部密钥（X, Y, Z）
+  - 恢复密钥后可解密条目 / 解锁归档 / 修改密码（用 Go 适配器 `BkcrackDecryptEntry`）
+  - 属真实密码学攻击（Biham–Kocher），非关键词匹配、非读答案密钥
+
+  **使用场景：**
+  - ZIP 已知明文题型（如 Google CTF 2023 ziphard）
+  - 迁移资产 `crypto_zip_bkcrack` 的 Go 侧外调通道（吞并路线图 P0-1）
+
+  **注意事项：**
+  - 本 recipe 只暴露攻击模式（`-C` / `-c` / `-p` / `-o`）；解密/解锁模式请用 Go 适配器
+    或经 `additional_args` 传 `-k <k1> <k2> <k3> -D <out>`。
+  - 攻击是 CPU 密集操作，单次可能数十秒；Go 适配器默认 5 分钟超时。
+  - 已知明文不足 12 字节时工具本身会拒绝（CONTIGUOUS_SIZE 守卫），属预期行为。
+parameters:
+  - name: "cipher_zip"
+    type: "string"
+    description: "加密 ZIP 文件路径（bkcrack -C）"
+    required: true
+    flag: "-C"
+    format: "flag"
+  - name: "encrypted_entry"
+    type: "string"
+    description: "ZIP 内被加密的条目名（bkcrack -c）"
+    required: true
+    flag: "-c"
+    format: "flag"
+  - name: "plaintext_file"
+    type: "string"
+    description: "已知明文文件路径（bkcrack -p），至少 12 字节"
+    required: true
+    flag: "-p"
+    format: "flag"
+  - name: "offset"
+    type: "int"
+    description: "已知明文在明文流中的偏移（bkcrack -o），0 表示从头；省略则不传"
+    required: false
+    flag: "-o"
+    format: "flag"
+  - name: "additional_args"
+    type: "string"
+    description: |
+      额外的 bkcrack 参数（空格分隔，追加到命令末尾）。
+
+      **注意事项：**
+      - 用于解密/解锁模式：`-k <k1> <k2> <k3> -D <out>`
+      - 多个参数用空格分隔，确保格式正确
+    required: false
+    format: "positional"

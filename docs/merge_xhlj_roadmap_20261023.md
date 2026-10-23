@@ -113,6 +113,17 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 - 执行：保持现成链路稳定，开赛即用
 
 ### 赛后 P0（快闪赛结束后 1 周内）
+> **执行状态（2026-10-24 赛前提前完成，用户指令）**：以下 1/3/4 项已落地。口径说明：
+> 全部为**增量改动**——新文件 / 新配置字段（默认关闭）/ 纯数据，不触及既有求解器路径；
+> `go build ./...` RC=0，新增 10 个确定性测试全 PASS。
+> - 1 ✅ `internal/ctfplatform/bkcrack_adapter.go`（fail-closed 外调：`ErrBkcrackUnavailable`、
+>   密钥解析、5 分钟超时）+ `tools/bkcrack.yaml`（攻击模式 recipe，Zlib 许可）
+> - 3 ✅ `PollerConfig.FirstBloodWindow/FirstBloodInterval` + `pollWait` 纯函数
+>   （窗口内短间隔抢首血、窗口后回落；两字段默认 0=关闭，语义倒挂在启动日志告警）
+> - 4 ✅ `data/ctf_benchmark/heldout_evidence/`（48 JSON + PROVENANCE 逐字节复制，
+>   sha256 自校验 A=aa30d3c1… B=6ce3bfe0…；README 写明历史快照/非本仓复跑/不作废口径混用）
+> - 2/5/6 未动（2 需评估降级、5 是 AGENTS.md 冻结声明、6 是链路验证，均按原计划）
+
 1. ZIP 已知明文（bkcrack 外调适配器，Go exec 封装）
 2. Deflate/Huffman 隐写解析 Go 化（题绑定 GoogleCTF2021，评估后降 P1 备选）
 3. race 首血策略融入 poller（`PollerConfig` 增加首血扫描模式）

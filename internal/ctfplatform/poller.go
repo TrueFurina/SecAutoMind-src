@@ -53,6 +53,13 @@ type PollerConfig struct {
 	// AutoReleaseEnv 解出并 accepted 后销毁靶机，释放平台配额（起完不销毁会一直占资源）。
 	// 仅对"本轮确实起过环境"且"已 accepted"的题生效 —— 未解出的题保留靶机，供人工接手。
 	AutoReleaseEnv bool `json:"auto_release_env"`
+	// FirstBloodWindow / FirstBloodInterval 首血扫描模式（2026-10-24，吞并路线图 P0-3）：
+	// 开赛后 FirstBloodWindow 时间内用 FirstBloodInterval 的短间隔抢新题（首血），
+	// 窗口过后回落到 PollInterval 稳定轮询。
+	// 🔴 默认 0 = 关闭（不改变既有节奏）。生效条件：两字段均 > 0 且
+	//    FirstBloodInterval < PollInterval（否则语义倒挂，按关闭处理并在启动日志告警）。
+	FirstBloodWindow   time.Duration `json:"first_blood_window"`
+	FirstBloodInterval time.Duration `json:"first_blood_interval"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -63,6 +70,22 @@ func DefaultPollerConfig() PollerConfig {
 		MaxRetrySubmit:   2,
 		MaxConcurrency:   2,
 	}
+}
+
+// pollWait 返回本轮轮询前的休眠间隔：首血窗口内用 FirstBloodInterval 抢新题，
+// 窗口外回落 PollInterval。纯函数（advisor 退避在调用处叠加），便于确定性单测。
+func pollWait(cfg PollerConfig, elapsed time.Duration) time.Duration {
+	if cfg.FirstBloodWindow > 0 && cfg.FirstBloodInterval > 0 &&
+		cfg.FirstBloodInterval < cfg.PollInterval && elapsed < cfg.FirstBloodWindow {
+		return cfg.FirstBloodInterval
+	}
+	return cfg.PollInterval
+}
+
+// firstBloodActive 报告首血扫描配置是否生效（供启动日志与排障用）。
+func firstBloodActive(cfg PollerConfig) bool {
+	return cfg.FirstBloodWindow > 0 && cfg.FirstBloodInterval > 0 &&
+		cfg.FirstBloodInterval < cfg.PollInterval
 }
 
 // Poller 平台轮询器：定时拉题 → 去重 → 求解 → 提交。
@@ -179,7 +202,16 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 func (p *Poller) RunForever(ctx context.Context) error {
 	p.logger.Info("轮询器启动",
 		zap.Duration("interval", p.config.PollInterval),
-		zap.Bool("submit_after_solve", p.config.SubmitAfterSolve))
+		zap.Bool("submit_after_solve", p.config.SubmitAfterSolve),
+		zap.Bool("first_blood_scan", firstBloodActive(p.config)),
+		zap.Duration("first_blood_window", p.config.FirstBloodWindow))
+	if p.config.FirstBloodWindow > 0 && !firstBloodActive(p.config) {
+		p.logger.Warn("首血扫描配置无效，已按关闭处理（需 window>0 且 0<interval<PollInterval）",
+			zap.Duration("window", p.config.FirstBloodWindow),
+			zap.Duration("interval", p.config.FirstBloodInterval),
+			zap.Duration("poll_interval", p.config.PollInterval))
+	}
+	startedAt := time.Now()
 
 	for {
 		select {
@@ -214,7 +246,8 @@ func (p *Poller) RunForever(ctx context.Context) error {
 		}
 
 		// ④ 连续 429 阶梯退避：建议间隔 > 基础间隔时拉长本轮等待
-		wait := p.config.PollInterval
+		// 基础间隔含首血窗口判定：开赛初期用短间隔抢新题，窗口后回落。
+		wait := pollWait(p.config, time.Since(startedAt))
 		if p.advisor != nil {
 			if s := p.advisor.BackoffSuggestion(p.config.PollInterval.Seconds()); s > wait.Seconds() {
 				wait = time.Duration(s) * time.Second
