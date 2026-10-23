@@ -169,7 +169,10 @@ func TestCodingChainJustUnderCapIsBounded(t *testing.T) {
 	_ = tryCodingChain(body, nil)
 	d := time.Since(t0)
 	t.Logf("接近阈值（%d 字节）耗时 %v（预算 %d 节点）", len(body), d, chainNodeBudget)
-	if d > 15*time.Second {
+	// 阈值须给慢 runner 留足余量：PR #58 run4 实测 CI 2 核 + -race 下预算内合法
+	// 计算耗时 22.0s（本机 128 核 ~2s）——预算在工作，是墙钟太紧。判别力不受损：
+	// 预算失效（未收住）的实测形态是 >5 分钟（见上方输入闸用例注释），百倍差距。
+	if d > 60*time.Second {
 		t.Fatalf("阈值内大文本耗时 %v —— 节点预算失效，链式爆炸未被收住", d)
 	}
 }
