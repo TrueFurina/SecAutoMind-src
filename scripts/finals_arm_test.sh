@@ -85,9 +85,46 @@ else
   bad "T4 变异未生效（末尾守卫的写法变了？请同步本测试的 sed 模式，否则 T4 是假绿）"
 fi
 
+# ── T5：平台派发 —— 有 CTF² 凭据时必须以 CTF² 为主平台 ─────────────────────────
+# 2026-10-24 事故：本脚本原先只认 DASCTF_*，而当晚正式赛跑在 CTF²（CTF2_*）。
+# DASCTF 作为备用地址一直设着 → 脚本报「✅ 官方地址 / 已设置」的**假绿**，
+# 真正要用的 CTF² 凭证一个都没校验。
+out5="$(CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="ctf2_$(printf 'a%.0s' $(seq 1 60))"         bash "$ARM" 2>&1)"
+if printf '%s' "$out5" | grep -q 'CTF² 竞技场' \
+   && printf '%s' "$out5" | grep -q 'CTF2_BASE_URL' \
+   && printf '%s' "$out5" | grep -q 'CTF2_AGENT_TOKEN'; then
+  ok "T5 有 CTF² 凭据 → 确认表以 CTF² 为主平台并校验 CTF2_* 变量"
+else
+  bad "T5 有 CTF² 凭据却仍按 DASCTF 展示（假绿）：$(printf '%s' "$out5" | sed -n '4,6p' | tr '\n' ' ')"
+fi
+
+# ── T6：无 CTF² 凭据时回退 DASCTF（不能把 CTF² 当唯一路径）─────────────────────
+out6="$(env -u CTF2_BASE_URL -u CTF2_AGENT_TOKEN bash "$ARM" 2>&1)"
+if printf '%s' "$out6" | grep -q 'DASCTF' \
+   && printf '%s' "$out6" | grep -q 'DASCTF_BASE_URL'; then
+  ok "T6 无 CTF² 凭据 → 回退 DASCTF 并校验 DASCTF_BASE_URL"
+else
+  bad "T6 回退路径失效：$(printf '%s' "$out6" | sed -n '4,6p' | tr '\n' ' ')"
+fi
+
+# ── T7：令牌形态 —— 前缀不对必须告警（只判前缀，不回显值）──────────────────────
+out7="$(CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="wrongprefix_abc" \
+        bash "$ARM" 2>&1)"
+if printf '%s' "$out7" | grep -q '不以 ctf2_ 开头'; then
+  ok "T7 令牌前缀不符 → 明确告警（不静默放行）"
+else
+  bad "T7 令牌前缀不符却没告警：$(printf '%s' "$out7" | sed -n '4,6p' | tr '\n' ' ')"
+fi
+# 反向：正确前缀不得误报
+if printf '%s' "$out5" | grep -q '不以 ctf2_ 开头'; then
+  bad "T7b 正确前缀 ctf2_ 被误报为不符（判据方向反了）"
+else
+  ok "T7b 正确前缀 ctf2_ 不误报"
+fi
+
 echo "----------------------------------------------------------------------"
 if [ "$fail" -eq 0 ]; then
-  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异）"
+  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异 + 平台派发 4 项）"
   exit 0
 fi
 echo "结论：FAIL —— $fail 项未过"

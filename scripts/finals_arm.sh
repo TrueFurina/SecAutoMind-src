@@ -24,9 +24,30 @@ if [ -n "${BASH_SOURCE[0]:-}" ] && [ "${BASH_SOURCE[0]}" != "${0}" ]; then
   SOURCED=1
 fi
 
-# ── 平台凭证：只查在不在，绝不显示值 ───────────────────────────────────────────
-BASE_URL="${DASCTF_BASE_URL:-}"
-TOKEN="${CTF_AGENT_PLATFORM_TOKEN:-${DASCTF_TOKEN:-}}"
+# ── 平台派发（2026-10-24 补）：与 scripts/finals_preflight.py 的 pick_platform() 同口径 ──
+# 本脚本原先**只认 DASCTF_***，而 10-24 19:00 的正式赛跑在 CTF²（CTF2_*）。
+# 后果是**假绿**：DASCTF 作为备用地址一直设着，脚本会报「✅ 官方地址 / 已设置」，
+# 而真正要用的 CTF² 凭证一个都没校验 —— 正是"确认表打了绿、门禁却没覆盖"那类失败。
+# 规则与 preflight 保持一致：CTF² 地址+令牌都在 → ctf2；否则回退 dasctf。
+if [ -n "${CTF2_BASE_URL:-}" ] && [ -n "${CTF2_AGENT_TOKEN:-}" ]; then
+  PLATFORM="ctf2"
+  PLATFORM_LABEL="CTF² 竞技场"
+  BASE_URL="${CTF2_BASE_URL}"
+  TOKEN="${CTF2_AGENT_TOKEN}"
+  BASE_VAR="CTF2_BASE_URL"
+  TOKEN_VAR="CTF2_AGENT_TOKEN"
+  TOKEN_PREFIX="ctf2_"
+  TOKEN_HINT="ctf2_ + 约 64 位"
+else
+  PLATFORM="dasctf"
+  PLATFORM_LABEL="DASCTF"
+  BASE_URL="${DASCTF_BASE_URL:-}"
+  TOKEN="${CTF_AGENT_PLATFORM_TOKEN:-${DASCTF_TOKEN:-}}"
+  BASE_VAR="DASCTF_BASE_URL"
+  TOKEN_VAR="CTF_AGENT_PLATFORM_TOKEN"
+  TOKEN_PREFIX="ak_"
+  TOKEN_HINT="ak_ + 约 40 位"
+fi
 
 # host 可以显示（不是秘密），路径与查询串不显示。
 # 必须真剥掉 scheme：sed 的捕获组是含 `https://` 的整段，直接用会把带 scheme 的地址
@@ -39,7 +60,7 @@ ADDR_STATE="⚠ 未设置 —— 拉题会失败"
 case "$BASE_URL_HOST" in
   127.0.0.1*|localhost*|0.0.0.0*)
     ADDR_STATE="❌ 本地/演练地址，开赛前必须换成官方地址" ;;
-  pro.dasctf.com*)
+  *.dasctf.com|dasctf.com)
     ADDR_STATE="✅ 官方地址" ;;
   "")
     ADDR_STATE="⚠ 未设置 —— 拉题会失败" ;;
@@ -69,8 +90,9 @@ export CTF_POLL_INTERVAL="${CTF_POLL_INTERVAL:-20}"
 
 print_list() {
   echo "# —— 平台凭证（脚本不会替你填，也绝不落盘）——"
-  echo 'export DASCTF_BASE_URL="<官方平台地址>"'
-  echo 'export CTF_AGENT_PLATFORM_TOKEN="<官方 Token>"   # 或 DASCTF_TOKEN'
+  echo "# 当前平台：${PLATFORM_LABEL}"
+  echo "export ${BASE_VAR}=\"<官方平台地址>\""
+  echo "export ${TOKEN_VAR}=\"<官方 Token>\"   # 形态：${TOKEN_HINT}"
   echo
   echo "# —— 自动化开关 ——"
   echo "export CTF_POLL_ENABLED=${CTF_POLL_ENABLED}"
@@ -91,8 +113,17 @@ fi
 echo "=========================================================================="
 echo "决赛开赛上膛 · 确认表"
 echo "=========================================================================="
-printf "  %-28s %s\n" "DASCTF_BASE_URL" "${BASE_URL_HOST:-—}  ${ADDR_STATE}"
-printf "  %-28s %s\n" "CTF_AGENT_PLATFORM_TOKEN" "$([ -n "$TOKEN" ] && echo '已设置（不显示）' || echo '⚠ 未设置 —— 提交会失败')"
+printf "  %-28s %s\n" "今晚平台" "${PLATFORM_LABEL}"
+printf "  %-28s %s\n" "${BASE_VAR}" "${BASE_URL_HOST:-—}  ${ADDR_STATE}"
+# 令牌形态：只判前缀，绝不回显值。前缀不对 = 多半填了别的令牌/门户口令。
+if [ -z "$TOKEN" ]; then
+  TOKEN_STATE="⚠ 未设置 —— 提交会失败"
+elif [ "${TOKEN#"$TOKEN_PREFIX"}" = "$TOKEN" ]; then
+  TOKEN_STATE="⚠ 已设置但不以 ${TOKEN_PREFIX} 开头（应形如 ${TOKEN_HINT}）—— 确认不是别的令牌"
+else
+  TOKEN_STATE="已设置（不显示，前缀 ${TOKEN_PREFIX} ✓）"
+fi
+printf "  %-28s %s\n" "${TOKEN_VAR}" "${TOKEN_STATE}"
 for v in CTF_POLL_ENABLED CTF_AUTOSOLVE_SUBMIT CTF_AUTO_BUILD_ENV \
          CTF_AUTO_FETCH_DETAIL CTF_AUTO_FETCH_ATTACHMENT CTF_AUTO_RELEASE_ENV \
          CTF_ROBOT_AUTO_PREPARE; do
