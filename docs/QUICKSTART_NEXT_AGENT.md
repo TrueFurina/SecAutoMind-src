@@ -133,6 +133,25 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
   2. **顺序不能反**：口径数字若包含**别人未提交**的 WIP，只提交文档会让干净检出红（HEAD 里没那些文件）。正确顺序是 **先把对方 WIP 验证并提交进版本库 → 再刷新口径 → 再提交**（2026-10-23 就是这样处理 `presolve_chain.go`：先 `692c498`，后 `52adf02`）。
   3. **合并别人的 WIP 前必须自证**：`go build ./...` + 它自己的测试全过 + `secret_guard` rc=0，且在提交信息里如实写"并行会话完成、本会话验证后入库"。
   4. **parity 假红先怀疑并发构建**：`go test 退出码 1` + 命中集合为空，但用门禁**精确命令**单独复跑（`go test ./internal/ctfplatform/ -run "^(TestXxx)$" -count=1 -v -timeout 600s`）却 PASS —— 那是别人同时在编译抢资源，不是你的镜像坏了。
+  5. **🔴 分支会被并行会话 `reset` 重建，你的提交会连内容一起消失（2026-10-24 实测三次）**：
+     症状是同一 subject 换了 SHA（如 `aaa326e` → `9a21190`），此时
+     `git merge-base --is-ancestor <你的提交> HEAD` 返回**不在**，且**文件内容也回退了**
+     （不是普通 rebase——rebase 保内容，这是 reset 到旧基点后重新提交）。
+     对策：① **每轮开工先验证** `git merge-base --is-ancestor <上次提交> HEAD`，
+     不在就 `git cherry-pick <提交...>` 捡回来（实测无冲突）；
+     ② 重要提交后立刻 `git branch -f backup/<主题>-<日期> <sha>` 打备份分支，
+     保证提交对象始终可达；
+     ③ 口径类修正被回退时**不要照抄旧值**，重跑 `fix_material_numbers` 按实测重刷。
+- **🔴 代理会劫持"发往 127.0.0.1"的请求**（2026-10-24 实锤，极易误判成"靶场坏了"）：
+  本机环境有 `HTTP_PROXY=http://127.0.0.1:8772`，而 `urllib`/`requests` 默认**不豁免回环地址**，
+  于是判分脚本连本机靶场也被送进代理 → 超时 → judge 报「靶场未就绪」退出码 1，
+  而同一时刻 `curl --noproxy '*'` 直连是通的。
+  **判据：`curl --noproxy '*'` 通但脚本超时 ⇒ 先怀疑代理，别怀疑靶场。**
+  已修（两层）：`run_all_benchmarks.judge_env()` / `check_suite_parity.judge_env()`
+  在子进程环境里剥掉 `HTTP(S)_PROXY/ALL_PROXY` 并设 `NO_PROXY`（一处覆盖全部 12 个 judge）；
+  `judge_web_hints.py` 自身另用 `build_opener(ProxyHandler({}))` 绕代理。
+  ⚠️ 另外：**判断"端口是否被占用"必须用 TCP connect，不能用 HTTP 探测**——
+  端口在监听但进程卡住时 HTTP 会超时，会被误判成"空闲"，把"端口被占"伪装成"靶场坏了"。
 - **Python**：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`（系统 python 无 PyYAML，校验 yml 时用它）。
 - **CI 仿真**：`git archive HEAD` 在 `core.autocrlf=true` 下**仍导出 CRLF**；要纯 LF 必须 `git -c core.autocrlf=false archive HEAD`。
 - **🔴 冻结期"干净检出门禁仿真"一键脚本**（2026-10-20 新增）：`bash scripts/clean_checkout_gate_sim.sh [--go|--full|--preflight]`。
