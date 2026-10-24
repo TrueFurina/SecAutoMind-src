@@ -1,0 +1,46 @@
+name: 1024 字节温柔
+category: Pwn
+description: '它说话很温柔：缓冲区只有 64 字节，却允许你一次说 1024 字节。
+
+
+  服务是一个标准的 TCP 行交互程序（连接靶机给出的地址，见文末连接方式）。它会对你说两句话，也让你说两句话：
+
+
+  ```
+
+  === gentle-1024 ===
+
+  [1] say something gentle (at most 1024 bytes):
+
+  （你的第一句话会在这里被"回显"）
+
+  [2] one more line, then goodbye:
+
+  （你的第二句话之后，它就告别了）
+
+  ```
+
+
+  附件是靶机上运行的二进制本身（与线上版本 sha256 一致），环境为 Ubuntu 22.04（glibc 2.35）。
+
+
+  ## 提示
+
+
+  - 它每次最多只听 **1024 字节**，多说的部分它听不见——温柔是有上限的；
+
+  - 回显有时候会"说漏嘴"，多问几个 `%p` 试试；
+
+  - flag 在靶机 `/flag`，服务进程有权限读它。
+
+
+  > 连接方式：启动靶机后按面板给出的地址连接。平台的 nc 端口走 **TLS**，可用 `ncat --ssl <域名> 9999` 或 `openssl s_client
+  -quiet -connect <域名>:9999 -servername <域名>`，pwntools 用 `remote(host, 9999, ssl=True,
+  sni=host)`。
+
+
+  > flag 格式：`DASCTF{...}`，区分大小写，提交时前后不要带空格。'
+value: 200
+connection_info: 0aae874d3331f60cfa95efab.tcp-ctf2.dasctf.com:9999
+tags: []
+solves: 26

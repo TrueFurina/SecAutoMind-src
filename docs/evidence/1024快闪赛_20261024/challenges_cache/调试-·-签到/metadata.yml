@@ -1,0 +1,10 @@
+name: 调试 · 签到
+category: Misc
+description: '欢迎来到 1024 快闪赛调试赛！本题 flag 就是：`DASCTF{1024_rehearsal_ok}`，复制提交即可，用来确认提交流程正常。
+
+
+  > flag 格式：`DASCTF{...}`。'
+value: 10
+connection_info: ''
+tags: []
+solves: 39

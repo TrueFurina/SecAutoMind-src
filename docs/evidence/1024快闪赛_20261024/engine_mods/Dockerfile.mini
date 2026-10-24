@@ -1,0 +1,36 @@
+# ctf-sandbox 轻量版：核心 CTF 工具，无 SageMath/cado-nfs/torch/podman（构建 10-15 分钟）
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+
+RUN apt-get update && apt-get install -y \
+    netcat-openbsd curl wget nmap \
+    binutils file xxd bsdmainutils binwalk \
+    gdb ltrace strace \
+    exiftool steghide pngcheck imagemagick \
+    sleuthkit foremost \
+    ffmpeg sox \
+    tesseract-ocr tesseract-ocr-eng \
+    openssl libssl-dev \
+    gcc g++ make cmake git jq zip unzip ca-certificates \
+    python3 python3-pip python3-dev \
+    default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip3 install --no-cache-dir \
+    pwntools pycryptodome sympy gmpy2 requests Pillow \
+    z3-solver pytesseract scipy numpy capstone unicorn ropgadget \
+    tqdm fpylll flask PyJWT angr
+
+# radare2（pwn/rev 高频工具，apt 无包，源码编译）
+RUN git clone --depth=1 https://github.com/radareorg/radare2 /tmp/r2 \
+    && cd /tmp/r2 && bash sys/install.sh --install \
+    && ldconfig && r2 -v \
+    && rm -rf /tmp/r2
+
+# volatility3（取证内存镜像）
+RUN pip3 install --no-cache-dir volatility3
+
+WORKDIR /challenge

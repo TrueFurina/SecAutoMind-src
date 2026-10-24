@@ -1,0 +1,24 @@
+name: 1024 端口
+category: Misc
+description: '传说这台机器上有一个"许愿池"服务，它性格有点拗：**只住在一台机器的第 1024 号房间里**，而且只认一种愿望。
+
+
+  靶机开放了 HTTP 服务（连接靶机给出的地址即可，**外部端口由平台分配，不一定是 1024**）。服务只认 HTTP，从 `GET /` 开始。
+
+
+  把 flag 要回来。
+
+
+  ## 提示
+
+
+  - 服务输出是确定的，错误请求会明确告诉你差在哪里；
+
+  - 愿望要**正好 1024 字节**，注意 `Content-Length` 与实际 body 长度一致。
+
+
+  > flag 格式：`DASCTF{...}`，区分大小写，提交时前后不要带空格。'
+value: 102
+connection_info: http://938716b2c4a6d5a1967ba5a0.http-ctf2.dasctf.com:80
+tags: []
+solves: 0

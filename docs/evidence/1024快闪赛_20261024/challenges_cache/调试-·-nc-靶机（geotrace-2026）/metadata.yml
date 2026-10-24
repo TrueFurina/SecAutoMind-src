@@ -1,0 +1,19 @@
+name: 调试 · nc 靶机（GEOTRACE-2026）
+category: Forensics
+description: '（复用每日一题「GEOTRACE-2026：残片与标签」，用于测试 nc 靶机连接）
+
+
+  GEOTRACE-2026 取证中继：一个纯 TCP 服务的“原始磁盘转储”。用脚本拉取 base64 转储、按魔数雕刻文件、解析 EXIF 标签，再与容器内的文档键做异或得到相关键，通过三轮限时问答后由服务端下发
+  flag。**只想测连通性的话，能连上看到服务输出就算成功。**
+
+
+  > 连接方式：启动靶机后按面板给出的地址连接。平台 nc 端口走 **TLS**：`ncat --ssl <域名> 9999`、`openssl s_client
+  -quiet -connect <域名>:9999 -servername <域名>`，pwntools 用 `remote(host, 9999, ssl=True,
+  sni=host)`。
+
+
+  > flag 格式：`DASCTF{...}`。'
+value: 100
+connection_info: 3b7c4b16931b8db30d977281.tcp-ctf2.dasctf.com:9999
+tags: []
+solves: 31

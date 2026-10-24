@@ -1,0 +1,14 @@
+name: 调试 · http 靶机（档案馆的三个时钟）
+category: Misc
+description: '（复用每日一题「档案馆的三个时钟」，用于测试 http 靶机）
+
+
+  数字事故档案馆主题的元数据时间关联挑战。博物馆闭馆后东翼库房失窃，监控系统抓拍了五张照片并批量重新上传到归档服务器。页面以三步向导呈现：事故通报、元数据勘验、时间线提交。依据照片内嵌的拍摄时间重建五件展品的真实先后顺序，在浏览器里提交正确排序即可获得
+  flag。
+
+
+  > flag 格式：`DASCTF{...}`。'
+value: 50
+connection_info: http://f43ca2954a25ab5fddb85603.http-ctf2.dasctf.com:80
+tags: []
+solves: 36
