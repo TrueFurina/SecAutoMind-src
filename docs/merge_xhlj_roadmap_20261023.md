@@ -133,7 +133,16 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 >   （窗口内短间隔抢首血、窗口后回落；两字段默认 0=关闭，语义倒挂在启动日志告警）
 > - 4 ✅ `data/ctf_benchmark/heldout_evidence/`（48 JSON + PROVENANCE 逐字节复制，
 >   sha256 自校验 A=aa30d3c1… B=6ce3bfe0…；README 写明历史快照/非本仓复跑/不作废口径混用）
-> - 2/5/6 未动（2 需评估降级、5 是 AGENTS.md 冻结声明、6 是链路验证，均按原计划）
+> - 2 未动（评估后降 P1 备选，维持原计划）
+> - 5 ✅（2026-10-24 补记）：源仓根 AGENTS.md 已置 FROZEN 冻结横幅；本项目 AGENTS.md
+>   已有唯一主体声明（2026-10-23）——两份文件即原计划第 5 项的落地形态
+> - 6 ✅（2026-10-24 执行，**合成口径**）：4 道「部分覆盖」链验证完成——原始附件已随
+>   源仓 2026-08-26 归档清理永久丢失（93 题库仅 11-12 题附件齐全），端到端原始验证
+>   不可执行；改为**同构合成载荷**验证链路：4/4 PASS（skill 原语 + runner.py 桥端到端，
+>   anwang 链经生产桥命中合成 flag）。产物：`data/ctf_benchmark/xhlj_legacy/
+>   verify_chains_synthetic.py` + `chain_verify_20261024.json`；coverage_map/ledger 同日
+>   更新为 chain_verified_synthetic + KNOWN_DATA_LOSS 登记。同日完成**阶段 1 验收可测
+>   切片**：A 侧 5/11 vs B 侧 5/12 持平且命中互补，见 `stage1_acceptance_20261024.md`。
 
 1. ZIP 已知明文（bkcrack 外调适配器，Go exec 封装）
 2. Deflate/Huffman 隐写解析 Go 化（题绑定 GoogleCTF2021，评估后降 P1 备选）
@@ -146,7 +155,15 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 7. 复数组特殊曲线 RSA（含 DLP 平滑阶 BSGS 或外部服务适配）
 8. logbool 流量解析、ezrat 协议解析
 9. 监督反思/错误分类机制 Go 化（poller 单题止损 + 策略切换）
+   **✅ 2026-10-25 落地**：`internal/ctfplatform/supervision.go`——A 库 error_taxonomy
+   （truncated/non-retryable/瞬时三口径单一真值源）+ budget_reflection（CONTINUE/
+   SWITCH/ABANDON 纯规则，含候选硬信号与 token 双口径门）移植；PollRecord.ErrorClass
+   接线；9 单测镜像 A 库实战边界。消费方：终报/看板按 truncated 区分能力判负与被掐断；
+   上层重试循环按 non-retryable 短路；agent 求解循环每 N 步调 ReflectSupervision。
 10. 逐 skill 过一遍：仍有价值的通用链继续 Go 化
+    **部分 ✅ 2026-10-24**：reverse_static 双经验已 Go 化（bin_flag_repair 垃圾打断修复 +
+    bin_flag_concat 分离串拼接，真实 upx/sheng 端到端命中）；同日并行会话将
+    anwang/ezmult/qiangwang 三条文本链 Go 化（REGRESS_PASS）。
 
 ### 赛后 P2（按需）
 11. MHK2 背包（评估引入外部 LLL 后端 vs 保持 Python 工具链）
