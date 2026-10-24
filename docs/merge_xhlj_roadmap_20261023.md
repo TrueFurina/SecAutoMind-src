@@ -155,7 +155,7 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 7. 复数组特殊曲线 RSA（含 DLP 平滑阶 BSGS 或外部服务适配）
 8. logbool 流量解析、ezrat 协议解析
    **✅ 2026-10-25 logbool 半项落地**：`pcap_boolblind` 求解器（真实 10735 pcap 端到端命中，
-   2678 对/2631 谓词→169B RAR→flag，与 A 库 338-hex 锚一致）；ezrat 协议解析待做
+   2678 对/2631 谓词→169B RAR→flag，与 A 库 338-hex 锚一致）；ezrat 待做（移交桩：蓝本 CTF-Agent_融合/ctf_agent/skills/misc_pcap_ezrat_chat.py 692 行；依赖已备——iterPcapTCPSegs 可复用(P1-8)、x/crypto v0.55 pbkdf2 在 go.mod、EZRAT 公开源码常量 salt=Very_S3cr3t_S/PBKDF2-SHA1-1000/dkLen=48 前32密钥次16IV、AES-CBC+PKCS7 stdlib；口令从附件字节 UTF-16/ASCII 提取；flag 三段装配 fail-closed；真题附件 questions_ext_cybench/_attachments/.../data_siege/capture.pcap 本地在）
 9. 监督反思/错误分类机制 Go 化（poller 单题止损 + 策略切换）
    **✅ 2026-10-25 落地**：`internal/ctfplatform/supervision.go`——A 库 error_taxonomy
    （truncated/non-retryable/瞬时三口径单一真值源）+ budget_reflection（CONTINUE/
