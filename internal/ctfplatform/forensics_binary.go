@@ -423,6 +423,27 @@ func bfxJPEGMeta(data []byte) []string {
 	return bfxDedup(out)
 }
 
+// bfxJpegTailPng 提取 JPEG 体内/尾后**内嵌 PNG**（SOI 后的 PNG 签名偏移处起走块），
+// 覆盖 xuanhun_signin 链形态（JPEG(FFD9) 尾嵌 PNG + tEXt flag）。偏移 0 的普通 PNG
+// 归 bin_png_meta 管辖；泛 strings 扫描由 bfxJPEGMeta 的尾扫兜底——本函数补的是
+// tEXt/iTXt/zTXt 块级精确解析（吞并链 Go 化 2026-10-25，原 payload 已丢失，合成口径）。
+func bfxJpegTailPng(d []byte) []string {
+	sig := []byte("\x89PNG\r\n\x1a\n")
+	var out []string
+	for off := 0; off+8 <= len(d); {
+		i := bytes.Index(d[off:], sig)
+		if i < 0 {
+			break
+		}
+		pos := off + i
+		if pos > 0 {
+			out = append(out, bfxPNGMeta(d[pos:])...)
+		}
+		off = pos + 8
+	}
+	return bfxDedup(out)
+}
+
 // ─────────────────────────── pcap / pcapng 流量解析 ───────────────────────────
 
 // bfxTCPPayload 按链路类型剥离 Ethernet/VLAN/RawIP/SLL/Loopback 与 IPv4+TCP 头，
@@ -782,6 +803,16 @@ func init() {
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
 			return bfxRun(attachments, func(_ string, d []byte) []string {
 				return bfxZipInner(d, 0)
+			})
+		},
+	})
+	// bin_jpeg_tail：JPEG 体内/尾后内嵌 PNG 的 tEXt 块级提取（xuanhun_signin 链，
+	// 2026-10-25 吞并链 Go 化；原 payload 已丢失，基准走合成口径）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_jpeg_tail", Category: CategoryMiscS, Priority: 36,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return bfxRun(attachments, func(_ string, d []byte) []string {
+				return bfxJpegTailPng(d)
 			})
 		},
 	})
