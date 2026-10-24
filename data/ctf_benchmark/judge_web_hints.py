@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -45,12 +46,21 @@ def sh(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+# 🔴 显式禁用代理：本脚本只跟 127.0.0.1 的靶场通信，但环境里若设了
+# HTTP_PROXY/HTTPS_PROXY（本机实测有 http://127.0.0.1:8772 这类本地代理），
+# urllib 会把发往 127.0.0.1 的请求也送进代理 → 超时 → fetch 恒返回 0
+# → wait_ready 永远不就绪 → 整个 judge 退出码 1（实测报「靶场未就绪」，
+# 而同一时刻 curl 直连靶场是通的，极易误判成靶场坏了）。
+# ProxyHandler({}) 让本脚本的请求完全绕开代理；CI 无代理时行为不变。
+_LOCAL_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def fetch(url, data=None, ctype=None, timeout=5.0):
     try:
         req = urllib.request.Request(url, data=data)
         if ctype:
             req.add_header("Content-Type", ctype)
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with _LOCAL_OPENER.open(req, timeout=timeout) as r:
             return r.status, r.read(), dict(r.headers)
     except Exception:
         return 0, b"", {}
@@ -212,6 +222,31 @@ def exploit(base, hints, budget=260):
     return found
 
 
+def port_busy(port, timeout=0.5):
+    """端口是否已被占用（TCP 层判定）。
+
+    ⚠️ 刻意**不用 HTTP 探测**：端口在监听但进程卡住/未响应时，HTTP 请求会超时，
+    会被误判成"端口空闲"，于是新靶场起不来、wait_ready 也连不上，最终报
+    「靶场未就绪」——把"端口被占"伪装成"靶场坏了"（2026-10-24 实测踩到）。
+    TCP connect 成功 = 确实有监听者，这才是"被占用"的正确定义。
+    """
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def wait_port_free(port, timeout=8.0):
+    """等端口彻底空闲。返回 False 表示超时仍被占用。"""
+    end = time.time() + timeout
+    while time.time() < end:
+        if not port_busy(port):
+            return True
+        time.sleep(0.1)
+    return False
+
+
 def wait_ready(port, timeout=12.0):
     end = time.time() + timeout
     while time.time() < end:
@@ -225,6 +260,12 @@ def wait_ready(port, timeout=12.0):
 def main():
     doc = json.load(open(BENCH, encoding="utf-8"))
     probs = doc["problems"]
+    # 🔴 起靶场前先确认端口干净（2026-10-24 实锤：quant 的 run_all_benchmarks 刚跑过本脚本，
+    # 上一轮靶场可能还占着 PORT；此时 wait_ready 会**连上陈旧实例**并在它上面判分——
+    # 结果错误但看起来"跑完了"，比直接失败更危险。宁可 fail-closed 也不在陈旧实例上判分。）
+    if not wait_port_free(PORT):
+        print(f"[fail-closed] 端口 {PORT} 仍被占用（疑似上一轮残留靶场），拒绝在陈旧实例上判分")
+        return 1
     proc = subprocess.Popen([sys.executable, RANGE_PY, str(PORT)],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
@@ -253,7 +294,14 @@ def main():
             return 1
         return 0
     finally:
+        # kill 之后必须 wait() 回收：否则进程变僵尸、端口不会立即释放，
+        # 紧接着的下一次运行（quant → parity 连续跑）就会撞上"端口被占用"。
         proc.kill()
+        try:
+            proc.wait(timeout=5)
+        except Exception:  # noqa: BLE001
+            pass
+        wait_port_free(PORT, timeout=5)
 
 
 if __name__ == "__main__":
