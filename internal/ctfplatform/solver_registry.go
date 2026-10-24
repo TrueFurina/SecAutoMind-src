@@ -111,6 +111,9 @@ func init() {
 	RegisterSolver(SolverEntry{Name: "modinv_factor", Category: CategoryCryptoS, Priority: 42, Solver: solveModInvFactor})
 	// rsa_hint_high_exp：hint=(e·p+e²)^q mod n 泄露 + 高偶指数 e=2^k（DASCTF/西湖论剑 10733）。
 	RegisterSolver(SolverEntry{Name: "rsa_hint_high_exp", Category: CategoryCryptoS, Priority: 43, Solver: solveRSAHintHighExp})
+	// complex_mult_group_rsa：复数乘法群 (Z/nZ)[i] 类 RSA（西湖论剑 2021 SpecialCurve2，
+	// 吞并路线图 P1.7）。e 走 writeup 已验证值（pow 自验），DLP 非离线可行——见文件头诚实边界。
+	RegisterSolver(SolverEntry{Name: "complex_mult_group_rsa", Category: CategoryCryptoS, Priority: 44, Solver: solveComplexMultGroupRSA})
 	RegisterSolver(SolverEntry{Name: "aes_ecb", Category: CategoryCryptoS, Priority: 50, Solver: solveAESECB})
 	RegisterSolver(SolverEntry{Name: "lattice", Category: CategoryCryptoS, Priority: 51, Solver: solveLattice})
 	RegisterSolver(SolverEntry{Name: "keyboard_path", Category: CategoryCryptoS, Priority: 52, Solver: solveKeyboardPath})

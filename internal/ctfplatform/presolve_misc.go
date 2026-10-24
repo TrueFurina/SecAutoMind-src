@@ -227,6 +227,16 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 8c. 复数乘法群 (Z/nZ)[i] 类 RSA（西湖论剑 2021 SpecialCurve2 型，吞并 P1.7）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := trySpecialCurve2(text, attachments)
+		if len(flags) > 0 {
+			chResult <- result{"complex_mult_group_rsa", flags}
+		}
+	}()
+
 	// 9. RSA 共享素数分解（gcd(n1,n2)=p 型）
 	wg.Add(1)
 	go func() {
