@@ -3,6 +3,7 @@ package ctfplatform
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"strconv"
 	"strings"
 	"testing"
@@ -178,5 +179,29 @@ func TestCodingChainJustUnderCapIsBounded(t *testing.T) {
 	if bytes < chainByteBudget {
 		t.Fatalf("字节消耗 %d 未触及预算 %d —— 用例没覆盖到闸门，需换更重的输入",
 			bytes, chainByteBudget)
+	}
+}
+
+// TestCodingChainRealDoubleLayer 真双层编码回归（2026-10-24 羊城杯赛时误判的防复发）。
+//
+// 事故：赛时 smoke 把**字面表达式** "base64(hex(flag{nested}))" 当密文喂给引擎，
+// 得出「双层链解不动→手工剥一层再喂」的错误结论，误导赛时决策浪费时间。
+// 引擎实测：正确密文 base64(hex(flag{nested})) 3ms 即命中（本机 presolve.exe 验证）。
+// 本测试用**真密文**锁住该能力：base64(hex(x)) 与 hex(base64(x)) 两个顺序都必须通。
+func TestCodingChainRealDoubleLayer(t *testing.T) {
+	inner := "flag{nested}"
+	hexOfInner := hex.EncodeToString([]byte(inner))                    // 24 hex 字符
+	b64OfHex := base64.StdEncoding.EncodeToString([]byte(hexOfInner)) // 32 字符无 padding
+	if got := tryCodingChain(b64OfHex, nil); len(got) == 0 || got[0] != inner {
+		t.Fatalf("base64(hex(x)) 双层未命中: got=%v input=%s", got, b64OfHex)
+	}
+	b64OfInner := base64.StdEncoding.EncodeToString([]byte(inner))
+	hexOfB64 := hex.EncodeToString([]byte(b64OfInner))
+	if got := tryCodingChain(hexOfB64, nil); len(got) == 0 || got[0] != inner {
+		t.Fatalf("hex(base64(x)) 双层未命中: got=%v", got)
+	}
+	// 带空白包裹的变体（赛时附件常见：密文前后有说明文字/换行）
+	if got := tryCodingChain("密文如下：\n"+b64OfHex+"\n请解出", nil); len(got) == 0 || got[0] != inner {
+		t.Fatalf("带空白包裹的双层未命中: got=%v", got)
 	}
 }
