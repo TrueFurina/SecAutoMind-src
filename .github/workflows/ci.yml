@@ -401,7 +401,28 @@ jobs:
         run: python scripts/make_delivery_package_test.py
 
   # 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致。
-  # 历史教训：材料数字漂移出现过三次，全靠人肉发现（90→91 工具、169→170 求解器等）。
+  # 供应链门禁（十一防线 G-02，2026-10-24 新增）。
+  # 此前对"到底依赖了什么"零证据：requirements.txt 里 0 个 `==`、全是 `>=`
+  # （装到什么版本取决于当天 PyPI），Go 侧虽有 go.sum 可复现，却没有清单能回答
+  # "发了哪些模块、各是什么版本"，出事时无法判断某个 CVE 影响不影响我们。
+  # 三条判据：C1 SBOM 与依赖树逐字节一致 / C2 go.mod 每个 require 在 go.sum 有哈希
+  # （含 replace 解析——第一版忽略 replace 就误报过一次）/ C3 依赖清单非空
+  # （解析失败必须红，不许"扫到 0 个依赖 → 全绿"）。
+  # 不做 CVE 扫描：离线无本地库，任何"漏洞数=0"都是假的；SBOM 的 vulnerability_scan
+  # 字段固定 not_run 并注明原因，这是诚实位。
+  supply-chain-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: SBOM consistency (go.sum coverage / requirements parse)
+        run: python scripts/check_supply_chain.py
+      - name: Supply-chain gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_supply_chain.py --self-test
+
+  # 历史教训：材料数字漂移出现过三次，全靠人肉发现（工具数 90→91、求解器数 169→170 等）。
   # 写死的数字在提交完成的下一秒就可能过期，靠人肉同步永远追不上。
   # 真值源一致性门禁（2026-10-05 · 西湖论剑 CTF-Agent 跨项目支持引入）。
   # 背景：本项目曾出现"评测校验器从退役题库取答案表 → 正确 flag 被判幻觉并丢弃"的对齐事故
