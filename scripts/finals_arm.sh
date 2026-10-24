@@ -29,7 +29,23 @@ fi
 # 后果是**假绿**：DASCTF 作为备用地址一直设着，脚本会报「✅ 官方地址 / 已设置」，
 # 而真正要用的 CTF² 凭证一个都没校验 —— 正是"确认表打了绿、门禁却没覆盖"那类失败。
 # 规则与 preflight 保持一致：CTF² 地址+令牌都在 → ctf2；否则回退 dasctf。
-if [ -n "${CTF2_BASE_URL:-}" ] && [ -n "${CTF2_AGENT_TOKEN:-}" ]; then
+# 显式覆盖优先：`CTF_PLATFORM=dasctf|ctf2`。
+# 为什么需要（2026-10-24 羊城杯初赛现场）：自动派发是"CTF² 凭据齐就走 CTF²"，
+# 而当天 CTF² 的令牌是好的、羊城杯才是正在打的比赛 → 想打羊城杯反而被派去 CTF²。
+# 有覆盖开关后，打羊城杯只需 CTF_PLATFORM=dasctf，不必去 unset 一堆 CTF2_* 变量。
+case "${CTF_PLATFORM:-auto}" in
+  dasctf|DASCTF) WANT="dasctf" ;;
+  ctf2|CTF2|ctf²) WANT="ctf2" ;;
+  *) WANT="auto" ;;
+esac
+
+if [ "$WANT" = "auto" ] && [ -n "${CTF2_BASE_URL:-}" ] && [ -n "${CTF2_AGENT_TOKEN:-}" ]; then
+  WANT="ctf2"
+elif [ "$WANT" = "auto" ]; then
+  WANT="dasctf"
+fi
+
+if [ "$WANT" = "ctf2" ]; then
   PLATFORM="ctf2"
   PLATFORM_LABEL="CTF² 竞技场"
   BASE_URL="${CTF2_BASE_URL}"
@@ -60,6 +76,11 @@ ADDR_STATE="⚠ 未设置 —— 拉题会失败"
 case "$BASE_URL_HOST" in
   127.0.0.1*|localhost*|0.0.0.0*)
     ADDR_STATE="❌ 本地/演练地址，开赛前必须换成官方地址" ;;
+  # 顺序要紧：pro 的具体分支必须在 *.dasctf.com 通配之前，否则永远匹配不到。
+  pro.dasctf.com)
+    # 记忆 2026-10-24 的坑：DASCTF_BASE_URL 默认就是 pro，而**羊城杯入口是 ycb-bk**。
+    # 光看"✅ 官方地址"会以为在打羊城杯，实际打错平台。
+    ADDR_STATE="✅ 官方地址（注意：羊城杯入口是 ycb-bk.dasctf.com，pro 是另一套）" ;;
   *.dasctf.com|dasctf.com)
     ADDR_STATE="✅ 官方地址" ;;
   "")
@@ -113,7 +134,7 @@ fi
 echo "=========================================================================="
 echo "决赛开赛上膛 · 确认表"
 echo "=========================================================================="
-printf "  %-28s %s\n" "今晚平台" "${PLATFORM_LABEL}"
+printf "  %-28s %s\n" "目标平台" "${PLATFORM_LABEL}（${CTF_PLATFORM:-auto}）"
 printf "  %-28s %s\n" "${BASE_VAR}" "${BASE_URL_HOST:-—}  ${ADDR_STATE}"
 # 令牌形态：只判前缀，绝不回显值。前缀不对 = 多半填了别的令牌/门户口令。
 if [ -z "$TOKEN" ]; then

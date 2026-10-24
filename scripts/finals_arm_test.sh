@@ -122,9 +122,38 @@ else
   ok "T7b 正确前缀 ctf2_ 不误报"
 fi
 
+# ── T8：CTF_PLATFORM 显式覆盖（羊城杯现场：CTF² 令牌是好的，但当下要打 dasctf）──────
+# 自动派发是"CTF² 凭据齐就走 CTF²"，没有覆盖开关就没法在不 unset 一堆变量的情况下打羊城杯。
+out8="$(CTF_PLATFORM=dasctf \
+        CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="ctf2_$(printf 'a%.0s' $(seq 1 60))" \
+        DASCTF_BASE_URL="https://ycb-bk.dasctf.com" CTF_AGENT_PLATFORM_TOKEN="ak_$(printf 'b%.0s' $(seq 1 38))" \
+        bash "$ARM" 2>&1)"
+if printf '%s' "$out8" | grep -q 'DASCTF（dasctf）' \
+   && printf '%s' "$out8" | grep -q 'ycb-bk.dasctf.com'; then
+  ok "T8 CTF_PLATFORM=dasctf 覆盖生效（有 CTF² 凭据也不被抢走）"
+else
+  bad "T8 覆盖失效，仍被自动派发到 CTF²：$(printf '%s' "$out8" | sed -n '4,6p' | tr '\n' ' ')"
+fi
+
+# ── T9：pro 与 ycb-bk 必须可区分（记忆 2026-10-24 的坑）──────────────────────
+# DASCTF_BASE_URL 默认就是 pro.dasctf.com，而羊城杯入口是 ycb-bk —— 两者都"✅ 官方地址"，
+# 光看绿勾会以为在打羊城杯，实际打错平台。
+if printf '%s' "$out8" | grep -q '羊城杯入口是 ycb-bk'; then
+  bad "T9 ycb-bk 地址被误报成「pro 是另一套」的提示（判据方向反了）"
+else
+  ok "T9 ycb-bk 地址不误报 pro 提示"
+fi
+out9="$(CTF_PLATFORM=dasctf DASCTF_BASE_URL="https://pro.dasctf.com" \
+        CTF_AGENT_PLATFORM_TOKEN="ak_$(printf 'b%.0s' $(seq 1 38))" bash "$ARM" 2>&1)"
+if printf '%s' "$out9" | grep -q '羊城杯入口是 ycb-bk'; then
+  ok "T9b pro 地址给出「羊城杯入口是 ycb-bk」提示"
+else
+  bad "T9b pro 地址未提示羊城杯入口差异（会打错平台）"
+fi
+
 echo "----------------------------------------------------------------------"
 if [ "$fail" -eq 0 ]; then
-  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异 + 平台派发 4 项）"
+  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异 + 平台派发/覆盖 7 项）"
   exit 0
 fi
 echo "结论：FAIL —— $fail 项未过"
