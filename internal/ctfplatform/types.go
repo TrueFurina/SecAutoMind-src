@@ -78,6 +78,7 @@ type PollRecord struct {
 	Accepted        bool      `json:"accepted"`
 	Detail          string    `json:"detail"`
 	Error           string    `json:"error"`
+	ErrorClass      string    `json:"error_class,omitempty"` // supervision.go 单一真值分类（truncated/non-retryable 口径）
 	ExtraCandidates []string  `json:"extra_candidates,omitempty"`
 }
 

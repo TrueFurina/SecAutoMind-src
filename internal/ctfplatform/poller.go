@@ -418,6 +418,9 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 	}
 
 	rec.FinishedAt = time.Now()
+	// 错误分类（融合 P1-9）：终报/看板按 truncated 口径区分「能力判负」与
+	// 「被外部掐断」；上层任何重试循环按 non-retryable 短路（单一真值源）。
+	classifyRecordError(rec)
 	return rec
 }
 
