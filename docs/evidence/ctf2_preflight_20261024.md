@@ -35,6 +35,19 @@
 
 正式赛阶段：`031d3cf3-d4f7-4eed-9e03-6fecb334ce44`（**AI Agent 赛道**，19:00–20:00，`max_targets=4`）。
 
+### 2.1 平台配额（`agent/me` 的 `quotas`，实测）
+
+| 项 | 值 | 对今晚的含义 |
+|---|---|---|
+| `max_environments` | **1**（`active_environments=0`） | **同时只能开 1 个靶机**。靶机题必须串行，且**必须回收**才起下一个 |
+| `read_requests_per_minute` | 120 | 拉题/详情/查环境都算读，轮询间隔 20s 远低于上限 |
+| `write_requests_per_minute` | 30 | 起靶机/提交/回收都算写，密集提交要注意 |
+| `notes_per_challenge` | 200 | 单题笔记上限 |
+| `stats` | 0 次尝试、0 分 | 干净起步（调试赛未产生计分记录） |
+
+> 推论：`CTF_AUTO_RELEASE_ENV` 今晚必须是 `true`（`finals_arm.sh` 默认已置 true）。
+> 若某题靶机没回收，下一道靶机题会**起不来**——表现为"提交不了/环境不可用"，而根因在配额。
+
 ## 3. 现在拉题 403 的真实原因：**阶段未开始，不是 WAF**
 
 `TestCTF2LiveSmoke` 现在报 `403 WAF 风控（冷却 5m0s）` 并 SKIP。但同一时刻、同一 IP：
