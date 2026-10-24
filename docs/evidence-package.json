@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-24T10:41:09+08:00",
+  "generated_at": "2026-10-24T10:46:28+08:00",
   "caliber": {
-    "head": "08c91ab",
+    "head": "c105991",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -25,13 +25,13 @@
     "exe": {
       "present": true,
       "path": "installer/secautomind-ai.exe",
-      "md5": "5eafc1cf4e8d3d24301e35e9a7426147",
+      "md5": "20c1f485ced5d9a161b6b6f177f0e3e4",
       "size_mib": 85.7,
       "size_mb": 89.8,
-      "vcs_revision": "f56743d7de01",
-      "vcs_time": "20261024020528",
+      "vcs_revision": "c10599194bec",
+      "vcs_time": "20261024024230",
       "dirty": false,
-      "mod_version": "v1.7.28-0.20261024020528-f56743d7de01"
+      "mod_version": "v1.7.28-0.20261024024230-c10599194bec"
     },
     "exe_mb": 89.8,
     "setup_mb": 20.4
@@ -177,8 +177,8 @@
     "hash_note": "行尾归一化（CRLF→LF）后的 SHA-256：消除 Windows/CI 行尾差异"
   },
   "gates": {
-    "secret_guard_rc": 1,
-    "secret_guard_verdict": "BLOCK",
+    "secret_guard_rc": 0,
+    "secret_guard_verdict": "PASS",
     "secret_guard_fingerprint_mode": "fingerprint",
     "secret_guard_selftest_rc": 0,
     "secret_guard_mutation_rc": 0,
@@ -194,15 +194,15 @@
       "path": "installer/secautomind-ai.exe",
       "present": true,
       "size_bytes": 89849344,
-      "md5": "5eafc1cf4e8d3d24301e35e9a7426147",
-      "sha256": "dcf942309624ddb534831175ec030a491d4510c83b0e662ba7e7aed01593a2ff"
+      "md5": "20c1f485ced5d9a161b6b6f177f0e3e4",
+      "sha256": "357470d1382f20b570feb65d84031dbd9eb18107d866ef49f146449b3530be6c"
     },
     "setup": {
       "path": "installer/SecAutoMind-Setup-1.7.28-x64.exe",
       "present": true,
-      "size_bytes": 20405115,
-      "md5": "ba268726d10beefb92b66bbd418edb89",
-      "sha256": "5045db5c8e07c205cf6b2965efbbfb33b91cca6b0bfd053d23ee984faad89892"
+      "size_bytes": 20406879,
+      "md5": "8b0eb6f06c83080a46bf5d35e1d12f2b",
+      "sha256": "813b5bbbc38782d0c1b0d61bd82bdbf203945b0ffda2e04d96d233c62677f3a0"
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
