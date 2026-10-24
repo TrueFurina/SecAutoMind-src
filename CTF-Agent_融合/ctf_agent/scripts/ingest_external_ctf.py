@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""
+外部 CTF 平台题源注入器（P0-① 扩 strict held-out 真·未见池的离线脚手架，2026-09-22）。
+
+为什么存在
+----------
+真·未见池当前只有 2 题（dnui_keyboard / real_reverse_js），统计无效。
+开放 CTF 平台（picoCTF / CTFtime / RingZer0 / crackmes.one / pwnable.kr …）
+是廉价拿到「有官方 flag 可校验 + 类别多样」题源的唯一渠道。本脚本把外部
+题源灌入本地题库，使其能被 `benchmark_heldout.py` 的既有排除链统一筛选。
+
+四条诚实红线（与 held-out 口径一致，违反即拒绝入库）
+---------------------------------------------------
+1. ground-truth 只存 `flag_sha256`，明文 flag 永不落盘。
+   若 staging 给了明文 `flag`，本脚本现场算 sha256 后**丢弃明文**再写文件。
+2. `description` 必须由挑战 brief 撰写，不得照 writeup 反推。
+   写入时强制 `provenance=real_past_ctf` + `external_source` 标注来源；
+   若 staging 显式 `source_reconstructed_from_writeup=true` 则拒收（交给既有排除链）。
+3. attachments 不得含明文 flag。整链 `_has_plaintext_flag_in_source()` 会在
+   `benchmark_heldout.py` 选题时确定性拦截；本脚本做 best-effort 预检告警。
+4. 真值不得是「占位词自证」形态（2026-10-08 新增，09-29「9/17」污染的根因入口）。
+   明文 flag 括号内容 ≥4 字符且逐字出现在本题 description 中 → 判占位嫌疑拒收
+   （presolve 的 desc 抽词会从描述 reproduces 同一个词 → 明文分支自证假命中）。
+   确需入库用 `--allow-suspect-truth` 显式放行（降级为 stderr 告警）。
+   另：`flag` 与 `flag_sha256` 同时给出时必须一致（红线④b）；
+   `flag{}` 空内容拒收（红线④a）。
+
+用法
+----
+  # 1) 看字段格式（自文档）
+  python scripts/ingest_external_ctf.py --emit-example > staging.example.json
+
+  # 2) 灌库（默认落到 data/questions_external/）
+  python scripts/ingest_external_ctf.py --staging staging.json
+
+  # 3) 仅校验不写
+  python scripts/ingest_external_ctf.py --staging staging.json --dry-run
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+EXTERNAL_DIR = ROOT / "data" / "questions_external"
+VALID_CATS = ("web", "crypto", "misc", "reverse", "pwn")
+_SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+_FLAG_RE = re.compile(r"(?:flag|dasctf|ctf|xctf|d0g3|d0gz)\{[^{}]*\}", re.I)
+
+
+def _path_rel(p) -> str:
+    """相对 ROOT 显示；若不在 ROOT 下（外部题源可能在仓库外）则回退绝对路径。"""
+    p = Path(p)
+    try:
+        return str(p.relative_to(ROOT))
+    except ValueError:
+        return str(p)
+
+
+def sha256_hex(s: str) -> str:
+    return hashlib.sha256(s.strip().encode("utf-8")).hexdigest()
+
+
+def _flag_inner(s: str) -> str | None:
+    """取第一个 flag 形态串括号内内容；无匹配返回 None，`flag{}` 返回空串。"""
+    m = _FLAG_RE.search(s)
+    if not m:
+        return None
+    mm = re.match(r"^[^{]*\{(.*)\}$", m.group(0), re.S)
+    return mm.group(1) if mm else None
+
+
+def validate(q: dict, allow_suspect_truth: bool = False) -> list[str]:
+    """返回错误列表；空列表表示可入库。同时就地补全 flag_sha256 / provenance。
+
+    红线④（真值可信性，2026-10-08 新增）默认 fail-closed：
+    allow_suspect_truth=True 时占位嫌疑降级为 stderr 告警（仍写 sha256）。"""
+    errs: list[str] = []
+    # 红线①块会 pop 掉明文 flag，故此处**先捕获**明文原值，供红线③精确判据使用
+    real_flag_plain = q.get("flag")
+    qid = q.get("id")
+    if not qid or not isinstance(qid, str):
+        errs.append("missing/empty id")
+        qid = "<no-id>"
+    if not q.get("title"):
+        errs.append(f"{qid}: missing title")
+    cat = (q.get("category") or "").lower()
+    if cat not in VALID_CATS:
+        errs.append(f"{qid}: bad category {cat!r} (want one of {VALID_CATS})")
+    if not q.get("description"):
+        errs.append(f"{qid}: missing description")
+
+    # 红线②：来源与重建标记
+    prov = q.get("provenance", "real_past_ctf")
+    if prov != "real_past_ctf":
+        errs.append(f"{qid}: provenance must be 'real_past_ctf' (got {prov!r})")
+    if not q.get("external_source"):
+        errs.append(f"{qid}: missing external_source (e.g. 'picoctf-2023')")
+    if q.get("source_reconstructed_from_writeup"):
+        errs.append(f"{qid}: source_reconstructed_from_writeup=true refused (红线②)")
+
+    # 红线①：ground-truth 只存 sha256；红线④：真值可信性
+    fs = q.get("flag_sha256")
+    plain = q.get("flag")
+    if fs:
+        if not _SHA256_RE.match(str(fs)):
+            errs.append(f"{qid}: flag_sha256 not 64-hex")
+        if plain:
+            # 红线④b：双字段同给必须一致（静默不一致 = 判分真值漂移）
+            if sha256_hex(str(plain)) != str(fs).lower():
+                errs.append(f"{qid}: flag 与 flag_sha256 不一致（红线④b）")
+    elif plain:
+        # 红线①：现场算哈希后丢弃明文，明文永不落盘
+        if _FLAG_RE.search(str(plain)):
+            inner = _flag_inner(str(plain))
+            if inner == "":
+                errs.append(f"{qid}: flag 括号内容为空（红线④a）")
+            # 红线④c：占位词自证——desc 抽词会从描述 reproduces 同词 → 假命中
+            # （09-29「9/17」污染根因：7 道占位词真值由此入库）
+            suspect = bool(inner) and len(inner) >= 4 and inner.lower() in str(
+                q.get("description") or "").lower()
+            if suspect:
+                msg = (f"{qid}: flag 括号内容 {inner!r} 逐字出现在本题 description"
+                       f"（红线④c 占位嫌疑）")
+                if allow_suspect_truth:
+                    print(f"[ingest][warn] {msg}（--allow-suspect-truth 放行）",
+                          file=sys.stderr)
+                else:
+                    errs.append(msg)
+            if not suspect or allow_suspect_truth:
+                q["flag_sha256"] = sha256_hex(str(plain))
+                q.pop("flag", None)
+        else:
+            errs.append(f"{qid}: flag not a flag-format string and no flag_sha256")
+    else:
+        errs.append(f"{qid}: need flag_sha256 or flag(明文, 现场哈希)")
+
+    # 红线③：attachment 不得含**真答案**
+    # 精确判据（2026-09-22 修正）：附件字节含 `q["flag"]` 的字面值 → 拒绝
+    # （agent 可直接读到答案）。其余 flag 形态串（占位符 CTF{...}/正则 CTF{.*}/
+    # 诱饵串）**仅告警不拒**——Google CTF 的 crypto 脚本常含占位/正则（如
+    # MHK2.sage 的 `CTF{????}`、hard.py 的 `CTF{}`），旧「含任意 flag 形态串即拒」
+    # 的宽判据会误伤 5 道好题。抓取阶段已做字节级字面检查，此处再兜一层。
+    real_flag = real_flag_plain
+    for a in (q.get("attachments") or []):
+        p = ROOT / str(a)
+        if not p.is_file():
+            continue
+        try:
+            raw = p.read_bytes()
+        except OSError:
+            continue
+        if isinstance(real_flag, str) and real_flag.strip() and real_flag.encode("utf-8") in raw:
+            errs.append(f"{qid}: attachment {a} 含真答案字面值（红线③）")
+            continue
+        # 无明文 flag（只给 sha256）时退回宽判据，fail-closed
+        if not real_flag:
+            txt = raw[:200_000].decode("utf-8", "ignore")
+            if _FLAG_RE.search(txt):
+                errs.append(f"{qid}: attachment {a} 含明文 flag 串（红线③）")
+                continue
+        txt = raw[:200_000].decode("utf-8", "ignore")
+        for h in sorted(set(_FLAG_RE.findall(txt))):
+            print(f"[ingest][warn] {qid}: {p.name} 含 flag 形态串 {h!r}"
+                  f"（占位/正则/诱饵？非真答案，请人工核）", file=sys.stderr)
+    return errs
+
+
+def ingest_one(q: dict, out_dir: Path, dry_run: bool,
+               allow_suspect_truth: bool = False) -> tuple[bool, str]:
+    errs = validate(q, allow_suspect_truth=allow_suspect_truth)
+    if errs:
+        return False, "; ".join(errs)
+    cat = (q.get("category") or "").lower()
+    qid = str(q["id"])
+    # 写盘前删掉任何残留明文 flag / 重建标记，防误留
+    q.pop("flag", None)
+    q.pop("source_reconstructed_from_writeup", None)
+    q.setdefault("provenance", "real_past_ctf")
+    q.setdefault("flag_pattern", r"flag\{[^}]+\}")
+    q.setdefault("difficulty", "unknown")
+    dest = out_dir / cat / f"{qid}.json"
+    if dry_run:
+        return True, f"[dry-run] would write {dest.relative_to(ROOT)}"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(q, ensure_ascii=False, indent=1), encoding="utf-8")
+    return True, f"wrote {_path_rel(dest)}"
+
+
+def emit_example() -> dict:
+    return {
+        "_comment": "staging schema for ingest_external_ctf.py。flag_sha256 与 flag(明文) 二选一；"
+                    "给 flag 会现场哈希后丢弃明文。external_source 必填。",
+        "questions": [
+            {
+                "id": "ext_picoctf2023_hello",
+                "title": "Hello World (示例)",
+                "category": "misc",
+                "description": "按挑战 brief 撰写（不要照 writeup 反推）。本题要求…",
+                "flag_sha256": "REPLACE_WITH_64HEX_SHA256_OF_PLAINTEXT_FLAG",
+                "external_source": "picoctf-2023",
+                "attachments": [],
+                "difficulty": "EASY",
+            },
+            {
+                "id": "ext_ringzer0_xss_demo",
+                "title": "XSS demo (明文 flag 现场哈希示例)",
+                "category": "web",
+                "description": "由 brief 撰写：某页面存在反射型 XSS…",
+                "flag": "flag{THIS_IS_A_PLACEHOLDER_REPLACE_ME}",
+                "external_source": "ringzer0",
+                "attachments": [],
+            },
+        ],
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="外部 CTF 题源注入器（离线脚手架）")
+    ap.add_argument("--staging", help="staging JSON 路径（含 {questions:[...]}）")
+    ap.add_argument("--emit-example", action="store_true",
+                    help="打印 staging 示例 schema 到 stdout 并退出")
+    ap.add_argument("--external-dir", default=str(EXTERNAL_DIR),
+                    help=f"输出目录（默认 {EXTERNAL_DIR}）")
+    ap.add_argument("--dry-run", action="store_true", help="只校验不写盘")
+    ap.add_argument("--allow-suspect-truth", action="store_true",
+                    help="红线④c 占位嫌疑降级为告警（默认 fail-closed 拒收；"
+                         "确需入库真实短词 flag 时显式放行并人工复核）")
+    args = ap.parse_args()
+
+    if args.emit_example:
+        print(json.dumps(emit_example(), ensure_ascii=False, indent=2))
+        return 0
+    if not args.staging:
+        ap.error("需要 --staging 或 --emit-example")
+    staging_path = Path(args.staging)
+    if not staging_path.is_file():
+        print(f"[ingest] staging 不存在: {staging_path}", file=sys.stderr)
+        return 2
+    try:
+        blob = json.loads(staging_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"[ingest] staging JSON 解析失败: {exc}", file=sys.stderr)
+        return 2
+    qs = blob.get("questions") if isinstance(blob, dict) else blob
+    if not isinstance(qs, list):
+        print("[ingest] staging 顶层需为 {questions:[...]} 或 [...] 列表", file=sys.stderr)
+        return 2
+
+    out_dir = Path(args.external_dir).resolve()
+    ok, fail = 0, 0
+    for q in qs:
+        if not isinstance(q, dict):
+            print(f"[ingest] 跳过非对象条目: {q!r}")
+            fail += 1
+            continue
+        good, msg = ingest_one(q, out_dir, args.dry_run,
+                               allow_suspect_truth=args.allow_suspect_truth)
+        if good:
+            ok += 1
+            print(f"[ingest] OK  {msg}")
+        else:
+            fail += 1
+            print(f"[ingest] FAIL {msg}", file=sys.stderr)
+    print(f"[ingest] 完成：{ok} 成功 / {fail} 失败"
+          + ("（dry-run，未写盘）" if args.dry_run else ""))
+    return 1 if fail else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

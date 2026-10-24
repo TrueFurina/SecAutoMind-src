@@ -1,0 +1,78 @@
+# -*- coding: utf-8 -*-
+"""presolve JPEG-PNG 视觉兜底路由单元测试（2026-08-28 视觉能力骨架）。
+
+验证：skills 提取 PNG 但 tesseract 未命中时，_try_jpeg_png_embedded 调用视觉 LLM
+兜底读图内 flag，且以题面 flag_sha256 严格校验（匹配通过 / 不匹配丢弃 / 无 png 不调）。
+不调真实视觉 API（mock ai_vision）。
+"""
+import asyncio
+import hashlib
+import os
+import sys
+from types import SimpleNamespace
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from llm import client as llm_client
+import core.presolve as P
+
+# 用仓库内真实附件的【绝对路径】，避免 pytest 运行 cwd 非 ctf_agent/ 时相对路径
+# 解析失败导致 os.path.isfile 守卫判 false（历史桩失败根因）。附件属真题集仓库一部分。
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+JPG = os.path.join(_REPO, "data/questions_real/_attachments/misc/real_misc_xuanhun_signin/xz1.jpg")
+IMG = os.path.join(_REPO, "data/questions_real/_attachments/misc/real_misc_xuanhun_signin/_extracted.png")
+
+
+# 本文件全部用例都依赖 data/questions_real/_attachments/ 下的真实附件（.gitignore 排除）。
+# 附件缺失时 isfile 守卫判 false，*_returns_none 会恰好返回 None 而假绿 —— 一并移出默认门禁。
+# 2026-10-12：该附件（xz1.jpg）随本地未跟踪数据丢失事件被删（全盘 find 零副本、无远端副本、
+# 不可恢复）。故补 skipif 优雅降级：附件在盘 → 严格跑；缺失 → 明确 skip（不再假绿/假红）。
+# 守卫判据 = 附件是否在盘（数据自检，非写死数字），附件一旦恢复在盘即自动恢复严格校验。
+pytestmark = [
+    pytest.mark.local,
+    pytest.mark.skipif(
+        not os.path.isfile(JPG),
+        reason=f"真题附件永久丢失（2026-10-12 数据丢失事件），不可复现: {JPG}",
+    ),
+]
+
+def _q(flag_sha256=""):
+    return SimpleNamespace(id="real_misc_xuanhun_signin", category="misc",
+                           attachments=[JPG], flag_sha256=flag_sha256,
+                           flag_pattern="flag\\{[^}]+\\}")
+
+
+def test_vision_fallback_sha256_pass(monkeypatch):
+    skill_ret = {"ok": True, "png_path": IMG, "flag": None}
+    monkeypatch.setattr(P, "_attachments", lambda q: [JPG])
+    monkeypatch.setattr("skills.jpeg_png_embedded.run", lambda params: skill_ret)
+    monkeypatch.setattr(llm_client, "ai_vision", lambda prompt, imgs, **kw: "flag{abc}")
+    flag = asyncio.run(P._try_jpeg_png_embedded(_q(hashlib.sha256(b"flag{abc}").hexdigest())))
+    assert flag == "flag{abc}"
+
+
+def test_vision_fallback_sha256_mismatch_returns_none(monkeypatch):
+    skill_ret = {"ok": True, "png_path": IMG, "flag": None}
+    monkeypatch.setattr(P, "_attachments", lambda q: [JPG])
+    monkeypatch.setattr("skills.jpeg_png_embedded.run", lambda params: skill_ret)
+    monkeypatch.setattr(llm_client, "ai_vision", lambda prompt, imgs, **kw: "flag{wrong}")
+    flag = asyncio.run(P._try_jpeg_png_embedded(_q(hashlib.sha256(b"flag{abc}").hexdigest())))
+    assert flag is None
+
+
+def test_vision_fallback_no_png_returns_none(monkeypatch):
+    skill_ret = {"ok": True, "png_path": None, "flag": None}
+    monkeypatch.setattr(P, "_attachments", lambda q: [JPG])
+    monkeypatch.setattr("skills.jpeg_png_embedded.run", lambda params: skill_ret)
+    ai_called = {"v": False}
+
+    def fake_vision(prompt, imgs, **kw):
+        ai_called["v"] = True
+        return "flag{abc}"
+
+    monkeypatch.setattr(llm_client, "ai_vision", fake_vision)
+    flag = asyncio.run(P._try_jpeg_png_embedded(_q("")))
+    assert flag is None
+    assert ai_called["v"] is False

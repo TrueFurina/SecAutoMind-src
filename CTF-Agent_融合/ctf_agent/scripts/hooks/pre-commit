@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# pre-commit 六门禁钩子
+#   ① 密钥扫描（P0-1 防回归，2026-08-21）：暂存区命中 ak_live_/sk-*/DASCTF_TOKEN= 明文即拒
+#   ② 诚实口径扫描（2026-08-23）：暂存区 .md 命中假水位（解出数递增/真实解出 flag/+N 真实解出）即拒
+#   ③ 写者租约门禁（治理，2026-08-22；2026-08-22 补丁：焊死"靠自觉性激活"缺口）：
+#      无会话标识且无单人模式→默认拒绝（exit 1）；租约属别人→拒；属自己→scope 越界拒 + 自动续租
+#   ④ git 身份绑定校验（2026-08-23，堵 P1-7）：commit author 必须 == 会话 id，
+#      否则所有 commit 同一 author、租约持有者无法在 git 层映射/审计
+#   ⑤ commit message 假水位拦截 → 由独立 git_hooks/commit-msg 钩子负责（$1 传 message 路径，更可靠）
+#   ⑥ 快速回归门禁（2026-08-23，堵"测试红提交"——锐评 P0-1 假门禁）：
+#      commit 级跑防错体系核心测试（机制自检，<10s）；全量 pytest 由 Reviewer gate 在 merge 前负责
+#
+# 安装（仓库根目录，Windows Git Bash）：
+#   cp scripts/hooks/pre-commit git_hooks/pre-commit   # 本项目用 core.hooksPath=git_hooks，非 .git/hooks
+#   cp scripts/hooks/commit-msg git_hooks/commit-msg
+#   （git_hooks/ 为激活位、随仓库追踪；scripts/hooks/ 为源，setup.sh 同步）
+# 会话归属（hook 如何知道"我是谁"，二选一，优先级从高到低）：
+#   环境变量 CT_AGENT_SESSION=xxx（推荐，每个 AI 会话 export 自己的标识）
+#   git config atomcode.session xxx（会话级/仓库级，无环境变量时兜底）
+#
+# 行为：任一门禁失败 exit 1 阻断提交；六者都过才提交。
+set -e
+
+# 仓库根目录：用 git 自身定位，避免依赖钩子所在层级
+# （core.hooksPath=git_hooks 时钩子在 <root>/git_hooks/；旧式 .git/hooks 时深两级——
+#  硬编码 ../.. 会在 git_hooks 模式下把 ROOT 算到仓库父目录，导致扫描脚本找不到文件、
+#  误杀所有提交。2026-08-22 修。）
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)/ctf_agent" || ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PY="$ROOT/.venv/Scripts/python.exe"
+if [ ! -x "$PY" ] && [ ! -f "$PY" ]; then
+    PY="python"
+fi
+
+cd "$ROOT"
+
+# ── ⓪ 仓库健康门禁 L0（2026-09-19 防复发；纯文件系统，零 git 依赖）──
+# 兜底：.git/refs/ 目录缺失是致命的（git 报 `fatal: not a git repository`，所有门禁
+# 全线失效）。本钩子由 git 调用，正常时 refs 必在；此处覆盖"refs 在 git 启动后消失"
+# 的竞态窗口。fail-closed。
+"$PY" scripts/_git_guard.py --quiet || {
+    echo "❌ ⓪ 仓库健康门禁 L0 未过：.git 元数据损坏（诊断见上）"
+    echo "   处置：python scripts/_git_guard.py --rebuild   # 从最新 refs 快照重建"
+    exit 1
+}
+
+# ── ① 密钥扫描 ──
+"$PY" scripts/_scan_secrets.py --cached
+
+# ── ② 诚实口径扫描（假水位拦截，2026-08-23）──
+"$PY" scripts/_honesty_scan.py --cached
+
+# （commit message 假水位拦截 2026-08-23 由独立 commit-msg 钩子负责——
+#   git 传 message 文件路径作 $1，比 pre-commit 里猜 COMMIT_EDITMSG 位置可靠）
+
+# ── ③ 写者租约门禁 ──
+SESSION="${CT_AGENT_SESSION:-}"
+if [ -z "$SESSION" ]; then
+    SESSION="$(git config --get atomcode.session || true)"
+fi
+if [ -z "$SESSION" ]; then
+    # 无会话标识：默认拒绝（机器执法不靠自觉性激活）
+    # 仅当显式单人调试模式 CT_AGENT_SINGLE=1 且确认无并行 AI 会话时放行
+    if [ -n "${CT_AGENT_SINGLE:-}" ]; then
+        echo "ℹ️ lease: 单人调试模式（CT_AGENT_SINGLE=1）放行——请确保当前无并行 AI 会话，否则本放行使 CTDE 门禁失效"
+        exit 0
+    fi
+    echo "❌ lease: 无会话标识且无单人模式，多会话环境禁止无租约提交。"
+    echo "   处置二选一："
+    echo "     1) 多会话协同：export CT_AGENT_SESSION=<你的会话名>，再 scripts/_lease.py acquire 租约后提交"
+    echo "     2) 单人调试且确认无并行会话：export CT_AGENT_SINGLE=1 后重试"
+    echo "   切勿为图省事长期设 CT_AGENT_SINGLE=1 提交——那正是初赛 0 分'多会话无锁并发'的根因"
+    exit 1
+fi
+"$PY" scripts/_lease.py precommit --session "$SESSION"
+
+# ── ③.5 main 直提拦截（2026-08-24 阶段3 红绿灯：main 只走合并闸门）──
+# main 分支直接 commit（无 MERGE_HEAD / 无 SQUASH_MSG）→ 拒绝。
+# 工人会话必须在 w/* 车道提交，main 只通过 merge/squash 由闸门收口。
+CUR_BRANCH="$(git branch --show-current 2>/dev/null)"
+IS_MERGE=0
+[ -f "$(git rev-parse --git-path MERGE_HEAD 2>/dev/null)" ] && IS_MERGE=1
+[ -f "$(git rev-parse --git-path SQUASH_MSG 2>/dev/null)" ] && IS_MERGE=1
+if [ "$CUR_BRANCH" = "main" ] && [ "$IS_MERGE" = "0" ]; then
+    echo "❌ main 直提拦截（阶段3 红绿灯）：main 分支禁止直接提交"
+    echo "   处置：在 w/<任务名> 车道提交（git worktree add ../wt-<任务名> -b w/<任务名>），"
+    echo "         再通过合并闸门（pre-merge-commit + _merge_gate.py）合入 main"
+    exit 1
+fi
+
+# ── ④ git 身份绑定校验（堵 P1-7：author 必须 == session）──
+# P0-2（2026-08-24）：默认告警（不硬拦，避免误伤在飞会话）；CT_AGENT_IDENTITY_ENFORCE=1
+# 时硬拦（正式赛/benchmark 跑分前开启，禁止身份覆盖）。bind_at 留痕供审计。
+AUTHOR="$(git config user.name || true)"
+if [ "$AUTHOR" != "$SESSION" ]; then
+    LASTBIND="$("$PY" scripts/_sign.py last-bind --session "$SESSION" 2>/dev/null || true)"
+    if [ -z "$AUTHOR" ]; then
+        echo "⚠️ 身份脱钩：git author 未设置，无法映射会话「$SESSION」"
+    else
+        echo "⚠️ 身份脱钩：git author「$AUTHOR」≠ 会话「$SESSION」"
+    fi
+    [ -n "$LASTBIND" ] && echo "   （该会话最近一次 bind 留痕：$LASTBIND——请核对是否被其他会话覆盖）"
+    if [ -n "${CT_AGENT_IDENTITY_ENFORCE:-}" ]; then
+        echo "❌ CT_AGENT_IDENTITY_ENFORCE=1 硬拦：禁止身份覆盖"
+        echo "   处置：scripts/_sign.py bind --session $SESSION 恢复身份后再提交"
+        exit 1
+    fi
+    echo "   （默认告警模式：可继续提交，但请在正式赛/跑分前开启 CT_AGENT_IDENTITY_ENFORCE=1）"
+fi
+
+# ── ⑥ 快速回归门禁（2026-08-23，堵"测试红提交"——锐评 P0-1 假门禁）──
+# commit 级跑防错体系核心测试（机制自检，<10s）。全量 pytest -m "not slow" 由
+# Reviewer gate（scripts/_reviewer_gate.py，merge 前）负责；此处只保证"门禁机制自身
+# 没被改坏"，不是"本次改动功能全绿"——两者分工明确，避免每 commit 都跑 30s+ 全量。
+# 2026-08-23 扩充：加入 reviewer/task_board/coupling/closeout（防错体系全脚本，71 用例 <3s）
+echo "── ⑥ 快速回归（防错体系核心测试）──"
+# 2026-09-19 补：加入防复发机制自检（git 健康门禁 / bundle 快照 / 僵尸租约），
+# 堵一个真实盲点——B 提交曾只改 _git_snapshot.py 而 test_git_guard.py 变红却照样过闸
+# （⑥ 未含这些文件），导致"全量红"被 commit 级放行。防复发的代码必须自身进 ⑥。
+#
+# 2026-09-19 再补两个"假红"缺陷（engineer-3 复现，团队走 `git commit -- <paths>` 时必踩）：
+#   ① 索引泄漏：`git commit -- <paths>` 会让 git 向本钩子导出
+#      GIT_INDEX_FILE=<绝对路径>/.git/next-index-*.lock（临时索引）。⑥ 里 pytest 的
+#      temp-repo 再跑 `git commit` 时继承该变量 → 用主仓的临时索引 → “nothing added to
+#      commit” → rc=1 → 假红。用 `env -u GIT_INDEX_FILE` 把变量隔离在 pytest 子进程之外
+#      （注意：不能全局 unset——①②的 --cached 扫描正需要该临时索引）。
+#   ② tmp 回收：pytest 会话启动的 tmp 垃圾回收会批量删除（>50 文件）→ 触发环境
+#      safe-delete 守卫 → pytest 非零退出 → 假红。已在 pytest.ini 固定
+#      tmp_path_retention_count（不删旧 tmp），此处不再重复传参，配置单一来源。
+#   ③ 2026-10-11 补：只 -u GIT_INDEX_FILE **不够**——常规 `git commit`（不带 -- paths）
+#      同样会导出 GIT_DIR（实测 = 本车道 worktree 的 gitdir）、GIT_WORK_TREE 等一整批
+#      "本地环境变量"（权威清单：`git rev-parse --local-env-vars`）。⑥ 里在 tmp_path
+#      构造临时仓库的用例继承 GIT_DIR 后，`git init`/`git add`/`git config` 全落在
+#      **主仓**：3 个用例假红 + 测试文件被提交成垃圾 commit + local git config 被改写。
+#      测试侧已在 tests/conftest.py 用 clean_git_env() 隔离（权威层）；此处按同一清单
+#      一并 -u，兜住未来任何"忘了传 env=" 的临时仓库用例。
+env -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
+    -u GIT_COMMON_DIR -u GIT_CONFIG -u GIT_CONFIG_COUNT -u GIT_CONFIG_PARAMETERS \
+    -u GIT_DIR -u GIT_GRAFT_FILE -u GIT_IMPLICIT_WORK_TREE -u GIT_INDEX_FILE \
+    -u GIT_NO_REPLACE_OBJECTS -u GIT_OBJECT_DIRECTORY -u GIT_PREFIX \
+    -u GIT_REPLACE_REF_BASE -u GIT_SHALLOW_FILE -u GIT_WORK_TREE \
+    "$PY" -m pytest \
+    tests/test_lease.py tests/test_lease_multiwriter.py \
+    tests/test_sign.py tests/test_honesty_scan.py \
+    tests/test_doc_consistency.py tests/test_facts.py \
+    tests/test_reviewer_gate.py tests/test_task_board.py \
+    tests/test_coupling_cluster.py tests/test_closeout.py \
+    tests/test_antifraud.py \
+    tests/test_git_guard.py tests/test_git_snapshot.py tests/test_lease_reap.py \
+    -q --no-header
+
+# ── ⑦ 文档一致性真实扫描（2026-08-23，堵 P1-6"三方谎言"复发）──
+# 防错体系单测只测脚本逻辑（mock 输入）；这里跑脚本本体扫真实文档：
+# 文档断言（如"单写者全局租约"）与实现漂移 → 拒绝提交。
+"$PY" scripts/_doc_consistency.py
+
+# ── ⑧ merge 全量门禁（2026-08-23 锐评 P0-1 实装：堵"merge 带红"；2026-08-24 阶段3 增强：
+#    合并闸门二合一——KPI 不降断言 + 全量 pytest，见 scripts/_merge_gate.py）──
+# git 无 pre-merge hook（旧注释；git 2.24+ 已有 pre-merge-commit，见 git_hooks/pre-merge-commit）。
+# merge 进行中 pre-commit 也会触发，用 MERGE_HEAD 判定（squash-merge 也设置 MERGE_HEAD）。
+# 普通 commit 保持 ⑥ 快速回归（<10s）不阻塞协作——分工：commit 级快速、merge 级全量。
+if [ -f "$(git rev-parse --git-path MERGE_HEAD 2>/dev/null)" ]; then
+    echo "── ⑧ merge 全量门禁（merge 进行中：KPI 不降断言 + 全量 pytest）──"
+    "$PY" scripts/_merge_gate.py
+fi
+
+# ── ⑩ 反注水法令（写死，2026-08-27 用户严令：禁止一切注水，严厉惩罚）──
+# 每次 commit 都跑（含非 merge 提交）：KPI 水位写死锚校验 + 泄露式假验证扫描 +
+# 暂存区泄露扫描 + 授权题块走私检测 + 基线篡改检测。任一命中 → 永久记入违规账并阻断提交。
+# 这是「禁止注水」从文档宣言升级为写死机器执法的落点，fail-closed。
+echo "── ⑩ 反注水法令（写死，fail-closed）──"
+"$PY" scripts/_antifraud.py --pre-commit
+
+# ── ⑪ 目录结构守卫（2026-08-28：防 agent 散写文件堆积）──
+# 拦截向仓库根目录 / deliverables 根 / idea-stage 根 新增散落文件（白名单除外，fail-closed）。
+# 仅检查本次新增（--diff-filter=A），不误伤既有/重命名；自身异常 fail-open（不阻断提交）。
+# 规则与白名单见仓库根 AGENTS.md；手动全量自检：python scripts/check_structure.py --all
+echo "── ⑪ 目录结构守卫 ──"
+"$PY" scripts/_structure_guard.py
+
+# ── ⑫ 数据真值/基准门禁聚合（2026-10-10 新增）──
+# 起因：三道**数据类**门禁（机器真值 schema 审计 / 正式基准清单 vs 磁盘 / 题库健康基线）
+# 此前**一道都没接进钩子**，只能靠人记得手动跑——每道门禁自己都能发现问题，
+# 但"记得跑"是最弱的一环，纸面门禁等于没有门禁。
+# 聚合器 scripts/_run_all_gates.py：0.85s 跑全，失败即阻断（fail-closed）。
+# 题库健康门禁只在**回归**时红（questions_real 有 77 道已知历史坏题，
+# 按"坏题>0 即红"会天天假红，而天天假红的护栏最终一定被整段注释掉）。
+echo "── ⑫ 数据真值/基准门禁（真值 schema + 基准一致性 + 题库健康）──"
+"$PY" scripts/_run_all_gates.py || {
+    echo "❌ 数据门禁未过：机器真值可能已被异构覆盖，或正式基准清单与磁盘不一致。"
+    echo "   诊断：.venv/Scripts/python.exe scripts/_run_all_gates.py --verbose"
+    echo "   修复后重试；确属口径变更需更新基线时见各脚本 --help"
+    exit 1
+}

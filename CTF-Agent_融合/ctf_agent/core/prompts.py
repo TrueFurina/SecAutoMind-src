@@ -1,0 +1,502 @@
+"""提示词组装模块（上帝模块拆分——main_agent 提示词职责独立）。
+
+从 main_agent 提取：build_plan_prompt / build_reason_prompt /
+build_self_reflection / infer_skill_require。
+模块级函数接收 ctx（AgentContext 鸭子类型，不 import main_agent 防循环依赖），
+逻辑与 main_agent 原实现一致（提取不重构）。
+
+背景（2026-08-20 锐评整改）：main_agent 943 行上帝模块按职责拆——
+提示词组装归本模块，兜底脚本归 fallbacks.py，主循环/LLM/校验留 main_agent。
+"""
+
+from typing import Optional
+
+from core.answer_key_filter import filter_answer_key_attachments  # ITEM4-A：隔离答案密钥附件
+
+from verify.error_classifier import ERR_TOOL_FAILURE  # noqa: F401 - 反思归因用
+
+
+# ── 解题作战铁律（2026-08-22 并行会话烧 token 事故整改，运行时强制，详见 AGENTS.md 第七節）──
+# 每次解题动手前必过一遍；目标：禁手搓替代成熟工具、设止损线、锚定 flag accepted。
+SOLVE_DISCIPLINE = """\
+【解题作战铁律·每次动手前自检】
+1. 工具优先（R1）：动手前先查 skills/ 目录与 web_search 公开 writeup。仓库已有 zip_chain_decode /
+   zip_filename_chain_decode（已实测解 10663）/ misc_zip_fake_encryption / rsa_fermat_factor 等现成
+   skill，绝不手搓 Z3 / 自研爆破替代。zip 已知明文攻击用 bkcrack（外部工具）。
+2. 假设先于实现（R2）：核心假设先做最小成本验证（1 次工具调用能验证的，绝不手写 100 行）。
+3. 止损线（R3）：单条技术路线 3 轮不命中即停换方案；每轮先声明"验证什么假设、预算几轮"。
+4. 信息优先于暴力（R4）：爆破前先盘点题目自带已知信息（文件头/CRC/时间戳/文件名/注释/同密码规律）
+   缩小空间；暴力须向量化且有界（预先声明预算轮数）。
+5. 目标锚定（R5）：每步问"这一步在朝 flag accepted 前进，还是在造轮子？"工程完备性不产生分数。
+6. 成本核算（R6）：超预算立即汇报，不闷头继续。token = 比赛时钟。
+7. 置信度输出（R7，P1-1 盲区分析管道）：每步分析末尾单独一行输出 `confidence: <0-100>`，
+   先报信心再动手。该值仅作自评记录（赛后按 solved_by 拆分盲区），不参与任何自动化判定。"""
+
+
+# ── E6（2026-08-25 桶B攻坚）few-shot 方向决策范例 ──
+# 目标：桶B=方向决策错（占失败 57.1%）——模型在"先判断题型→选正确首步"上走偏。
+# 以下精选"题型速判 → 正确首步"范例，注入 plan 提示，帮模型先定方向再动手，
+# 与 SOLVE_DISCIPLINE 互补（铁律是规则，范例是 concrete worked example）。
+# 默认不注入（ctx.few_shot=False）；仅 A/B 实验开启（CTF_AGENT_FEWSHOT=1）。
+FEW_SHOT_BANK = """\
+【方向决策范例·先定题型再动手】
+例1(crypto·RSA): 拿到 n,e,c → 先算 gcd(e,φ?) 不可行；先判 e 与 n 的关系——
+  · e 极小(如3)→ m^e < n 直接开 e 次根；否则密文小直接开方。
+  · |p-q| 极小→费马分解(rsa_fermat_factor)；d 极小→维纳(Wiener)连分数。
+  · 多题同 n 不同 m→共模/广播攻击。切勿一上来手搓大数分解。
+例2(misc·压缩包): 拿到 zip → 先看是否加密类型——
+  · 伪加密(标志位 09→00)→改字节免密解；已知部分明文→bkcrack 已知明文攻击。
+  · 弱密码→字典/hashcat 有界爆破(先声明预算轮数)。切勿全空间暴力。
+例3(web): 拿到网址 → 先源码审计+目录扫描+备份文件(/.git/robots/flag.php~)，
+  再据漏洞类型构造 payload；切勿盲打。sql→先测注入点，ssrf→探内网，xxe→读文件。
+例4(reverse): 拿到二进制 → 先 file/strings/查壳确定语言与保护，
+  再决定 IDA/Ghidra/pyc反编译；切勿一上来反编译最大函数空读。
+  本机无 IDA 时用 rea_probe（lane=managed/go/pe 先摸结构，lane=decompile_batch 一次导全量
+  伪代码；单函数 lane=decompile 每次要付 ~40s 分析成本，别逐个炸）。
+  加壳（UPX 等）会让函数数骤降且不报错，先看 rea_probe 的 packer/degraded 提示再下结论。
+例5(misc·流量/图像): 拿到 pcap→用 pcap_probe（本机无 tshark）拿协议分布+流表+HTTP/DNS/TLS 正文，
+  flag 被拆在多个 TCP 段时它按 seq 重组；定位到流号后用 flow=N 取该流全文。
+  拿到图像→先 steg 工具扫描+网格采样(如 VNCTF 类需逐格 OCR)，切勿只做单层 base 解码即放弃。"""
+
+
+def _clip_value(s, limit: int = 64) -> str:
+    """参数取值截断：按枚举分段边界切，绝不切出半个成员名。
+
+    `lane=auto|managed|go|pe|elf|decompile|decompile_batch` 全长 49 字符。
+    旧的 `[:44]` 把它切成 `...decompile|decompile_b` —— prompt 里出现一个
+    不存在的 lane 名，模型要么忽略要么报错，都比不告诉更糟（2026-10-21
+    test_tool_wiring 因此红）。limit 64 覆盖现有最长枚举；超长时在最后一个
+    分段符后下刀，保证每个留下的成员名完整。
+    """
+    s = str(s)
+    if len(s) <= limit:
+        return s
+    cut = s[:limit]
+    for sep in ("|", "；", ";", "，", ","):
+        i = cut.rfind(sep)
+        if i > limit // 2:
+            return cut[: i + 1] + "…"
+    return cut + "…"
+
+
+def _tool_inventory_block(ctx) -> str:
+    """渲染真实工具清单（2026-10-20 接线审计）。
+
+    为什么要有这一块：plan prompt 原先不列任何工具名，模型只能从
+    SOLVE_DISCIPLINE 的静态文案里认工具。结果是「注册≠可见」——
+    rea_probe / wasm_probe / pcap_probe 注册进 registry 后从未被调用过。
+
+    渲染策略（控 token）：只为「声明了额外参数」的工具展开一行说明（这类工具
+    光知道名字没用，必须知道能传什么）；其余工具压成一行名字列表。
+
+    失败即静默省略：清单渲染故障不得影响解题主流程。
+    """
+    reg = getattr(ctx, "registry", None)
+    if reg is None:
+        return ""
+    try:
+        items = reg.inventory(str(getattr(ctx.question, "category", "") or ""), limit=30)
+    except Exception:  # noqa: BLE001 - 清单故障降级为不注入
+        return ""
+    if not items:
+        return ""
+    detailed: list[str] = []
+    plain: list[str] = []
+    for it in items:
+        params = it.get("params") or {}
+        if params:
+            # 渲染成 `lane=auto|managed|...`：只列名字不够，模型必须知道可选值
+            # （实测：仅列名字时 `decompile_batch` 会被 64 字截断切掉，那行等于没用）。
+            # 2026-10-21 续：[:44] 又会把 49 字符的 lane 值切成
+            # `...decompile|decompile_b` —— 模型看到的是一个**不存在的 lane 名**，
+            # 比不告诉更糟。改成 limit=64 + 按枚举分段边界切（|/；/，），
+            # 半个成员名永远不出现在 prompt 里。
+            spec = ", ".join(f"{k}={_clip_value(v)}" for k, v in sorted(params.items()))
+            raw = str(it.get("desc") or "").split("\n")[0].strip()
+            desc = (raw[:50] + "…") if len(raw) > 50 else raw
+            detailed.append(f"- {it['name']}［{spec}］: {desc}")
+        else:
+            plain.append(it["name"])
+    lines = ["【可用工具】action=tool 时 tool 取下列名字；括号内是该工具能接收的 plan 参数"
+             "（写在 plan 顶层，不写则用默认值；未声明的参数不会生效）:"]
+    lines.extend(detailed)
+    if plain:
+        lines.append("其余可用: " + ", ".join(plain))
+    return "\n".join(lines)
+
+
+def build_plan_prompt(ctx, attempt: int) -> str:
+    """首轮/每轮 plan 提示词（题型/附件/监督建议/错误归因/已执行步骤）。"""
+    q = ctx.question
+    parts = [f"题目: {getattr(q, 'title', '')}",
+             f"题型: {getattr(q, 'category', '')}",
+             str(getattr(q, 'description', '') or '')]
+    # ITEM4-A：plan prompt 只列出真实输入附件，不把答案密钥文件名暴露给 LLM
+    _q_atts = filter_answer_key_attachments(q, getattr(q, 'attachments', None) or [])
+    if _q_atts:
+        parts.append(f"附件: {', '.join(_q_atts)}")
+    # E3（2026-08-25 桶C攻坚）：file_analyze 全文强制注入 plan prompt。
+    # 桶C=证据不进脑——附件已读但 prompt 仅含路径/截断摘要，模型空转。
+    # 把累积的附件全文整段重投，不受 steps 窗口（近3步）挤出，且不做 1200 截断。
+    # 仅 ctx.e3_enabled 开启时注入（A/B 开关，默认关，保证基线 KPI 不被改动）；
+    # 注入时置 ctx.evidence_injected_into_prompt=True，供 error_struct.evidence_injected 度量。
+    _att_evidence = getattr(ctx, "attachment_evidence", None) or []
+    if _att_evidence and getattr(ctx, "e3_enabled", False):
+        _ev_block = "\n\n".join(
+            f"【附件分析全文 #{i+1}】\n{e[:3000]}" for i, e in enumerate(_att_evidence)
+        )
+        parts.append("⚠️ 附件分析全文（解题必须基于以下真实内容，勿凭空猜测）:\n" + _ev_block)
+        ctx.evidence_injected_into_prompt = True
+    if ctx.hint_text:
+        parts.append(f"提示: {ctx.hint_text}")
+    # 抄 NUS Advisor：监督定向建议注入（AI 卡壳/走偏时修正路径）
+    if ctx.advisor_hint:
+        parts.append(f"⚠️ 监督建议: {ctx.advisor_hint}")
+    default_flag_pattern = r'flag\{[^}]+\}'
+    parts.append(f"flag 格式: {getattr(q, 'flag_pattern', default_flag_pattern)}")
+    # 结构化修正指令（v2.0 错误归因：明确告诉模型错在哪、关键信息、往哪改）
+    if ctx.correction:
+        corr = ctx.correction
+        cparts = ["⚠️ 上一轮失败，错误归因:"]
+        if corr.get("error_category"):
+            cparts.append(f"错误类型: {corr['error_category']}")
+        if corr.get("key_info"):
+            cparts.append(f"关键信息: {corr['key_info']}")
+        if corr.get("suggestion"):
+            cparts.append(f"修正方向: {corr['suggestion']}")
+        parts.append("\n".join(cparts))
+    if ctx.steps:
+        recent = [f"{s.stage} | {s.action} | {s.observation[:1200]}" for s in ctx.steps[-3:]]
+        parts.append("已执行步骤:\n" + "\n".join(recent))
+    # P2 记忆层（2026-10-03）：题内「已试策略黑板」注入——近 3 步窗口挤出的更早
+    # 失败策略在这里保持可见，防规划器原样重复已失败路径（0/10 诊断的空转根源）。
+    # 纯规则零 LLM；黑板未启用/为空时此块不出现，prompt 与旧版逐字一致。
+    _bb = getattr(ctx, "blackboard", None)
+    if _bb is not None:
+        try:
+            _bb_text = _bb.summary()
+        except Exception:  # noqa: BLE001 - 黑板渲染故障不影响主流程
+            _bb_text = ""
+        if _bb_text:
+            parts.append(_bb_text)
+    # P2 第三刀（2026-10-03）：卡壳时的「分层作战视图」——把题型标准流程与黑板
+    # 失败签名桥接，让规划器显式跳过已试失败路径、优先走未试步骤（flat-plan 空转
+    # 根因的确定性修复）。仅黑板启用且已有失败记录时注入；否则 prompt 不变。
+    try:
+        from core.hierarchical_plan import build_hierarchical_view
+        _hv = build_hierarchical_view(ctx)
+    except Exception:  # noqa: BLE001 - 视图生成故障不影响主流程
+        _hv = ""
+    if _hv:
+        parts.append(_hv)
+    # G1/G5（2026-09-29 接入运行时）：持久工作区会话记录注入 plan prompt。
+    # 这是"LLM 贡献 0/14"根因（证据不进脑）的会话层修复：下一步能看到上一步
+    # 真实命令与完整输出（而非仅近 3 步 1200 字摘要）。优先用 G5 压缩记忆
+    # （关键事实保序 + 最近历史完整），回退 Session.transcript。超限截断保尾。
+    _gsess = getattr(ctx, "g_session", None)
+    if _gsess is not None and getattr(_gsess, "history", None):
+        _gmem = getattr(ctx, "g_memory", None)
+        try:
+            _summary = _gmem.compact(keep_recent=5) if _gmem is not None else _gsess.transcript()
+        except Exception:  # noqa: BLE001 - 记忆压缩失败回退原始 transcript
+            _summary = _gsess.transcript()
+        if len(_summary) > 4000:
+            _summary = _summary[:1600] + "\n...[截断]...\n" + _summary[-2000:]
+        parts.append(
+            "【持久工作区会话记录】（以下为真实执行的命令与输出，工作目录跨步保留；"
+            "继续解题可输出 action=command 在同一工作区执行下一条命令）:\n" + _summary
+        )
+    # presolve web 源码审计报告注入 LLM：presolve 写入 question.extra 的审计线索
+    # 必须被 plan/reason prompt 消费，否则 LLM 在 web 题上从零空转。
+    _extra = getattr(q, "extra", None) or {}
+    _audit = _extra.get("web_audit_report")
+    if _audit:
+        parts.append(f"【web 源码审计报告】{_audit}")
+    _inv = _tool_inventory_block(ctx)
+    if _inv:
+        parts.append(_inv)
+    parts.append(SOLVE_DISCIPLINE)  # 作战铁律运行时强制注入
+    # E6（2026-08-25 桶B攻坚）：few-shot 方向决策范例注入（仅 ctx.few_shot 开启时）
+    # 帮模型在"先判断题型→选正确首步"上少走错方向（桶B=方向决策错 占失败 57.1%）。
+    if getattr(ctx, "few_shot", False):
+        parts.append(FEW_SHOT_BANK)
+    # IDEA-5 Writeup RAG（默认关，仅 ctx.knowledge_hits 非空时注入）：
+    # 检索到的历史解法/工具手册作为参考知识，须基于本题真实证据验证、不得照搬。
+    _hits = getattr(ctx, "knowledge_hits", None)
+    if _hits:
+        _kb = []
+        for i, h in enumerate(_hits[:3]):
+            _kb.append(f"【参考#{i+1}·{h.get('title', '')}（{h.get('category', '')}）】{h.get('text', '')[:400]}")
+        parts.append(
+            "📚 检索到的历史解法/工具手册（参考，须基于本题真实证据验证，勿照搬）:\n"
+            + "\n\n".join(_kb)
+        )
+    return "\n".join(parts)
+
+
+def build_reason_prompt(ctx, detail: str) -> str:
+    """推理提示（plan 提示 + 本步任务）。"""
+    parts = [build_plan_prompt(ctx, 0)]
+    if detail:
+        parts.append(f"本步任务: {detail}")
+    return "\n".join(parts)
+
+
+def build_self_reflection(ctx, flag: Optional[str], error: Optional[Exception]) -> dict:
+    """自动生成结构化反思（基于步骤历史 + 错误归因）。"""
+    steps = ctx.steps
+    last = steps[-1] if steps else None
+    gaps = []
+    suggestions = []
+    cat = getattr(ctx.question, "category", "")
+    if not flag:
+        if ctx.stuck_count >= 3:
+            gaps.append(f"{cat}题型连续 {ctx.stuck_count} 次失败，缺少有效攻击路径")
+        if steps and all(s.action == "reason" for s in steps[-3:]):
+            gaps.append("纯推理空转，缺少工具调用/脚本执行获取真实证据")
+        if steps and any(s.error_category == ERR_TOOL_FAILURE for s in steps[-3:]):
+            gaps.append(f"{cat}题型工具执行失败，缺少可用工具或参数配置")
+        if not getattr(ctx.question, "attachments", None) and cat in ("crypto", "misc", "reverse", "pwn"):
+            gaps.append(f"{cat}题型缺少附件数据，可能需要靶机交互")
+        # 推理跳步检测
+        if steps and len(steps) <= 2 and not ctx._attachment_analyzed and getattr(ctx.question, "attachments", None):
+            gaps.append("推理跳步：附件未解析就尝试解题")
+            suggestions.append("优先解析附件，提取全部参数/线索后再推理")
+        suggestions.append("换工具/换思路/换目标文件，至少尝试 3 种不同方向")
+        if cat == "pwn":
+            suggestions.append("pwn 题需 pwntools + GDB 本地调试堆布局，远程盲打成功率低")
+        elif cat == "web":
+            suggestions.append("web 题优先查看源码/备份文件/目录扫描，再构造 payload")
+    else:
+        suggestions.append("解出成功，检查是否有更优路径")
+    what_i_did = "; ".join(
+        f"{s.stage}:{s.action}" for s in steps[-3:]
+    ) if steps else "无步骤记录"
+    success_reason = "成功解出 flag" if flag else (
+        str(error)[:200] if error else (
+            f"未解出：stuck_count={ctx.stuck_count}, steps={len(steps)}, "
+            f"last_error={last.error_category if last else 'none'}"
+        )
+    )
+    return {
+        "what_i_did": what_i_did,
+        "success_or_failure_reason": success_reason,
+        "ability_gap": gaps if gaps else ["无明显能力缺口"],
+        "strategy_adjust_suggestion": suggestions,
+    }
+
+
+def infer_skill_require(ctx, reflection: dict, skill_manager=None) -> Optional[dict]:
+    """从 ability_gap 推断是否需要请求新 Skill（仅允许加载本地已验证 skill）。
+
+    2026-08-22 锐评整改（路由表瘦身+锁死）：
+    - 去重：删除重复键（Python dict 字面量重复键静默覆盖，前面的映射是死代码）
+    - 修错键：vigenere_crack→vigenere_decode（真实文件名）；misc_stego_general 等
+      不存在的 skill 映射一律删除
+    - 锁死下载：need_download 不再可能指向不存在的 skill——映射表只允许
+      引用 skills/ 目录真实存在的 skill；本地有→加载，本地无→返回 None
+      （不请求下载未验证 skill，防临场加载装饰性火力消耗墙钟）
+    """
+    gaps = reflection.get("ability_gap", [])
+    if not gaps or gaps == ["无明显能力缺口"]:
+        return None
+    desc = str(getattr(ctx.question, "description", "") or "").lower()
+    # 键唯一（2026-08-22 去重）；值全部为 skills/ 目录真实存在的 skill 名
+    skill_map = {
+        # ── 基础题型（测试赛/赛后 12 真题实证过的 skill）──
+        # 复数乘法群 RSA 变体路由（2026-10-06 M2 纠错）：specialcurve2 实证为复数乘法群类 RSA，
+        # 非椭圆曲线。专属键必须排在裸 "rsa" 通用键之前——infer_skill_require 命中即 return，
+        # 若裸 "rsa" 先命中会抢走路由到整数域 rsa_fermat_factor（对复数群无解）→ wrong_direction。
+        "复数乘法群": "crypto_complex_mult_group", "复乘": "crypto_complex_mult_group",
+        "类 rsa": "crypto_complex_mult_group", "类rsa": "crypto_complex_mult_group",
+        "specialcurve": "crypto_complex_mult_group", "高斯整数": "crypto_complex_mult_group",
+        "高斯整数群": "crypto_complex_mult_group",
+        "morse": "morse_decoder", "摩斯": "morse_decoder",
+        "2^1025": "crypto_cycling",
+        # ── 真·L2 纯推理层专属键（2026-10-06 B 接线 · 孤儿求解器回收）──
+        # 键选取纪律：用题面独有短语，禁用泛化词。
+        #   逐位加密 → 全题库仅命中 simplelegendre（0 误伤）；Legendre 符号本身不入题面。
+        #   模逆     → 仅命中 exciting_inverse；禁用「逆元」（全库 9 题，会误伤）。
+        # 键序纪律：必须排在下方裸 "rsa" 之前，否则被 RSA catch-all 抢走（同 specialcurve2 陷阱）。
+        "逐位加密": "crypto_legendre_phi",
+        "模逆": "crypto_modinv_factor",
+        # lowe（CSAW 2018·e=3 无填充 + Y+N 完全立方）：perfect cube 为题面独有短语，
+        # 全题库仅命中本题（零误伤）。禁用「无填充/1536-bit」等泛化表述。
+        "perfect cube": "crypto_pkcs1_padding_oracle",
+        # ── 孤儿求解器回收·第四批（2026-10-06，均附 sha256 实证）──
+        # 1black0white（数字矩阵→QR）：题面 "seemingly random numbers ... is a QR code"，
+        #   该短语全题库仅命中本题；**禁用「QR/二维码」泛化键**。
+        "seemingly random numbers": "misc_qr_matrix",
+        # MHK2（Murakami 背包等价密钥恢复）：「Murakami」仅命中本题，语义精确。
+        "murakami": "crypto_knapsack_mhk", "knapsack": "crypto_knapsack_mhk",
+        # least-common-genominator（LCG 参数恢复→RSA 私钥重建）：
+        #   主键必须取 **description 内** 独有短语——infer_skill_require 只匹配 description，
+        #   题名 "Least Common Genominator?" 不参与匹配（实测：只挂题名键路由失败）。
+        #   禁用「LCG」——CSAW m_ster_0f_prn9 也是 LCG 题，会被错带。
+        "dumped the first six": "crypto_lcg_recover",
+        "common genominator": "crypto_lcg_recover",
+        # FilterRandom（西湖2021 噪声混合双LFSR）：「两个 64 位 LFSR」全库仅本题。
+        "两个 64 位 lfsr": "lfsr_filter_recover",
+        # Electric Mayhem CLS（侧信道功耗 CPA + AES-128）：**必须用能区分同系列 -pqc 的
+        # 短语**——cls 与 pqc 的 description 前两句完全相同，只有 cls 多一句
+        # "Note, the flag is 'CTF{XXX}' ..."。用「power traces」会把 PQC（后量子格
+        # 密码）错路由进 AES-CPA solver → wrong_direction。
+        "where xxx is your recovered key": "crypto_electric_mayhem_cls",
+        # PRIMES（GCTF 2023 · Coppersmith 平滑因子法解素数背包）：题面
+        # "I have prepared a flag for you but unfortunately it has been mangled somehow"
+        # ——「mangled somehow」全题库仅命中本题。
+        # ⚠️ 该题附件 chal.sage 里那句 m = b"CTF{YkDOL...}" 是**别处粘贴的无关示例**
+        # （重算 x 与官方 x 不符，已证）；真值需真解，flag_sha256 登记口径为
+        # 只对 CTF{...} 部分取摘要。
+        "mangled somehow": "crypto_primes_subset",
+        # ── ezRSA（真·L2 · Hastad 广播攻击）专属键（2026-10-06 实测纠错）──
+        # 两个硬点（都由测试逼出来）：
+        # ① 键必须在 **description 内**：原 desc 只写「同一明文 m 用三组不同
+        #    (n,c) 加密」，**不含**「hastad」「广播攻击」二字（那在 title 里，
+        #    而 infer_skill_require 只匹配 description）→ 挂 title 键必然路由失败。
+        # ② 键必须排在下方裸 "rsa" 之前，否则被 RSA catch-all 抢走。
+        "同一明文": "crypto_hastad_broadcast",
+        "rsa脚本": "task_analyzer",
+        "rsa加密脚本": "task_analyzer",
+        "费马": "rsa_fermat_factor", "fermat": "rsa_fermat_factor", "rsa": "rsa_fermat_factor",
+        # ── ZipCrypto 真加密爆破（2026-10-08 沉淀，源自 xuanhun_ezip L3 攻防）──
+        # 特异键必须排在下方裸 "zip"/"zip密码" 之前，否则被 catch-all 抢走。
+        "zipcrypto": "zip_crypto_bruteforce",
+        "zip加密": "zip_crypto_bruteforce", "真加密": "zip_crypto_bruteforce",
+        "密码爆破": "zip_crypto_bruteforce", "bruteforce zip": "zip_crypto_bruteforce",
+        "zip_filename": "zip_filename_chain_decode",
+        "zip密码": "zip_filename_chain_decode",
+        "压缩包损坏": "zip_filename_chain_decode",
+        "zip": "zip_chain_decode", "压缩": "zip_chain_decode",
+        "base64": "base64_multilayer", "base32": "base64_multilayer",
+        "凯撒": "caesar_bruteforce", "caesar": "caesar_bruteforce",
+        "md5": "hash_crack", "sha1": "hash_crack", "sha256": "hash_crack",
+        "哈希": "hash_crack", "hash": "hash_crack",
+        "维吉尼亚": "vigenere_decode", "vigenere": "vigenere_decode",
+        "kasiski": "vigenere_decode", "频率分析": "vigenere_decode",
+        # ── 测试赛/正式赛沉淀的新 skill 关键词映射（均已存在于 skills/）──
+        "反序列化": "java_deserialization_flow", "deserialize": "java_deserialization_flow",
+        "unserialize": "php_unserialize_pop", "pop": "php_unserialize_pop",
+        "nashorn": "java_nashorn_response", "无回显": "java_nashorn_response",
+        "上传": "web_upload_bypass", "upload": "web_upload_bypass", "xxe": "web_xxe_file_read",
+        "uaf": "pwn_exploit_flow", "堆溢出": "pwn_exploit_flow",
+        "seccomp": "pwn_sandbox_escape", "沙盒": "pwn_sandbox_escape",
+        "格攻击": "crypto_lattice_attack", "lll": "crypto_lattice_attack",
+        "流量包": "misc_bigfile_traffic",
+        "大流量": "misc_bigfile_traffic",
+        "pcapng": "misc_bigfile_traffic",
+        "流量": "misc_traffic_analysis", "pcap": "misc_traffic_analysis",
+        "混淆": "reverse_obfuscation", "ollvm": "reverse_obfuscation",
+        "审计": "web_source_audit", "源码": "web_source_audit",
+        # ── 决赛预研/备用路线 skill 关键词映射（均已存在于 skills/）──
+        "coppersmith": "crypto_coppersmith", "部分私钥": "crypto_coppersmith", "partial": "crypto_coppersmith",
+        "ret2dlresolve": "pwn_ret2dlresolve", "无 libc": "pwn_ret2dlresolve", "无libc": "pwn_ret2dlresolve",
+        "盲打": "pwn_nogdb_flow", "无 gdb": "pwn_nogdb_flow", "无gdb": "pwn_nogdb_flow",
+        "多步链": "web_multi_step_chain", "组合利用": "web_multi_step_chain",
+        "条件竞争": "web_race_condition", "race": "web_race_condition",
+        "二次注入": "web_second_order_injection", "second order": "web_second_order_injection",
+        "ssti": "ssti_detect", "模板注入": "ssti_detect",
+        "sqli": "web_sqli", "sql注入": "web_sqli",
+        "ssrf": "web_ssrf", "内网探测": "web_ssrf",
+        "n接近": "rsa_fermat_factor", "p和q接近": "rsa_fermat_factor", "大素数差小": "rsa_fermat_factor",
+        "磁盘": "misc_disk_forensics", "raid": "misc_disk_forensics",
+        "分区": "misc_disk_forensics", "img镜像": "misc_disk_forensics",
+        "ECB": "crypto_ecb_block_attack", "分组密码": "crypto_ecb_block_attack",
+        "字节攻击": "crypto_ecb_block_attack", "块加密": "crypto_ecb_block_attack",
+        "oracle": "crypto_ecb_block_attack",
+        "抓包": "misc_traffic_analysis", "wireshark": "misc_traffic_analysis",
+        "tshark": "misc_traffic_analysis", "dns查询": "misc_traffic_analysis",
+        "ELF": "reverse_elf_general", "可执行文件": "reverse_elf_general",
+        "strings": "reverse_elf_general", "符号表": "reverse_elf_general",
+        "pyc": "pyc_decompile", "python字节码": "pyc_decompile",
+        "safe-linking": "pwn_tcache_safelinking", "tcache": "pwn_tcache_safelinking",
+        "堆利用": "pwn_tcache_safelinking", "glibc2.31": "pwn_tcache_safelinking",
+        "JWT": "web_jwt_prototype", "token伪造": "web_jwt_prototype",
+        "原型链": "web_jwt_prototype", "__proto__": "web_jwt_prototype",
+        "伪加密": "zip_filename_chain_decode",
+        "明文攻击": "crypto_coppersmith", "小根方程": "crypto_coppersmith",
+        "部分密钥": "crypto_coppersmith",
+        "返回导向": "pwn_ret2dlresolve", "无libc利用": "pwn_ret2dlresolve",
+        "沙盒绕过": "pwn_sandbox_escape",
+        "并发请求": "web_race_condition",
+        "二次编码": "web_second_order_injection",
+        "源码审计": "web_source_audit", "危险函数": "web_source_audit",
+        "文件读取": "web_xxe_file_read",
+        "上传绕过": "web_upload_bypass", "webshell": "web_upload_bypass",
+        "布尔盲注": "web_sqli",
+        "爆破": "hash_crack", "弱密码": "hash_crack", "字典": "hash_crack", "彩虹表": "hash_crack",
+        # ── 高偶指数 RSA / hint 泄露 p 路由（2026-10-06 B2 纠错：10733 实证）──
+        # 10733 真题：hint=(e*p+e²)^q mod n 可分解 n（crypto_high_exponent.factor_from_hint：
+        # W=e^n mod n → p=gcd(W²-hint,n)，无需先知 q）；题面含 "rot13/编码" 会先命中下面的
+        # base64_multilayer（编码 solver，完全错方向）。本组键必须在 "rot13" 之前，使高偶指数
+        # RSA + 奇数阶子群还原正确路由到 crypto_high_exponent（已实测解出 10733）。
+        "高偶指数": "crypto_high_exponent", "奇数阶子群": "crypto_high_exponent",
+        "hint 泄露 p": "crypto_high_exponent", "hint泄露p": "crypto_high_exponent",
+        "rot13": "base64_multilayer", "rot": "base64_multilayer",
+        "编码": "base64_multilayer", "解码": "base64_multilayer",
+        "多层编码": "base64_multilayer", "url编码": "base64_multilayer",
+        "hex": "base64_multilayer", "urldecode": "base64_multilayer",
+        # 注（2026-08-23 裁决③）：rsa_fermat_factor 的 docstring 是「RSA 攻击全套」，
+        # 内部 auto-detect 费马/小指数/Wiener/共模/Hastad/phi已知——文件名"费马"是历史
+        # 遗留误导。以下所有 RSA 关键词路由到它，靠内部自动检测兜底，非仅费马分解。
+        "小指数": "rsa_fermat_factor", "小e": "rsa_fermat_factor",
+        # 广播攻击/hastad 已前置到裸 "rsa" 之前并改指专用 crypto_hastad_broadcast
+        # （2026-10-06 实测：ezRSA 经本skill 路由会抛
+        #  `pow() 3rd argument cannot be 0`——auto-detect 误落默认费马分支；
+        #   专用 solver 端到端解出且 sha256 逐字匹配）。
+        # 下方这两个键保留为**无害冗余**（供 title 含 hastad 的题面命中）；
+        # 因 desc 匹配优先，前置键会先命中，故不会造成错路由。
+        "广播攻击": "crypto_hastad_broadcast", "hastad": "crypto_hastad_broadcast",
+        "crt": "rsa_fermat_factor", "中国剩余": "rsa_fermat_factor",
+        "共模": "rsa_fermat_factor", "common modulus": "rsa_fermat_factor",
+        "wiener": "rsa_fermat_factor", "连分数": "rsa_fermat_factor",
+        "小d": "rsa_fermat_factor", "私钥小": "rsa_fermat_factor",
+        "逆元": "rsa_fermat_factor", "inverse": "rsa_fermat_factor",
+        "phi": "rsa_fermat_factor", "欧拉函数": "rsa_fermat_factor",
+        "栅栏": "base64_multilayer", "培根": "base64_multilayer",
+        # ── 补回有效键（2026-08-22 复核：指向真实存在 skill，不可误删）──
+        "坏道": "misc_disk_forensics", "取证": "misc_disk_forensics",
+        "内存": "misc_disk_forensics", "Volatility": "misc_disk_forensics",
+        "usb键盘": "misc_traffic_analysis",
+        "反编译": "pyc_decompile",
+        "js合并": "web_jwt_prototype",
+        "维吉尼亚密码": "vigenere_decode",
+        # ── 键盘/坐标类映射（2026-09-01 补：dnui_keyboard 等"键盘坐标→字母"题型，
+        #    skills/crypto_keyboard_path.py 已实证可对真实附件解出 flag，但原映射表缺此项
+        #    → LLM 反思 gap 无法路由到 solver，只能硬推导致 wrong_direction）──
+        "键盘": "crypto_keyboard_path", "keyboard": "crypto_keyboard_path",
+        "坐标": "crypto_keyboard_path", "九宫格": "crypto_keyboard_path",
+        "手机键盘": "crypto_keyboard_path", "telnet": "crypto_keyboard_path",
+        "按键": "crypto_keyboard_path", "键盘布局": "crypto_keyboard_path",
+        # ── M4 接线补强（2026-09-01）：原孤儿 skill，已验证 run() 可加载，补触发词 ──
+        # pwn_libc_fingerprint：libc 指纹/基址计算（pwn 泄露 libc 地址场景）
+        "libc": "pwn_libc_fingerprint", "libc指纹": "pwn_libc_fingerprint",
+        "libc基址": "pwn_libc_fingerprint", "libc基地址": "pwn_libc_fingerprint",
+        "got表": "pwn_libc_fingerprint", "plt": "pwn_libc_fingerprint",
+        "ret2libc": "pwn_libc_fingerprint", "one_gadget": "pwn_libc_fingerprint",
+        # crypto_pkcs1_improved：hint=(e*p+e²)^q mod n / AES-ECB 改进填充 RSA
+        "pkcs1": "crypto_pkcs1_improved", "pkcs#1": "crypto_pkcs1_improved",
+        "改进填充": "crypto_pkcs1_improved",
+        # misc_bigfile_traffic：16MB+ pcapng / 超大 zip 直读（避免超时）
+        "大文件": "misc_bigfile_traffic", "超大": "misc_bigfile_traffic",
+        "mmap扫描": "misc_bigfile_traffic",
+        # task_analyzer：task.py RSA 算法识别+路由（元分析 skill，crypto 附 .py 脚本时）
+        "task.py": "task_analyzer",
+    }
+    for keyword, skill_name in skill_map.items():
+        if keyword in desc or keyword in " ".join(gaps).lower():
+            # 2026-10-06 修复「主链断链」（见 logs/mainchain_skill_disconnect_20261006.md）：
+            # 原实现在三条路径上**一律 return None**，把命中的 skill_name 丢弃，
+            # 导致 main_agent 拿不到"该调哪个 skill"，本仓63 个 skill（含已实证
+            # 接线的那批）永远不会被自动调用——接线无法转化为解题率。
+            # 现在统一返回 {"skill_name": ..., "keyword": ...}：
+            #   · 已加载 / 本地有 → 返回 skill 名（主链据此 registry.run）
+            #   · 本地缺失 → 仍返回 None（保持 2026-08-22 锁死语义：不请求下载
+            #     未验证 skill，防临场加载装饰性火力）
+            if skill_manager and skill_name in skill_manager.list_loaded():
+                return {"skill_name": skill_name, "keyword": keyword}
+            if skill_manager and skill_name in skill_manager.list_available():
+                skill_manager.load(skill_name)  # 确保已注册进 registry
+                return {"skill_name": skill_name, "keyword": keyword}
+            return None
+    return None

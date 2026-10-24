@@ -1,0 +1,423 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""KPI 单一权威口径源测试（P0-②，2026-09-17）。
+
+守的是「口径不漂移」这条治理红线——测试本身就是把口径铁律编码为可执行断言：
+若哪天有人改回欺骗性比率（如 14/10=140%）、或让 offline_verified 与机器真值脱钩，
+这里必须 FAIL，而不是让错误数字静默流进 README/台账。
+"""
+import os
+import sys
+import json
+import tempfile
+from pathlib import Path
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from scripts._kpi_canonical import (  # noqa: E402
+    canonical_kpi, count_offline_verified, count_real_corpus,
+    count_heldout_candidates, count_heldout_runnable_pool,
+    count_skills, count_regression_checks,
+    check_readme_counts, _DEPRECATED_SUBSET,
+    heldout_status, heldout_budget_ablation, summarize_benchmark_report,
+    check_readme_heldout,
+)
+
+
+def test_offline_verified_matches_machine_truth():
+    """canonical 的 offline_verified 必须等于 _merge_gate 机器真值（不得手写漂移）。"""
+    k = canonical_kpi()
+    assert k["offline_verified"] == count_offline_verified() > 0, \
+        "offline_verified 与 _merge_gate.count_offline_verified() 脱钩（口径漂移）"
+    print("✓ test_offline_verified_matches_machine_truth")
+
+
+def test_real_corpus_is_recursive_json_count():
+    """real_corpus 必须等于 data/questions_real 递归 json 数（分母不许手填）。"""
+    k = canonical_kpi()
+    assert k["real_corpus"] == count_real_corpus() > 0
+    assert k["real_corpus"] >= k["offline_verified"], \
+        "分母小于解出数 = 计数通道错乱"
+    print("✓ test_real_corpus_is_recursive_json_count")
+
+
+def test_no_deceptive_heldout_ratio():
+    """红线：held-out 覆盖率恒 None（14 与 unseen 池不相交，14/N 是欺骗性比率）。"""
+    k = canonical_kpi()
+    assert k["coverage_of_heldout"] is None, \
+        "held-out 覆盖率不得输出数值——14 属已训练题，与 unseen 池不相交，任何比率都是误导"
+    assert k["heldout_candidates"] >= 0
+    print("✓ test_no_deceptive_heldout_ratio")
+
+
+def test_runnable_pool_is_distinct_from_capability_denominator():
+    """2026-09-26：heldout_candidates(能力分母) 与 heldout_runnable_pool(可选跑池)
+    必须**同时存在且可区分**。
+
+    起因：二者此前在文档/对话中混称（都叫「held-out 池」），已造成一次混淆；
+    且 select_candidates 的 docstring 曾误称「默认并入外部题」（签名实为 None），
+    实测 select_candidates() = 2 题 vs 带 external = 17 题。
+    把 0/17 或 1/17 当能力率，等于把「题更难」说成「能力更低」——是欺骗性比率。
+    """
+    k = canonical_kpi()
+    assert "heldout_runnable_pool" in k, "canonical 必须暴露可选跑池字段（否则二者必然混称）"
+    denom, pool = k["heldout_candidates"], k["heldout_runnable_pool"]
+    assert denom > 0 and pool >= denom, \
+        f"可选跑池({pool}) 不应小于能力分母({denom})"
+    # 能力分母不得被悄悄改成跑池（那会静默改变 KPI 口径）
+    assert denom == count_heldout_candidates(), "heldout_candidates 与机器真值脱钩"
+    assert pool == count_heldout_runnable_pool(), "heldout_runnable_pool 与机器真值脱钩"
+    print(f"✓ test_runnable_pool_is_distinct_from_capability_denominator "
+          f"(能力分母={denom}, 可选跑池={pool})")
+
+
+def test_runnable_pool_includes_external_questions():
+    """可选跑池必须真的含外部采源：显式传 external_dir 才并入（默认 None 不并入）。"""
+    from scripts.benchmark_heldout import select_candidates, QUESTIONS_EXTERNAL
+    without_ext, _ = select_candidates()
+    with_ext, _ = select_candidates(external_dir=QUESTIONS_EXTERNAL)
+    pool = count_heldout_runnable_pool()
+    assert len(without_ext) == count_heldout_candidates(), \
+        "能力分母应等于「不并入外部题」的选池结果"
+    assert pool == len(with_ext), "可选跑池应等于「并入外部题」的选池结果"
+    assert len(with_ext) >= len(without_ext), "并入外部题后跑池不应变小"
+    print(f"✓ test_runnable_pool_includes_external_questions "
+          f"({len(without_ext)} → {len(with_ext)})")
+
+
+def test_kpi_and_heldout_sets_disjoint():
+    """offline_verified 全部不得出现在 held-out 候选池（否则已知题被当未见题测）。"""
+    try:
+        from scripts.benchmark_heldout import select_candidates
+        import scripts._antifraud as af
+    except Exception as exc:  # pragma: no cover
+        print(f"  (skip: 无法 import heldout/antifraud: {exc})")
+        return
+    cands, _ = select_candidates()
+    cand_ids = {c["id"] for c in cands}
+    auth = set(af.AUTHORIZED_KPI_SOLVES)
+    overlap = cand_ids & auth
+    assert not overlap, f"held-out 候选池混入了已训练 KPI 题：{overlap}"
+    print("✓ test_kpi_and_heldout_sets_disjoint")
+
+
+def test_deprecated_subset_anchor():
+    """过时 15 题子集口径必须留警示锚点，防止死灰复燃。"""
+    assert _DEPRECATED_SUBSET == 15
+    print("✓ test_deprecated_subset_anchor")
+
+
+# ── P0-5：手写计数 → 机器派生（2026-09-19）─────────────────────────────────
+def test_skills_count_is_machine_derived():
+    """skills 数必须是机器派生（skills/*.py 顶层 run 入口），不得手写漂移。
+
+    历史 README 手写的「52」经实测为伪（真值 56），正是本检查要堵的漂移。
+    """
+    k = canonical_kpi()
+    assert k["skills"] == count_skills() > 0, \
+        "canonical skills 与 count_skills() 脱钩（口径漂移）"
+    # 记录这次真实漂移：机器真值不应回退到手写的历史值 52。
+    assert k["skills"] != 52, \
+        "skills 机器计数回到 52（历史手写伪值）——取数逻辑疑坏或被改回"
+    print(f"✓ test_skills_count_is_machine_derived (skills={k['skills']})")
+
+
+def test_regression_checks_count_is_machine_derived():
+    """回归集条数必须机器派生（委托 _merge_gate.REGRESSION_CHECKS）。"""
+    k = canonical_kpi()
+    assert k["regression_checks"] == count_regression_checks() > 0, \
+        "canonical regression_checks 与 _merge_gate.REGRESSION_CHECKS 脱钩"
+    print(f"✓ test_regression_checks_count_is_machine_derived "
+          f"(regression_checks={k['regression_checks']})")
+
+
+def test_readme_counts_green_on_live_repo():
+    """活仓库两份 README 的计数声明必须与机器真值一致（空列表 = 绿）。"""
+    hits = check_readme_counts()
+    assert hits == [], "README 计数漂移：\n  - " + "\n  - ".join(hits)
+    print("✓ test_readme_counts_green_on_live_repo")
+
+
+def test_readme_count_check_bites_when_truth_moves():
+    """【变异】真值一移动，README 手写计数必须立刻变红（证明锚点真的绑定真值）。"""
+    moved = {"skills": 9999, "real_corpus": 92, "regression_checks": 16}
+    hits = check_readme_counts(truth=moved)
+    assert hits, "真值移动后仍有声明未报红——锚点未真正绑定机器真值（假闸门）"
+    assert any("9999" in h for h in hits), f"未命中 skills 漂移：{hits}"
+    assert any("skills" in h for h in hits), f"漂移点未指向 skills：{hits}"
+    print(f"✓ test_readme_count_check_bites_when_truth_moves ({len(hits)} hits)")
+
+
+def test_readme_count_check_detects_missing_declaration():
+    """【变异】声明被整行删掉 → mandatory 锚点必须报「声明缺失」，堵删除绕过。"""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        # README 文件存在，但 skills / regression 声明整行被删（只剩无关正文）。
+        (root / "README.md").write_text(
+            "# Project\nJust prose, no counts here.\n", encoding="utf-8")
+        (root / "README.zh.md").write_text(
+            "# 项目\n只有正文，没有任何计数声明。\n", encoding="utf-8")
+        hits = check_readme_counts(readme_root=root)
+        assert hits, "声明整行缺失时未报红——可被「删掉声明」绕过"
+        assert any("缺失" in h for h in hits), f"未产出「声明缺失」告警：{hits}"
+        # 10 条锚点全部 mandatory=True 且都缺失 → 应得 10 条缺失告警。
+        assert len(hits) == 10, f"应命中 10 条声明缺失，实得 {len(hits)}：{hits}"
+    print(f"✓ test_readme_count_check_detects_missing_declaration")
+
+
+def test_readme_count_check_green_on_synthetic_consistent():
+    """【正样本】合成 README 数字全对 → 绿（证明不会误报，宁漏勿误）。"""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "README.md").write_text(
+            "├── skills/        56 deterministic skills\n"
+            "→ deterministic skills (56)\n"
+            "- holds 56 runnable skills\n"
+            "| Deterministic pipeline coverage | **14 / 92** full-corpus (15.2%) |\n"
+            "| Regression-set reproducible count | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        (root / "README.zh.md").write_text(
+            "├── skills/        56 个确定性解题 skill\n"
+            "→ 确定性 skill(56)\n"
+            "- 含 56 个即用 skill\n"
+            "| 确定性管线（presolve 直出） | **14 / 92**（全集，15.2%） |\n"
+            "| 回归集可复现计数 | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        truth = {"skills": 56, "real_corpus": 92, "regression_checks": 16}
+        hits = check_readme_counts(readme_root=root, truth=truth)
+        assert hits == [], f"数字全对却报红（误报）：{hits}"
+    print("✓ test_readme_count_check_green_on_synthetic_consistent")
+
+
+def test_readme_count_check_bites_on_synthetic_drift():
+    """【变异】合成 README 里 skills 写错 → 必须红（精确指向漂移行）。"""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "README.md").write_text(
+            "├── skills/        52 deterministic skills\n"
+            "→ deterministic skills (52)\n"
+            "- holds 52 runnable skills\n"
+            "| Deterministic pipeline coverage | **14 / 92** full-corpus (15.2%) |\n"
+            "| Regression-set reproducible count | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        (root / "README.zh.md").write_text(
+            "├── skills/        52 个确定性解题 skill\n"
+            "→ 确定性 skill(52)\n"
+            "- 含 52 个即用 skill\n"
+            "| 确定性管线（presolve 直出） | **14 / 92**（全集，15.2%） |\n"
+            "| 回归集可复现计数 | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        truth = {"skills": 56, "real_corpus": 92, "regression_checks": 16}
+        hits = check_readme_counts(readme_root=root, truth=truth)
+        assert hits, "skills 写错（52≠56）却未报红——real 变异漏检"
+        # 6 处 skills 声明全部应命中（README.com 3 + README.zh.md 3）。
+        assert len(hits) == 6, f"应命中 6 处 skills 漂移，实得 {len(hits)}：{hits}"
+        assert all("52" in h and "56" in h for h in hits), f"漂移明细不含 52/56：{hits}"
+    print(f"✓ test_readme_count_check_bites_on_synthetic_drift (6 hits)")
+
+
+def test_readme_count_check_skips_when_corpus_absent():
+    """【防误报】语料/目录不可得（真值<=0）时跳过而非误报（.gitignore / sparse clone 陷阱）。
+
+    data/questions_real/ 虽由 `!data/questions_real/**` 反忽略而跟踪，但 sparse/LFS clone
+    或误配 .gitignore 下会得 real_corpus=0；此时必须「宁漏勿误」跳过，不得把 README 判红。
+    """
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "README.md").write_text(
+            "├── skills/        56 deterministic skills\n"
+            "deterministic skills (56)\n"
+            "- holds 56 runnable skills\n"
+            "| Deterministic pipeline coverage | **14 / 92** full-corpus (15.2%) |\n"
+            "| Regression-set reproducible count | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        (root / "README.zh.md").write_text(
+            "├── skills/        56 个确定性解题 skill\n"
+            "确定性 skill(56)\n"
+            "- 含 56 个即用 skill\n"
+            "| 确定性管线（presolve 直出） | **14 / 92**（全集，15.2%） |\n"
+            "| 回归集可复现计数 | **16 / 16** |\n",
+            encoding="utf-8",
+        )
+        # 模拟 sparse/LFS clone：语料缺失 → real_corpus=0；skills/regression 仍可知。
+        truth = {"skills": 56, "real_corpus": 0, "regression_checks": 16}
+        hits = check_readme_counts(readme_root=root, truth=truth)
+        assert hits == [], f"语料不可得时误报 RED（.gitignore/sparse clone 陷阱）：{hits}"
+    print("✓ test_readme_count_check_skips_when_corpus_absent")
+
+
+# ── held-out 实测状态：机器派生（禁止手写「已测量 / 未测量」）─────────────────
+def test_heldout_status_internally_consistent():
+    """held-out 报告的**内部一致性**——不依赖题池，故 CI 必须能验。
+
+    背景：README 曾手写「0/10 未测量」而实测早已完成——**手写状态词本身就是漂移**。
+    本条守「报告自身不许自相矛盾」：状态确为已测量、池数非 0、解出数不超过池内题数、
+    分渠道之和不超过总解出数、token 消耗非 0。
+
+    为什么能留在 CI：全部只读**仓内归档**报告 `ctf_agent/heldout_evidence/`
+    （已入库，48 份），不需要任何 gitignored 题池。
+    """
+    st = heldout_status()
+    assert st.get("measured") is True, \
+        "held-out 报告缺失——应能读 ctf_agent/heldout_evidence/ 下的 benchmark_report.json"
+    assert st["pool_total"] > 0, "报告池数为 0（疑读到空/残缺报告）"
+    assert st["solved_total"] <= st["pool_total"], "解出数大于池内题数（计数通道错乱）"
+    assert st["solved_by_presolve"] + st["solved_by_llm"] <= st["solved_total"], \
+        "分渠道解出数之和大于总解出数（by_solved_by 口径错乱）"
+    assert st["tokens_global_total"] > 0, "token 消耗为 0（疑读到空/残缺报告）"
+    print(f"✓ test_heldout_status_internally_consistent (pool={st['pool_total']} "
+          f"solved={st['solved_total']} presolve={st['solved_by_presolve']} "
+          f"llm={st['solved_by_llm']})")
+
+
+@pytest.mark.local
+def test_heldout_pool_matches_machine_denominator():
+    """报告池数必须 == 机器真值算出的能力分母，或二者分歧可由已知 desc_leak 解释
+    （KPI 防漂移的最后一道闸）。
+
+    ⚠️ 必须保持 local，且**不要因为「它让 CI 红」而进一步豁免/删除**：
+    分母 = `scripts.benchmark_heldout.select_candidates()` 的扫描结果，依赖**完整题池**
+    （data/questions_external、questions_ext 等），而这些目录被 .gitignore 排除。
+    ⇒ CI 上分母必然偏离真值（实测：CI 环境算出 3、空环境算出 0、真值 2），
+    在 CI 上断言必然失败。这是**环境性不可验证**，不是缺陷。
+
+    2026-10-10 口径补强：历史 clean-2 实测报告（保留不删改）的 pool_total 含事后认定为
+    desc_leak 的 real_crypto_dnui_keyboard（题面自带答案，读描述即得、非自主推理），
+    而严格能力分母已将其剔除。故报告 pool_total 与分母可合法分歧——但分歧量必须恰好等于
+    报告结果中的 desc_leak 题数，且 canonical 声明须显式说明该剔除（防静默漂移）。
+    """
+    from scripts.benchmark_heldout import desc_leak_ids
+    from scripts._kpi_canonical import _HELDOUT_CLEAN_REPORT
+    st = heldout_status()
+    denom = count_heldout_candidates()
+    if st["pool_total"] == denom:
+        print(f"✓ test_heldout_pool_matches_machine_denominator (pool={st['pool_total']}==denom)")
+        return
+    diff = st["pool_total"] - denom
+    report = json.loads(Path(_HELDOUT_CLEAN_REPORT).read_text(encoding="utf-8"))
+    dl = desc_leak_ids()
+    n_dl_in_report = sum(1 for r in report.get("results", []) if r.get("question_id") in dl)
+    assert diff == n_dl_in_report, (
+        f"报告池数 {st['pool_total']} 与能力分母 {denom} 的分歧({diff}) "
+        f"≠ 报告结果中的 desc_leak 题数({n_dl_in_report})——存在未解释的口径漂移")
+    stmt = canonical_kpi()["statement"]
+    assert "desc_leak" in stmt, "desc_leak 剔除未在 canonical 声明中说明（静默漂移）"
+    print(f"✓ test_heldout_pool_matches_machine_denominator (pool={st['pool_total']} "
+          f"含 {n_dl_in_report} 道 desc_leak → 分母 {denom}，分歧已解释)")
+
+
+def test_summarize_benchmark_report_follows_input():
+    """【防硬编码】summarize 是纯函数：输出必须随输入报告变化，而不是写死的常量。"""
+    fake = {
+        "summary": {
+            "total": 3, "solved": 2,
+            "by_solved_by": {
+                "presolve": {"total": 1, "solved": 1},
+                "main_agent_llm": {"total": 2, "solved": 1},
+            },
+            "tokens": {"global_total": 12345},
+        },
+        "results": [{"error": "budget_exceeded"}, {"error": None}, {"error": "hallucination"}],
+    }
+    st = summarize_benchmark_report(fake, "fake.json")
+    assert st["report"] == "fake.json"
+    assert st["pool_total"] == 3 and st["solved_total"] == 2
+    assert st["solved_by_presolve"] == 1 and st["solved_by_llm"] == 1
+    assert st["llm_attempted"] == 2
+    assert st["tokens_global_total"] == 12345
+    assert st["budget_exceeded"] == 1, "budget_exceeded 必须按 results[].error 逐条计数"
+    print("✓ test_summarize_benchmark_report_follows_input")
+
+
+def test_readme_heldout_green_on_live_repo():
+    """活仓库两份 README 的 held-out 实测声明必须与机器派生真值一致（空列表 = 绿）。"""
+    hits = check_readme_heldout()
+    assert hits == [], "README held-out 声明漂移：\n  - " + "\n  - ".join(hits)
+    print("✓ test_readme_heldout_green_on_live_repo")
+
+
+def test_readme_heldout_bites_when_truth_moves():
+    """【变异】真值一移动（如重跑成 9/10），README 手写数字必须立刻变红。"""
+    moved = {"measured": True, "report": "x.json", "pool_total": 10, "solved_total": 9,
+             "solved_by_presolve": 1, "solved_by_llm": 8, "llm_attempted": 9,
+             "tokens_global_total": 1, "budget_exceeded": 0}
+    hits = check_readme_heldout(status=moved, ablation={"available": False})
+    assert hits, "真值移动后仍未报红——held-out 锚点未真正绑定机器真值（假闸门）"
+    assert any("9" in h for h in hits), f"未命中漂移数字 9：{hits}"
+    print(f"✓ test_readme_heldout_bites_when_truth_moves ({len(hits)} hits)")
+
+
+def test_readme_heldout_bites_on_synthetic_drift():
+    """【变异】合成 README 里 held-out 数字写错 → 必须红；写对 → 必须绿（不误报）。"""
+    status = {"measured": True, "report": "x.json", "pool_total": 2, "solved_total": 2,
+              "solved_by_presolve": 1, "solved_by_llm": 1, "llm_attempted": 1,
+              "tokens_global_total": 8220, "budget_exceeded": 0}
+    abl = {"available": True,
+           "baseline": {"report": "a.json", "pool_total": 2, "solved_total": 2,
+                        "solved_by_presolve": 1, "solved_by_llm": 1, "llm_attempted": 1,
+                        "tokens_global_total": 100, "budget_exceeded": 3},
+           "doubled": {"report": "b.json", "pool_total": 2, "solved_total": 2,
+                       "solved_by_presolve": 1, "solved_by_llm": 1, "llm_attempted": 1,
+                       "tokens_global_total": 200, "budget_exceeded": 0}}
+    good_en = (
+        "| LLM reasoning on the held-out pool | pool **2 / 2** solved "
+        "— **LLM autonomous reasoning 1 / 2** |\n"
+        "> Doubling the token budget (`100 → 200`) drove `budget_exceeded` (`3 → 0`).\n"
+    )
+    good_zh = (
+        "| held-out 池上的 LLM 自主推理 | 池内 **2 / 2** 解出 —— **LLM 自主推理 1 / 2** |\n"
+        "> 预算翻倍 `100 → 200` 后 `budget_exceeded` 从 `3 → 0`。\n"
+    )
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "README.md").write_text(good_en, encoding="utf-8")
+        (root / "README.zh.md").write_text(good_zh, encoding="utf-8")
+        # 正样本：数字全对 → 绿（证明不会误报）
+        assert check_readme_heldout(readme_root=root, status=status, ablation=abl) == [], \
+            "held-out 数字全对却报红（误报）"
+        # 变异：池内解出数写错 → 必须红
+        (root / "README.md").write_text(
+            good_en.replace("**2 / 2** solved", "**9 / 2** solved"), encoding="utf-8")
+        hits = check_readme_heldout(readme_root=root, status=status, ablation=abl)
+        assert hits, "池内解出数写错（9≠2）却未报红——变异漏检"
+        assert any("9" in h for h in hits), f"未命中漂移数字 9：{hits}"
+    print("✓ test_readme_heldout_bites_on_synthetic_drift")
+
+
+def test_readme_heldout_skips_when_unmeasured():
+    """【防误报】未实测（无报告）时跳过而非误报——此时 README 应写「未测量」，无数字可校验。"""
+    unmeasured = {"measured": False, "report": None, "pool_total": 0, "solved_total": 0,
+                  "solved_by_presolve": 0, "solved_by_llm": 0, "llm_attempted": 0,
+                  "tokens_global_total": 0, "budget_exceeded": 0}
+    hits = check_readme_heldout(status=unmeasured, ablation={"available": False})
+    assert hits == [], f"未实测时误报 RED（宁漏勿误）：{hits}"
+    print("✓ test_readme_heldout_skips_when_unmeasured")
+
+
+if __name__ == "__main__":
+    test_offline_verified_matches_machine_truth()
+    test_real_corpus_is_recursive_json_count()
+    test_no_deceptive_heldout_ratio()
+    test_kpi_and_heldout_sets_disjoint()
+    test_deprecated_subset_anchor()
+    test_skills_count_is_machine_derived()
+    test_regression_checks_count_is_machine_derived()
+    test_readme_counts_green_on_live_repo()
+    test_readme_count_check_bites_when_truth_moves()
+    test_readme_count_check_detects_missing_declaration()
+    test_readme_count_check_green_on_synthetic_consistent()
+    test_readme_count_check_bites_on_synthetic_drift()
+    test_readme_count_check_skips_when_corpus_absent()
+    test_heldout_status_internally_consistent()
+    test_summarize_benchmark_report_follows_input()
+    test_readme_heldout_green_on_live_repo()
+    test_readme_heldout_bites_when_truth_moves()
+    test_readme_heldout_bites_on_synthetic_drift()
+    test_readme_heldout_skips_when_unmeasured()
+    print("\nALL KPI CANONICAL TESTS PASSED")

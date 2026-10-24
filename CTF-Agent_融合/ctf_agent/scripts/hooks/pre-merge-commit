@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# pre-merge-commit —— 合并闸门（阶段3，2026-08-24）
+# git 2.24+ 支持：真正 merge commit（--no-ff / 自动 merge）在生成 commit 前触发本钩子。
+# 失败 exit 1 → 中止合并（fail-closed）。squash-merge 不触发本钩子，由 pre-commit 第⑧道
+# （MERGE_HEAD 检测）调用 scripts/_merge_gate.py 兜底。
+#
+# 安装：cp scripts/hooks/pre-merge-commit git_hooks/pre-merge-commit（core.hooksPath=git_hooks）
+set -e
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)/ctf_agent"
+PY="$ROOT/.venv/Scripts/python.exe"
+if [ ! -x "$PY" ] && [ ! -f "$PY" ]; then
+    PY="python"
+fi
+
+cd "$ROOT"
+# --merge-context（2026-10-11）：git 2.55.0 在本钩子执行时尚未落盘 .git/MERGE_HEAD，
+# 闸门内部的 MERGE_HEAD 检测恒为假 → 合并产物被误判成"在飞改动"，误杀每个 --no-ff
+# 合并。显式声明合并上下文后只跳过收尾门禁，KPI 双通道与全量 pytest 照跑。
+"$PY" scripts/_merge_gate.py --merge-context
+
+# 反注水法令（写死，2026-08-27 用户严令）：merge 级全量执法。
+# 在 _merge_gate 之后再次核验——KPI 写死水位 + 泄露式假验证 + 授权走私 + 基线篡改。
+# 任一注水企图 → 永久记入违规账并中止合并（fail-closed）。
+echo "── 反注水法令（merge 级全量执法，fail-closed）──"
+"$PY" scripts/_antifraud.py

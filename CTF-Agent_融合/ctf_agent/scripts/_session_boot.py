@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""会话启动门禁（2026-08-24 阶段2 车道方案）——会话的第一条指令就是这个命令。
+
+设计原则（锐评六轮收敛 + 并发有序化方案 eaf29aa 落地）：
+  治理的全部力量压缩进"会话执行的第一条命令"这一个注入点。
+  人会忘、文档会漏，但"开工必须先跑本命令"是 100% 可控的注入点。
+
+检查清单（fail-closed，任一项不过 → 打印处置并 exit 1）：
+  ① 车道分支：当前分支必须是 w/<任务名>（main 直提由 pre-commit 拦截）
+  ② 身份登记：CT_AGENT_SESSION 已设置（或 git config atomcode.session 兜底）
+  ③ 工作树干净：git status --porcelain 为空（脏树 → 先收口，不许带脏开工）
+  ④ 环境可用：.venv/Scripts/python.exe 存在（新 worktree 用 --fix-env 建 junction）
+  ⑤ 快速冒烟：--smoke 时跑防错体系核心回归（<10s）
+
+用法：
+  python scripts/_session_boot.py             # 门禁检查
+  python scripts/_session_boot.py --fix-env   # 自动创建 .venv junction（Windows）
+  python scripts/_session_boot.py --smoke     # 门禁 + 快速回归冒烟
+
+车道规范（一人一 worktree，物理隔离）：
+  git worktree add ../wt-<任务名> -b w/<任务名>
+  cd ../wt-<任务名>
+  python scripts/_session_boot.py --fix-env   # 门禁 + 环境
+  # 之后在本车道自由提交；main 只由合并闸门 squash 进（阶段3）
+"""
+import argparse
+import os
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MAIN_WORKTREE = os.path.dirname(ROOT)  # E:/Program/西湖论剑/ctf_agent 的父目录
+
+
+def sh(cmd, cwd=ROOT):
+    return subprocess.run(cmd, cwd=cwd, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace")
+
+
+def branch_name():
+    out = sh(["git", "branch", "--show-current"])
+    return out.stdout.strip()
+
+
+def fix_env() -> bool:
+    """Windows junction：新 worktree 没有 .venv，链接到主工作树的 .venv。"""
+    venv = os.path.join(ROOT, ".venv")
+    main_venv = os.path.join(MAIN_WORKTREE, "ctf_agent", ".venv")
+    if os.path.exists(venv):
+        print(f"✅ .venv 已存在：{venv}")
+        return True
+    if not os.path.isdir(main_venv):
+        print(f"❌ 主工作树 .venv 不存在：{main_venv}（先跑主工作树 bash setup.sh）")
+        return False
+    try:
+        r = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", venv, main_venv],
+            capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode == 0:
+            print(f"✅ .venv junction 已创建：{venv} -> {main_venv}")
+            return True
+        print(f"❌ mklink 失败：{r.stdout} {r.stderr}")
+        return False
+    except Exception as exc:  # noqa: BLE001
+        print(f"❌ junction 创建异常：{exc}")
+        return False
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="会话启动门禁（车道方案）")
+    ap.add_argument("--fix-env", action="store_true", help="自动创建 .venv junction")
+    ap.add_argument("--smoke", action="store_true", help="额外跑快速回归冒烟")
+    args = ap.parse_args(argv)
+
+    # ── ⓪ 仓库健康门禁 L0（纯文件系统，2026-09-19 防复发；必须在任何 git 调用之前）──
+    # 根因：.git/refs/ 目录缺失时 git 报 `fatal: not a git repository`，此后本脚本现有
+    # 的 ① 车道分支（git branch --show-current）等一切 git 调用连启动都做不到——门禁会
+    # "自己先崩"。故先用纯文件系统（零 git 依赖）判健康，不健康即给恢复指引并短路，
+    # 而非让后续 git 调用吐一堆错误（修架构师诊断的 G5 缺口）。
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import _git_guard  # noqa: PLC0415 - 局部导入，避免非 scripts 上下文的导入副作用
+    gd = _git_guard.resolve_git_dir()
+    if not _git_guard.print_report(_git_guard.check_l0(gd), gd):
+        print()
+        print("❌ 仓库健康门禁 L0 未过：.git 元数据损坏（详见上方诊断），已短路后续检查。")
+        print("   处置：python scripts/_git_guard.py --rebuild        # 从最新 refs 快照一键重建")
+        print("        无快照时按上方「恢复目标值来源」从 ORIG_HEAD/FETCH_HEAD/info/refs 恢复")
+        return 1
+    print(f"✅ 仓库健康（L0）：{gd}")
+
+    # ── ⓪b 僵尸租约「只报告不修改」（2026-09-19 防复发 A1 修订，缺口 G4）──
+    # 决策（team-lead A1）：**boot 路径一个字节都不写 coordination.json**。
+    # 原因：初版把「僵尸自动回收」接到 boot，判据纯 age>ttl*factor、零存活检查、lease
+    # 不存 PID → 一个「存活但 90min 无心跳」的会话租约会被另一会话 boot 时自动删掉，
+    # 等于给并发写开了隐蔽后门（QA 已实测复现）。故 boot 只**巡检并报告**怀疑名单，
+    # 真正回收须人工确认会话已死后跑 `python scripts/_lease.py reap --force`。
+    try:
+        import _lease  # noqa: PLC0415 - 局部导入
+        zombies = _lease.find_zombies()  # 纯只读：不写盘、不删租约
+        if zombies:
+            print(f"👀 怀疑僵尸租约 {len(zombies)} 个（仅报告，未删除）：{', '.join(zombies)}")
+            print("   判据仅 age>ttl×factor、无存活核验；确认其确已死后执行：")
+            print("   python scripts/_lease.py reap --force")
+    except Exception as exc:  # noqa: BLE001 - 巡检失败绝不阻断开工
+        print(f"ℹ️ 僵尸租约巡检跳过（{exc}）")
+
+    ok = True
+    print("══ 会话启动门禁（阶段2 车道方案）══")
+
+    # ── ① 车道分支 ──
+    br = branch_name()
+    if not br.startswith("w/"):
+        print(f"❌ 车道分支：当前分支「{br or '(detached)'}」不是 w/<任务名>")
+        print("   处置：git worktree add ../wt-<任务名> -b w/<任务名> 换车道后重试")
+        ok = False
+    else:
+        print(f"✅ 车道分支：{br}")
+
+    # ── ①b 车道位置（2026-08-24 第七轮锐评：门禁只看分支名、没看车道位置——
+    #     违规会话切到 w/ 分支名就过了①，却占用了主工作树（孤儿 switch 事故根因）。
+    #     判断：git-dir == common-dir = 主工作树；主工作树只允许 main，车道必须独立 worktree）──
+    git_dir = sh(["git", "rev-parse", "--git-dir"]).stdout.strip()
+    common_dir = sh(["git", "rev-parse", "--git-common-dir"]).stdout.strip()
+    is_main_tree = os.path.normpath(git_dir) == os.path.normpath(common_dir)
+    if is_main_tree and br != "main":
+        print(f"❌ 车道位置：当前是主工作树（git-dir==common-dir={git_dir}），但分支是「{br}」")
+        print("   处置：主工作树只允许 main；车道必须 git worktree add ../wt-<任务名> -b w/<任务名>（独立目录）")
+        print("        已误入主工作树 → git switch main 回主树，再按上面建独立车道")
+        ok = False
+    else:
+        loc = "主工作树(main)" if br == "main" else "独立 worktree 车道"
+        print(f"✅ 车道位置：{loc}（git-dir={git_dir}）")
+
+    # ── ② 身份登记 ──
+    session = os.environ.get("CT_AGENT_SESSION") or sh(
+        ["git", "config", "--get", "atomcode.session"]).stdout.strip()
+    if not session:
+        print("❌ 身份登记：CT_AGENT_SESSION 未设置，也无 git config atomcode.session")
+        print("   处置：export CT_AGENT_SESSION=<你的会话名>（并 python scripts/_sign.py bind）")
+        ok = False
+    else:
+        print(f"✅ 身份登记：{session}")
+
+    # ── ③ 工作树干净 ──
+    st = sh(["git", "status", "--porcelain"]).stdout.strip()
+    if st:
+        print("❌ 工作树脏（在飞改动，裸奔残留）：")
+        for line in st.splitlines()[:15]:
+            print(f"   {line}")
+        print("   处置：先收口（提交到本车道或移交协调者），不许带脏开工")
+        ok = False
+    else:
+        print("✅ 工作树干净")
+
+    # ── ④ 环境可用 ──
+    py = os.path.join(ROOT, ".venv", "Scripts", "python.exe")
+    if os.path.exists(py):
+        print(f"✅ .venv 可用：{py}")
+    elif args.fix_env:
+        ok = fix_env() and ok
+    else:
+        print(f"❌ .venv 缺失（新 worktree 常见）：{py}")
+        print("   处置：python scripts/_session_boot.py --fix-env（自动 junction 主工作树 .venv）")
+        ok = False
+
+    # ── ⑤ 快速冒烟 ──
+    if args.smoke and ok:
+        print("── 快速回归冒烟（防错体系核心测试）──")
+        r = sh([sys.executable, "-m", "pytest",
+                "tests/test_lease.py", "tests/test_sign.py",
+                "tests/test_honesty_scan.py", "tests/test_closeout.py",
+                "-q", "--no-header"])
+        print(r.stdout[-800:] if r.stdout else "")
+        if r.returncode != 0:
+            print("❌ 冒烟失败：门禁自身被改坏或环境异常")
+            ok = False
+        else:
+            print("✅ 冒烟通过")
+
+    print()
+    if ok:
+        print("✅ 车道就绪：可以开工（提交走本车道，main 由合并闸门收）")
+        return 0
+    print("❌ 门禁未过：按上述处置逐项修复；修复不了 → 换车道/找协调者")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

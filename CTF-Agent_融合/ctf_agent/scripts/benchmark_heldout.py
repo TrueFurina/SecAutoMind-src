@@ -1,0 +1,716 @@
+#!/usr/bin/env python3
+"""
+Held-out 未见题自主解题基准（续评-20260917 P0）。
+
+为什么存在
+----------
+严格 KPI=14 是「确定性复现 14 道已知 writeup」，LLM 真推理对 14 贡献 = 0。
+竞技要的是**未见题上的自主推理**，而现有 benchmark 全在已见题上跑。
+本脚本构造一个「未见 + 非平凡」题池，强制走主 Agent 全链路（--presolve-skip），
+量出真正的自主解题水位，作为明年复赛的唯一竞技 KPI。
+
+选题规则（接手以磁盘为准，机器真值）
+------------------------------------
+从 data/questions_real/ 递归抓题，逐题判定：
+  - 在 _antifraud.AUTHORIZED_KPI_SOLVES（14 个已训练/已写 bespoke solver）→ 排除（已见）
+  - 附件（内容级）即答案密钥 → 排除 known-leak(answer-key-only)（数据集已知"答案密钥泄露"；
+    内容级判定：附件归一化 sha256 命中题面真值才剔除，命名 flag.txt 的合法输入如
+    anwang 八进制密文不误伤）
+  - 附件文件内容含真实明文 flag（sha256 命中题面 flag_sha256，如源码泄露题
+    gongye_web2：flag 明文写在 index.php / 前端 html 里）→ 排除（读源码即拿答案，
+    非自主推理；且题面 flag 字段只是 64-hex 占位，旧 leaked-attachment 只拦 flag.txt 漏掉它）
+  - answer_disclosed=True（教学题自带明文 flag）→ 排除（load_questions 护栏一致）
+  - provenance/source 含 self_authored_training（自产训练题）→ 排除（非真题）
+  - WRITEUP 重建题（附件路径含 recovered_external/wp_text，或描述含 reconstruct/官方wp/
+    官方题解/writeup 等）→ 排除（题面由官方 wp 反推、flag 明文在 wp_text 附件，读附件=看答案，
+    非自主推理能力，且污染 held-out 分母）
+剩余 = 真·未见·非平凡候选池。
+
+运行
+----
+  python scripts/benchmark_heldout.py --select            # 仅选题干，写 manifest
+  python scripts/benchmark_heldout.py --run --mock        # 冒烟：mock 验证流水线
+  python scripts/benchmark_heldout.py --run --provider baidu --wallclock 300   # 真自主推理
+
+真跑需要 baidu 凭证可达；结果落 data/results/heldout/。
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+# 让 `python scripts/benchmark_heldout.py` 也能 import scripts 包下的模块
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+logger = logging.getLogger(__name__)
+
+# 载荷完整性：复用语料审计器里唯一的附件解析真值源（逐文件缺失判定），
+# 禁止在本文件重写解析规则（两份实现必然漂移——㉚ 模仿实现的自检不算守卫）。
+from scripts._audit_corpus_integrity import (  # noqa: E402 - 需在 sys.path 注入后导入
+    missing_attachments as _missing_attachments,
+)
+
+
+def _path_rel(p) -> str:
+    """相对 ROOT 显示；若不在 ROOT 下（外部题源可能在仓库外）则回退绝对路径。"""
+    p = Path(p)
+    try:
+        return str(p.relative_to(ROOT))
+    except ValueError:
+        return str(p)
+RESULTS = ROOT / "data" / "results"
+QUESTIONS_REAL = ROOT / "data" / "questions_real"
+QUESTIONS_EXTERNAL = ROOT / "data" / "questions_external"  # P0-① 开放 CTF 平台采源
+MANIFEST = RESULTS / "heldout_candidates.json"
+RUN_DIR = RESULTS / "heldout_run"
+OUT_DIR = RESULTS / "heldout"
+BLACKBOARD = RESULTS / "blackboard.json"
+
+LEAK_MARKERS = ("flag.txt",)
+SELF_AUTHORED_MARKERS = ("self_authored_training", "self-authored", "training")
+
+# 答案来源审计清单（机器生成：scripts/_leak_provenance.py --presolve-json <presolve_audit>）。
+# 2026-10-01 v3：对 real92 全池用 presolve oracle 二段判定。其 desc_leak 档唯一题 =
+# real_crypto_dnui_keyboard（题面明文写「解出 CLCKOUTHK」，读描述即得答案，非自主推理）。
+# select_candidates 只取 desc_leak 档用于剔除能力分母；**不取 att_leak**——后者含
+# reverse/crypto/pwn 题「挑战文件内嵌 flag」的误判（如 real_reverse_js 的 flag 在 coso.js，
+# 那正是题目本身，剔除会腰斩合法题），att_leak(答案密钥类) 已由 _is_leaked_attachment 覆盖。
+# ⚠️ 此清单为 2026-10-01 快照；real 语料变更后须重跑 _leak_provenance.py 刷新，否则
+# bare-token 类 desc_leak 可能漏检（见 _is_desc_leak 的回退路径）。
+LEAK_PROVENANCE_MANIFEST = ROOT / "heldout_evidence" / "leak_provenance_real92_v3_20261001.json"
+
+
+def _is_leaked_attachment(q: dict) -> bool:
+    """题的所有附件都是答案密钥（内容级判定）→ 即 KNOWN_LEAK，不可作能力分母。
+
+    ITEM4-B（2026-10-10）：改用 `core.answer_key_filter.is_answer_key_only` 做
+    **内容级**判定（归一化 sha256 命中题面真值），取代原纯文件名启发式
+    （路径含 flag.txt 即判泄露）。原因：real_crypto_anwang_crypto1 的 flag.txt
+    是**八进制密文输入**（解码后才得 flag），内容≠答案，原文件名启发式会把它
+    误判为泄露、错误踢出能力分母。内容级判定只剔除「内容真=答案」的附件，
+    合法输入即使命名 flag.txt 也保留。
+
+    ⚠️ 外部题源豁免（2026-09-22）：外部题在 fetch/ingest 阶段已对**附件内容**
+    做字节级 flag 泄露扫描（`fetch_google_ctf.py`：命中即整题剔除），故此处
+    直接放行——Google CTF 的 `attachments/flag.txt` 常是密文诱饵，复用本地
+    内容级判定会误伤。
+    """
+    if q.get("provenance") == "real_past_ctf" and q.get("external_source"):
+        return False
+    from core.answer_key_filter import is_answer_key_only
+    return is_answer_key_only(q)
+
+
+_DESC_LEAK_CACHE = None  # None=未加载；set=已加载(可空)；"UNAVAILABLE"=清单不可用
+
+
+def _load_desc_leak_cache() -> None:
+    """加载机器生成的泄漏清单中的 desc_leak 题集（缓存，进程内仅一次）。"""
+    global _DESC_LEAK_CACHE
+    if _DESC_LEAK_CACHE is not None:
+        return
+    try:
+        data = json.loads(LEAK_PROVENANCE_MANIFEST.read_text(encoding="utf-8"))
+        ids = {r["id"] for r in data.get("rows", []) if r.get("provenance") == "desc_leak"}
+        _DESC_LEAK_CACHE = ids
+    except Exception as exc:  # noqa: BLE001
+        sys.stderr.write(
+            f"[benchmark_heldout] 泄漏来源清单 {LEAK_PROVENANCE_MANIFEST} 不可用"
+            f"（{exc}）；desc_leak 回退到无 oracle 判定（bare-token 类会漏检），"
+            f"请重跑 scripts/_leak_provenance.py 刷新。\n")
+        _DESC_LEAK_CACHE = "UNAVAILABLE"
+
+
+def _is_desc_leak(q: dict, qid: str) -> bool:
+    """题面描述是否自带答案（desc_leak）：命中≠自主推理，须剔除能力分母。
+
+    优先用机器生成的泄漏清单（含 presolve oracle 二段判定，能抓 dnui 的 bare-token
+    「CLCKOUTHK」类）。清单不可用时回退到 scripts._leak_provenance.classify 的无 oracle
+    形态（仅抓「描述含 flag{...} 形状明文」的 desc_leak），并打印告警——bare-token 类
+    在无 oracle 下无法判定，故清单缺失会漏检，必须刷新清单。
+    """
+    _load_desc_leak_cache()
+    if isinstance(_DESC_LEAK_CACHE, set):
+        return qid in _DESC_LEAK_CACHE
+    # 清单不可用：逐题无 oracle 兜底（bare-token 类漏检，仅抓 flag{...} 形状）
+    try:
+        from types import SimpleNamespace
+        from scripts._leak_provenance import classify as _lp_classify
+        ns = SimpleNamespace(
+            id=q.get("id") or qid,
+            attachments=q.get("attachments") or [],
+            flag_sha256=q.get("flag_sha256") or "",
+            description=q.get("description") or "",
+        )
+        return str(_lp_classify(ns, ROOT / "data" / "questions_real").get("provenance")) == "desc_leak"
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def desc_leak_ids() -> "frozenset[str]":
+    """机器生成的 desc_leak 题集（答案在题面描述里，命中≠自主推理），供能力分母剔除与外部核对。
+
+    数据源：LEAK_PROVENANCE_MANIFEST（scripts/_leak_provenance.py --presolve-json 产物）。
+    清单不可用回退空集（非空回退见 _is_desc_leak 的逐题 classify 路径）。
+    """
+    _load_desc_leak_cache()
+    if isinstance(_DESC_LEAK_CACHE, set):
+        return frozenset(_DESC_LEAK_CACHE)
+    return frozenset()
+
+
+def _has_plaintext_flag_in_question(q: dict) -> bool:
+    """题面 JSON 自身含真实明文 flag（非 sha256 占位）→ 答案已泄露，违反 2026-08-24 红线。
+
+    注意：flag 字段常见为 64 位 hex 的 sha256 占位（合法校验锚），不得误判为泄漏。
+    仅当 flag 字段是非占位的真实 flag 串，或 answer/solution 字段含明文 flag 时，才算泄漏。
+    """
+    flagre = re.compile(r"flag\{|dasctf\{|ctf\{|xctf\{|d0g3\{|d0gz\{", re.I)
+    try:
+        from eval.cases import Question
+        qq = Question.from_dict(q)
+        if (qq.flag is not None and not qq.flag_is_placeholder
+                and isinstance(qq.flag, str) and flagre.search(qq.flag)):
+            return True
+    except Exception:
+        # 兜底：flag 字段非 64 位 hex 占位且含 flag 串 → 视为明文泄漏
+        f = q.get("flag")
+        if isinstance(f, str) and f.strip() and not re.fullmatch(r"[0-9a-fA-F]{64}", f.strip()) \
+                and flagre.search(f):
+            return True
+    for k in ("answer", "solution", "expected_flag"):
+        v = q.get(k)
+        if isinstance(v, str) and flagre.search(v):
+            return True
+    return False
+
+
+_FLAG_RE = re.compile(r"flag\{|dasctf\{|ctf\{|xctf\{|d0g3\{|d0gz\{", re.I)
+
+
+def _is_real_flag_string(s) -> bool:
+    """非 sha256 占位、且含 flag 特征串 → 真实明文 flag（待脱敏）。"""
+    return (isinstance(s, str) and s.strip()
+            and not re.fullmatch(r"[0-9a-fA-F]{64}", s.strip())
+            and bool(_FLAG_RE.search(s)))
+
+
+# 源码/附件内明文 flag：题面 flag 字段是 64-hex 占位，但真 flag 明文写在附件文件内容里
+# （如 gongye_web2 的 index.php `// echo "flag{MBeGEaS67008RGb9}";`）。读源码即拿答案，
+# 非真·未见。旧 _is_leaked_attachment 只拦 flag.txt 路径、_has_plaintext_flag_in_question
+# 只查题面字段，都漏掉这类 → 这里按「附件内容 flag 串 sha256 == 题面 flag_sha256」确定性命中。
+_SRC_FLAG_FULL_RE = re.compile(
+    r"(?:flag|dasctf|ctf|xctf|d0g3|d0gz)\{[^{}]*\}", re.I)
+
+
+def _resolve_attachment(q: dict, qpath: Path, att: str) -> Path | None:
+    """把 attachments 里的相对路径解析成磁盘文件（多候选，容错）。"""
+    cand = [Path(att), qpath.parent / att, ROOT / att]
+    for c in cand:
+        try:
+            if c.exists() and c.is_file():
+                return c
+        except OSError:
+            continue
+    return None
+
+
+def _has_plaintext_flag_in_source(q: dict, qpath: Path) -> bool:
+    """附件文件内容含真实明文 flag（sha256 命中题面 flag_sha256）→ 源码泄露，排除。
+
+    确定性最强：只有「附件内容里某 flag 串的 sha256 恰好等于题面 flag_sha256」才判泄露，
+    杜绝把源码里示例/占位 flag 误判（那些 sha256 不会命中真值）。无 flag_sha256 时无法
+    确定性判定，返回 False（交给 require_sha256 处理，不靠内容猜）。
+
+    ⚠️ 类别闸（防误伤）：仅对 web / misc 生效。
+      - web/misc：flag 明文写在提供的源码/附件里（如 gongye_web2 的 index.php
+        `// echo "flag{...}"`）→ 读源码即拿答案，非自主推理，排除。
+      - reverse/crypto/pwn：flag 嵌在二进制/脚本里是**题目本身**（逆向/解密即解题），
+        不算泄露，必须保留，否则会错误腰斩这些类别。
+    全量扫描实锤：92 题里 39 道附件含 flag 串且 sha256 命中，但 reverse/crypto/pwn 占多数
+    （如 real_reverse_js 的 flag 在 JS 里），若不过滤类别会误剔 37 道合法题。
+    """
+    cat = (q.get("category") or "").lower()
+    if cat not in ("web", "misc"):
+        return False
+    sha = (q.get("flag_sha256") or "").strip().lower()
+    if not sha:
+        return False
+    for a in (q.get("attachments") or []):
+        p = _resolve_attachment(q, qpath, str(a))
+        if p is None:
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except (OSError, UnicodeError):
+            continue
+        for m in _SRC_FLAG_FULL_RE.findall(text):
+            if hashlib.sha256(m.strip().encode("utf-8")).hexdigest().lower() == sha:
+                return True
+    return False
+
+
+def _neutralize(q: dict) -> dict:
+    """脱敏：隐藏题面里可直接读到的答案，让 agent 无法「看答案」。
+
+    - 去掉 attachments 里的 flag.txt（且 build_run_dir 不复制该文件）
+    - 把 flag/answer/solution 里的真实明文 flag 置空；若缺 flag_sha256 则用明文算一个补上
+      （保证校验仍可做，而 agent 读不到答案）
+    """
+    q = json.loads(json.dumps(q, ensure_ascii=False))
+    atts = q.get("attachments") or []
+    filtered = [a for a in atts if "flag.txt" not in str(a).lower()]
+    # 关键：若剔除 flag.txt 后为空，presolve._attachments 会兜底回读原始题面 json
+    # （questions_real/{cat}/{id}.json）并把 flag.txt 重新补回来 → 脱敏失效。
+    # 故填一个不存在的哨兵路径，令 attachments 非空、兜底不触发、读取无害失败。
+    if atts and not filtered:
+        filtered = ["__neutralized_no_real_attachment__"]
+    q["attachments"] = filtered
+    for k in ("flag", "answer", "solution", "expected_flag"):
+        v = q.get(k)
+        if _is_real_flag_string(v):
+            if not q.get("flag_sha256"):
+                q["flag_sha256"] = hashlib.sha256(v.strip().encode("utf-8")).hexdigest().lower()
+            q[k] = ""
+    return q
+
+
+def _is_self_authored(q: dict) -> bool:
+    blob = " ".join(str(q.get(k, "")) for k in ("provenance", "source", "description"))
+    return any(m in blob.lower() for m in SELF_AUTHORED_MARKERS)
+
+
+# WRITEUP 重建题：题面由官方 writeup 反推、flag 明文藏在 wp_text 附件里。
+# 读附件=看答案，不是自主推理能力；且 flag 在附件而非题面，现有 leaked-attachment 只拦
+# flag.txt，漏掉 wp_text。这类题污染 held-out 分母（10→应为 3 道真·未见题）。
+WP_ATTACHMENT_MARKERS = ("recovered_external/wp_text",)
+WP_TEXT_MARKERS = ("reconstructed from", "reconstruct from", "官方wp", "官方题解",
+                   "official writeup", "from official writeup", "flag from official",
+                   "writeup")
+
+
+def _is_writeup_reconstructed(q: dict) -> bool:
+    """判定 WRITEUP 重建题（非真·未见题，答案在 wp_text 附件里）。
+
+    判定信号（任一命中即排除）：
+      - 附件路径含 recovered_external/wp_text（ definitive：7 道 WRITEUP 题统一特征）
+      - description/source/notes/provenance 含重建关键词（reconstructed / 官方wp /
+        官方题解 / official writeup / flag from official / writeup 等）
+    3 道真·未见题（dnui_keyboard / real_reverse_js / gongye_web2）附件在
+    data/questions_real/_attachments/，描述为真挑战文本，不会被误伤。
+
+    ⚠️ 外部题源豁免：外部题在 `ingest_external_ctf.py` 注入时已强制
+    `provenance=real_past_ctf` + `external_source` 且拒收
+    `source_reconstructed_from_writeup=true`，故其 description 里偶发的
+    "writeup" 字样（如"该题多见 writeup"）不应触发误剔。仅保留附件路径硬判定。
+    """
+    # 外部题源豁免宽松关键词启发式，仅保留 wp_text 附件路径硬判定
+    if q.get("provenance") == "real_past_ctf" and q.get("external_source"):
+        for a in (q.get("attachments") or []):
+            s = str(a).lower()
+            if any(m in s for m in WP_ATTACHMENT_MARKERS):
+                return True
+        return False
+    for a in (q.get("attachments") or []):
+        s = str(a).lower()
+        if any(m in s for m in WP_ATTACHMENT_MARKERS):
+            return True
+    blob = " ".join(str(q.get(k, "")) for k in
+                    ("description", "source", "notes", "provenance"))
+    blob_low = blob.lower()
+    return any(m in blob_low for m in WP_TEXT_MARKERS)
+
+
+def select_candidates(require_sha256: bool = True,
+                      include_neutralized: bool = False,
+                      external_dir: "Path | None" = None,
+                      require_payload: bool = False) -> tuple[list[dict], list[dict]]:
+    """返回 (候选池, 全部记录含排除原因)。
+
+    include_neutralized=True 时：不再排除「答案泄露」题（flag.txt 附件 / 题面明文 flag），
+    而是在建 run 目录时脱敏（隐藏答案），让 agent 无法「看答案」却被正常评测——
+    对应指令「答案泄露可以不看答案」。trained/self_authored/answer_disclosed 仍排除。
+
+    external_dir：外部 CTF 平台采源目录（**默认 None = 不并入**）。
+    传入 QUESTIONS_EXTERNAL 才并入候选池，复用全部既有排除链
+    （trained/writeup/leaked/source-leaked/sha256），零新诚实逻辑。
+
+    ⚠️ 2026-09-26 修正：原 docstring 写「默认 QUESTIONS_EXTERNAL」与签名 `None` 不符，
+    导致误以为默认就含外部题——实测二者为不同口径（真实计数见下，禁止在此手抄数字，
+    一律由脚本运行派生：default 不并外部题 = 能力分母 heldout_candidates；
+    传 external_dir = 可选跑池 heldout_runnable_pool，含外部采源、难度更高）。
+    ⚠️ 2026-10-10 口径补强：剔除链新增 `known-leak(desc_leak)`——题面描述自带答案
+    （如 real_crypto_dnui_keyboard 题面写「解出 CLCKOUTHK」，读描述即得答案、非自主推理）
+    的题从能力分母剔除。该判定仅取泄漏清单的 desc_leak 档，不取 att_leak（后者含
+    reverse/crypto/pwn 题「挑战文件内嵌 flag」的误判，如 real_reverse_js 的 flag 在 coso.js）。
+    该差异正是 _kpi_canonical 中 heldout_candidates(能力分母) 与
+    heldout_runnable_pool(可选跑池) 的区分来源。
+    ⚠️ 2026-10-14 载荷完整性（ITEM4）：`scripts/_audit_corpus_integrity.py` 早就能判
+    `payload_missing`，但**能力分母的生产入口从不查它**——完整性结论到不了测量入口
+    （能力分母 heldout_candidates=1 的 real_reverse_js，其 flag 源头 index.html 已在
+    10-12 删除事件中永久丢失 ⇒ 结构上不可解，却一直被当作可测题）。
+    现每题计算**逐文件**缺失清单写进记录 `payload_missing` 字段；仅在显式开关
+    `require_payload=True` 时才作为排除原因 `payload-missing(unmeasurable)`。
+    默认 False＝**只标记不剔除**，能力分母口径不变（口径变更须用户授权）。
+    """
+    # 机器真值：14 个已训练题（KPI 口径）
+    try:
+        import scripts._antifraud as af  # type: ignore
+        trained = set(getattr(af, "AUTHORIZED_KPI_SOLVES", frozenset()))
+    except Exception:
+        trained = frozenset()
+
+    scan_targets = [("real", QUESTIONS_REAL)]
+    if external_dir and Path(external_dir).exists():
+        scan_targets.append(("external", Path(external_dir).resolve()))
+
+    all_recs: list[dict] = []
+    seen_ids = set()
+    for stag, qdir in scan_targets:
+        for jf in sorted(qdir.rglob("*.json")):
+            # 外部题源的附件目录里可能含 .json 数据文件，不是题面，跳过
+            if "_attachments" in jf.parts:
+                continue
+            try:
+                with open(jf, "r", encoding="utf-8") as fh:
+                    q = json.load(fh)
+            except (json.JSONDecodeError, OSError):
+                continue
+            qid = q.get("id") or jf.stem
+            if qid in seen_ids:
+                continue
+            seen_ids.add(qid)
+            has_plain = _has_plaintext_flag_in_question(q)
+            # 源码/附件内容明文 flag（sha256 命中）：读源码即拿答案，非真·未见
+            source_leaked = _has_plaintext_flag_in_source(q, jf)
+            # 脱敏模式下：明文 flag 可合成 sha256 校验锚 → 仍可校验
+            validatable = bool(q.get("flag_sha256")) or (include_neutralized and has_plain)
+            # desc_leak 一次性算出，排除链与 rec 字段共用（清单命中为 O(1) 集合查询）
+            desc_leak = _is_desc_leak(q, qid)
+            # 逐文件载荷缺失（源文件失踪 ⇒ 结构上不可解，详见 docstring 2026-10-14 条目）
+            try:
+                missing_payload = _missing_attachments(q, jf, qdir)
+            except Exception as _exc:  # noqa: BLE001 - 缺依赖/坏路径不得炸掉整个选题
+                logger.warning("[select] %s 载荷完整性检查失败(按健康处理): %s", qid, _exc)
+                missing_payload = []
+            reason_excluded = None
+            if qid in trained:
+                reason_excluded = "trained(KPI)"
+            elif q.get("answer_disclosed"):
+                reason_excluded = "answer_disclosed"
+            elif _is_self_authored(q):
+                reason_excluded = "self_authored_training"
+            elif _is_writeup_reconstructed(q):
+                reason_excluded = "writeup-reconstructed(non-genuine)"
+            elif not include_neutralized and _is_leaked_attachment(q):
+                reason_excluded = "known-leak(answer-key-only)"
+            elif not include_neutralized and desc_leak:
+                reason_excluded = "known-leak(desc_leak)"
+            elif not include_neutralized and has_plain:
+                reason_excluded = "plaintext-flag-in-question"
+            elif source_leaked:
+                # 源码泄露：两种模式都排除——脱敏只能 blank 题面字段，改不了源码文件内容，
+                # 否则会破坏题目本身；且读源码即拿答案，不算自主推理。
+                reason_excluded = "source-leaked-flag(sha256-in-attachment)"
+            elif require_sha256 and not validatable:
+                reason_excluded = "no-flag_sha256(unvalidatable)"
+            elif require_payload and missing_payload:
+                # 仅在显式开关下剔除：默认只标记（口径变更需授权）
+                reason_excluded = "payload-missing(unmeasurable)"
+            rec = {
+                "id": qid,
+                "path": _path_rel(jf),
+                "category": q.get("category"),
+                "source": stag,
+                "external_source": q.get("external_source") if stag == "external" else None,
+                "has_flag_sha256": bool(q.get("flag_sha256")),
+                "has_plaintext_flag": has_plain,
+                "source_leaked_flag": source_leaked,
+                "leaked_attachment": _is_leaked_attachment(q),
+                "known_leak": _is_leaked_attachment(q),
+                "desc_leak": desc_leak,
+                "payload_missing": missing_payload,
+                "excluded": reason_excluded,
+            }
+            all_recs.append(rec)
+    cands = [r for r in all_recs if r["excluded"] is None]
+    return cands, all_recs
+
+
+def write_manifest(cands: list[dict], all_recs: list[dict], require_sha256: bool,
+                   include_neutralized: bool = False,
+                   external_dir: "Path | None" = None) -> None:
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    from collections import Counter
+    breakdown = Counter(r["excluded"] or "INCLUDED" for r in all_recs)
+    ext_cands = [c for c in cands if c.get("source") == "external"]
+    if include_neutralized:
+        criteria = ("unseen(NOT in AUTHORIZED_KPI_SOLVES) AND NOT answer_disclosed "
+                    "AND NOT self_authored_training；泄露题纳入但**运行时脱敏**"
+                    "（隐藏 flag.txt/明文答案，agent 读不到答案）"
+                    + ("；has flag_sha256 或可合成(validatable)" if require_sha256 else ""))
+    else:
+        criteria = ("unseen(NOT in AUTHORIZED_KPI_SOLVES) AND NOT known-leak(answer-key-only) "
+                    "AND NOT known-leak(desc_leak) AND NOT plaintext-flag-in-question "
+                    "AND NOT source-leaked-flag(sha256-in-attachment) "
+                    "AND NOT answer_disclosed "
+                    "AND NOT self_authored_training AND NOT writeup-reconstructed(non-genuine)"
+                    + (" AND has flag_sha256(validatable)" if require_sha256 else ""))
+    payload = {
+        "generated_by": "scripts/benchmark_heldout.py",
+        "source_dir": str(QUESTIONS_REAL),
+        "external_dir": str(external_dir) if external_dir else None,
+        "include_neutralized": include_neutralized,
+        "criteria": criteria,
+        "candidate_count": len(cands),
+        "external_candidate_count": len(ext_cands),
+        "exclusion_breakdown": dict(breakdown),
+        "candidates": cands,
+    }
+    MANIFEST.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def build_run_dir(cands: list[dict], neutralize_leaks: bool = False) -> Path:
+    if RUN_DIR.exists():
+        shutil.rmtree(RUN_DIR)
+    RUN_DIR.mkdir(parents=True, exist_ok=True)
+    ok = 0
+    neutralized = 0
+    for c in cands:
+        src = Path(c["path"])
+        if not src.is_absolute():
+            src = ROOT / c["path"]
+        if not src.exists():
+            continue
+        try:
+            q = json.loads(src.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if neutralize_leaks:
+            before = json.dumps(q, ensure_ascii=False)
+            q = _neutralize(q)
+            if json.dumps(q, ensure_ascii=False) != before:
+                neutralized += 1
+        (RUN_DIR / f"{c['id']}.json").write_text(
+            json.dumps(q, ensure_ascii=False, indent=1), encoding="utf-8")
+        ok += 1
+    tag = f"（其中 {neutralized} 道已脱敏：隐藏 flag.txt/明文答案）" if neutralize_leaks else ""
+    print(f"[heldout] 复制 {ok} 道候选题到 {RUN_DIR}{tag}")
+    return RUN_DIR
+
+
+def _backup_and_clear_blackboard() -> Path | None:
+    """冷启动事实黑板：备份跨会话 flag 缓存，清空后跑，避免 held-out 题被旧缓存命中。
+
+    返回备份路径；若原本无黑板文件则返回 None（无需恢复）。
+    """
+    backup = RESULTS / f"blackboard.heldout_bak_{datetime.now():%Y%m%d_%H%M%S}.json"
+    if BLACKBOARD.exists():
+        shutil.copy(BLACKBOARD, backup)
+        print(f"[heldout] 备份黑板 -> {backup.name}（{BLACKBOARD.stat().st_size} bytes）")
+    # 清空：仅置空，不删文件（保留 known_failures 结构，运行后恢复备份）
+    BLACKBOARD.write_text(
+        json.dumps({"presolve_cache": {}, "known_failures": {}}, ensure_ascii=False, indent=1),
+        encoding="utf-8",
+    )
+    print(f"[heldout] 黑板已冷启动（presolve_cache 清空，杜绝跨会话 flag 泄漏）")
+    return backup
+
+
+def _restore_blackboard(backup: Path | None) -> None:
+    if backup is None:
+        return
+    if backup.exists():
+        shutil.copy(backup, BLACKBOARD)
+        print(f"[heldout] 恢复用户原黑板 -> {BLACKBOARD.name}")
+    else:
+        print("[heldout] 警告：备份不存在，跳过恢复")
+
+
+def run(cands: list[dict], provider: str, wallclock: float, mock: bool,
+        limit: int, concurrency: int, cold_blackboard: bool, e3: bool,
+        neutralize_leaks: bool = False) -> int:
+    # 带时间戳的结果子目录：避免覆盖 09-27 的 heldout 证据报告（铁律：确认输出不覆盖证据）
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    run_dir = build_run_dir(cands, neutralize_leaks=neutralize_leaks)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        sys.executable, "-m", "eval.benchmark",
+        "--questions-dir", str(run_dir),
+        # 2026-09-29 修正：去掉 --presolve-skip，与 09-27 同口径（presolve 命中 sha256 即验证解出）。
+        # 否则 least-common-genominator 这类「确定性预扫已命中 flag{program}」的题被强制主链路重跑，
+        # LLM 在持久 shell 生成的 command 全报 invalid syntax → 误判失败（首批 5 题实测暴露）。
+        "--provider", provider,
+        "--wallclock", str(wallclock),
+        "--results-dir", str(OUT_DIR / f"G_rerun_{ts}"),
+        "--limit", str(limit),
+        "--concurrency", str(concurrency),
+    ]
+    if mock:
+        cmd.append("--mock")
+    print(f"[heldout] 运行自主链路: {' '.join(cmd)}")
+    print(f"[heldout] E3 附件证据注入(CTF_AGENT_E3): {'ON' if e3 else 'OFF'}")
+
+    # E3（2026-08-25 桶C攻坚）：held-out 自主推理正是证据注入的测量场，默认开启。
+    # 不开 E3 则 30% 的「证据不进脑」LLM 失败无解药，且无法量 E3 效果。
+    # 基线 KPI=14（presolve 口径）不走此路径，不受影响。
+    env = dict(os.environ)
+    if e3 and not mock:
+        env["CTF_AGENT_E3"] = "1"
+    elif e3 and mock:
+        # mock 跑也透传，便于验证 E3 接线不改变流水线
+        env["CTF_AGENT_E3"] = "1"
+
+    # 预算反思早停闸门（F1 rule⑥：零候选 + ≥60% 消耗 → ABANDON）：held-out 自主推理正是
+    # 预算烧穿重灾区（2026-09-22 三题各烧 19-22 万 token、第四题一步没走）。默认开启，
+    # 避免重跑再买一个 budget_exceeded（与 E3 同构：held-out 正是该机制测量场）。
+    # 仅非 mock 生效——mock 无真实预算，开启无意义。
+    if not mock:
+        env["CTF_AGENT_BUDGET_REFLECTION"] = "1"
+
+    backup = None
+    if cold_blackboard and not mock:
+        backup = _backup_and_clear_blackboard()
+    try:
+        rc = subprocess.call(cmd, cwd=str(ROOT), env=env)
+    finally:
+        if backup is not None:
+            _restore_blackboard(backup)
+    print(f"[heldout] 退出码 {rc}；报告见 {OUT_DIR}")
+    return rc
+
+
+def build_arg_parser() -> "argparse.ArgumentParser":
+    """构造 CLI 解析器（独立成函数：默认值可被测套件直接验证，不必触发选题/跑批）。"""
+    ap = argparse.ArgumentParser(description="Held-out 未见题自主解题基准")
+    ap.add_argument("--select", action="store_true", help="仅选题并写 manifest")
+    ap.add_argument("--run", action="store_true", help="在候选池上跑自主链路")
+    ap.add_argument("--provider", default=os.getenv("CTF_AGENT_LLM_PROVIDER", "").strip() or None,
+                    help="真实模式 LLM provider（如 glm / ark / xfyun）。"
+                         "默认取环境变量 CTF_AGENT_LLM_PROVIDER；"
+                         "2026-10-08 起**不再写死 'baidu'**——千帆已长期 403 不可用，"
+                         "沿用旧默认会让 --run 变成「死 provider 跑全池」的静默烧钱路径。"
+                         "真跑（非 mock）必须显式指定，否则拒绝启动（fail-closed）。")
+    ap.add_argument("--wallclock", type=float, default=300.0)
+    ap.add_argument("--mock", action="store_true", help="冒烟用 mock（无 API）")
+    ap.add_argument("--limit", type=int, default=0, help="只跑前 N 题（0=全部）")
+    ap.add_argument("--concurrency", type=int, default=1, help="题目并发数（1=串行）")
+    ap.add_argument("--no-cold-blackboard", dest="cold_blackboard", action="store_false",
+                    help="禁用冷启动（默认清空跨会话 flag 缓存，防 held-out 题被旧缓存命中）")
+    ap.add_argument("--no-require-sha256", dest="require_sha256", action="store_false",
+                    help="不强制要求 flag_sha256（默认仅纳入可校验题，避免假阴性）")
+    ap.add_argument("--no-e3", dest="e3", action="store_false",
+                    help="禁用 E3 附件证据注入（默认 ON：held-out 正是证据注入测量场，"
+                         "关掉则约三成的『证据不进脑』失败无解药且无法量 E3 效果）")
+    ap.add_argument("--include-neutralized", dest="include_neutralized", action="store_true",
+                    help="纳入答案泄露题但脱敏（隐藏 flag.txt/明文答案，agent 看不到答案）——"
+                         "对应『答案泄露可以不看答案』：扩样本量，量 agent 不看答案时的真实水位")
+    ap.add_argument("--external-dir", default=str(QUESTIONS_EXTERNAL),
+                    help=f"外部 CTF 平台题源目录（默认 {QUESTIONS_EXTERNAL}；"
+                         "存在则并入候选池，复用全部既有排除链，零新诚实逻辑）")
+    return ap
+
+
+def should_refuse(args) -> str | None:
+    """真跑启动前的 fail-closed 判定——返回拒绝原因码，None = 放行。
+
+    🔴 为什么要抽成生产侧纯函数（2026-10-08 二次收口）
+    ─────────────────────────────────────────────
+    这条判定原先只以**内联 if** 出现在 `main()` 里，于是护栏测套不得不在自己文件里
+    「独立重述」同一判定式。那份副本与生产漂移时**不会有任何用例变红**——已实测：
+    把生产的 `not args.mock` 摘掉（把 `--run --mock` 冒烟也拦了，一个非常符合本仓
+    「再紧一档」习惯的改动），`tests/test_heldout_provider_failclosed.py` 仍 7 passed。
+    这是 project memory ㉚ 的同型缺陷：测试用例验证的是自己那份实现副本，不是被测入口。
+    抽成函数后，护栏直接调 `should_refuse`，生产与测试再无第二份判定式。
+    """
+    if getattr(args, "run", False) and not getattr(args, "mock", False) \
+            and not getattr(args, "provider", None):
+        return "no-provider"
+    return None
+
+
+_REFUSAL_TEXT = {
+    "no-provider": (
+        "[heldout] ✗ 拒绝启动：未指定 provider（且环境变量 CTF_AGENT_LLM_PROVIDER 为空）。",
+        "[heldout]   真跑必须显式给一个**当前存活**的 provider（如 glm / ark / xfyun）；",
+        "[heldout]   只选题用 --select，冒烟用 --mock（后者无需 provider）。",
+        "[heldout]   背景：写死的默认 'baidu' 已长期 403，属已知失效源。",
+    ),
+}
+
+
+def refusal_text(reason: str) -> list:
+    """拒绝原因码 → 操作员提示行（未知原因码也必须有话可说，不得静默通过）。"""
+    lines = _REFUSAL_TEXT.get(reason)
+    if lines is None:  # fail-closed：认不出的原因码按最坏情况处理——提示去查守卫，而非放行
+        return [f"[heldout] ✗ 拒绝启动：未知拒绝原因码 {reason!r}——拒绝放行，请检查守卫实现。"]
+    return list(lines)
+
+
+def main() -> int:
+    args = build_arg_parser().parse_args()
+
+    # fail-closed 守卫（2026-10-08，P0-4 收口）：真实跑批**必须显式指定 provider**。
+    # 旧实现写死 default="baidu"，而千帆已长期 403 不可用 → 按默认 `--run` 会变成
+    # 「死 provider 跑全池」：既拿不到任何有效结果，又可能先空耗一轮完整预算。
+    # 这里在**选题之前**就拒绝，避免产生无意义的 manifest 与耗时。
+    # 判定走 `should_refuse()` 而非内联 if：内联会让护栏只能抄一份副本去读（见其 docstring）。
+    refusal = should_refuse(args)
+    if refusal:
+        for line in refusal_text(refusal):
+            print(line)
+        return 2
+
+    external_dir = Path(args.external_dir) if args.external_dir else None
+    cands, all_recs = select_candidates(require_sha256=args.require_sha256,
+                                        include_neutralized=args.include_neutralized,
+                                        external_dir=external_dir)
+    write_manifest(cands, all_recs, args.require_sha256, args.include_neutralized,
+                   external_dir=external_dir)
+    print(f"[heldout] 候选池 = {len(cands)} 道（manifest: {MANIFEST}）")
+    for c in cands:
+        print(f"  - {c['id']} [{c['category']}] sha256={'Y' if c['has_flag_sha256'] else 'N'}")
+    print("[heldout] 排除明细:")
+    from collections import Counter
+    for reason, n in sorted(Counter(r["excluded"] or "INCLUDED" for r in all_recs).items()):
+        print(f"    {reason}: {n}")
+
+    if args.select and not args.run:
+        return 0
+    if not args.run:
+        # 默认：选完即止（不自动真跑，避免无凭证时空耗）
+        return 0
+    # 成本可见性（2026-10-08）：--limit 默认 0 = 全池。真跑前强制把规模与 provider 打出来，
+    # 配合项目铁律「先估 token 与金额并获授权，再分批跑」——不静默吞掉预算。
+    #
+    # 关于 provider 存活性：这里**刻意不内置任何「死源清单」**。provider 可用性会随
+    # 余额/欠费/平台策略变化，手写的黑白名单必然漂移成新的假水位（本项目已为此
+    # 栽过数次）。正确做法是让窥探由机器当场完成：`scripts/_preflight_env.py --probe-llm`。
+    # （2026-10-08 补：此前只写 `python scripts/_preflight_env.py`，但该脚本原本
+    #  ①②③④ 四项**没有一项探测 provider**，光跑它并不能回答「这个源能不能用」；
+    #  第 ⑤ 项 LLM 可达性补齐后，需显式 `--probe-llm` 才会真发一次最小请求。）
+    if not args.mock:
+        scope = "全部 %d 题" % len(cands) if args.limit == 0 else "前 %d 题" % args.limit
+        print(f"[heldout] ⚠️ 即将真跑 {scope}，provider={args.provider}，"
+              f"请先估 token 与金额并确认已获授权（小额分批：建议先 --limit 5）。")
+        print("[heldout]   provider 存活性会漂移，勿依赖记忆中的黑白名单；"
+              "实探命令：python scripts/_preflight_env.py --probe-llm")
+    return run(cands, args.provider, args.wallclock, args.mock,
+               args.limit, args.concurrency, args.cold_blackboard, args.e3,
+               neutralize_leaks=args.include_neutralized)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
