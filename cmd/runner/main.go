@@ -250,11 +250,19 @@ func mask(s string) string {
 func detectConflictingProcs() []string {
 	var patterns []string
 	if runtime.GOOS == "windows" {
-		// Windows: 精确匹配 exe 名
-		patterns = []string{"runner_ctf.exe", "runner.exe", "final_entry.py", "runner_ctf2.py", "runner_ctf2.exe"}
+		// Windows: 精确匹配 exe 名（覆盖所有版本号后缀）
+		patterns = []string{
+			"runner.exe", "runner_ctf.exe", "runner_ctf2.exe",
+			"runner_v2.exe", "runner_v3.exe", "runner_v4.exe",
+			"final_entry.py", "runner_ctf2.py",
+		}
 	} else {
-		// Linux: pgrep -f 模糊匹配命令行关键字
-		patterns = []string{"runner_ctf", "final_entry", "runner_ctf2"}
+		// Linux: pgrep -f 模糊匹配（覆盖所有 runner 变体 + 版本号）
+		patterns = []string{
+			"runner_ctf", "runner_ctf2", "final_entry",
+			"runner_v2", "runner_v3", "runner_v4",
+			"/runner", // 任何 /path/to/runner* 二进制
+		}
 	}
 
 	var conflicts []string
