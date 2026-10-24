@@ -44,12 +44,15 @@ func TestStage1_AcceptanceWithFallback(t *testing.T) {
 	doc := loadCrossBench(t)
 	pr := NewPresolver(zap.NewNop())
 
-	// ── 模式 B（裁决口径）：12 题有数据子集，文本+附件，与 ctf_agent covered_yes=6 同池 ──
+	// ── 模式 B（裁决口径）：12 题有数据子集，文本+附件，与 ctf_agent covered_yes 同池 ──
 	// 剔除答案形态附件 = 真实解题口径（主判据）；含答案口径按赛制另列，互不冒充。
+	// 🔴 同池锚 = 5 不是 6：coverage_map 的 covered_yes=6 是 93 题全库口径，其中 vnctf_flag
+	//   因 2026-10-12 载荷丢失 attachment_available=false、从未进入本子集——两侧均不可端到端
+	//   复验，按 KNOWN_DATA_LOSS 惯例登记（2026-10-25 更正：首跑误用全库锚 6 造成"差 1"错觉）。
 	realHits, realIDs, em, um := runCrossBenchSubset(doc, false, func(ch *Challenge) *PresolveResult {
 		return pr.Presolve(context.Background(), ch, nil)
 	})
-	t.Logf("[模式B·剔除答案文件] 命中 %d/%d（ctf_agent 终态锚 = 6）：命中题 = %v",
+	t.Logf("[模式B·剔除答案文件] 命中 %d/%d（同池锚 = 5；全库锚 6 中 vnctf_flag 不在池内）：命中题 = %v",
 		realHits, subsetTotal(t, doc), realIDs)
 	t.Logf("[模式B] 附件缺失记账：预期缺失（git 排除答案文件）=%d，异常缺失=%d（异常缺失>0 = 清单与实物脱节）", em, um)
 	if um > 0 {
@@ -76,11 +79,12 @@ func TestStage1_AcceptanceWithFallback(t *testing.T) {
 	t.Logf("[模式A·文本] 合计 %d/%d（其中附件可用题命中 %d）——此为下限口径", prodHits, len(doc.Problems), prodAtt)
 
 	// ── 阶段 1 裁决（报告制：达标/未达标都如实回写移交总纲，不粉饰）──
+	const stage1Anchor = 5 // 同池锚：covered_yes=6 − vnctf_flag（载荷丢失不在池内）
 	switch {
-	case realHits >= 6:
-		t.Logf("✅ 阶段 1 达标：剔除答案口径 %d ≥ ctf_agent 终态 6（同池同口径）", realHits)
+	case realHits >= stage1Anchor:
+		t.Logf("✅ 阶段 1 达标：剔除答案口径 %d ≥ 同池锚 %d（同池同口径；vnctf_flag 按 KNOWN_DATA_LOSS 登记）", realHits, stage1Anchor)
 	default:
-		t.Logf("⛔ 阶段 1 未达标：剔除答案口径 %d < 6——缺口题 = 12 子集 − 命中集，逐题 Go 化后复跑（P1 工作清单来源）", realHits)
+		t.Logf("⛔ 阶段 1 未达标：剔除答案口径 %d < 同池锚 %d——缺口题 = 子集 − 命中集，逐题 Go 化后复跑", realHits, stage1Anchor)
 	}
 }
 
