@@ -154,6 +154,8 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 ### 赛后 P1（P0 后 2 周内）
 7. 复数组特殊曲线 RSA（含 DLP 平滑阶 BSGS 或外部服务适配）
 8. logbool 流量解析、ezrat 协议解析
+   **✅ 2026-10-25 logbool 半项落地**：`pcap_boolblind` 求解器（真实 10735 pcap 端到端命中，
+   2678 对/2631 谓词→169B RAR→flag，与 A 库 338-hex 锚一致）；ezrat 协议解析待做
 9. 监督反思/错误分类机制 Go 化（poller 单题止损 + 策略切换）
    **✅ 2026-10-25 落地**：`internal/ctfplatform/supervision.go`——A 库 error_taxonomy
    （truncated/non-retryable/瞬时三口径单一真值源）+ budget_reflection（CONTINUE/
