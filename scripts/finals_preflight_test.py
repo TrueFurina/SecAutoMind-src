@@ -130,6 +130,39 @@ def main():
                                      "DASCTF_TOKEN": "plain-password-123"})
     check("令牌不像 ak_ → 警告（疑似门户口令）", any("ak_" in w for w in warns), True)
 
+
+    # ── CTF² 平台判定（2026-10-24：今晚的赛在 CTF²，不在 DASCTF）──────────────
+    # 事故背景：预检原先只认 DASCTF 凭据，拿 ak_ 令牌探 /slab-match/ 必得 40403，
+    # 于是对今晚的平台误报「令牌无效」NO-GO —— 判据用错对象。
+    check("pick_platform：CTF² 凭据齐 → ctf2",
+          pf.pick_platform({"CTF2_BASE_URL": "https://ctf2.dasctf.com",
+                            "CTF2_AGENT_TOKEN": "ctf2_x"}), "ctf2")
+    check("pick_platform：只有地址无令牌 → 回退 dasctf",
+          pf.pick_platform({"CTF2_BASE_URL": "https://ctf2.dasctf.com"}), "dasctf")
+    check("pick_platform：空环境 → dasctf", pf.pick_platform({}), "dasctf")
+
+    miss, _ = pf.credential_issues_ctf2({})
+    check("CTF² 凭据全缺 → 两条 missing", len(miss), 2)
+    miss, warns = pf.credential_issues_ctf2({"CTF2_BASE_URL": "https://ctf2.dasctf.com",
+                                             "CTF2_AGENT_TOKEN": "not-a-ctf2-token"})
+    check("CTF² 令牌不以 ctf2_ 开头 → 警告", any("ctf2_" in w for w in warns), True)
+    _, warns = pf.credential_issues_ctf2({"CTF2_BASE_URL": "https://ctf2.dasctf.com",
+                                          "CTF2_AGENT_TOKEN": "ctf2_x"})
+    check("CTF² 未设 competition id → 警告（可能选错比赛）",
+          any("COMPETITION" in w for w in warns), True)
+
+    # 鉴权分类：HTTP 状态 → 四态（真实网络不能进 CI，只测纯函数）
+    check("CTF² 200 → ok", pf.classify_ctf2_auth(200, "{}")[0], "ok")
+    check("CTF² 401 → invalid", pf.classify_ctf2_auth(401, "")[0], "invalid")
+    check("CTF² 403 → waf_blocked（与 ctf2.go 口径一致：403 是 WAF，不是鉴权失败）",
+          pf.classify_ctf2_auth(403, "WAF")[0], "waf_blocked")
+    check("403 绝不能被判成 invalid（否则会逼人换掉好令牌）",
+          pf.classify_ctf2_auth(403, "WAF")[0] != "invalid", True)
+    check("CTF² 429 → rate_limited（不得判成 invalid）",
+          pf.classify_ctf2_auth(429, "")[0], "rate_limited")
+    check("CTF² 500 → unknown（不谎报）", pf.classify_ctf2_auth(500, "")[0], "unknown")
+    check("差异性：403 与 429 的判定必须不同",
+          pf.classify_ctf2_auth(403, "")[0] != pf.classify_ctf2_auth(429, "")[0], True)
     # 定级：final 缺凭证必须 NO-GO；pre 只列待填
     v = pf.evaluate("final", [], [], [], missing_credentials=["DASCTF_BASE_URL（平台地址）"])
     check("final + 缺凭证 → NO-GO（本次事故回归）", v[0], "NO-GO")
