@@ -172,3 +172,26 @@ ret2csu / sandbox_escape / tcache_safelinking 等。
 - **赛前绝不因吞并动 internal/ 求解器核心**（1024 快闪赛 = 用已验证版本直接参赛）。
 - **冻结不是删除**：西湖论剑保留为只读知识库（攻击链、writeup、验证脚本、基准数据），
   其资产通过迁移路线图逐步并入 SecAutoMind。
+
+---
+
+## 七、融合完成记录（2026-10-24 收尾会话闭环）
+
+> 本节为路线图的终点记录：**迁移已全部完成**。细节证据链：
+> `CTF-Agent_融合/_MIGRATION_NOTES.md`（并行会话缺口补齐）→
+> `CTF-Agent_融合/MIGRATION_DELTA_20261024.md`（收尾会话三方比对）→
+> `docs/specs/西湖论剑融合移交_20261024.md`（移交总纲）。
+
+- **资产**：源仓 1943 文件口径全量对账（差 -13 有逐项解释）；113 项未提交变更三方比对 =
+  112 已同步 + 1 有意分叉（融合副本 README 改写为留存说明）；`wt-core-bare-guard` 独占护栏
+  commit `77bf094c` 已 cherry-pick 回源仓主线（`02e6f998`）并同步 2 文件入融合副本。
+- **数据保全**：`KPI_BASELINE.json` / `submitted_flags.json` 两侧 sha256 一致；93 题库 +
+  race_attachments + heldout_evidence 全量在册。台账所称 `verified_flags.json` 不存在（文件名
+  陈旧，实际即 `submitted_flags.json`）。
+- **知识蒸馏**：血训 14 条 → `docs/runbooks/赛前检查清单_事故模式库_20261024.md`（常驻防线）；
+  治理机制差距表 / IDEA 移交 / 架构决策 / 阶段性验收阈值 → `docs/specs/西湖论剑融合移交_20261024.md`；
+  2027 备战已由 `docs/2027决赛作战规划.md` 吸收（含 9/17 证伪勘误）。
+- **源仓终态**：冻结收编 3 commit（`a9cd01ac`/`8d0da7f1`/`02e6f998`）后推远端；worktree 清理；
+  大文件（21GB bundles 等）保留至用户验收融合结果后彻底删除（用户 2026-10-24 拍板"完全定死"）。
+- **验收阈值**（裁定终审修订）：阶段 1 = presolve 层解出数 ≥ ctf_agent presolve 终态；
+  阶段 2 = 完整链路 ≥ ctf_agent 完整链路终态（held-out 外部基准口径）。详见移交总纲 §一。

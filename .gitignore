@@ -177,3 +177,7 @@ mcp-servers/security_triage_agent/security_agent/data/review_feedback.jsonl
 # 静态扫描临时产物（staticcheck 报告等）：每次重跑都会变，入仓只会污染 diff。
 # 复跑命令见 docs/Go静态检查基线-2026-10-21.md §2；扫描结果不入仓不等于结论不可复现。
 scans/
+
+# runner 编译产物不入库（源码 main.go/pyskill_bridge.go 正常跟踪）
+/cmd/runner/runner_ctf
+/cmd/runner/runner_linux_amd64

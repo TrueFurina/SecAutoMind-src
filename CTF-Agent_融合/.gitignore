@@ -1,0 +1,197 @@
+# ============================================================
+# xihu-sword-ctf-agent 开源仓库根 .gitignore
+# 原则：源码/文档/架构可公开；密钥/真 flag/内部资源/运行产物/备份 一律不入库
+# ============================================================
+
+# ---------- 1. WorkBuddy 内部（含 memory 明文真 flag，绝对不传） ----------
+.workbuddy/
+ctf_agent/环境变量与模型矩阵可用性确认-20260821.md
+ctf_agent/监督者提示词-v3-final.md
+.wb_*/
+.opensquilla/
+.bak_sprint/
+.workbuddy_cleanup_backup/
+.atomcode/
+.wt_p1_vnctf/
+.wt-*/
+wt-*/
+.tools/
+*.wt_*
+
+# ---------- 2. 临时/备份/恢复目录（项目开发期产物，非项目本身） ----------
+_backup/
+_git_backup/
+_git_corrupt_backup_*/
+# 2026-09-19：恢复期手工备份的损坏 .git（含完整对象库快照；本地留证/兜底，绝不入库）
+_git_backup_manual_*/
+_restore_tmp/
+_upload_stage/
+_archive_defense/
+_misc/
+wt-test/
+_ARCHIVE_*/
+*_temp/
+tmp_*/
+_INDEX.md
+deliverables/archive_禁用引用/
+# 发布产物（GitHub Pages 等生成输出，非项目源码，不入库）
+.publish_assets/
+
+# ---------- 3. 真实赛事内部资源（平台私有，含附件 URL/签名，不公开） ----------
+ctf_agent/data/race_details/
+ctf_agent/data/results/goal_log.jsonl
+ctf_agent/data/results/submitted_flags.json
+ctf_agent/data/results/category_regression.json
+ctf_agent/data/results/_10735_unrar/
+ctf_agent/data/questions_real_llm_only/
+
+# ---------- 4. 真 flag / 解题台账（含明文真 flag，不公开） ----------
+# 注：ctf_agent/REAL_SOLVES_LEDGER.md 曾列于此两处，2026-09-19 已决议「保持跟踪、
+#   不纳入 ignore」（依据见 ctf_agent/.gitignore 内同名字段注释），2026-10-13 清理。
+ctf_agent/data/results/verified_flags.json
+ctf_agent/solutions/
+ctf_agent/docs/DLP_独立性声明.md
+ctf_agent/docs/archive/root_docs/独立赛前评估-代码核验版-20260821.md
+ctf_agent/docs/archive/root_docs/赛前手雷手册-20260821.md
+ctf_agent/deliverables/archive_禁用引用/
+ctf_agent/deliverables/赛时手册/
+# 本地解题产物/报告（不进 git，本地保留）——对齐根 /deliverables/ 约定
+# 2026-09-03 归位：honest_bench/llm_breaking_ice/能力缺口诊断等本地产物统一落本地，
+# 杜绝 `git add -A` 误提交污染（含并行进程自动提交）。
+# 注：已跟踪的 benchmark_runs/llm_breaking_ice_20260828-* 不受影响（gitignore 不取消跟踪）。
+ctf_agent/deliverables/**
+协同任务总账-TOP0.md
+solutions/
+wt-web-target/
+
+# ---------- 5. 题库真值（档 B：真值留 gitignored，仓库只留占位结构） ----------
+ctf_agent/data/questions_real/**/verified_flags*.json
+
+# ---------- 6. Python 运行产物 ----------
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# ---------- 7. 环境变量 / 密钥文件 ----------
+.env
+.env.*
+*.env
+secrets.json
+credentials.json
+config.local.py
+
+# ---------- 8. 编辑器 / OS ----------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---------- 9. 日志 / 大输出 ----------
+*.log
+data/results/*.jsonl
+# 根级运行产物目录（看板状态/目标日志），不入库
+/data/
+# 根目录 _ 前缀调试残留（grep 快照/se2 输出/kpi 回显/一次性 rerun 脚本，内容已落正式文件，纯垃圾）
+/_g*.txt
+/_se2*.txt
+/_out.txt
+/_rerun*.py
+
+# ---------- 10. 开发过程冗余副本/破损备份(不入库) ----------
+wt-delivery/
+wt-final/
+wt_p1_vnctf/
+ctf_agent_broken/
+_copy_p1.py
+
+# ---------- 11. 内部治理/审计/敏感文档(不入库) ----------
+ctf_agent/环境变量与模型矩阵可用性确认-20260821.md
+ctf_agent/监督者提示词-v3-final.md
+ctf_agent/GIT_METADATA_DAMAGE_REPORT-20260824.md
+ctf_agent/audit/
+ctf_agent/tasks/
+ctf_agent/data/questions_real_llm_only/
+ctf_agent/solutions/
+ctf_agent/docs/DLP_独立性声明.md
+ctf_agent/Readme.txt
+ctf_agent/data/results/
+ctf_agent/docs/*
+!ctf_agent/docs/internal/
+
+# ---------- 12. ARIS 自动科研工作流（junction 与可再生物，不入库） ----------
+.claude/
+.aris/
+
+# ---------- 13. 明文 flag / 内部归档 / 调试工具链 / 交付草稿（绝不入库） ----------
+# 明文 flag 解题产物（flag_ssti.txt 等含 DASCTF{}/flag{} 明文，绝不外泄）
+/ctf_agent/flag_ssti.txt
+/ctf_agent/flag_*.txt
+# 历史归档 / Ghidra 调试工具链 / 交付草稿（非项目源码，本地保留）
+/_archive/
+/_tools_ghidra/
+# deliverables/ 默认不入库（交付草稿），唯一例外：复盘赛报/ —— 2026-09-19 用户裁决「可以公开」全文。
+# 注意写法必须是 /* 而非 /（目录整体排除时 git 无法再包含其子项）。
+/deliverables/*
+!/deliverables/复盘赛报/
+
+# ---------- 14. 真题集附件 / 散落明文 flag（含真 flag，绝不入库，纵深防御） ----------
+# _attachments 下含 flag.txt / flag.png / 赛题源码包等明文真 flag，一旦 push 即泄露
+ctf_agent/data/questions_real/_attachments/
+# 任意层级的明文 flag 文件（DASCTF{}/flag{} 明文，绝不外泄）
+**/flag.txt
+**/flag.png
+**/*.flag
+
+# ---------- 14c. 开源基准适配题池（刻意不入库，勿加否定规则） ----------
+# data/questions_ext/ 由 scripts/_bench_adapter.py 从 NYU CTF Bench（GPL-2.0 传染性许可）
+# 等开源基准适配而来，属第三方衍生数据：本地可跑，但不得随本仓分发。
+# 现状：靠 ctf_agent/.gitignore 的 `/data/*` 整体忽略，与 data/questions_external/ 一致。
+# 🔴 请勿比照 questions_real 添加 `!data/questions_ext/` 否定规则 —— 那会把 GPL 数据带进 git。
+# 题目 JSON 里的附件一律只指向 data/questions_ext/_attachments/（gitignore 内），答案只存 sha256。
+
+# ---------- 15. 反注水违规账（必须入库，不可忽略——注水行为的永久惩罚记录） ----------
+# violations.jsonl 是写死法令的"严厉惩罚"落点，必须纳入版本控制、可被审计追责，
+# 绝不允许被任何忽略规则吞掉。若上方规则意外命中，以下否定优先。
+!ctf_agent/governance/**
+
+# ---------- 16. 运行日志（项目内归档，不入库；避免污染 git 体积） ----------
+# logs/ 已按 AGENTS.md 收进项目文件夹（含 c-drive-archive 从 C 盘回收的散落日志），但属运行时产物不入库
+/logs/
+
+# ---------- 16. pytest 临时运行目录（测试产物，绝不入库） ----------
+ctf_agent/.pytest_tmp*
+
+# ---------- 17. 竞赛时代遗留材料（2026-09-29「不打比赛」终局指令后作废） ----------
+# 背景：2027-prep/ 下含 6847 个文件（cybench/ 是完整 vendored 第三方基准仓，
+# 含其 LICENSE / Dockerfile / 评分脚本）。实测 `git add -An` 会因该目录一次纳入
+# 6854 个文件 —— 本仓库严禁使用 `git add -A` / `git add .`。
+# 处置：此处做「不删改、不移动、只屏蔽」的非破坏性收口；是否整体归档到 _archive/
+# 待项目负责人决定（归档须另做数量与哈希核对，且其中 M2_E3对照 是 E3 定调的引用源，
+# 有持续价值，不得随目录整体掩埋）。
+# ⚠️ gitignore 不会取消已有跟踪。以下 4 份仍为已跟踪状态，不受本规则影响：
+#    2027-prep/差异分析-SOTA对比-20260928.md
+#    ctf_agent/2027-prep/M1_分辨率_20260929.md
+#    ctf_agent/2027-prep/M2_E3对照_20260929.md
+#    ctf_agent/2027-prep/作战规划_2027.md
+/2027-prep/
+ctf_agent/2027-prep/
+
+# 覆盖率产物（2026-10-21 pytest-cov 接入）
+.coverage
+.coverage.*
+htmlcov/
+# coverage.json 是 scripts/_gate_coverage.py 的读数来源，机器生成、每次重写，
+# 不是真值（真值是 pyproject.toml 里的阈值）——所以不入库，避免每次跑测试都脏工作区。
+coverage.json
+ctf_agent/coverage.json
+
+# data/ 快照落点（scripts/_snapshot_data.py 默认输出，82MB/份，绝不入库）
+/backups/
