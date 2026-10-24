@@ -7,6 +7,16 @@
 > **冻结为只读知识库**（README 已加冻结横幅）。凡涉"两套项目对比/迁移/合并"的工作，先读
 > `docs/merge_xhlj_roadmap_20261023.md`（盘点+缺口+分阶段路线），再动手。
 
+## 常驻区导航（只放定位方式，其余按需加载）
+
+- **改哪儿** → `docs/AGENT_ROUTES.md`：任务说法 → 子系统 → 核心文件 → 已知陷阱。**命中即用，未命中才搜。**
+- **收尾怎么算完** → `docs/收尾清单.md`：八项打钩 + 取证边界声明（"已完成"必须有证据）。
+- **该读哪份文档** → `docs/INDEX.md`：每份文档标注当前权威 / 参考 / 历史快照。
+- **接手先看什么** → `docs/QUICKSTART_NEXT_AGENT.md`：一屏入口卡。
+- **交给下一个会话** → `docs/templates/交接卡模板.md`：固定字段，不许留占位符。
+
+> 本文件是"红线与教训"，不是地图；地图在上面第一行。两者都不许膨胀——`scripts/check_agent_docs.py` 会在 CI 里拦。
+
 ---
 
 ## 第一条 · 诚实高于一切（最高优先级）
@@ -80,10 +90,10 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 - 门禁自身必须有回归测试。**失效的门禁比没有门禁更危险**——它会持续给出假的安全感。
   实证：旧打包前 grep 正则 `sk-[A-Za-z0-9]{16,}` 匹配不到 `sk-ws-H...`（第 4 位是连字符），
   一把真 key 从洞里漏过而门禁报 CLEAN。
-- 现有门禁（`ci.yml` 共 **25** 个 job，以下 7 个为核心）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
+- 现有门禁（`ci.yml`，**job 数不写死**——以 `grep -cE "^  [a-z0-9-]+:$" .github/workflows/ci.yml` 现查为准；以下 8 个为核心）：`test`（vet + `-race` 全测 + 构建）· `capability-gate`（求解器真实执行 + 反注水）·
   `evidence-gate`（基准双语言机验 + `verify_evidence`）· `secret-gate`（密钥三件套：门禁本体 + 自测 + 变异验证）·
   `caliber-gate`（材料数字 vs `count_stats` 真值）· `evidence-package-gate`（冠军证据包一致性 + 变异验证）·
-  `freeze-gate`（决赛冻结纪律，见第七条）。
+  `freeze-gate`（决赛冻结纪律，见第七条）· `agent-docs-gate`（文档结构：AGENTS 行数预算 / 路由表路径存在 / docs 顶层全登记 / 收尾清单八项，含变异自测）。
 - **门禁的通用纪律**：① 门禁自身必须有回归测试；② 关键门禁必须有**变异验证**（注入错误必须变红，
   否则"测试有效"无从证明）；③ 取不到真值时必须 **fail-closed** 或显式降级并留痕，不许静默放过。
 - 🔴 **"冻结哈希"类门禁必须用干净检出做一次 CI 仿真**（2026-09-24 实锤）：证据包对 golden 文件做

@@ -696,6 +696,23 @@ jobs:
         run: python scripts/check_docs_lint.py
       - name: Docs lint gate regression + mutation check
         run: python scripts/check_docs_lint_test.py
+  # 文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分）。
+  # 守的是「文档结构会自己烂掉」：AGENTS.md 只增不删会撑爆常驻预算；路由表里的
+  # 路径会随重构失效，而写错的路径看起来最像证据；docs/ 顶层文档只增不登记，
+  # 索引一定漏；收尾清单会退化成空壳。
+  # 四条判据：C1 AGENTS.md ≤300 行 / C2 路由表路径真实存在 / C3 docs 顶层全部登记
+  # / C4 收尾清单八项齐备 + 取证边界段。带变异自测（4 类注入必须变红）。
+  agent-docs-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Agent docs structure (budget / routes / index / closing list)
+        run: python scripts/check_agent_docs.py
+      - name: Agent docs gate mutation check (prove the gate can fail)
+        run: python scripts/check_agent_docs.py --self-test
   # MCP 服务清单与契约一致性门禁。
   # 实锤缺陷（2026-10-14 审计，三类）：
   #   ① 索引漏列：mcp-servers/ 目录里实际有 3 个服务，两个 README 的服务表

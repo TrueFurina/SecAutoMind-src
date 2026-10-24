@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分）。
+
+为什么需要
+----------
+"常驻文件 ≤300 行、一个事实一个真源、文档索引不能烂" 这三条，只写在文档里就一定会烂：
+- AGENTS.md 每次加教训都会变长，没人会主动删；
+- 路由表里的路径会随重构失效，写错的路径看起来最像证据；
+- docs/ 顶层文档会持续增长，索引一定漏登。
+
+本门禁把四条判据变成退出码：
+  C1 AGENTS.md ≤ 300 行（常驻区预算）
+  C2 docs/AGENT_ROUTES.md 中反引号路径必须真实存在（防编造路径）
+  C3 docs/ 顶层每个 .md 必须在 docs/INDEX.md 登记（防文档失控增长）
+  C4 docs/收尾清单.md 必须含 8 项打钩 + 取证边界段（防清单退化成空壳）
+
+用法
+----
+  python scripts/check_agent_docs.py            # 正常检查，rc=0 通过
+  python scripts/check_agent_docs.py --json     # 机器可读
+  python scripts/check_agent_docs.py --self-test  # 变异验证：注入错误必须变红
+
+退出码：0 = 通过；1 = 违反判据。
+"""
+
+import argparse
+import json
+import os
+import re
+import shutil
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MAX_AGENTS_LINES = 300
+ROUTES_DOC = "docs/AGENT_ROUTES.md"
+INDEX_DOC = "docs/INDEX.md"
+CLOSING_DOC = "docs/收尾清单.md"
+
+# 反引号里"像路径"的 token：不含通配符/占位符/空格
+PATH_TOKEN = re.compile(r"^[A-Za-z0-9_./\-\u4e00-\u9fff]+$")
+PATH_EXT = (".go", ".py", ".js", ".css", ".yaml", ".yml", ".md", ".sh",
+            ".json", ".txt", ".toml", ".nsi", ".bat", ".ps1")
+
+
+def _read(path):
+    with open(path, encoding="utf-8", errors="ignore") as fh:
+        return fh.read()
+
+
+def check_agents_budget(root):
+    p = os.path.join(root, "AGENTS.md")
+    if not os.path.isfile(p):
+        return ["C1 AGENTS.md 不存在"]
+    n = len(_read(p).splitlines())
+    if n > MAX_AGENTS_LINES:
+        return ["C1 AGENTS.md %d 行 > 上限 %d 行（常驻区预算超支）"
+                % (n, MAX_AGENTS_LINES)]
+    return []
+
+
+def _extract_paths(text):
+    out = []
+    for m in re.finditer(r"`([^`\n]+)`", text):
+        tok = m.group(1).strip()
+        # 命令串取第一个 token（如 "python scripts/x.py --json"）
+        if " " in tok:
+            tok = tok.split()[0]
+        if not tok or not PATH_TOKEN.match(tok):
+            continue
+        if not (tok.endswith("/") or tok.endswith(PATH_EXT)):
+            continue
+        out.append(tok)
+    return out
+
+
+def check_routes_paths(root):
+    p = os.path.join(root, ROUTES_DOC)
+    if not os.path.isfile(p):
+        return ["C2 %s 不存在" % ROUTES_DOC]
+    bad = []
+    seen = set()
+    for tok in _extract_paths(_read(p)):
+        if tok in seen:
+            continue
+        seen.add(tok)
+        if not os.path.exists(os.path.join(root, tok.rstrip("/"))):
+            bad.append(tok)
+    return ["C2 路由表引用了不存在的路径: %s" % b for b in bad]
+
+
+def check_index_coverage(root):
+    docs_dir = os.path.join(root, "docs")
+    if not os.path.isdir(docs_dir):
+        return ["C3 docs/ 不存在"]
+    actual = sorted(f for f in os.listdir(docs_dir)
+                    if f.endswith(".md") and os.path.isfile(os.path.join(docs_dir, f)))
+    idx = os.path.join(root, INDEX_DOC)
+    if not os.path.isfile(idx):
+        return ["C3 %s 不存在（文档索引缺失）" % INDEX_DOC]
+    text = _read(idx)
+    missing = [f for f in actual if ("docs/" + f) not in text and f not in text]
+    errs = ["C3 未在 INDEX 登记: docs/%s" % f for f in missing]
+    # 反向：INDEX 里点名但不存在的文档 = 索引指向空气
+    for m in re.finditer(r"`docs/([^`\s]+\.md)`", text):
+        name = m.group(1)
+        if any(ch in name for ch in "*?<>{}"):  # 通配/占位符不是具体文档
+            continue
+        if not os.path.isfile(os.path.join(root, "docs", name)):
+            errs.append("C3 INDEX 指向不存在的文档: docs/%s" % name)
+    return errs
+
+
+def check_closing_list(root):
+    p = os.path.join(root, CLOSING_DOC)
+    if not os.path.isfile(p):
+        return ["C4 %s 不存在" % CLOSING_DOC]
+    text = _read(p)
+    errs = []
+    items = re.findall(r"^###\s*([1-8])\.", text, re.M)
+    if len(set(items)) != 8:
+        errs.append("C4 收尾清单应含 8 项打钩，实际识别到 %d 项" % len(set(items)))
+    if "取证边界" not in text:
+        errs.append("C4 收尾清单缺少「取证边界声明」段")
+    if "- [ ]" not in text:
+        errs.append("C4 收尾清单没有可打钩的复选框")
+    return errs
+
+
+CHECKS = (check_agents_budget, check_routes_paths, check_index_coverage,
+          check_closing_list)
+
+
+def run_all(root):
+    errs = []
+    for fn in CHECKS:
+        errs.extend(fn(root))
+    return errs
+
+
+# ── 变异验证：每个用例都必须让对应判据变红 ─────────────────────────────
+def _mk_tree(base):
+    os.makedirs(os.path.join(base, "docs"), exist_ok=True)
+    with open(os.path.join(base, "AGENTS.md"), "w", encoding="utf-8") as fh:
+        fh.write("# AGENTS\n")
+    with open(os.path.join(base, ROUTES_DOC), "w", encoding="utf-8") as fh:
+        fh.write("# ROUTES\n\n| a | `AGENTS.md` |\n")
+    with open(os.path.join(base, INDEX_DOC), "w", encoding="utf-8") as fh:
+        fh.write("# INDEX\n\n- docs/INDEX.md\n- docs/AGENT_ROUTES.md\n- docs/收尾清单.md\n")
+    with open(os.path.join(base, CLOSING_DOC), "w", encoding="utf-8") as fh:
+        fh.write("# 收尾\n\n## 一、八项打钩\n\n")
+        for i in range(1, 9):
+            fh.write("### %d. 项%d\n- [ ] 判据\n\n" % (i, i))
+        fh.write("## 二、取证边界声明\n")
+
+
+def self_test():
+    cases = []
+
+    def case(name, mutate, expect_fail):
+        base = tempfile.mkdtemp(prefix="docsgate_")
+        try:
+            _mk_tree(base)
+            mutate(base)
+            errs = run_all(base)
+            got_fail = bool(errs)
+            cases.append((name, expect_fail, got_fail, errs))
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
+    def m_baseline(b):
+        pass
+
+    def m_agents_long(b):
+        with open(os.path.join(b, "AGENTS.md"), "w", encoding="utf-8") as fh:
+            fh.write("# AGENTS\n" + "x\n" * 400)
+
+    def m_fake_path(b):
+        with open(os.path.join(b, ROUTES_DOC), "a", encoding="utf-8") as fh:
+            fh.write("\n`internal/does_not_exist_xyz.go`\n")
+
+    def m_index_missing(b):
+        with open(os.path.join(b, "docs", "orphan_doc.md"), "w", encoding="utf-8") as fh:
+            fh.write("# orphan\n")
+
+    def m_index_ghost(b):
+        with open(os.path.join(b, INDEX_DOC), "a", encoding="utf-8") as fh:
+            fh.write("\n- `docs/ghost_doc.md`\n")
+
+    def m_closing_short(b):
+        with open(os.path.join(b, CLOSING_DOC), "w", encoding="utf-8") as fh:
+            fh.write("# 收尾\n\n### 1. 只有一项\n- [ ] x\n")
+
+    case("基线应通过", m_baseline, False)
+    case("AGENTS 超 300 行应红", m_agents_long, True)
+    case("路由表假路径应红", m_fake_path, True)
+    case("INDEX 漏登文档应红", m_index_missing, True)
+    case("INDEX 指向幽灵文档应红", m_index_ghost, True)
+    case("收尾清单缺项应红", m_closing_short, True)
+
+    ok = True
+    for name, expect_fail, got_fail, errs in cases:
+        good = expect_fail == got_fail
+        ok = ok and good
+        print("  [%s] %-24s 期望%s 实际%s" % (
+            "OK" if good else "FAIL", name,
+            "红" if expect_fail else "绿", "红" if got_fail else "绿"))
+        if not good:
+            for e in errs[:3]:
+                print("        %s" % e)
+    print("文档结构门禁自测：%s（%d 项）" % ("PASS" if ok else "FAIL", len(cases)))
+    return 0 if ok else 1
+
+
+def main():
+    ap = argparse.ArgumentParser(description="文档结构门禁")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--root", default=ROOT)
+    args = ap.parse_args()
+
+    if args.self_test:
+        return self_test()
+
+    errs = run_all(args.root)
+    if args.json:
+        print(json.dumps({"ok": not errs, "errors": errs}, ensure_ascii=False, indent=2))
+    else:
+        print("=" * 62)
+        print("文档结构门禁（P-01/P-02/P-03/P-09/P-10）")
+        print("=" * 62)
+        if errs:
+            for e in errs:
+                print("  [FAIL] %s" % e)
+            print("-" * 62)
+            print("结论：FAIL（%d 项）" % len(errs))
+        else:
+            print("  [PASS] C1 AGENTS.md ≤ %d 行" % MAX_AGENTS_LINES)
+            print("  [PASS] C2 路由表路径全部存在")
+            print("  [PASS] C3 docs 顶层文档全部登记")
+            print("  [PASS] C4 收尾清单八项齐备")
+            print("-" * 62)
+            print("结论：PASS")
+    return 0 if not errs else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
