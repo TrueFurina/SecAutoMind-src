@@ -92,12 +92,13 @@ func TestBinFlagRepairRegisteredAndRuns(t *testing.T) {
 }
 
 func TestBinaryFlagConcatSeparatedStrings(t *testing.T) {
-	// 合成夹具：.data 分离串（A 库 real_reverse_sheng 即 reverse_2 形态）
-	// "flag" 与 "{hacking_for_fun}" 独立存放，直接正则永不可见。
+	// 合成夹具：.data 分离串（A 库 real_reverse_sheng 即 reverse_2 形态——
+	// "flag" 与仅花括号串独立存放；真实验证经 cmd/presolve-binprobe 对真文件完成，
+	// 单测用合成串，明文 flag 不入 PUBLIC 仓）。
 	bin := "\x7fELF\x02\x01\x01\x00" + strings.Repeat("\x00", 16) +
-		"\x00flag\x00{hacking_for_fun}\x00correct!\x00"
+		"\x00flag\x00{synthetic_target_string}\x00correct!\x00"
 	cands := tryBinaryFlagConcat("", map[string]string{"rev": bin})
-	want := "flag{hacking_for_fun}"
+	want := "flag{synthetic_target_string}"
 	found := false
 	for _, c := range cands {
 		if c == want {
