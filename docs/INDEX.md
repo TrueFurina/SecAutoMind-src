@@ -72,16 +72,16 @@
 
 | 文档 | 状态 | 说明 |
 |---|---|---|
-| `docs/HANDOFF_2026-10-18.md` | 历史快照 | 已被 `handoff_ycb_20261024.md` 接替 |
-| `docs/WorkBuddy借鉴与落地清单_20261018.md` | 历史快照 | 借鉴项已落地，清单完成使命 |
-| `docs/提交前终检清单_20260903.md` | 历史快照 | 已被 `收尾清单.md` 取代 |
+| `docs/archive/2026-10/HANDOFF_2026-10-18.md` | 历史快照 | 已被 `handoff_ycb_20261024.md` 接替 |
+| `docs/archive/2026-10/WorkBuddy借鉴与落地清单_20261018.md` | 历史快照 | 借鉴项已落地，清单完成使命 |
+| `docs/archive/2026-09/提交前终检清单_20260903.md` | 历史快照 | 已被 `收尾清单.md` 取代 |
 | `docs/archive/2026-09/部署手册_勘误与补充_20260930.md` | 历史快照 | 勘误是否已并入部署指南**未验证** |
-| `docs/evidence-championship-20260908.md` | 历史快照 | 文首自带 CALIBER-SNAPSHOT 声明 |
-| `docs/evidence-championship-20260909.md` | 历史快照 | 证据包全量质检版（当时口径） |
+| `docs/archive/2026-09/evidence-championship-20260908.md` | 历史快照 | 文首自带 CALIBER-SNAPSHOT 声明 |
+| `docs/archive/2026-09/evidence-championship-20260909.md` | 历史快照 | 证据包全量质检版（当时口径） |
 | `docs/archive/2026-09/evidence-championship-20260913.md` | 历史快照 | 凭据泄露事故与门禁加固记录 |
-| `docs/质检报告_20260908_多透镜锐评.md` | 历史快照 | 文首自带 CALIBER-SNAPSHOT 声明 |
-| `docs/质检报告_深度复检_20260913.md` | 历史快照 | 2026-09-13 质检 |
-| `docs/质检报告_深度锐评与规划_20261018.md` | 历史快照 | 2026-10-18 质检（最新一份质检，但仍是快照） |
+| `docs/archive/2026-09/质检报告_20260908_多透镜锐评.md` | 历史快照 | 文首自带 CALIBER-SNAPSHOT 声明 |
+| `docs/archive/2026-09/质检报告_深度复检_20260913.md` | 历史快照 | 2026-09-13 质检 |
+| `docs/archive/2026-10/质检报告_深度锐评与规划_20261018.md` | 历史快照 | 2026-10-18 质检（最新一份质检，但仍是快照） |
 
 ---
 

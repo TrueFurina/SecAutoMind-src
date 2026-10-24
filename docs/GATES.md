@@ -6,15 +6,14 @@
 > 每行的"守什么"取自该 job 上方的注释首句；**没有注释的 job 会显示为待补**——
 > 那本身就是缺陷：一个说不出自己守什么的门禁，无法判断它是否失效。
 
-共 **29** 个 job（其中 **26** 个带自测/变异验证）。
+共 **28** 个 job（其中 **25** 个带自测/变异验证）。
 
 | job | 守什么 | 步骤数 | 变异/自测 |
 |---|---|---|---|
 | `test` | 主干测试门禁：go vet + `go test -race` 全量 + 构建，并前置 golden 冻结校验、 加密模板自测、HITL 边界检查 —— 它是唯一跑真实 Go 测试套件的 job， 其余 job 只跑各自… | 12 | 有 |
 | `staticcheck-gate` | Go 全系静态检查门禁（2026-10-21 新增，通道见 E:\Program\实验服务器与全局配置.md §九） | 7 | 有 |
 | `capability-gate` | 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证 | 2 | **无** |
-| `evidence-gate` | 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度 | 5 | 有 |
-| `evidence-package-gate` | 冠军证据包门禁（§4.1）：docs/evidence-package.json 里的对外数字必须与活值一致 | 6 | 有 |
+| `evidence-gate` | 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度 | 8 | 有 |
 | `freeze-gate` | 决赛冻结纪律闸门（规划总纲 §4.3）：决赛前 14 天起拒绝"架构改动"的 PR | 5 | 有 |
 | `binary-gate` | 交付二进制来源门禁（2026-10-18）：发出去的 exe 必须由当前 HEAD 构建 | 3 | 有 |
 | `finals-rehearsal` | 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分） | 7 | 有 |
@@ -35,7 +34,7 @@
 | `mcp-servers-gate` | MCP 服务清单与契约一致性门禁 | 3 | 有 |
 | `external-payload-gate` | 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着 payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析； 同目录… | 2 | 有 |
 | `plaintext-answer-gate` | 自产基准反注水：题干里不得直接写出答案 | 2 | 有 |
-| `benchmark-validity-gate` | 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%） | 3 | 有 |
+| `benchmark-validity-gate` | 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%） | 2 | 有 |
 | `benchmark-parity-gate` | 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」 这句**写在对外汇总里的宣称**真正接上线 | 2 | 有 |
 | `suite-parity-gate` | 跨集 parity 门禁（台账驱动）—— 把【2】～【22】的「Python == Go」宣称按台账逐集接线 | 4 | 有 |
 | `external-bench` | 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口 | 3 | 有 |
