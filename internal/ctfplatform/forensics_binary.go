@@ -642,6 +642,20 @@ func bfxCarve(data []byte) []string {
 
 // ─────────────────────────── XOR 已知明文密钥恢复 ───────────────────────────
 
+// bfxSingleBraceShape 候选必须恰含一对花括号（内体无 '{'/'}'）。
+// 2026-10-24 实证（crossbench 二进制子集 + real_reverse_sheng 探针）：
+// crib 在错误密钥巧合命中时产出的"明文"是嵌套花括号垃圾（如
+// `ctf{pic/CTF{pic}`），内体再被 bfxScanVariants 刮成 145 个伪 flag——
+// 恰一对花括号是真 flag 的定义性质，嵌套形态一律为垃圾。
+func bfxSingleBraceShape(s string) bool {
+	open, close := strings.Count(s, "{"), strings.Count(s, "}")
+	if open != 1 || close != 1 {
+		return false
+	}
+	i := strings.IndexByte(s, '{')
+	return i >= 0 && strings.HasSuffix(s, "}") && len(s)-i-2 >= 4
+}
+
 // bfxXorCrib 对重复密钥 XOR 做已知明文（crib）密钥恢复：
 // 用 "flag{" 等前缀在若干偏移上推导周期 1..8 的密钥，解出明文后扫 flag。
 // 说明：一次性随机密钥（密钥长度=明文长度）数学上不可恢复，本函数不覆盖，
@@ -782,8 +796,23 @@ func init() {
 	RegisterSolver(SolverEntry{
 		Name: "bin_xor_crib", Category: CategoryCryptoS, Priority: 36,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			// 两道门（2026-10-24 修，防 crib 巧合垃圾污染仲裁）：
+			// ① 只对二进制附件跑——纯文本附件明文已在眼前（flag_scan/bin_strings
+			//    职责），对明文做 XOR 拖引数学上无意义，且实测会以错误密钥巧合
+			//    命中产出大量伪 flag，抢占真解（real_crypto_ezrsa 被 displaced 实锤）。
+			// ② 候选恰一对花括号——嵌套花括号（real_reverse_sheng 145 个垃圾实锤）
+			//    不是真 flag 形态。
 			return bfxRun(attachments, func(_ string, d []byte) []string {
-				return bfxXorCrib(d)
+				if !hasBinaryBytes(string(d)) {
+					return nil
+				}
+				var clean []string
+				for _, c := range bfxXorCrib(d) {
+					if bfxSingleBraceShape(c) {
+						clean = append(clean, c)
+					}
+				}
+				return clean
 			})
 		},
 	})

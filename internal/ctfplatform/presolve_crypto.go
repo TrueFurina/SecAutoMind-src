@@ -1321,6 +1321,25 @@ func tryHastadBroadcastAttack(text string, attachments map[string]string) []stri
 	if len(pairs) < 3 {
 		return nil
 	}
+	// ── 按 n 去重（2026-10-24 修）：同一 n 值出现多次 = 同一模数重复入对 ──
+	// 触发场景：调用方把附件内容拼进 text、同时传 attachments map 时，
+	// 内部 fullText 会重复拼接（生产 chat_uploads 路径与 crossbench 二进制
+	// 子集均如此）——裸数字配对随之产生重复 (n,c) 对，重复 n 不互素使
+	// hastadCRT 直接 nil，真解被吞（real_crypto_ezrsa 实锤）。同 n 去重在
+	// 数学上无损：Håstad 攻击本来就要求互异互素模数。
+	seenN := make(map[string]bool, len(pairs))
+	dedup := pairs[:0]
+	for _, pr := range pairs {
+		k := pr.n.String()
+		if !seenN[k] {
+			seenN[k] = true
+			dedup = append(dedup, pr)
+		}
+	}
+	pairs = dedup
+	if len(pairs) < 3 {
+		return nil
+	}
 	// ── 指数候选：题面印刷的 e（≤16）优先，否则 Håstad 全范围 3..99 ──
 	// ezRSA 实测（2026-10-15 立尺）：task.py 有 assert(e<100) 但不印 e，真实 e=17，
 	// 且仅 3 组 (n,c)。只要 m^e < ∏n_i，CRT 合成后开 e 次根即精确成立——

@@ -53,6 +53,14 @@ var (
 	morseOnlyRe = regexp.MustCompile(`^[\s./\-]{3,}$`)
 	abMorseRe   = regexp.MustCompile(`^[\sABab]{5,}$`)
 	keyDataRe   = regexp.MustCompile(`(?i)key\s*[:：=]\s*([^\s,，;；]+)\s+(?:data|ct|text|cipher|flagtxt|flag\.txt)\s*[:：=]\s*(\S+)`)
+	uuidWrapRe  = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
+	// chainTokenRe 混合文本候选提取（2026-10-25 修复 TestCodingChainRealDoubleLayer）：
+	// 密文常嵌在说明文字/换行之间（赛时附件实测「密文如下：\n<b64>\n请解出」），
+	// chainDecodeOnce 只对**整串**解码——整段含散文必然失败。此正则抽出 base64/hex
+	// 形态的连续 token，逐个作为独立链入口再试。误报由既有防线收口：
+	// printableRate 只采纳"更可打印"的解码 + 节点/字节预算天然封顶。
+	chainTokenRe = regexp.MustCompile(`[A-Za-z0-9+/=]{12,}|[0-9a-fA-F]{16,}`)
 )
 
 // tryCodingChain 顶层入口：合并题干与附件，递归解包多层编码，返回 flag 形态候选（去重）。
@@ -83,6 +91,16 @@ func tryCodingChainStats(text string, attachments map[string]string) (flags []st
 	nodes := chainNodeBudget
 	bytesLeft := chainByteBudget
 	chainCollect(full, 0, seen, &out, &nodes, &bytesLeft)
+	// 混合文本：整串不是纯密文时，从散文中抽出候选 token 逐个再试（共享预算）。
+	for _, tok := range chainTokenRe.FindAllString(full, -1) {
+		if nodes <= 0 || bytesLeft <= 0 {
+			break
+		}
+		if len(tok) >= len(full) {
+			continue // 整串本身就是纯密文，已试过
+		}
+		chainCollect(tok, 1, seen, &out, &nodes, &bytesLeft)
+	}
 	nodesUsed, bytesUsed = chainNodeBudget-nodes, chainByteBudget-bytesLeft
 	uniq := make([]string, 0, len(out))
 	uSeen := map[string]bool{}
@@ -245,6 +263,35 @@ func chainDecodeOnce(s string) []chainCandidate {
 	if strings.Contains(lower, "=") && strings.Contains(trim, "=") && strings.Contains(trim, "?") {
 		if dec := quotedPrintableDecode(trim); dec != "" {
 			add("quoted_printable", dec)
+		}
+	}
+	// UUID → flag 壳（qiangwang_classic 链收尾，2026-10-25 Go 化）：**输入本身或解码产物**
+	// 含 UUID 且 UUID 主导内容（≥50% 非空白字符）时，补 flag{uuid 小写} 壳候选。
+	// 🔴 占比判据是反假阳性闸（外部尺 ext_gctf2022_ocr 实测：无占比判据时 OCR 数据里
+	// 偶现的 UUID 形态串被包成假 flag——占位符假阳性门禁当场抓获，2026-10-25）。
+	// 只包首个 UUID，避免候选爆炸。
+	wrapUUID := func(src string) bool {
+		u := uuidWrapRe.FindString(src)
+		if u == "" {
+			return false
+		}
+		nonSpace := 0
+		for _, r := range src {
+			if r != ' ' && r != '\n' && r != '\t' && r != '\r' {
+				nonSpace++
+			}
+		}
+		if len(u)*2 < nonSpace {
+			return false
+		}
+		out = append(out, chainCandidate{"uuid_flag", "flag{" + strings.ToLower(u) + "}"})
+		return true
+	}
+	if !wrapUUID(s) {
+		for _, cand := range out {
+			if wrapUUID(cand.decoded) {
+				break
+			}
 		}
 	}
 	return out

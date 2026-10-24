@@ -57,6 +57,31 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		}
 	}()
 
+	// 1b. 二进制附件 flag 修复扫描（2026-10-24 融合补齐）：flag{...} 被打包
+	// 垃圾字节打断（UPX/ELF 实证）时，flagRegex 能命中但 isPrintableFlagCandidate
+	// 拒脏候选——本路生成保守修复变体（hex/alnum/printable 剥离），最终对错
+	// 由下游 sha256/平台提交把关。仅二进制附件触发，纯文本不启用。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryBinaryFlagRepair(text, attachments)
+		if len(flags) > 0 {
+			chResult <- result{"bin_flag_repair", flags}
+		}
+	}()
+
+	// 1c. 分离前缀+花括号拼接（2026-10-24 融合，A 库 reverse_2 经验）：逆向题
+	// .data 常把 "flag" 与 "{xxx}" 存为两个独立字符串，直接正则永不可见——
+	// 本路拼接为候选，对错由下游把关。仅二进制附件触发。
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		flags := tryBinaryFlagConcat(text, attachments)
+		if len(flags) > 0 {
+			chResult <- result{"bin_flag_concat", flags}
+		}
+	}()
+
 	// 2. 多层 base64 解码
 	wg.Add(1)
 	go func() {
@@ -377,6 +402,8 @@ func (p *Presolver) Presolve(ctx context.Context, ch *Challenge, attachments map
 		"zip_fake_enc":          10,
 		"ssti":                  11,
 		"flag_scan":             12,
+		"bin_flag_repair":       13, // 修复产物（剥离垃圾字节）可信度低于裸扫描
+		"bin_flag_concat":       14, // 分离串拼接产物（两层猜测）再降一档
 		"exec_endian_swap":      14,
 	}
 	// enginePriority：未在硬编码优先级表中的引擎（多来自注册表全量扫描）
