@@ -99,7 +99,8 @@ type BatchTaskManager struct {
 	queues         map[string]*BatchTaskQueue
 	taskCancels    map[string]map[string]context.CancelFunc // queueID -> taskID -> 取消函数
 	singleRunTasks map[string]string                        // queueID -> taskID，单条执行完成后暂停队列
-	queueExecutors map[string]struct{}                      // executeBatchQueue 协程活跃标记（与队列 status 解耦）
+	queueExecutors map[string]uint64                      // queueID -> 当前执行协程代次（>0 = 活跃；与队列 status 解耦）
+	executorGenSeq uint64                                  // 执行器代次单调序列（跨代误释放防护）
 	mu             sync.RWMutex
 }
 
@@ -113,7 +114,7 @@ func NewBatchTaskManager(logger *zap.Logger) *BatchTaskManager {
 		queues:         make(map[string]*BatchTaskQueue),
 		taskCancels:    make(map[string]map[string]context.CancelFunc),
 		singleRunTasks: make(map[string]string),
-		queueExecutors: make(map[string]struct{}),
+		queueExecutors: make(map[string]uint64),
 	}
 }
 
@@ -130,27 +131,37 @@ func batchQueueExecutionShouldStop(queue *BatchTaskQueue, exists bool) bool {
 	}
 }
 
-// TryMarkQueueExecutor 标记队列执行协程已启动；若已有执行协程则返回 false。
-func (m *BatchTaskManager) TryMarkQueueExecutor(queueID string) bool {
+// TryMarkQueueExecutor 标记队列执行协程已启动；若已有执行协程则返回 (false, 当前代次)。
+// 成功时返回 (true, 新代次)——调用方必须持有该代次，退出时凭代次释放（见 UnmarkQueueExecutor）。
+func (m *BatchTaskManager) TryMarkQueueExecutor(queueID string) (bool, uint64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, exists := m.queueExecutors[queueID]; exists {
-		return false
+	if gen, exists := m.queueExecutors[queueID]; exists {
+		return false, gen
 	}
-	m.queueExecutors[queueID] = struct{}{}
-	return true
+	m.executorGenSeq++
+	m.queueExecutors[queueID] = m.executorGenSeq
+	return true, m.executorGenSeq
 }
 
 // UnmarkQueueExecutor 清除队列执行协程标记（executeBatchQueue defer 调用）。
-func (m *BatchTaskManager) UnmarkQueueExecutor(queueID string) {
+// 只有代次吻合才释放：暂停态单条重跑会 ForceUnmark 旧代次并立即起新执行器，
+// 若旧执行器退出时仍无条件释放，会删掉新执行器的槽位 → 第三次启动双跑
+// （2026-10-24 实锤的跨代误释放窗口，见 batch_task_manager_test.go 跨代用例）。
+func (m *BatchTaskManager) UnmarkQueueExecutor(queueID string, gen uint64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.queueExecutors, queueID)
+	if m.queueExecutors[queueID] == gen {
+		delete(m.queueExecutors, queueID)
+	}
 }
 
 // ForceUnmarkQueueExecutor 强制清除执行协程标记（暂停态单条重跑等场景回收陈旧槽位）。
+// 无条件删除当前代次——调用方须自行承担旧协程仍在途的风险（其退出释放已被代次校验挡住）。
 func (m *BatchTaskManager) ForceUnmarkQueueExecutor(queueID string) {
-	m.UnmarkQueueExecutor(queueID)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.queueExecutors, queueID)
 }
 
 // IsQueueExecutorActive 队列 executeBatchQueue 协程是否仍在运行。
@@ -159,6 +170,14 @@ func (m *BatchTaskManager) IsQueueExecutorActive(queueID string) bool {
 	defer m.mu.RUnlock()
 	_, ok := m.queueExecutors[queueID]
 	return ok
+}
+
+// IsQueueExecutorCurrent 指定代次是否仍是该队列的当前执行器（陈旧代次返回 false）。
+// executeBatchQueue 的 worker 循环借此在槽位被新一代占用后自行退出，收敛双跑窗口。
+func (m *BatchTaskManager) IsQueueExecutorCurrent(queueID string, gen uint64) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.queueExecutors[queueID] == gen
 }
 
 // SetDB 设置数据库连接

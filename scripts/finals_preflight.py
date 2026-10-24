@@ -447,6 +447,79 @@ def main():
                     warnings.append("--check-auth 无法判定（%s）—— 需人工确认" % detail_a)
     results["auth_probe"] = auth_probe
 
+    # ── ⑨ Python skill 依赖（runner Layer 2 硬依赖）──────────────────
+    # 2026-10-24 补：西湖论剑复盘揭示 runner Layer 2（angr/pwntools）
+    # 静默跳过的风险——CLI 启动时只打印"pwntools:false"，不会阻塞，但
+    # reverse/pwn 题因此 0 分。CI 环境没装 angr 属正常 → 警告级；
+    # final 阶段（开赛那一刻）升级为阻塞。
+    def check_py_dep(name, import_path=None):
+        imp = import_path or name
+        rc, out = run('%s -c "import importlib.util; print(\'OK\' if importlib.util.find_spec(\'%s\') else \'MISSING\')"' % (PY, imp), timeout=15)
+        return rc == 0 and "OK" in out
+
+    py_issues = []
+    if not check_py_dep("angr"):
+        py_issues.append("angr（符号执行）")
+    if not check_py_dep("pwntools", "pwnlib"):
+        py_issues.append("pwntools（import pwnlib）")
+    if py_issues:
+        msg = "Python 依赖缺失：%s — runner Layer 2 会跳过 reverse/pwn 真解" % ", ".join(py_issues)
+        if phase == "final":
+            blocking_fail.append(msg)
+        else:
+            warnings.append(msg + "（pre 阶段只警告）")
+
+    # ── ⑩ 进程冲突（同一个 token 被两个进程用 → 429/封禁）──────────────
+    # 2026-10-24 补：快闪赛 ctf-agent（E:\Program\ctf-agent）与 SecAutoMind runner
+    # 同时跑，若用同一 CTF2_AGENT_TOKEN，平台会限流或封禁。
+    # 只在 final 阶段阻塞；pre 阶段只警告。
+    def proc_count(pattern):
+        import subprocess as _sp
+        try:
+            if os.name == "nt":
+                # Windows：tasklist /FI 精确匹配进程名（含 .exe）
+                r = _sp.run(["tasklist", "/FI", "IMAGENAME eq %s.exe" % pattern],
+                           capture_output=True, text=True, timeout=5)
+                return max(0, r.stdout.count(pattern + ".exe") - 1)
+            else:
+                # Linux：pgrep -f 模糊匹配命令行
+                r = _sp.run(["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+                return len([l for l in (r.stdout or "").splitlines() if l.strip()])
+        except Exception:
+            return 0
+
+    # 额外查 ctf-agent 进程（Python final_entry.py 或 runner_ctf2.py）
+    def py_proc_count(pattern):
+        """查 python 进程命令行里包含 pattern 的数量。"""
+        import subprocess as _sp
+        try:
+            if os.name == "nt":
+                r = _sp.run(["wmic", "process", "where",
+                              "name='python.exe' or name='python3.exe'",
+                              "get", "CommandLine"],
+                           capture_output=True, text=True, timeout=8)
+                return sum(1 for line in (r.stdout or "").splitlines()
+                           if pattern.lower() in line.lower())
+            else:
+                r = _sp.run(["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+                return len([l for l in (r.stdout or "").splitlines() if l.strip()])
+        except Exception:
+            return 0
+
+    runner_procs = proc_count("runner_ctf") + proc_count("runner")
+    ctf_agent_procs = py_proc_count("final_entry") + py_proc_count("runner_ctf2")
+    # runner_cli 在服务器上也叫 runner_ctf（Linux 没 .exe）
+    if os.name != "nt":
+        runner_procs = proc_count("runner_ctf") + proc_count("runner") + py_proc_count("runner_ctf")
+    total_conflict = runner_procs + ctf_agent_procs
+    if total_conflict > 0:
+        msg = "检测到参赛进程：runner=%d, ctf-agent=%d — 多进程共用 token 会触发 429 限流" % (
+            runner_procs, ctf_agent_procs)
+        if phase == "final":
+            blocking_fail.append(msg)
+        else:
+            warnings.append(msg + "（pre 阶段只警告）")
+
     results["warnings"] = warnings
     results["phase"] = phase
     verdict, blocking_fail, pending = evaluate(phase, missing_blocking, blocking_fail, warnings,

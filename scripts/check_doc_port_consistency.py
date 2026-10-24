@@ -42,7 +42,10 @@ PATTERNS = [
 ]
 
 # 材料线（他人负责，且含靶机等其他端口），默认跳过
-SKIP_DIRS = {"competition-2026", ".git", "node_modules", "__pycache__"}
+# `archive`：归档目录按定义就是**过期快照**，且其中多份文档正在**复述"8080 与 18086 矛盾"这个 bug 本身**
+# （勘误记录、事故复盘）。用现行端口标准去管历史记录，等于把"记录 bug 的文档"判成 bug。
+# 2026-10-24 补：归档提交只把文档挪进 archive/ 而没同步本表 → 门禁立刻报 7 处假红。
+SKIP_DIRS = {"competition-2026", ".git", "node_modules", "__pycache__", "archive"}
 
 # 显式豁免：命中的**不是本服务端点**。范围必须极小、必须写理由，且总数有上限。
 # （理由：豁免会腐化 —— 无上限的豁免清单等同于关掉门禁。）
@@ -53,6 +56,8 @@ EXEMPTIONS = [
      "CTF4 授权靶场的目标地址（8080 是靶机 Web 端口，不是 SecAutoMind 服务端口；靶场由 scripts/ctf4_lab.sh 拉起）"),
     ("docs/非flag靶场证据探测_设计与训练记录_20261021.md", "127.0.0.1:8080",
      "CTF4 授权靶场的目标地址（8080 是靶机 Web 端口，不是 SecAutoMind 服务端口；BaseURL/ExploitURLsInText 均指向靶机）"),
+    ("docs/QUICKSTART_NEXT_AGENT.md", "127.0.0.1:8772",
+     "本机 HTTP_PROXY 代理地址（不是本服务端点；该行讲的是 urllib/requests 不豁免回环导致探活走代理）"),
 ]
 MAX_EXEMPTIONS = 5
 

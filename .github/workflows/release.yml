@@ -2,6 +2,13 @@ name: release
 
 # 三平台原生编译（SQLite 驱动为纯 Go glebarez，CGO_ENABLED=0 即可，无需系统 sqlite 库与 cgo 工具链）
 # 触发：推送 v* 标签 → 三平台产物自动上传到对应 Release
+#       workflow_dispatch + inputs.tag → 手动对指定既有 tag 出包
+# ⚠️ tag 目标单一真值源（2026-10-24 修复）：此前 inputs.tag 声明了却从未被读取
+#    （建 Release 用 GITHUB_REF_NAME、上传引用从未赋值的 TAG_NAME），且各 job 检出
+#    的是触发 ref 而非发布 tag —— 手动填 tag 既不决定发布目标，也不决定构建来源。
+#    现在：create-release 里的 resolve 步骤统一解析+校验（fail-closed：tag 必须已存在，
+#    否则 gh 会在默认分支 HEAD 上凭空建 tag，产物与发布目标错位），经 job outputs
+#    下发到所有 build job；**所有 job 的 checkout 都绑定该 tag**，保证构建来源 = 发布目标。
 on:
   push:
     tags:
@@ -9,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to attach artifacts to (e.g. v1.7.21)"
+        description: "Release tag to attach artifacts to (e.g. v1.7.21，必须是已存在的 v* tag)"
         required: false
         default: ""
 
@@ -24,7 +31,10 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     steps:
+      # 手动 dispatch 指定 tag 时，测试也必须跑在该 tag 的源码上（而非当前分支）
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
@@ -55,6 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -69,13 +81,39 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - name: Resolve target tag (single source of truth)
+        id: resolve
+        env:
+          # 手工输入不得直接内插进 bash（表达式直插 run 脚本是注入向量），经 env 间接传递
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+            case "$tag" in
+              v*) ;;
+              *) echo "::error::tag 输入必须以 v 开头（当前：$tag）"; exit 1 ;;
+            esac
+            # fail-closed：目标 tag 必须已存在。否则 gh release create 会在默认分支
+            # HEAD 上凭空建同名 tag → 发布目标与各 job 检出的源码错位。
+            if ! git ls-remote --tags origin "refs/tags/$tag" | grep -q .; then
+              echo "::error::refs/tags/$tag 在远端不存在 —— 先打 tag 再来发版"; exit 1
+            fi
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          echo "resolved release tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Create release (idempotent)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ steps.resolve.outputs.tag }}"
           gh release view "$tag" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 || \
             gh release create "$tag" --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI automated build"
 
@@ -83,7 +121,10 @@ jobs:
     needs: [create-release]
     runs-on: ubuntu-latest
     steps:
+      # 检出 = 发布目标 tag（经 create-release 解析，单一真值源）
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
@@ -116,8 +157,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${TAG_NAME}"
-          if [ -z "$tag" ]; then tag="${GITHUB_REF_NAME}"; fi
+          tag="${{ needs.create-release.outputs.tag }}"
           gh release upload "$tag" secautomind-ai-linux-amd64 --repo "${GITHUB_REPOSITORY}" --clobber || \
             gh release create "$tag" secautomind-ai-linux-amd64 --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI build"
 
@@ -128,7 +168,10 @@ jobs:
       matrix:
         arch: [amd64, arm64]
     steps:
+      # 检出 = 发布目标 tag（经 create-release 解析，单一真值源）
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
@@ -139,8 +182,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${TAG_NAME}"
-          if [ -z "$tag" ]; then tag="${GITHUB_REF_NAME}"; fi
+          tag="${{ needs.create-release.outputs.tag }}"
           gh release upload "$tag" secautomind-ai-macos-${{ matrix.arch }} --repo "${GITHUB_REPOSITORY}" --clobber || \
             gh release create "$tag" secautomind-ai-macos-${{ matrix.arch }} --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI build"
 
@@ -148,7 +190,10 @@ jobs:
     needs: [create-release]
     runs-on: windows-latest
     steps:
+      # 检出 = 发布目标 tag（经 create-release 解析，单一真值源）
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
@@ -167,7 +212,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          tag="${TAG_NAME}"
-          if [ -z "$tag" ]; then tag="${GITHUB_REF_NAME}"; fi
+          tag="${{ needs.create-release.outputs.tag }}"
           gh release upload "$tag" secautomind-ai.exe --repo "${GITHUB_REPOSITORY}" --clobber || \
             gh release create "$tag" secautomind-ai.exe --repo "${GITHUB_REPOSITORY}" --title "SecAutoMind $tag" --notes "CI build"

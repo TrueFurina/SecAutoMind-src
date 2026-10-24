@@ -23,8 +23,10 @@ import (
 const batchQueueWorkerIdlePoll = 200 * time.Millisecond
 
 // executeBatchQueue 使用并发 worker 池执行批量任务队列。
-func (h *AgentHandler) executeBatchQueue(queueID string) {
-	defer h.batchTaskManager.UnmarkQueueExecutor(queueID)
+// gen = 本执行器在 TryMarkQueueExecutor 领到的代次；退出时凭代次释放槽位，
+// 防止被 ForceUnmark 后起的新一代执行器槽位被旧协程的 defer 误删（跨代误释放）。
+func (h *AgentHandler) executeBatchQueue(queueID string, gen uint64) {
+	defer h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 
 	queue, exists := h.batchTaskManager.GetBatchQueue(queueID)
 	if !exists {
@@ -38,7 +40,7 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			h.runBatchQueueWorker(queueID)
+			h.runBatchQueueWorker(queueID, gen)
 		}()
 	}
 	wg.Wait()
@@ -46,8 +48,13 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 	h.tryFinalizeBatchQueue(queueID)
 }
 
-func (h *AgentHandler) runBatchQueueWorker(queueID string) {
+func (h *AgentHandler) runBatchQueueWorker(queueID string, gen uint64) {
 	for {
+		// 槽位已被新一代执行器接管（暂停态单条重跑场景）：旧 worker 立即退场，
+		// 避免与新执行器的 worker 并发领取任务（双跑窗口收敛到在途任务结束）。
+		if !h.batchTaskManager.IsQueueExecutorCurrent(queueID, gen) {
+			return
+		}
 		queue, exists := h.batchTaskManager.GetBatchQueue(queueID)
 		if batchQueueExecutionShouldStop(queue, exists) {
 			return

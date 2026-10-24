@@ -12,7 +12,7 @@
     1) 构建干净 staging：按排除清单复制，并用 config.share.yaml（纯 ${ENV} 占位、零真 key）
        顶替 config.yaml，保证接收方开箱即用
     2) 打包为 tar.gz
-    3) 解包复核六条硬红线：
+    3) 解包复核七条硬红线：
        - 包内不得出现 data/ · logs/ · .env · *.db · chat_uploads/ 等运行数据
          （例外：data/ctf_benchmark/ 属可机验的**测试资产**而非运行数据，默认纳入）
        - 包内 config.yaml 必须与 config.share.yaml 逐字节一致（即确认顶替生效）
@@ -28,6 +28,7 @@
          实测教训：包里曾同时有三份构建（09-04 dirty / 09-07 / 09-30），没有一份
          是当时源码的产物，而文件名与体积完全看不出差别。
     4) 任一红线失败 → 删除成品包并 rc=1（宁可不出包，不可出事）
+    5) 打包层兜底：复制失败直接 BLOCK；staging ↔ 归档双向对账（红线 7）
 
 用法：
     python scripts/make_delivery_package.py                 # 产出 dist/SecAutoMind-<ver>-share.tar.gz
@@ -36,8 +37,8 @@
     python scripts/make_delivery_package.py --keep-staging   # 保留 staging 目录以便排查
 
 退出码：
-    0 = 包已生成且六项自验全过
-    1 = 自验失败（含真凭证 / 含禁区数据 / 产物数字漂移），成品包已删除
+    0 = 包已生成且七项自验全过
+    1 = 自验失败（含真凭证 / 含禁区数据 / 产物数字漂移 / 复制失败 / 对账不一致），成品包已删除
 """
 import argparse
 import datetime
@@ -201,8 +202,14 @@ def is_excluded_file(rel):
 
 
 def build_staging(staging):
-    """把 ROOT 下「该进包」的文件复制到 staging，返回纳入清单。"""
+    """把 ROOT 下「该进包」的文件复制到 staging，返回纳入清单。
+
+    复制失败一律 BLOCK（raise SystemExit，rc=1）：此前的行为是 WARN 后跳过，
+    产出的包缺文件但后续自验未必能抓住（自验查的是禁区/配置/密钥/行尾/数字/
+    二进制来源，没有一个会对账「源 ↔ 包」完整性）——「不完整但 PASS」的包
+    比不出包更危险（红线哲学：宁可不出包，不可出事）。"""
     included = []
+    copy_errors = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         rel_dir = os.path.relpath(dirpath, ROOT).replace("\\", "/")
         rel_dir = "" if rel_dir == "." else rel_dir
@@ -224,7 +231,7 @@ def build_staging(staging):
             try:
                 shutil.copy2(src, dst)
             except OSError as e:
-                print("  [WARN] 复制失败，跳过：%s (%s)" % (child, e))
+                copy_errors.append("%s (%s)" % (child, e))
                 continue
             included.append(child)
 
@@ -233,8 +240,9 @@ def build_staging(staging):
     for exc in INCLUDE_PATH_EXCEPTIONS:
         exc_abs = os.path.join(ROOT, exc.replace("/", os.sep))
         if not os.path.isdir(exc_abs):
-            print("  [WARN] 例外路径不存在，跳过：%s" % exc)
-            continue
+            # fail-closed：例外目录缺失时静默跳过 = 包里悄悄少了基准集，
+            # 而材料口径仍宣称「双语言机验基准集」随包。要关请显式 --no-benchmark。
+            raise SystemExit("[BLOCK] 例外路径不存在：%s（要显式关闭纳入请用 --no-benchmark）" % exc)
         for dirpath, dirnames, filenames in os.walk(exc_abs):
             rel_dir = os.path.relpath(dirpath, ROOT).replace("\\", "/")
             dirnames[:] = [d for d in dirnames
@@ -249,9 +257,15 @@ def build_staging(staging):
                 try:
                     shutil.copy2(src, dst)
                 except OSError as e:
-                    print("  [WARN] 复制失败，跳过：%s (%s)" % (rel, e))
+                    copy_errors.append("%s (%s)" % (rel, e))
                     continue
                 included.append(rel)
+
+    if copy_errors:
+        for line in copy_errors:
+            print("  [BLOCK] 复制失败：%s" % line)
+        raise SystemExit("[BLOCK] staging 复制失败 %d 个文件 —— 交付包内容不完整，拒绝出包"
+                         % len(copy_errors))
 
     # 用干净配置顶替 config.yaml（接收方开箱即用；纯 ${ENV} 占位，无真 key）
     if os.path.exists(CLEAN_CONFIG):
@@ -305,9 +319,10 @@ def rewrite_share_readme(staging, n_files):
                   "`installer/build_installer.py`，复验 `python installer/build_installer.py "
                   "--verify-only`）" % (built_at or "未知", commit or "未知", dirty, md5,
                                         format(os.path.getsize(exe), ",")))
-    pack_line = ("**分发包制作**: %s（纳入文件 %d 个；六项红线全过：无运行数据 · "
+    pack_line = ("**分发包制作**: %s（纳入文件 %d 个；七项红线全过：无运行数据 · "
                  "`config.yaml` 由 `config.share.yaml` 顶替 · `secret_guard` rc=0 · "
-                 "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建。"
+                 "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建 · "
+                 "staging↔归档对账一致。"
                  "本行与上一行由 `scripts/make_delivery_package.py` 自动写入，勿手改）"
                  % (datetime.date.today().isoformat(), n_files))
 
@@ -333,8 +348,39 @@ def sha256(path):
     return h.hexdigest()
 
 
+def reconcile_archive(package, staging):
+    """红线 7：staging ↔ 归档条目双向对账；返回 issues 列表（空 = 一致）。
+
+    动机：六项红线全部是「包里不该有什么 / 该有的那几个长什么样」，没有一条
+    对账「该进的都进了」。复制层失败已被 build_staging BLOCK 兜住，但打包层
+    （tar 写半截 / 磁盘满 / 并发写 staging）仍可能产出缺文件的成品 —— 这层
+    只能靠解包读回条目清单来对账。"""
+    issues = []
+    with tarfile.open(package, "r:gz") as tf:
+        archived = {m.name for m in tf.getmembers() if m.isfile()}
+    roots = {n.split("/", 1)[0] for n in archived}
+    if len(roots) != 1:
+        return ["归档顶层目录不唯一，无法对账：%s" % sorted(roots)[:5]]
+    root = sorted(roots)[0]
+    archived_rel = {n[len(root) + 1:] for n in archived if n.startswith(root + "/")}
+    disk_rel = set()
+    for dirpath, _, filenames in os.walk(staging):
+        for fn in filenames:
+            rel = os.path.relpath(os.path.join(dirpath, fn), staging).replace("\\", "/")
+            disk_rel.add(rel)
+    dropped = sorted(disk_rel - archived_rel)
+    phantom = sorted(archived_rel - disk_rel)
+    if dropped:
+        issues.append("staging 有 %d 个文件未进归档（打包不完整）：%s"
+                      % (len(dropped), ", ".join(dropped[:8])))
+    if phantom:
+        issues.append("归档含 %d 个 staging 没有的文件（错包/陈旧条目）：%s"
+                      % (len(phantom), ", ".join(phantom[:8])))
+    return issues
+
+
 def verify(package, staging):
-    """六条硬红线；返回 (ok, issues, notes)。"""
+    """七条硬红线；返回 (ok, issues, notes)。"""
     issues, notes = [], []
     with tarfile.open(package, "r:gz") as tf:
         names = tf.getnames()
@@ -479,6 +525,13 @@ def verify(package, staging):
     else:
         issues.append("未找到 scripts/check_binary_version.py，无法自验程序材料来源")
 
+    # 红线 7：staging ↔ 归档双向对账（见 reconcile_archive 文档）
+    rec = reconcile_archive(package, staging)
+    if rec:
+        issues.extend(rec)
+    else:
+        notes.append("reconcile_archive -> PASS（staging 与归档条目双向一致）")
+
     return (not issues), issues, notes
 
 
@@ -545,8 +598,8 @@ def main():
     for n in notes:
         print("  · %s" % n)
     if ok:
-        print("  [PASS] 六项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0 · "
-              "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建")
+        print("  [PASS] 七项红线全过：无运行数据 · config 顶替生效 · 密钥门禁 rc=0 · "
+              "脚本行尾合规 · 产物数字与真值一致 · 程序材料由当前 HEAD 构建 · 对账一致")
         print("  交付包就绪：%s" % out)
     else:
         print("  [BLOCK] 自验失败，已删除成品包：")

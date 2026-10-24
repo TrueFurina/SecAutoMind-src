@@ -1,0 +1,24 @@
+#!/bin/sh
+# SecAutoMind 本地提交前密钥门禁（G-01 · 2026-10-24 实装）
+#
+# 背景：此前密钥门禁只在 CI（secret_guard 三步）与打包前生效，
+# 本地 git commit 完全不拦——"CI 之外本地不拦"是防线对照 G-01 行的实测缺口。
+#
+# 语义：与 CI 完全一致（secret_guard --allow-no-fingerprint），
+#       退出码非 0 = 阻止提交（fail-closed）。
+# 跳过：确属误报时 git commit --no-verify，并按 docs/收尾清单.md 在"取证边界"注明。
+# 重装：换机器/重克隆后跑 python scripts/install_git_hooks.py（幂等）。
+
+PY=python
+command -v "$PY" >/dev/null 2>&1 || PY=python3
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$(cd "$(dirname "$0")/../.." && pwd)
+
+"$PY" "$repo/scripts/secret_guard.py" --allow-no-fingerprint
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] secret_guard 判定 rc=$rc —— 本次提交被阻止（G-01 fail-closed）。"
+  echo "[pre-commit] 处置：先按上方报告清理真实凭证；确属误报才允许 --no-verify 并留痕。"
+  exit 1
+fi
+exit 0

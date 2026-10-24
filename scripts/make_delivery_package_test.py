@@ -25,13 +25,21 @@
     T7  旧版本 Setup 被排除、当前版本 Setup 被纳入（版本同源规则）
     T8  **变异验证**：把 `.workbuddy-ai` 从 EXCLUDE_DIRS 摘掉 → T1 的判据必须转红
         （证明 T1 是被这条排除规则决定的，而不是恰好为真）
+    T10 **故障注入**：复制失败（copy2 抛 OSError）→ build_staging 必须 SystemExit
+        BLOCK（旧行为是 WARN 后跳过 → 产出缺文件但自检绿灯的包）
+    T11 对账：staging ↔ 归档双向一致 → reconcile_archive 返回空
+    T12 对账（缺件方向）：staging 有而归档没有 → 必须报 issue
+    T13 对账（幽灵方向）：归档有而 staging 没有 → 必须报 issue
 
 用法：
     python scripts/make_delivery_package_test.py
     echo $?     # 0 = 全部通过
 """
 import os
+import shutil
 import sys
+import tarfile
+import tempfile
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -137,6 +145,110 @@ def t8_mutation():
     return True, "摘掉→泄漏可复现；恢复→重新被排除"
 
 
+def t10_copy_failure_blocks():
+    """故障注入：copy2 对指定文件抛 OSError → build_staging 必须拒绝出包。
+
+    用临时小树替换 mdp.ROOT，避免在测试里全量 walk 真实仓库。"""
+    tmp = tempfile.mkdtemp(prefix="mdp_t10_")
+    src_root = os.path.join(tmp, "repo")
+    os.makedirs(os.path.join(src_root, "internal"))
+    for name in ("a.txt", "b.txt"):
+        with open(os.path.join(src_root, "internal", name), "w", encoding="utf-8") as fh:
+            fh.write("x\n")
+    staging = os.path.join(tmp, "staging")
+    os.makedirs(staging)
+
+    saved_root, saved_exc = mdp.ROOT, list(mdp.INCLUDE_PATH_EXCEPTIONS)
+    real_copy2 = shutil.copy2
+    try:
+        mdp.ROOT = src_root
+        mdp.INCLUDE_PATH_EXCEPTIONS[:] = []          # 例外目录不在临时树里
+
+        def failing_copy2(src, dst, **kw):
+            if os.path.basename(src) == "b.txt":
+                raise OSError("EACCES: 模拟复制失败")
+            return real_copy2(src, dst, **kw)
+
+        shutil.copy2 = failing_copy2                  # build_staging 运行时查找模块属性
+        try:
+            mdp.build_staging(staging)
+            return False, "复制失败竟未阻断 —— 回退到了「WARN 后跳过」旧行为"
+        except SystemExit as exc:
+            msg = str(exc)
+            if "[BLOCK]" not in msg or "复制失败" not in msg:
+                return False, "SystemExit 信息不含定位线索：%r" % msg
+            return True, "复制失败被 BLOCK：%r" % msg[:60]
+    finally:
+        shutil.copy2 = real_copy2
+        mdp.ROOT = saved_root
+        mdp.INCLUDE_PATH_EXCEPTIONS[:] = saved_exc
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _mk_pkg(tmp, files_on_disk, files_in_tar):
+    """构造 staging 目录 + 只含 files_in_tar 的 tar.gz，返回 (package, staging)。"""
+    staging = os.path.join(tmp, "staging")
+    os.makedirs(staging, exist_ok=True)
+    for rel in files_on_disk:
+        p = os.path.join(staging, rel.replace("/", os.sep))
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(rel)
+    pkg = os.path.join(tmp, "pkg.tar.gz")
+    root = "SecAutoMind-t-share"
+    with tarfile.open(pkg, "w:gz") as tf:
+        for rel in files_in_tar:
+            ti = tarfile.TarInfo("%s/%s" % (root, rel))
+            data = rel.encode("utf-8")
+            ti.size = len(data)
+            tf.addfile(ti, __import__("io").BytesIO(data))
+    return pkg, staging
+
+
+def t11_reconcile_consistent():
+    tmp = tempfile.mkdtemp(prefix="mdp_t11_")
+    try:
+        files = ["README.md", "scripts/run.sh"]
+        pkg, staging = _mk_pkg(tmp, files, files)
+        issues = mdp.reconcile_archive(pkg, staging)
+        if issues:
+            return False, "一致却报 issue：%s" % issues
+        return True, "双向一致，无 issue"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def t12_reconcile_dropped_file():
+    tmp = tempfile.mkdtemp(prefix="mdp_t12_")
+    try:
+        pkg, staging = _mk_pkg(tmp, ["README.md", "scripts/run.sh", "main.go"],
+                               ["README.md", "scripts/run.sh"])   # main.go 漏进归档
+        issues = mdp.reconcile_archive(pkg, staging)
+        joined = " ".join(issues)
+        if not any("main.go" in i for i in issues):
+            return False, "漏件未被点名：%s" % issues
+        if "未进归档" not in joined:
+            return False, "缺件方向未分类：%s" % issues
+        return True, "漏件被点名且方向正确"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def t13_reconcile_phantom_file():
+    tmp = tempfile.mkdtemp(prefix="mdp_t13_")
+    try:
+        pkg, staging = _mk_pkg(tmp, ["README.md"],
+                               ["README.md", "internal/ghost.go"])  # 归档里多出幽灵
+        issues = mdp.reconcile_archive(pkg, staging)
+        if not any("ghost.go" in i for i in issues):
+            return False, "幽灵条目未被点名：%s" % issues
+        if not any("staging 没有" in i for i in issues):
+            return False, "幽灵方向未分类：%s" % issues
+        return True, "幽灵条目被点名且方向正确"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     print("=" * 70)
     print("make_delivery_package 排除面回归 + 变异验证")
@@ -150,6 +262,10 @@ def main():
     case("T7 Setup 版本同源规则", t7_setup_versions)
     case("T8 变异：摘掉条目后必须泄漏", t8_mutation)
     case("T9 可再生扫描产物 scans/ 被排除", lambda: _expect("scans/sc_v5.json", True))
+    case("T10 故障注入：复制失败必须 BLOCK", t10_copy_failure_blocks)
+    case("T11 对账：staging↔归档一致", t11_reconcile_consistent)
+    case("T12 对账：漏件方向必须报 issue", t12_reconcile_dropped_file)
+    case("T13 对账：幽灵方向必须报 issue", t13_reconcile_phantom_file)
 
     failed = [n for n, ok, _ in _results if not ok]
     print("-" * 70)

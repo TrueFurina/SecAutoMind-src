@@ -2442,43 +2442,44 @@ func (h *AgentHandler) nextBatchQueueRunAt(cronExpr string, from time.Time) (*ti
 
 func (h *AgentHandler) startBatchQueueExecution(queueID string, scheduled bool) (bool, error) {
 	// 先获取执行互斥门，再读取队列状态，避免基于过时快照做判断
-	if !h.batchTaskManager.TryMarkQueueExecutor(queueID) {
+	marked, gen := h.batchTaskManager.TryMarkQueueExecutor(queueID)
+	if !marked {
 		return true, nil
 	}
 
 	queue, exists := h.batchTaskManager.GetBatchQueue(queueID)
 	if !exists {
-		h.batchTaskManager.UnmarkQueueExecutor(queueID)
+		h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 		return false, nil
 	}
 
 	if scheduled {
 		if queue.ScheduleMode != "cron" {
-			h.batchTaskManager.UnmarkQueueExecutor(queueID)
+			h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 			err := fmt.Errorf("队列未启用 cron 调度")
 			h.batchTaskManager.SetLastScheduleError(queueID, err.Error())
 			return true, err
 		}
 		if queue.Status == "running" || queue.Status == "paused" || queue.Status == "cancelled" {
-			h.batchTaskManager.UnmarkQueueExecutor(queueID)
+			h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 			err := fmt.Errorf("当前队列状态不允许被调度执行")
 			h.batchTaskManager.SetLastScheduleError(queueID, err.Error())
 			return true, err
 		}
 		if !h.batchTaskManager.ResetQueueForRerun(queueID) {
-			h.batchTaskManager.UnmarkQueueExecutor(queueID)
+			h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 			err := fmt.Errorf("重置队列失败")
 			h.batchTaskManager.SetLastScheduleError(queueID, err.Error())
 			return true, err
 		}
 		queue, _ = h.batchTaskManager.GetBatchQueue(queueID)
 	} else if queue.Status != "pending" && queue.Status != "paused" {
-		h.batchTaskManager.UnmarkQueueExecutor(queueID)
+		h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 		return true, fmt.Errorf("队列状态不允许启动")
 	}
 
 	if queue != nil && batchQueueWantsEino(queue.AgentMode) && (h.config == nil || !h.config.MultiAgent.Enabled) {
-		h.batchTaskManager.UnmarkQueueExecutor(queueID)
+		h.batchTaskManager.UnmarkQueueExecutor(queueID, gen)
 		err := fmt.Errorf("当前队列配置为 Eino 多代理，但系统未启用多代理")
 		if scheduled {
 			h.batchTaskManager.SetLastScheduleError(queueID, err.Error())
@@ -2497,7 +2498,7 @@ func (h *AgentHandler) startBatchQueueExecution(queueID string, scheduled bool) 
 		}
 	}
 
-	go h.executeBatchQueue(queueID)
+	go h.executeBatchQueue(queueID, gen)
 	return true, nil
 }
 
