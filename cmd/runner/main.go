@@ -189,6 +189,9 @@ func main() {
 	pc.SolveTimeout = envDurationMs("CTF_SOLVE_TIMEOUT", pc.SolveTimeout)
 	pc.MaxConcurrency = envInt("CTF_MAX_CONCURRENCY", pc.MaxConcurrency)
 	pc.MaxRetrySubmit = envInt("CTF_MAX_RETRY_SUBMIT", pc.MaxRetrySubmit)
+	// 首血扫描（2026-10-24 吞并 P0-3 接线）：窗口内短间隔抢新题，默认 0=关闭（秒，同族 env 惯例）
+	pc.FirstBloodWindow = envDurationMs("CTF_FIRST_BLOOD_WINDOW", pc.FirstBloodWindow)
+	pc.FirstBloodInterval = envDurationMs("CTF_FIRST_BLOOD_INTERVAL", pc.FirstBloodInterval)
 	pc.SubmitAfterSolve = envBool("CTF_AUTOSOLVE_SUBMIT", true) // 赛时默认自动提交
 	pc.AutoBuildEnv = envBool("CTF_AUTO_BUILD_ENV", true)
 	pc.AutoFetchAttachment = envBool("CTF_AUTO_FETCH_ATTACHMENT", false)

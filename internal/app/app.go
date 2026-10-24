@@ -480,6 +480,18 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 				pc.MaxRetrySubmit = n
 			}
 		}
+		// 首血扫描（2026-10-24 吞并 P0-3 接线）：开赛窗口内短间隔抢新题。默认 0=关闭；
+		// 语义倒挂（interval ≥ poll）由 poller 侧按关闭处理并告警。秒为单位（本站 env 惯例）。
+		if v := strings.TrimSpace(os.Getenv("CTF_FIRST_BLOOD_WINDOW")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n > 0 {
+				pc.FirstBloodWindow = time.Duration(n) * time.Second
+			}
+		}
+		if v := strings.TrimSpace(os.Getenv("CTF_FIRST_BLOOD_INTERVAL")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n > 0 {
+				pc.FirstBloodInterval = time.Duration(n) * time.Second
+			}
+		}
 		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
 		// 🔴 决赛关键链（09-17 补的生产缺口）：对 HasInstance 的题自动「起靶机 → 取地址 →
 		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题
