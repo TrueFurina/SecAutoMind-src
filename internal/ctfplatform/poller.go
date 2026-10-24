@@ -213,6 +213,17 @@ func (p *Poller) RunForever(ctx context.Context) error {
 	}
 	startedAt := time.Now()
 
+	// 启动轻量获取比赛信息（规则/时间窗），best-effort：失败仅告警，不阻塞解题主路径。
+	{
+		miCtx, miCancel := context.WithTimeout(ctx, 10*time.Second)
+		if info, ierr := p.platform.GetMatchInfo(miCtx); ierr != nil {
+			p.logger.Warn("获取比赛信息失败（非致命，不影响解题）", zap.Error(ierr))
+		} else if info != nil {
+			p.logger.Info("比赛信息快照", zap.Any("match_info", info))
+		}
+		miCancel()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
