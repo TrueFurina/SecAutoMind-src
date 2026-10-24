@@ -49,6 +49,14 @@ esac
 
 
 
+# ── 结束方式（2026-10-24 实测事故修复）────────────────────────────────────────
+# 本文档推荐的用法是 `source scripts/finals_arm.sh`。被 source 时脚本里的 `exit` 会
+# **直接终止操作者的 shell**：交互终端窗口一关，先前 export 的开关随进程一起消失，
+# 重开新终端又是全 OFF —— 「一键上膛」反而制造了它本该消灭的静默失能（poller 不启动、
+# 不自动提交、靶机题全 MISS，且现场没有任何报错）。
+# 故：被 source 时一律用 `return`（只退出脚本，保留当前 shell 的开关），
+#     直接执行时才 `exit`。注意必须写在**脚本顶层**——包进函数里的 return 只退出函数。
+
 # ── 开关：已存在的值不覆盖（允许现场调过间隔后重新上膛）──────────────────────
 export CTF_POLL_ENABLED="${CTF_POLL_ENABLED:-true}"
 export CTF_AUTOSOLVE_SUBMIT="${CTF_AUTOSOLVE_SUBMIT:-true}"
@@ -77,7 +85,7 @@ print_list() {
 
 if [ "${1:-}" = "--print" ]; then
   print_list
-  exit 0
+  if [ "$SOURCED" -eq 1 ]; then return 0; else exit 0; fi
 fi
 
 echo "=========================================================================="
@@ -106,7 +114,7 @@ done
 if [ -z "$PY" ]; then
   echo
   echo "  ! 未找到 python，跳过 finals_preflight 校验（开关已设置，请自行核对）"
-  exit 0
+  if [ "$SOURCED" -eq 1 ]; then return 0; else exit 0; fi
 fi
 
 echo
@@ -119,4 +127,4 @@ if [ "$rc" -eq 0 ]; then
 else
   echo "❌ NO-GO：见上方阻塞项，**不要开赛**（处置见 runbook §4 降级清单）"
 fi
-exit $rc
+if [ "$SOURCED" -eq 1 ]; then return "$rc"; else exit "$rc"; fi

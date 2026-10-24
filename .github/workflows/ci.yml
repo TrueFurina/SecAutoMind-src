@@ -332,6 +332,12 @@ jobs:
       #   本地是 Git Bash + Windows，CI 才是真 Linux 目标环境。
       - name: finals_arm.sh syntax check (day-of one-liner must be runnable on Linux)
         run: bash -n scripts/finals_arm.sh
+      # 10-24 补：`bash -n` 只验语法，验不出「source 时 exit 杀掉操作者 shell」这类语义 bug。
+      #   实测事故：source 推荐的用法走到末尾 `exit $rc`，终端一关，export 的开关随进程消失，
+      #   重开新终端又是全 OFF —— 静默失能（poller 不启动/不自动提交/靶机题全 MISS），现场无报错。
+      #   本用例含 1 项**因果自变异**（把末尾守卫换回裸 exit，断言必须失败），证明不是恒绿。
+      - name: finals_arm.sh semantic regression (source must not kill the operator's shell)
+        run: bash scripts/finals_arm_test.sh
       # 10-05 补：预检脚本的 GO/NO-GO 定级逻辑必须有回归测试。
       #   预检结论直接决定"是否开赛"，而门禁全绿时没人会去核对那个结论 ——
       #   定级写反 = 现场拿到与事实相反的 GO（10-04 已栽过同类的门禁失效事故）。
