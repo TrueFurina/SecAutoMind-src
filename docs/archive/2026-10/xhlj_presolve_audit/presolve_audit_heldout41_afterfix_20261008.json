@@ -1,0 +1,384 @@
+{
+  "summary": {
+    "dir": "data/results/heldout_run",
+    "n": 41,
+    "seconds": 307.3,
+    "no_answers_true": 5,
+    "no_answers_false": 1,
+    "no_answers_none": 35,
+    "with_answers_true": 5,
+    "with_answers_false": 1,
+    "with_answers_none": 35
+  },
+  "rows": [
+    {
+      "id": "ext_gctf2021_abc-arm-and-amd",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_david-and-the-tree",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_filestore",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_h1",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_ican-tbelieveit-snotcrypto",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_pythia",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_story",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_tiramisu",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2021_tonality",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_appnote-txt",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_custom-protocol",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_cycling",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "CTF{Recycling_Is_Great}",
+      "no_answers": "CTF{Recycling_Is_Great}",
+      "no_answers_verdict": "TRUE",
+      "with_answers_verdict": "TRUE"
+    },
+    {
+      "id": "ext_gctf2022_electric-mayhem-cls",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "CTF{W0ckAwocKaWoCka1}",
+      "no_answers": "CTF{W0ckAwocKaWoCka1}",
+      "no_answers_verdict": "TRUE",
+      "with_answers_verdict": "TRUE"
+    },
+    {
+      "id": "ext_gctf2022_electric-mayhem-pqc",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_enigma",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_legit",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_maybe-someday",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2022_segfault-labyrinth",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2023_cursved",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2023_least-common-genominator",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "CTF{C0nGr@tz_RiV35t_5h4MiR_nD_Ad13MaN_W0ulD_b_h@pPy}",
+      "no_answers": "CTF{C0nGr@tz_RiV35t_5h4MiR_nD_Ad13MaN_W0ulD_b_h@pPy}",
+      "no_answers_verdict": "TRUE",
+      "with_answers_verdict": "TRUE"
+    },
+    {
+      "id": "ext_gctf2023_mhk2",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "TIMEOUT",
+      "no_answers": "TIMEOUT",
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2023_papapapa",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2023_primes",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "CTF{YkDOLIStjpjP5Am1SXDt5d2r9es3b5KZP47v8rXF}",
+      "no_answers": "CTF{YkDOLIStjpjP5Am1SXDt5d2r9es3b5KZP47v8rXF}",
+      "no_answers_verdict": "FALSE",
+      "with_answers_verdict": "FALSE"
+    },
+    {
+      "id": "ext_gctf2023_totally-not-brute-force",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2023_zip",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_auxin2",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_blinders",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_desfunctional",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_hwsim",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_idea",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_mceliece",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_otp",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2024_zkpok",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_bpfbox",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_filtermaze",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_hwsimv2",
+      "category": "misc",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_merkurated",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_numerology",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "ext_gctf2025_underhanded",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": null,
+      "no_answers": null,
+      "no_answers_verdict": "-",
+      "with_answers_verdict": "-"
+    },
+    {
+      "id": "real_crypto_dnui_keyboard",
+      "category": "crypto",
+      "atts_ok": true,
+      "with_answers": "flag{CLCKOUTHK}",
+      "no_answers": "flag{CLCKOUTHK}",
+      "no_answers_verdict": "TRUE",
+      "with_answers_verdict": "TRUE"
+    },
+    {
+      "id": "real_reverse_js",
+      "category": "reverse",
+      "atts_ok": true,
+      "with_answers": "flag{cslhahldlnst0day}",
+      "no_answers": "flag{cslhahldlnst0day}",
+      "no_answers_verdict": "TRUE",
+      "with_answers_verdict": "TRUE"
+    }
+  ]
+}
