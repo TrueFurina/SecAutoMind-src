@@ -29,8 +29,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -39,6 +42,11 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+)
+
+var (
+	flagForceClaim = flag.Bool("force-claim", false, "检测到已有参赛进程（runner/ctf-agent）时 kill 再启动，避免 token 限流")
+	flagDryRun     = flag.Bool("dry-run", false, "轮询解题但不提交 flag（CTF_AUTOSOLVE_SUBMIT=false 覆盖）")
 )
 
 func envDurationMs(key string, fallback time.Duration) time.Duration {
@@ -72,12 +80,41 @@ func envBool(key string, fallback bool) bool {
 }
 
 func main() {
+	flag.Parse()
+
+	// ── dry-run 覆盖 env ────────────────────────────────────
+	if *flagDryRun {
+		os.Setenv("CTF_AUTOSOLVE_SUBMIT", "false")
+	}
+
+	// ── 进程冲突检测 ─────────────────────────────────────────
+	// 同一个 CTF2_AGENT_TOKEN 被两个进程用会触发 429 限流或封禁
+	if conflicts := detectConflictingProcs(); len(conflicts) > 0 {
+		logger2, _ := zap.NewProduction()
+		defer logger2.Sync()
+		logger2.Warn("检测到已有参赛进程",
+			zap.Strings("conflicts", conflicts),
+			zap.Bool("force_claim", *flagForceClaim))
+		if *flagForceClaim {
+			for _, pid := range conflicts {
+				logger2.Info("kill 进程", zap.String("pid", pid))
+				_ = killPID(pid)
+			}
+			time.Sleep(1 * time.Second) // 等进程退出释放资源
+		} else {
+			logger2.Error("已有进程在跑，拒绝启动（加 --force-claim 强抢）")
+			os.Exit(1)
+		}
+	}
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
 	logger.Info("SecAutoMind Runner 启动",
 		zap.String("ctf2_token", mask(os.Getenv("CTF2_AGENT_TOKEN"))),
-		zap.String("competition_id", os.Getenv("CTF2_COMPETITION_ID")))
+		zap.String("competition_id", os.Getenv("CTF2_COMPETITION_ID")),
+		zap.Bool("dry_run", *flagDryRun),
+		zap.Bool("force_claim", *flagForceClaim))
 
 	// ── 1. CTF² 平台客户端 ────────────────────────────────
 	platform := ctfplatform.NewCTF2Platform("", "", logger)
@@ -88,9 +125,14 @@ func main() {
 	// ── 2.5 Python skill bridge（西湖论剑真跑 skill）─────
 	pyBridge := newPySkillRunner(context.Background(), logger)
 
-	// ── 3. Solver 闭包（两层链）────────────────────────
+	// ── 2.6 LLM fallback Layer 3（Eino ChatModel 独立调用）──
+	// 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
+	llmFB := newLLMFallback(context.Background(), logger)
+
+	// ── 3. Solver 闭包（三层链）────────────────────────
 	//   Layer 1: Presolve 确定性求解（189 Go solver，0 token）
 	//   Layer 2: Python skill bridge（angr/pwntools 真跑，有依赖门控）
+	//   Layer 3: Eino ChatModel 纯文本推理（可选，有 runner_llm_fallback 开关）
 	solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 		// Layer 1: presolve
 		res := presolver.Presolve(ctx, ch, nil)
@@ -116,8 +158,25 @@ func main() {
 			}
 		}
 
-		// 两层都没命中 → 返回 nil（Poller 标记 solved=false）
-		logger.Debug("两层求解都未命中",
+		// Layer 3: LLM fallback（依赖门控，默认关闭）
+		if llmFB.enabled {
+			// 收集附件 URL 提示供 LLM 参考
+			attHint := ""
+			if len(ch.AttachmentURLs) > 0 {
+				attHint = "附件 URL: " + strings.Join(ch.AttachmentURLs, ", ")
+			}
+			if flags, err := llmFB.solve(ctx, ch.Title, ch.Category, ch.Description, attHint); err != nil {
+				// LLM 超时或报错 → 不阻塞，继续返回 nil
+				logger.Debug("Layer 3 LLM 调用失败（非致命）",
+					zap.String("challenge", ch.Title),
+					zap.Error(err))
+			} else if len(flags) > 0 {
+				return flags, nil
+			}
+		}
+
+		// 三层都没命中 → 返回 nil（Poller 标记 solved=false）
+		logger.Debug("三层求解都未命中",
 			zap.String("challenge", ch.Title),
 			zap.String("category", ch.Category))
 		return nil, nil
@@ -184,4 +243,61 @@ func mask(s string) string {
 		return "****"
 	}
 	return s[:4] + "****" + s[len(s)-4:]
+}
+
+// detectConflictingProcs 检测已有参赛进程（runner 或 ctf-agent）。
+// 返回命中的 PID 列表（字符串格式），空列表表示无冲突。
+func detectConflictingProcs() []string {
+	var patterns []string
+	if runtime.GOOS == "windows" {
+		// Windows: 精确匹配 exe 名
+		patterns = []string{"runner_ctf.exe", "runner.exe", "final_entry.py", "runner_ctf2.py", "runner_ctf2.exe"}
+	} else {
+		// Linux: pgrep -f 模糊匹配命令行关键字
+		patterns = []string{"runner_ctf", "final_entry", "runner_ctf2"}
+	}
+
+	var conflicts []string
+	seen := make(map[string]bool)
+
+	for _, p := range patterns {
+		var out string
+		if runtime.GOOS == "windows" {
+			// 用 tasklist 查，输出里找 pattern
+			outBytes, e := exec.Command("tasklist", "/FI", "IMAGENAME eq "+p).CombinedOutput()
+			if e != nil {
+				continue
+			}
+			out = string(outBytes)
+		} else {
+			outBytes, e := exec.Command("pgrep", "-f", p).CombinedOutput()
+			if e != nil {
+				continue
+			}
+			out = string(outBytes)
+		}
+		for _, line := range strings.Split(out, "\n") {
+			pid := strings.TrimSpace(line)
+			if pid == "" {
+				continue
+			}
+			if !seen[pid] {
+				seen[pid] = true
+				conflicts = append(conflicts, pid)
+			}
+		}
+	}
+	return conflicts
+}
+
+// killPID 跨平台 kill 一个进程。
+func killPID(pidStr string) error {
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return err
+	}
+	if runtime.GOOS == "windows" {
+		return exec.Command("taskkill", "/F", "/PID", strconv.Itoa(pid)).Run()
+	}
+	return exec.Command("kill", "-TERM", strconv.Itoa(pid)).Run()
 }
