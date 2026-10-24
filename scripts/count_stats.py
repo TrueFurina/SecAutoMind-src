@@ -126,6 +126,50 @@ def _count_recursive(d, filename):
     return n
 
 
+def _tool_declaration_stats():
+    """把 tools_yaml 拆成「真工具声明」与「已登记的非工具文件」。
+
+    为什么必须有这个拆分（2026-10-24）：
+      tools_yaml 是**文件计数**（排除 risk_policy.yaml），其中 _shared_args.yaml
+      被历史性登记为"计入但不报警"。于是 `tools_yaml` 与
+      `audit_asset_metadata.py`（解析 name+command）天然差 1，两边都是"对的"，
+      但没人知道差在哪 —— 2026-10-18 就有人把 89/90 当成 bug 查了半小时。
+
+    返回 (declared, registered_non_tool, unregistered_non_tool)：
+      declared              顶层同时含 name 与 command 的配方数（= 真实工具数）
+      registered_non_tool   已登记的非工具文件数（当前 = _shared_args.yaml 是否存在）
+      unregistered_non_tool 既不像工具、又没登记的文件名列表（口径在悄悄虚报）
+    """
+    d = os.path.join(ROOT, "tools")
+    if not os.path.isdir(d):
+        return 0, 0, []
+    declared = 0
+    unregistered = []
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".yaml") or f in TOOLS_YAML_EXCLUDE:
+            continue
+        if not os.path.isfile(os.path.join(d, f)):
+            continue
+        try:
+            with open(os.path.join(d, f), encoding="utf-8", errors="ignore") as fh:
+                head = fh.read(4096)
+        except OSError:
+            unregistered.append(f)
+            continue
+        keys = set()
+        for line in head.splitlines():
+            m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):", line)
+            if m:
+                keys.add(m.group(1))
+        if {"name", "command"} <= keys:
+            declared += 1
+        elif f not in TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED:
+            unregistered.append(f)
+    registered = len([f for f in TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED
+                      if os.path.isfile(os.path.join(d, f))])
+    return declared, registered, unregistered
+
+
 def _regex_count(d, pattern, suffix=".go"):
     """递归统计目录下匹配正则的总出现次数（按行匹配，取每行全部命中）。"""
     p = os.path.join(ROOT, d)
@@ -531,6 +575,8 @@ def main():
     im_adapters = _regex_count("internal/robot", r"^func Start[A-Za-z]*\(")
     tools_yaml = _count_files("tools", ".yaml", TOOLS_YAML_EXCLUDE)
     _warn_unregistered_non_tool_yaml()
+    tools_declared, tools_registered_non_tool, tools_unregistered_non_tool = \
+        _tool_declaration_stats()
     builtin_tools = builtin_tools_count()
     _exe = exe_info()
     data = {
@@ -538,6 +584,14 @@ def main():
         "tools_yaml": tools_yaml,
         "builtin_tools": builtin_tools,
         "runtime_tools": tools_yaml + builtin_tools,
+        # ── 工具口径拆分（2026-10-24 新增）─────────────────────────────
+        # tools_yaml 是**文件计数**（排除 risk_policy.yaml），其中已登记的非工具文件
+        # （_shared_args.yaml）也被计入。真实工具数 = tools_declared（顶层含 name+command）。
+        # 不变量：tools_yaml == tools_declared + tools_registered_non_tool
+        # 破坏即 fail-closed —— 杜绝「89 还是 90」这类双方都自称正确、无人能裁决的争论。
+        "tools_declared": tools_declared,
+        "tools_registered_non_tool": tools_registered_non_tool,
+        "tools_unregistered_non_tool": tools_unregistered_non_tool,
         "agents_md": _count_files("agents", ".md"),
         "skills": _count_recursive("skills", "SKILL.md"),
         "roles_yaml": _count_files("roles", ".yaml"),
@@ -570,6 +624,25 @@ def main():
         "exe_mb": _exe.get("size_mb"),
         "setup_mb": size_mb(find_setup_installer()),
     }
+
+    # ── 工具口径不变量（fail-closed）──────────────────────────────────
+    # 历史事故：tools_yaml 与 audit_asset_metadata.py 长期差 1，双方都自称正确，
+    # 2026-10-18 有人为此排查半小时。根因是非工具文件被计入却无人记录。
+    # 现在把「差多少、差在谁身上」变成显式字段 + 硬判据：
+    #   ① 文件计数必须能被拆分解释完；
+    #   ② 出现未登记的非工具文件，说明口径在悄悄虚报，直接红。
+    if tools_yaml != tools_declared + tools_registered_non_tool:
+        print("[ERROR] 工具口径不变量破裂：tools_yaml(%d) != tools_declared(%d) + "
+              "registered_non_tool(%d)。要么有人增删了 tools/*.yaml 未同步 "
+              "TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED，要么解析口径被改。"
+              % (tools_yaml, tools_declared, tools_registered_non_tool), file=sys.stderr)
+        sys.exit(1)
+    if tools_unregistered_non_tool:
+        print("[ERROR] tools/ 下存在既不像工具、又未登记的非工具 YAML：%s —— "
+              "它们被计入 tools_yaml 却不计入真实工具数，属口径虚报。请登记到 "
+              "TOOLS_YAML_NOT_A_TOOL_BUT_COUNTED 或 TOOLS_YAML_EXCLUDE。"
+              % ", ".join(tools_unregistered_non_tool), file=sys.stderr)
+        sys.exit(1)
 
     if "--json" in sys.argv:
         print(json.dumps(data, ensure_ascii=False, indent=2))

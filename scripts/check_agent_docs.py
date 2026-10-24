@@ -129,8 +129,46 @@ def check_closing_list(root):
     return errs
 
 
+# 顶层文档数上限：**只许减，不许增**（2026-10-24 建卡时的存量 44 份）。
+# 机制意义：这个仓库的复杂度是单调增长的——每次事故产出一份文档 + 一个门禁，
+# 从不退役。加这个上限，是让"新增一份顶层文档"变成一次显式决策（要么退役旧的，
+# 要么把新文档放进子目录），而不是顺手写一个。
+TOP_LEVEL_CAP = 44
+
+
+def check_top_level_cap(root):
+    docs_dir = os.path.join(root, "docs")
+    if not os.path.isdir(docs_dir):
+        return ["C5 docs/ 不存在"]
+    n = len([f for f in os.listdir(docs_dir)
+             if f.endswith(".md") and os.path.isfile(os.path.join(docs_dir, f))])
+    if n > TOP_LEVEL_CAP:
+        return ["C5 docs/ 顶层 %d 份 > 上限 %d：新文档请放子目录"
+                "（docs/specs|docs/archive|docs/templates），或先退役一份旧文档" % (n, TOP_LEVEL_CAP)]
+    return []
+
+
+def check_gates_map(root):
+    """门禁地图必须与 ci.yml 同步（防止"改了门禁没人知道"）。"""
+    ci = os.path.join(root, ".github", "workflows", "ci.yml")
+    if not os.path.isfile(ci):
+        return []  # 无 CI 的检出（自测夹具）不适用
+    try:
+        import gen_gates_map as gen
+    except ImportError:
+        return ["C6 无法导入 scripts/gen_gates_map.py"]
+    expected = gen.render(gen.parse(ci))
+    gm = os.path.join(root, "docs", "GATES.md")
+    if not os.path.isfile(gm):
+        return ["C6 docs/GATES.md 不存在：跑 python scripts/gen_gates_map.py --write"]
+    if _read(gm).rstrip("\n") != expected.rstrip("\n"):
+        return ["C6 docs/GATES.md 与 ci.yml 不一致（门禁地图过期）："
+                "跑 python scripts/gen_gates_map.py --write"]
+    return []
+
+
 CHECKS = (check_agents_budget, check_routes_paths, check_index_coverage,
-          check_closing_list)
+          check_closing_list, check_top_level_cap, check_gates_map)
 
 
 def run_all(root):
@@ -143,12 +181,27 @@ def run_all(root):
 # ── 变异验证：每个用例都必须让对应判据变红 ─────────────────────────────
 def _mk_tree(base):
     os.makedirs(os.path.join(base, "docs"), exist_ok=True)
+    # 最小 ci.yml + 与之同步的 GATES.md（C6 需要两者一致）
+    ci_dir = os.path.join(base, ".github", "workflows")
+    os.makedirs(ci_dir, exist_ok=True)
+    ci = os.path.join(ci_dir, "ci.yml")
+    with open(ci, "w", encoding="utf-8") as fh:
+        fh.write("jobs:\n"
+                 "  # 演示门禁：守演示用。\n"
+                 "  demo-gate:\n"
+                 "    runs-on: ubuntu-latest\n"
+                 "    steps:\n"
+                 "      - name: demo\n"
+                 "        run: python scripts/demo_test.py\n")
+    import gen_gates_map as gen
+    with open(os.path.join(base, "docs", "GATES.md"), "w", encoding="utf-8") as fh:
+        fh.write(gen.render(gen.parse(ci)))
     with open(os.path.join(base, "AGENTS.md"), "w", encoding="utf-8") as fh:
         fh.write("# AGENTS\n")
     with open(os.path.join(base, ROUTES_DOC), "w", encoding="utf-8") as fh:
         fh.write("# ROUTES\n\n| a | `AGENTS.md` |\n")
     with open(os.path.join(base, INDEX_DOC), "w", encoding="utf-8") as fh:
-        fh.write("# INDEX\n\n- docs/INDEX.md\n- docs/AGENT_ROUTES.md\n- docs/收尾清单.md\n")
+        fh.write("# INDEX\n\n- docs/INDEX.md\n- docs/AGENT_ROUTES.md\n- docs/收尾清单.md\n- docs/GATES.md\n")
     with open(os.path.join(base, CLOSING_DOC), "w", encoding="utf-8") as fh:
         fh.write("# 收尾\n\n## 一、八项打钩\n\n")
         for i in range(1, 9):
@@ -193,12 +246,20 @@ def self_test():
         with open(os.path.join(b, CLOSING_DOC), "w", encoding="utf-8") as fh:
             fh.write("# 收尾\n\n### 1. 只有一项\n- [ ] x\n")
 
+    def m_gates_stale(b):
+        with open(os.path.join(b, ".github", "workflows", "ci.yml"), "a",
+                  encoding="utf-8") as fh:
+            fh.write("  # 新增门禁：忘了更新地图。\n  new-gate:\n"
+                     "    runs-on: ubuntu-latest\n    steps:\n"
+                     "      - name: n\n        run: python scripts/n.py\n")
+
     case("基线应通过", m_baseline, False)
     case("AGENTS 超 300 行应红", m_agents_long, True)
     case("路由表假路径应红", m_fake_path, True)
     case("INDEX 漏登文档应红", m_index_missing, True)
     case("INDEX 指向幽灵文档应红", m_index_ghost, True)
     case("收尾清单缺项应红", m_closing_short, True)
+    case("改门禁未更新地图应红", m_gates_stale, True)
 
     ok = True
     for name, expect_fail, got_fail, errs in cases:
@@ -241,6 +302,8 @@ def main():
             print("  [PASS] C2 路由表路径全部存在")
             print("  [PASS] C3 docs 顶层文档全部登记")
             print("  [PASS] C4 收尾清单八项齐备")
+            print("  [PASS] C5 docs 顶层文档数 ≤ %d（只许减不许增）" % TOP_LEVEL_CAP)
+            print("  [PASS] C6 门禁地图与 ci.yml 一致")
             print("-" * 62)
             print("结论：PASS")
     return 0 if not errs else 1

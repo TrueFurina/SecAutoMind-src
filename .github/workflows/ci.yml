@@ -26,6 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 主干测试门禁：go vet + `go test -race` 全量 + 构建，并前置 golden 冻结校验、
+  # 加密模板自测、HITL 边界检查 —— 它是唯一跑真实 Go 测试套件的 job，
+  # 其余 job 只跑各自门禁的脚本。
   test:
     runs-on: ubuntu-latest
     steps:
@@ -468,6 +471,9 @@ jobs:
       - name: XSS benchmark self-test (regression + mutation)
         run: python scripts/check_xss_benchmark_test.py
 
+  # 材料口径总闸（17 步）：材料数字 / 文档事实 / 范围豁免准入 / 工具与配方契约 /
+  # 错误投影 / 产物数字 / PPT 产物路径，逐个与单一真值源比对。每步都自带自测，
+  # 因为这类门禁最常见的失效方式是「扫到 0 个文件 → 无条件全绿」。
   caliber-gate:
     runs-on: ubuntu-latest
     steps:
@@ -699,9 +705,10 @@ jobs:
   # 文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分）。
   # 守的是「文档结构会自己烂掉」：AGENTS.md 只增不删会撑爆常驻预算；路由表里的
   # 路径会随重构失效，而写错的路径看起来最像证据；docs/ 顶层文档只增不登记，
-  # 索引一定漏；收尾清单会退化成空壳。
-  # 四条判据：C1 AGENTS.md ≤300 行 / C2 路由表路径真实存在 / C3 docs 顶层全部登记
-  # / C4 收尾清单八项齐备 + 取证边界段。带变异自测（4 类注入必须变红）。
+  # 索引一定漏；收尾清单会退化成空壳；门禁地图会与 ci.yml 脱节。
+  # 六条判据：C1 AGENTS.md ≤300 行 / C2 路由表路径真实存在 / C3 docs 顶层全部登记且
+  # 索引不指向空气 / C4 收尾清单八项齐备 + 取证边界段 / C5 顶层文档数只许减不许增 /
+  # C6 docs/GATES.md 与 ci.yml 一致。带变异自测（6 类注入必须变红）。
   agent-docs-gate:
     runs-on: ubuntu-latest
     steps:
@@ -759,6 +766,8 @@ jobs:
       - name: External payload gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_external_westlake_payload_test.py
 
+  # 自产基准反注水：题干里不得直接写出答案。否则「解题率」不是模型解出来的，
+  # 而是出题时写进去的 —— 这是自产集最容易、也最不体面的作弊方式。
   plaintext-answer-gate:
     runs-on: ubuntu-latest
     steps:
@@ -771,6 +780,8 @@ jobs:
       - name: Plaintext-answer gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_benchmark_plaintext_answer_test.py
 
+  # 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%）。
+  # 守的是「分母不许继续注水」，不是「已合格」——新增无输入的题会让占比越线即红。
   benchmark-validity-gate:
     runs-on: ubuntu-latest
     steps:
