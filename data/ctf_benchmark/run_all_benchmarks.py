@@ -28,12 +28,28 @@ import argparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 
+# 所有 judge 只跟本机靶场（127.0.0.1）和 SSRF 元数据地址（169.254.169.254）通信。
+# 若环境里设了 HTTP_PROXY/HTTPS_PROXY（本机实测有本地代理），urllib/requests 会把
+# 这些**本机请求**也送进代理 → 超时 → judge 报"靶场未就绪"、退出码 1，
+# 而同一时刻 curl --noproxy 直连是通的（2026-10-24 实锤，极易误判成靶场坏了）。
+# 统一在子进程环境里剥掉代理，一处覆盖全部 judge。
+_PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+               "http_proxy", "https_proxy", "all_proxy")
+
+
+def judge_env(**extra):
+    env = {k: v for k, v in os.environ.items() if k not in _PROXY_VARS}
+    env["NO_PROXY"] = env["no_proxy"] = "127.0.0.1,localhost,::1,169.254.169.254"
+    env.update(extra)
+    return env
+
 
 def run_static():
     """跑 judge.py，返回 (total, hit, miss, pct, results)。"""
-    env = dict(os.environ)
-    env["BENCH"] = os.path.join(HERE, "real_benchmark.json")
-    env["REPORT"] = os.path.join(HERE, "real_coverage_report.json")
+    env = judge_env(
+        BENCH=os.path.join(HERE, "real_benchmark.json"),
+        REPORT=os.path.join(HERE, "real_coverage_report.json"),
+    )
     r = subprocess.run([sys.executable, os.path.join(HERE, "judge.py")],
                        cwd=REPO, env=env, capture_output=True, text=True)
     if r.returncode != 0:

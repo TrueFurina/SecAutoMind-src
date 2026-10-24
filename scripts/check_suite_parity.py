@@ -190,12 +190,26 @@ def summary_ids():
     return {int(x) for x in SUMMARY_ID_RE.findall(text)}
 
 
+# 所有 judge 只跟本机靶场通信；环境里若有 HTTP_PROXY/HTTPS_PROXY（本机实测有本地代理），
+# urllib/requests 会把发往 127.0.0.1 的请求也送进代理 → 超时 → judge 退出码 1，
+# 而 curl --noproxy 直连是通的（2026-10-24 实锤：parity 的 [web_hint] 就是这样假红的）。
+# 统一在 judge 子进程环境里剥掉代理。
+_PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+               "http_proxy", "https_proxy", "all_proxy")
+
+
+def judge_env():
+    env = {k: v for k, v in os.environ.items() if k not in _PROXY_VARS}
+    env["NO_PROXY"] = env["no_proxy"] = "127.0.0.1,localhost,::1,169.254.169.254"
+    return env
+
+
 def run_python_hits(python_exe, judge, pattern, timeout=600):
     path = os.path.join(BENCH_DIR, judge)
     if not os.path.exists(path):
         return None, 1, "judge 缺失: %s" % judge
     try:
-        r = subprocess.run([python_exe, path], cwd=REPO_ROOT,
+        r = subprocess.run([python_exe, path], cwd=REPO_ROOT, env=judge_env(),
                            capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=timeout)
     except Exception as e:  # noqa: BLE001
