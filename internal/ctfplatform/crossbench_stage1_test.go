@@ -18,7 +18,10 @@ package ctfplatform
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -63,6 +66,43 @@ func TestStage1_AcceptanceWithFallback(t *testing.T) {
 		return pr.Presolve(context.Background(), ch, nil)
 	})
 	t.Logf("[模式B·含答案文件] 命中 %d/%d：命中题 = %v", allHits, subsetTotal(t, doc), allIDs)
+
+	// ── 模式 B2（二进制通道口径）：子集内**二进制附件**按原始字节喂注册表 bin_* 家族 ──
+	// sheng（ELF 静态分析）/ upx（UPX 脱壳）的反汇编/脱壳能力建成之日，本口径即刻可测
+	// 其真实命中；今日预期 0 命中（能力未建）——但通道本身必须已在位（P2 前置接线）。
+	binHits, binIDs := 0, []string{}
+	for id, p := range doc.Problems {
+		if !p.AttachmentAvailable {
+			continue
+		}
+		bin := map[string]string{}
+		for _, af := range p.AttachmentFiles {
+			if af.AnswerKeyShape {
+				continue
+			}
+			raw, err := os.ReadFile(filepath.Join("..", "..", "data", "questions_real_bench",
+				"attachments", id, af.Name))
+			if err != nil || !looksBinary(raw) {
+				continue // 文本附件已由模式 B 覆盖
+			}
+			bin[af.Name] = string(raw) // 二进制通道：原始字节（Go string 可承载）
+		}
+		if len(bin) == 0 {
+			continue
+		}
+		res := pr.PresolveWithRegistry(context.Background(), &Challenge{
+			ID: id, Category: p.Category, Description: p.Description,
+		}, bin)
+		if res != nil && res.Solved && len(res.Flags) > 0 {
+			sum := sha256.Sum256([]byte(res.Flags[0]))
+			if hex.EncodeToString(sum[:]) == p.FlagSHA256 {
+				binHits++
+				binIDs = append(binIDs, id)
+			}
+		}
+	}
+	t.Logf("[模式B2·二进制通道] 命中 %d（命中题 = %v）——sheng/upx 反汇编/脱壳能力建成后的复测口径",
+		binHits, binIDs)
 
 	// ── 模式 A（下限口径）：88 题纯文本（Go registry + miss 后兜底）──
 	prodHits, prodByCat, totalByCat, prodAtt := runCrossBench(doc, func(ch *Challenge) *PresolveResult {
