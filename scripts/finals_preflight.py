@@ -181,6 +181,89 @@ def probe_auth(base_url, token, timeout=15):
         return "unknown", "网络或解析异常：%s" % type(exc).__name__
 
 
+# ── CTF² 竞技场（1024 快闪赛的正式平台）──────────────────────────────────────
+# 判据盲区修复（2026-10-24 实测）：本脚本原先只认 DASCTF_BASE_URL / DASCTF_TOKEN。
+# 而 10-24 19:00 的正式赛跑在 CTF²（https://ctf2.dasctf.com，Bearer CTF2_AGENT_TOKEN，
+# 端点前缀 /api/open/v1/user/agent/）。拿 DASCTF 的 ak_ 令牌去探 /slab-match/ 必然 40403，
+# 于是输出「令牌无效」的 NO-GO —— **测的不是今晚那个平台**，属"判据用错对象"的假红。
+# 差分证据：真 ak_ 令牌与伪造 ak_ 令牌对该端点返回**完全相同**的 40403，
+#           只有「不带该头」才 40001 X-Agent-AccessKey —— 说明该端点不认这把令牌，
+#           但也不能由此推断今晚的平台不可用（两者本就不是同一个鉴权体系）。
+CTF2_BASE_ENV = "CTF2_BASE_URL"
+CTF2_TOKEN_ENV = "CTF2_AGENT_TOKEN"
+CTF2_COMPETITION_ENV = "CTF2_COMPETITION_ID"
+CTF2_ME_PATH = "/api/open/v1/user/agent/me/?limit=1"
+
+
+def pick_platform(env=None):
+    """今晚真正要打的平台：CTF² 凭据齐 → ctf2，否则回退 dasctf。纯函数（可测）。"""
+    env = os.environ if env is None else env
+    base = (env.get(CTF2_BASE_ENV) or "").strip()
+    token = (env.get(CTF2_TOKEN_ENV) or "").strip()
+    return "ctf2" if (base and token) else "dasctf"
+
+
+def credential_issues_ctf2(env=None):
+    """CTF² 凭证判定：只判有无与形态，**绝不回显令牌值**。"""
+    env = os.environ if env is None else env
+    missing, warns = [], []
+    base = (env.get(CTF2_BASE_ENV) or "").strip()
+    token = (env.get(CTF2_TOKEN_ENV) or "").strip()
+    if not base:
+        missing.append("%s（CTF² 平台地址）" % CTF2_BASE_ENV)
+    elif not base.lower().startswith(("http://", "https://")):
+        warns.append("%s 未以 http(s):// 开头" % CTF2_BASE_ENV)
+    if not token:
+        missing.append("%s（CTF² Agent Bearer 令牌）" % CTF2_TOKEN_ENV)
+    elif not token.startswith("ctf2_"):
+        warns.append("%s 不以 ctf2_ 开头（历史形态 ctf2_ + 约 64 位）—— 确认不是别的令牌"
+                     % CTF2_TOKEN_ENV)
+    if not (env.get(CTF2_COMPETITION_ENV) or "").strip():
+        warns.append("%s 未设置：将依赖 agent/me 自动发现比赛（调试赛与正式赛并存时可能选错）"
+                     % CTF2_COMPETITION_ENV)
+    return missing, warns
+
+
+def classify_ctf2_auth(http_status, body=None):
+    """纯函数：CTF² agent/me 响应 → (verdict, detail)；verdict ∈ ok/invalid/rate_limited/unknown。"""
+    if http_status == 200:
+        return "ok", "HTTP 200 agent/me 可读（Bearer 鉴权通过）"
+    if http_status == 401:
+        return "invalid", "HTTP 401（Bearer 令牌无效/过期）"
+    if http_status == 403:
+        # 与客户端口径保持一致：internal/ctfplatform/ctf2.go 的 StatusForbidden 分支把
+        # 403 **一律**当作 WAF 风控（冷却 5m），不是鉴权失败。这里若判 invalid，会把
+        # 「被 WAF 挡了一下」误报成「令牌坏了」，逼人去换一把其实好用的令牌。
+        return "waf_blocked", "HTTP 403 WAF 风控（冷却约 5 分钟；**不能据此判定令牌无效**）"
+    if http_status == 429:
+        return "rate_limited", "HTTP 429（限流，未能判定 —— 勿连打）"
+    return "unknown", "HTTP %s（无法判定）" % http_status
+
+
+def probe_ctf2_auth(base_url, token, timeout=15):
+    """只读探测 CTF² 鉴权（agent/me）。网络异常/限流一律 unknown，绝不谎报红绿。"""
+    import urllib.error
+    import urllib.request
+
+    url = base_url.rstrip("/") + CTF2_ME_PATH
+    req = urllib.request.Request(url, headers={
+        "Authorization": "Bearer " + token,
+        "Accept": "application/json",
+        "User-Agent": "SecAutoMind-preflight/1.0",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return classify_ctf2_auth(resp.status, resp.read(2048).decode("utf-8", "replace"))
+    except urllib.error.HTTPError as exc:
+        try:
+            body = exc.read(2048).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+        return classify_ctf2_auth(exc.code, body)
+    except Exception as exc:                       # 超时 / DNS / TLS —— 都算无法判定
+        return "unknown", "网络或解析异常：%s" % type(exc).__name__
+
+
 def evaluate(phase, missing_blocking, hard_failures, warnings, missing_credentials=()):
     """把「门禁类硬失败」与「开关未开」「凭证缺失」分开定级，返回 (verdict, blocking, pending)。
 
@@ -298,35 +381,70 @@ def main():
     # ⑥ 开关检查结论（按阶段定级，见 evaluate）
     missing_blocking = [s["name"] for s in results["switches"] if s["blocking"] and not s["on"]]
 
-    # ⑦ 凭证（平台地址 + Agent 令牌）：缺了开赛即 0 分，final 阶段必须阻塞
-    missing_creds, cred_warns = credential_issues()
+    # ⑦ 凭证（**按今晚实际平台判定**）：缺了开赛即 0 分，final 阶段必须阻塞
+    platform = pick_platform()
+    results["platform"] = platform
+    if platform == "ctf2":
+        missing_creds, cred_warns = credential_issues_ctf2()
+        base_set = bool((os.environ.get(CTF2_BASE_ENV) or "").strip())
+        token_set = bool((os.environ.get(CTF2_TOKEN_ENV) or "").strip())
+        base_name, token_name = CTF2_BASE_ENV, CTF2_TOKEN_ENV
+        if (os.environ.get(BASE_URL_ENV) or "").strip():
+            warnings.append("同时配置了 %s：今晚平台是 CTF²，该地址仅作战备用"
+                            "（其令牌对 /slab-match/ 返回 40403 属正常，不代表今晚不可用）"
+                            % BASE_URL_ENV)
+    else:
+        missing_creds, cred_warns = credential_issues()
+        base_set = bool((os.environ.get(BASE_URL_ENV) or "").strip())
+        token_set = any((os.environ.get(k) or "").strip() for k in TOKEN_ENVS)
+        base_name, token_name = BASE_URL_ENV, "/".join(TOKEN_ENVS)
     warnings.extend(cred_warns)
     results["credentials"] = {
-        "base_url_set": bool((os.environ.get(BASE_URL_ENV) or "").strip()),
-        "token_set": any((os.environ.get(k) or "").strip() for k in TOKEN_ENVS),
+        "platform": platform,
+        "base_url_set": base_set,
+        "token_set": token_set,
+        "base_env": base_name,
+        "token_env": token_name,
         "missing": missing_creds,
     }
 
-    # ⑧ 可选：鉴权实探（--check-auth）——「存在」不等于「可用」
+    # ⑧ 可选：鉴权实探（--check-auth）——「存在」不等于「可用」；按平台派发
     auth_probe = None
     if "--check-auth" in argv:
-        base = (os.environ.get(BASE_URL_ENV) or "").strip()
-        token = ""
-        for k in TOKEN_ENVS:
-            v = (os.environ.get(k) or "").strip()
-            if v:
-                token = v
-                break
-        if not base or not token:
-            warnings.append("--check-auth 已请求，但缺地址或令牌 → 未实探")
+        if platform == "ctf2":
+            base = (os.environ.get(CTF2_BASE_ENV) or "").strip()
+            token = (os.environ.get(CTF2_TOKEN_ENV) or "").strip()
+            if not base or not token:
+                warnings.append("--check-auth 已请求，但缺 CTF² 地址或令牌 → 未实探")
+            else:
+                verdict_a, detail_a = probe_ctf2_auth(base, token)
+                auth_probe = {"verdict": verdict_a, "detail": detail_a,
+                              "base_url": base, "platform": "ctf2"}
+                if verdict_a == "invalid":
+                    blocking_fail.append("CTF² 令牌鉴权失败：%s（--check-auth 实测 %s）"
+                                         % (detail_a, base))
+                elif verdict_a in ("unknown", "rate_limited", "waf_blocked"):
+                    warnings.append("--check-auth 无法判定（%s）—— 需人工确认，"
+                                    "**不要据此更换令牌**" % detail_a)
         else:
-            verdict_a, detail_a = probe_auth(base, token)
-            auth_probe = {"verdict": verdict_a, "detail": detail_a, "base_url": base}
-            if verdict_a == "invalid":
-                blocking_fail.append("令牌鉴权失败：%s（--check-auth 实测 %s）"
-                                     % (detail_a, base))
-            elif verdict_a == "unknown":
-                warnings.append("--check-auth 无法判定（%s）—— 需人工确认" % detail_a)
+            base = (os.environ.get(BASE_URL_ENV) or "").strip()
+            token = ""
+            for k in TOKEN_ENVS:
+                v = (os.environ.get(k) or "").strip()
+                if v:
+                    token = v
+                    break
+            if not base or not token:
+                warnings.append("--check-auth 已请求，但缺地址或令牌 → 未实探")
+            else:
+                verdict_a, detail_a = probe_auth(base, token)
+                auth_probe = {"verdict": verdict_a, "detail": detail_a,
+                              "base_url": base, "platform": "dasctf"}
+                if verdict_a == "invalid":
+                    blocking_fail.append("令牌鉴权失败：%s（--check-auth 实测 %s）"
+                                         % (detail_a, base))
+                elif verdict_a == "unknown":
+                    warnings.append("--check-auth 无法判定（%s）—— 需人工确认" % detail_a)
     results["auth_probe"] = auth_probe
 
     results["warnings"] = warnings
@@ -350,11 +468,14 @@ def main():
         mark = "ON " if s["on"] else "OFF"
         need = "必需" if s["blocking"] else "可选"
         print("  [%s/%s] %-28s %s" % (mark, need, s["name"], s["desc"]))
-    print("\n[凭证]")
-    print("  [%s] %-28s %s" % ("SET " if results["credentials"]["base_url_set"] else "MISS",
-                               BASE_URL_ENV, "平台地址"))
-    print("  [%s] %-28s %s" % ("SET " if results["credentials"]["token_set"] else "MISS",
-                               "/".join(TOKEN_ENVS), "Agent 令牌（值不回显）"))
+    plat_desc = ("CTF2 竞技场" if results["platform"] == "ctf2" else "DASCTF（/slab-match）")
+    print("")
+    print("[凭证]  今晚平台 = %s" % plat_desc)
+    cred = results["credentials"]
+    print("  [%s] %-28s %s" % ("SET " if cred["base_url_set"] else "MISS",
+                               cred["base_env"], "平台地址"))
+    print("  [%s] %-28s %s" % ("SET " if cred["token_set"] else "MISS",
+                               cred["token_env"], "Agent 令牌（值不回显）"))
     if results.get("auth_probe"):
         ap = results["auth_probe"]
         print("  [%-4s] %-28s %s" % (ap["verdict"].upper()[:4], "鉴权实探(--check-auth)",
