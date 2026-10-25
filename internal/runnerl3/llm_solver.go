@@ -201,6 +201,9 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// P0-3：本轮的环境事实源（只由工具成功返回写入，模型复述不算）
+	facts := newFactLedger()
+
 	// 准备工具定义（动态根据 pyBridge 可用性）
 	tools := f.buildToolDefs()
 
@@ -270,7 +273,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				}
 
 				// 执行工具
-				result := f.executeTool(callCtx, tc, ch)
+				result := f.executeTool(callCtx, tc, ch, facts)
 				roundObs.WriteString(result)
 				roundObs.WriteString("\n")
 				if !isToolError(result) {
@@ -342,6 +345,18 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		if len(candidates) == 0 {
 			f.logger.Debug("LLM 输出里没找到 flag 格式",
 				zap.String("challenge", ch.Title),
+				zap.String("raw", truncate(raw, 200)))
+			return nil, nil
+		}
+
+		// P0-3 ②：反幻觉闸门 —— 声称访问过某文件却没有对应工具记录 → 打回。
+		// 为什么必须打回：D-CIPHER VI-B 日志显示「幻觉文件/函数/服务端」是工程失败主因；
+		// 让幻觉 flag 进入提交链，等于把一次误判记成得分（还会污染后续统计）。
+		if unbacked := extractUnbackedFileClaims(raw, facts); len(unbacked) > 0 {
+			f.logger.Warn("P0-3 反幻觉：LLM 声称的文件无工具记录 → 打回（不提交）",
+				zap.String("challenge", ch.Title),
+				zap.Strings("unbacked_paths", unbacked),
+				zap.Int("facts_recorded", facts.count()),
 				zap.String("raw", truncate(raw, 200)))
 			return nil, nil
 		}
@@ -425,7 +440,11 @@ skill_name 可选值（按题目类别选）：
 
 // executeTool 根据 ToolCall 的 Function.Name 路由到对应实现。
 // 统一返回文本结果（LLM 读 ToolMessage.Content）。
-func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge) string {
+//
+// P0-3：①先过 schema 强校验（工具名/必填/未知参数），非法调用不执行、直接回错误；
+// ②成功后把工具返回里的环境事实（如附件真实落盘路径）记进 factLedger ——
+// 事实源只认工具返回，模型复述不算。
+func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge, facts *factLedger) string {
 	// 解析参数 JSON
 	var args map[string]any
 	if tc.Function.Arguments != "" {
@@ -434,14 +453,27 @@ func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *c
 		}
 	}
 
+	// P0-3 ①：schema 强校验（含未知工具名 —— 旧实现只在 switch default 兜底，
+	// 未登记参数会静默放行）
+	if err := validateToolCall(tc.Function.Name, args); err != nil {
+		return toolCallRejectText(tc.Function.Name, err)
+	}
+
+	var result string
 	switch tc.Function.Name {
 	case "execute_python":
-		return f.toolExecutePython(ctx, args, ch)
+		result = f.toolExecutePython(ctx, args, ch)
 	case "read_attachment":
-		return f.toolReadAttachment(ctx, args)
+		result = f.toolReadAttachment(ctx, args)
 	default:
 		return fmt.Sprintf("[未知工具: %s]", tc.Function.Name)
 	}
+
+	// P0-3 ②：成功才记事实（错误返回里没有可信路径）
+	if !isToolError(result) {
+		facts.recordFactsFromToolResult(tc.Function.Name, result)
+	}
+	return result
 }
 
 // toolExecutePython 调 pyBridge.RunSkill（subprocess 执行 Python skill）。
