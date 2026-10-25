@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"secautomind-ai/internal/flagverify"
 )
 
 // SolverFunc 定义求解函数签名：输入题目信息，输出候选 flag 列表。
@@ -426,6 +428,23 @@ func (p *Poller) handleChallenge(ctx context.Context, ch *Challenge) *PollRecord
 		rec.Error = "候选均不符合 flag 格式，已拦截"
 		rec.FinishedAt = time.Now()
 		p.logger.Warn("拦截非 flag 形态候选", zap.String("题目", ch.Title))
+		return rec
+	}
+
+	// P1-4 确定性验证后置：形态闸门之后、提交之前，过 flagverify 三态真值仲裁。
+	// 无真值（真实比赛常态）→ Unknown → 原样放行（零行为，不回归）；
+	// 有真值 → Mismatch 直接拦下（不浪费提交次数，扣分制下更是纯负收益），
+	//          Match 只留命中项（确定性命中是最强证据，不必再试其他候选）。
+	flags, dropped := flagverify.Arbitrate(flags, ch.FlagSHA256)
+	if len(dropped) > 0 {
+		p.logger.Warn("flagverify 拦截确定性错误候选（与题目真值不符）",
+			zap.String("题目", ch.Title),
+			zap.Int("dropped", len(dropped)),
+			zap.String("first_dropped", truncate(dropped[0], 40)))
+	}
+	if len(flags) == 0 {
+		rec.Error = fmt.Sprintf("候选均被真值仲裁判错（%d 个），已拦截不提交", len(dropped))
+		rec.FinishedAt = time.Now()
 		return rec
 	}
 

@@ -32,6 +32,13 @@ type Challenge struct {
 	// 不另设独立下载 API，故先提取再 HTTP GET 落盘。
 	AttachmentURLs []string               `json:"attachment_urls,omitempty"`
 	Difficulty     string                 `json:"difficulty"` // VERY_EASY / EASY / MEDIUM / HARD
+	// FlagSHA256 题目真值（flag 或 flag 内文的 SHA-256 小写十六进制），**仅当确实掌握
+	// 答案时**才填（内部题库 / 评测 / 平台回传）。
+	// 🔴 真实比赛拿不到答案 → 恒为空 → flagverify 走 Unknown 分支 → 行为与未接线时
+	// 完全一致（不判对也不判错，交回平台判定）。**禁止为了"能验证"去猜真值**：
+	// 2026-09-19 事故的通用形态就是「验证器的真值来源 ≠ 被验证对象的真值来源」，
+	// 拿退役题库的真值去裁今天的题，会把正确 flag 一律判成幻觉（当日 1/10 是冤案）。
+	FlagSHA256     string                 `json:"flag_sha256,omitempty"`
 	Extra          map[string]interface{} `json:"extra,omitempty"`
 }
 
