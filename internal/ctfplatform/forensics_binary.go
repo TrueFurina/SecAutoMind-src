@@ -846,6 +846,14 @@ func init() {
 			return tryDeflateStego(text, attachments)
 		},
 	})
+	// bin_const_compare：静态逆向「常量比对」型三检测器（rev_const_compare 链 Go 化，
+	// 2026-10-25；吞并账本 #2——CSAW whataxor/tablez/beleaf 三真题真实端到端）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_const_compare", Category: CategoryRevS, Priority: 39,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryConstCompare(ctx, text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
