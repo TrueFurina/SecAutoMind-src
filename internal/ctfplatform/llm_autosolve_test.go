@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,12 +12,15 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
+
+	"secautomind-ai/internal/llmchannel"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,10 +129,29 @@ type llmUsage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
+// httpStatusError 携带 HTTP 状态码的调用错误。
+// 存在理由：本文件走裸 HTTP（拿不到 eino 的 APIError 类型），而"是否值得换通道"
+// 必须按**精确状态码**判定——靠子串猜 "HTTP 401" 会把「key 无效/模型不在该通道」
+// 这类通道专属失败漏判成永久错误，failover 形同虚设。
+type httpStatusError struct {
+	code int
+	body string
+}
+
+func (e *httpStatusError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s", e.code, llmTrunc(e.body, 200))
+}
+
 type llmSolver struct {
-	baseURL  string
-	apiKey   string
-	model    string
+	// channels 按优先级排列的可用通道（[0]=主通道，来自 LLM_EVAL_*；其余来自
+	// llmchannel 内置清单）。单通道时行为与改造前完全一致。
+	channels       []llmchannel.Channel
+	maxChannels    int // 本次调用最多尝试几个通道（LLM_EVAL_FAILOVER_MAX，默认 3）
+	perChanRetries int // 单通道内重试次数（LLM_EVAL_CHANNEL_RETRIES，默认 2）
+
+	baseURL  string // = channels[0].BaseURL（保留字段，避免改动面扩散）
+	apiKey   string // = channels[0].APIKey
+	model    string // = channels[0].Model
 	client   *http.Client
 	maxSteps int
 
@@ -140,6 +163,8 @@ type llmSolver struct {
 	attempts int
 	retries  int      // LLM 调用重试次数
 	infra    int      // 重试后仍失败（基础设施问题，非模型能力）
+	switches int      // 实际发生的换通道次数
+	chanUse  map[string]int // 通道 → 成功应答次数（诚实披露：多通道评测 ≠ 单模型数字）
 	// traces 记录每题 LLM 的动作序列 —— 失败时必须能看到"它卡在哪一步"，
 	// 否则只有一个"未解出"结论，无法区分"模型不会"与"题目/工具本身不可能解"。
 	traces map[string][]string
@@ -155,13 +180,50 @@ func (s *llmSolver) trace(id, step string) {
 }
 
 func newLLMSolver(baseURL, apiKey, model string, maxSteps int) *llmSolver {
-	return &llmSolver{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		apiKey:  apiKey,
-		model:   model,
-		client:  &http.Client{Timeout: 60 * time.Second},
-		maxSteps: maxSteps,
+	primary := llmchannel.Channel{
+		ID: "primary", BaseURL: strings.TrimRight(baseURL, "/"), Model: model, APIKey: apiKey,
 	}
+	// 主通道在前，备用按内置优先级（或 LLM_EVAL_FAILOVER_CHANNELS 显式顺序）。
+	// 只有主通道时 channels 长度 1 → 与改造前逐次重试行为一致。
+	channels := llmchannel.Resolve(&primary, llmchannel.Options{
+		Only: llmchannel.ParseChannelIDs(os.Getenv("LLM_EVAL_FAILOVER_CHANNELS")),
+	})
+	if len(channels) == 0 {
+		channels = []llmchannel.Channel{primary}
+	}
+	maxChannels := envIntOrDefault("LLM_EVAL_FAILOVER_MAX", 3)
+	if maxChannels < 1 {
+		maxChannels = 1
+	}
+	if maxChannels > len(channels) {
+		maxChannels = len(channels)
+	}
+	perChan := envIntOrDefault("LLM_EVAL_CHANNEL_RETRIES", 2)
+	if perChan < 1 {
+		perChan = 1
+	}
+	return &llmSolver{
+		channels:       channels,
+		maxChannels:    maxChannels,
+		perChanRetries: perChan,
+		baseURL:        primary.BaseURL,
+		apiKey:         primary.APIKey,
+		model:          primary.Model,
+		client:         &http.Client{Timeout: 60 * time.Second},
+		maxSteps:       maxSteps,
+		chanUse:        map[string]int{},
+	}
+}
+
+func envIntOrDefault(key string, fallback int) int {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		return n
+	}
+	return fallback
 }
 
 // solve 把 ch 当成一道题独立求解。返回 flag 候选（未找到返回空切片）。
@@ -297,33 +359,78 @@ func (s *llmSolver) solve(ctx context.Context, ch *Challenge) ([]string, error) 
 // 导致**大量题目其实是被基础设施打断、并非模型解不出** —— 数字被污染成"能力不足"。
 // 真实赛场网络同样会抖，**把限流/断连记成模型能力差是评测层的严重失真**。
 // 故：重试 4 次、退避 5/10/15/20s；仍失败才判该题"调用失败"，并在统计中单列。
+// callLLMWithRetry 双层重试：通道内退避重试 × 跨通道 failover。
+//
+// 存在理由（2026-10-25 实测）：单通道当晚 429 抖动触发 37 次重试、3 次耗尽，
+// 直接杀掉 2003/2008/2011。通道内重试救不了"这个通道整体不可用"的情况。
+//
+// 判定：永久错误（400 payload 错）立即返回，不烧其他通道额度；
+// 瞬时错误（429/402/403/404/408/409/425/5xx/网络）用尽本通道重试后换下一个。
+// 全部失败 → 报错（调用方计入 s.infra，不与"模型解不出"混在一起）。
 func (s *llmSolver) callLLMWithRetry(ctx context.Context, messages []map[string]string) (string, *llmUsage, error) {
 	var lastErr error
-	for attempt := 1; attempt <= 4; attempt++ {
-		raw, usage, err := s.callLLM(ctx, messages)
-		if err == nil {
-			return raw, usage, nil
+	usedChannels := 0
+	for ci := 0; ci < s.maxChannels && ci < len(s.channels); ci++ {
+		ch := s.channels[ci]
+		usedChannels++
+		for attempt := 1; attempt <= s.perChanRetries; attempt++ {
+			raw, usage, err := s.callLLM(ctx, ch, messages)
+			if err == nil {
+				s.mu.Lock()
+				if s.chanUse == nil {
+					s.chanUse = map[string]int{}
+				}
+				s.chanUse[ch.ID]++
+				s.mu.Unlock()
+				return raw, usage, nil
+			}
+			lastErr = err
+			s.mu.Lock()
+			s.retries++
+			s.mu.Unlock()
+			if !isTransientHTTPErr(err) {
+				return "", nil, err // 永久错误：换通道无用，立即失败
+			}
+			if attempt == s.perChanRetries {
+				break
+			}
+			wait := time.Duration(attempt) * 5 * time.Second
+			select {
+			case <-time.After(wait):
+			case <-ctx.Done():
+				return "", nil, ctx.Err()
+			}
 		}
-		lastErr = err
-		s.mu.Lock()
-		s.retries++
-		s.mu.Unlock()
-		if attempt == 4 {
-			break
-		}
-		wait := time.Duration(attempt) * 5 * time.Second
-		select {
-		case <-time.After(wait):
-		case <-ctx.Done():
-			return "", nil, ctx.Err()
+		// 本通道用尽 → 还有下一个就换（计入换通道次数）
+		if ci+1 < s.maxChannels && ci+1 < len(s.channels) {
+			s.mu.Lock()
+			s.switches++
+			s.mu.Unlock()
 		}
 	}
-	return "", nil, fmt.Errorf("LLM 调用重试 4 次仍失败（最后错误：%v）: %w", lastErr, lastErr)
+	return "", nil, fmt.Errorf("LLM 调用失败（%d 通道 × %d 次重试，最后错误：%v）: %w",
+		usedChannels, s.perChanRetries, lastErr, lastErr)
 }
 
-func (s *llmSolver) callLLM(ctx context.Context, messages []map[string]string) (string, *llmUsage, error) {
+// isTransientHTTPErr 精确判定：有状态码走状态码判据，无状态码（网络类）走文本判据。
+// 两者共用 llmchannel 的同一套口径，避免评测侧与生产侧各写各的漂移。
+func isTransientHTTPErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return false // 调用方预算耗尽，不是通道的锅
+	}
+	var se *httpStatusError
+	if errors.As(err, &se) {
+		return llmchannel.StatusTransient(se.code)
+	}
+	return llmchannel.IsTransient(err)
+}
+
+func (s *llmSolver) callLLM(ctx context.Context, ch llmchannel.Channel, messages []map[string]string) (string, *llmUsage, error) {
 	payload := map[string]interface{}{
-		"model":    s.model,
+		"model":    ch.Model,
 		"messages": messages,
 		"max_tokens": 600,
 		"temperature": 0.2,
@@ -332,11 +439,11 @@ func (s *llmSolver) callLLM(ctx context.Context, messages []map[string]string) (
 	if err != nil {
 		return "", nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.baseURL+"/chat/completions", bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ch.BaseURL+"/chat/completions", bytes.NewReader(b))
 	if err != nil {
 		return "", nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Authorization", "Bearer "+ch.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -345,7 +452,7 @@ func (s *llmSolver) callLLM(ctx context.Context, messages []map[string]string) (
 	defer resp.Body.Close()
 	rb, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, llmTrunc(string(rb), 200))
+		return "", nil, &httpStatusError{code: resp.StatusCode, body: string(rb)}
 	}
 	var out struct {
 		Choices []struct {
@@ -598,6 +705,20 @@ func runLLMEval(t *testing.T, cases []liveCase, baseURL, apiKey, model string) {
 			"其中 %d 次重试耗尽导致该题未完成 —— 这部分**不计入未解出**",
 			solver.retries, solver.infra)
 	}
+	// 🔴 诚实披露：开了 failover 后本数字**不再是单模型成绩**。
+	// 主通道被限流时改由备用通道应答，而备用模型与主模型能力不同 ——
+	// 不写清「谁答了几轮」，这个数字就会被误当成 DeepSeek-V4-Flash 的能力读数。
+	solver.mu.Lock()
+	useDesc := make([]string, 0, len(solver.chanUse))
+	for id, n := range solver.chanUse {
+		useDesc = append(useDesc, fmt.Sprintf("%s×%d", id, n))
+	}
+	sw := solver.switches
+	solver.mu.Unlock()
+	sort.Strings(useDesc)
+	t.Logf("ℹ 通道口径：共 %d 个可用通道，实际应答分布 [%s]，换通道 %d 次"+
+		" —— 若分布含非主通道，本数字为**多通道混合成绩**，不可当作单模型能力对外引用",
+		len(solver.channels), strings.Join(useDesc, " "), sw)
 
 	// 防止"全部跳过/崩溃也算通过"的假绿：至少要有题被处理
 	if len(records) == 0 {

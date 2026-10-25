@@ -27,6 +27,9 @@
 //   RUNNER_LLM_MAX_TOKENS   默认 2048
 //   RUNNER_LLM_MAX_TOOL_CALLS 默认 12（每题工具调用上限）
 //   RUNNER_LLM_MAX_ROUNDS   默认 12（LLM 对话轮数上限 = 监督步数预算）
+//   RUNNER_LLM_FAILOVER     默认 true —— 通道 failover（P0-4）；false = 退回单通道
+//   RUNNER_LLM_FAILOVER_CHANNELS     逗号分隔通道 ID 顺序；空 = 内置优先级（见 llmchannel）
+//   RUNNER_LLM_FAILOVER_COOLDOWN_SEC 单通道失败冷却秒数，默认 300
 package runnerl3
 
 import (
@@ -50,6 +53,7 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+	"secautomind-ai/internal/llmchannel"
 )
 
 // SkillRunner 是 execute_python 工具的依赖抽象，使本包不耦合 cmd/runner 的
@@ -101,17 +105,41 @@ func NewLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge SkillRunne
 	baseURL := envOrDefault("RUNNER_LLM_BASE_URL", "https://api.deepseek.com/v1")
 	modelName := envOrDefault("RUNNER_LLM_MODEL", "deepseek-reasoner")
 
-	cfg := &einoopenai.ChatModelConfig{
-		APIKey:  apiKey,
-		BaseURL: baseURL,
-		Model:   modelName,
-	}
+	var m model.BaseChatModel
+	var err error
+	var ids []string
 
-	m, err := einoopenai.NewChatModel(ctx, cfg)
-	if err != nil {
-		logger.Warn("LLM fallback 初始化失败 → 跳过", zap.Error(err),
-			zap.String("base_url", baseURL), zap.String("model", modelName))
-		return &LLMFallback{logger: logger, pyBridge: pyBridge}
+	if envBool("RUNNER_LLM_FAILOVER", true) {
+		// P0-4：主通道 + 已验证免费通道按优先级 failover（单通道抖动不再整条失能）。
+		m, ids, err = buildFailoverModel(ctx, llmchannel.Channel{
+			ID: "primary", BaseURL: baseURL, Model: modelName, APIKey: apiKey,
+		}, logger)
+		if err != nil {
+			logger.Warn("LLM failover 构造失败 → 退回单通道", zap.Error(err))
+			m, err = einoopenai.NewChatModel(ctx, &einoopenai.ChatModelConfig{
+				APIKey:  apiKey,
+				BaseURL: baseURL,
+				Model:   modelName,
+			})
+			if err != nil {
+				logger.Warn("LLM fallback 初始化失败 → 跳过", zap.Error(err),
+					zap.String("base_url", baseURL), zap.String("model", modelName))
+				return &LLMFallback{logger: logger, pyBridge: pyBridge}
+			}
+			ids = []string{"primary"}
+		}
+	} else {
+		// 旧路径：单通道（RUNNER_LLM_FAILOVER=false 显式退回）
+		m, err = einoopenai.NewChatModel(ctx, &einoopenai.ChatModelConfig{
+			APIKey:  apiKey,
+			BaseURL: baseURL,
+			Model:   modelName,
+		})
+		if err != nil {
+			logger.Warn("LLM fallback 初始化失败 → 跳过", zap.Error(err),
+				zap.String("base_url", baseURL), zap.String("model", modelName))
+			return &LLMFallback{logger: logger, pyBridge: pyBridge}
+		}
 	}
 
 	ff := &LLMFallback{
@@ -126,6 +154,7 @@ func NewLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge SkillRunne
 	logger.Info("LLM fallback 就绪（含工具绑定）",
 		zap.String("base_url", baseURL),
 		zap.String("model", modelName),
+		zap.Strings("failover_channels", ids),
 		zap.Int("max_tool_calls", ff.maxToolCalls),
 		zap.Int("max_rounds", ff.maxRounds),
 		zap.Bool("execute_python", pyBridge != nil))
