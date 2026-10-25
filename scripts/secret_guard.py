@@ -287,15 +287,20 @@ FLAG_BASELINE = Path(
 
 
 def _git_tracked(root: str) -> set[str] | None:
-    """返回仓库内已跟踪文件集合；非 git 目录返回 None（调用方必须 fail-closed）。"""
+    """返回仓库内已跟踪文件集合；非 git 目录返回 None（调用方必须 fail-closed）。
+
+    必须用 `-z`（或 core.quotepath=false）：默认输出会把非 ASCII 路径转义成
+    `"CTF-Agent_\\350\\236\\215..."` 这种带引号的八进制串，与 os.walk 给出的
+    真实路径永远对不上 —— 结果整目录（本仓 153 个 skill）被误判成"未入库副本"，
+    既漏掉真泄露，又让"未入库 2016 条"这个数字虚高。
+    """
     try:
-        r = subprocess.run(["git", "-C", root, "ls-files"],
+        r = subprocess.run(["git", "-C", root, "-c", "core.quotepath=false", "ls-files", "-z"],
                            capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=120)
         if r.returncode != 0:
             return None
-        return {ln.strip().replace("\\", "/") for ln in (r.stdout or "").splitlines()
-                if ln.strip()}
+        return {ln.replace("\\", "/") for ln in (r.stdout or "").split("\0") if ln}
     except Exception:
         return None
 
@@ -499,11 +504,85 @@ def scan_dir(root, fps=None):
     return scanned, findings
 
 
+# ── 哈希钉死白名单（2026-10-25 立尺就任第一刀）──────────────────────────
+# 背景：全树 21 处 PyCryptodome SelfTest 公开测试向量等假阳性曾长期靠
+# 「--no-verify + [注] 留痕」人肉前例绕过（MEMORY 有案）。本机制把它治成机器
+# 门禁：豁免必须 (path, 行内容 sha256) 双钉死——行变/挪位即自动失效复红
+# （防腐化：本仓历史上有过一次手写豁免清单静默烂掉的教训，见 SELF_EXEMPT 注）。
+# 🔴 指纹命中（forced=True）永不豁免——最强防线不设后门。
+ALLOWLIST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "secret_guard_allowlist.json")
+
+
+def load_allowlist():
+    try:
+        with open(ALLOWLIST_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _line_sha256(line_text):
+    import hashlib
+    return hashlib.sha256(
+        line_text.strip().encode("utf-8", "replace")).hexdigest()
+
+
+def allowlist_exempt(finding, root):
+    """finding 是否被白名单豁免（path 钉死 + 行内容哈希钉死；forced 永不豁免）。"""
+    if finding.get("forced"):
+        return None
+    rel = finding["file"]
+    try:
+        with open(os.path.join(root, rel), encoding="utf-8", errors="ignore") as fh:
+            lines = fh.read().splitlines()
+        text = lines[finding["line"] - 1] if 0 < finding["line"] <= len(lines) else ""
+    except Exception:
+        return None
+    h = _line_sha256(text)
+    for e in load_allowlist():
+        if e.get("path") == rel and e.get("line_sha256") == h:
+            return e
+    return None
+
+
+def audit_allowlist(root):
+    """--audit-allowlist：逐条核验白名单仍能命中当前磁盘（腐化检测）。"""
+    entries = load_allowlist()
+    if not entries:
+        print("白名单为空")
+        return 0
+    # 复用主扫描拿全部 real 命中，再对每个条目找匹配
+    _, findings = scan_dir(root)
+    fps = load_real_fingerprints(root)
+    real = [f for f in findings
+            if f.get("forced") or (not f["placeholder"] and not f["suspect"])]
+    matched = set()
+    for f in real:
+        e = allowlist_exempt(f, root)
+        if e:
+            matched.add((e["path"], e["line_sha256"]))
+    stale = 0
+    print("=== secret_guard 白名单审计 ===")
+    for e in entries:
+        key = (e.get("path"), e.get("line_sha256"))
+        ok = key in matched
+        if not ok:
+            stale += 1
+        print("  %s %s :: %s" % ("OK  " if ok else "STALE", e.get("path", "?"),
+                                 e.get("reason", "")[:40]))
+    print("共 %d 条，失效 %d 条" % (len(entries), stale))
+    return 1 if stale else 0
+
+
 def main():
     root = ROOT
     if "--dir" in sys.argv:
         root = os.path.abspath(sys.argv[sys.argv.index("--dir") + 1])
     allow_no_fp = "--allow-no-fingerprint" in sys.argv
+    if "--audit-allowlist" in sys.argv:
+        return audit_allowlist(root)
     if "--freeze-flag-baseline" in sys.argv:
         return freeze_flag_baseline(root)
     if "--skip-flag-scan" in sys.argv:
@@ -534,6 +613,15 @@ def main():
     # 传 --allow-no-fingerprint 降级，并接受"仅形态匹配"的人工复核义务。
     fingerprint_degraded = not fps
     fingerprint_block = fingerprint_degraded and not allow_no_fp
+    # 白名单豁免（哈希钉死；forced 永不豁免）——豁免数进报告，数字可审计
+    wl_real, whitelisted = [], []
+    for f in real:
+        e = allowlist_exempt(f, root)
+        if e:
+            whitelisted.append((f, e))
+        else:
+            wl_real.append(f)
+    real = wl_real
     blocked = bool(real) or fingerprint_block or flag_block
 
     if "--json" in sys.argv:
@@ -562,7 +650,8 @@ def main():
         len(fps), "" if fps else "（⚠️ 未加载到真 key：config.yaml / 进程 env / HKCU 用户级 env 均取不到）"))
     print("  占位符/示例命中  %d（判定安全，不计违规）" % len(placeholder))
     print("  可疑命中         %d（测试夹具/CTF 语料，不阻塞但请人工确认）" % len(suspect))
-    print("  真实凭证命中     %d" % len(real))
+    print("  真实凭证命中     %d（另有 %d 条白名单豁免：--audit-allowlist 可审计）"
+          % (len(real), len(whitelisted)))
     print("-" * 66)
     if real:
         print("  [BLOCK] 发现真实凭证，禁止打包交付：\n")
