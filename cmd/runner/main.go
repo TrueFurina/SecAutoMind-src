@@ -130,15 +130,18 @@ func main() {
 	// pyBridge 传入 → execute_python 工具可用；nil → 自动降级
 	llmFB := newLLMFallback(context.Background(), logger, pyBridge)
 
-	// ── 3. Solver 闭包（三层链 + 监督接入）──────────────
+	// ── 3. Solver 闭包（三层链 + 监督 per-layer 短路）──────
 	//   Layer 1: Presolve 确定性求解（189 Go solver，0 token）
 	//   Layer 2: Python skill bridge（angr/pwntools 真跑，有依赖门控）
-	//   Layer 3: Eino ChatModel + 工具绑定（可选）
-	// 每步喂 SupervisionStep，三层全空时 ReflectSupervision 判定 ABANDON/SWITCH/CONTINUE
+	//   Layer 3: Eino ChatModel + 工具绑定（可选，真 token 成本）
+	// 每层结束喂 SupervisionStep + ReflectSupervision：
+	//   ABANDON → 立即 return nil（省后续层 token/时间）
+	//   SWITCH / CONTINUE → 继续
 	solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 		var supSteps []ctfplatform.SupervisionStep
+		candCount := 0
 
-		// Layer 1: presolve
+		// ── Layer 1: presolve（0 token，永远先跑）──────────
 		res := presolver.Presolve(ctx, ch, nil)
 		if res.Solved {
 			candidates := ctfplatform.FilterFlagCandidates(res.Flags)
@@ -152,8 +155,7 @@ func main() {
 		}
 		supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "presolve 未命中"})
 
-		// Layer 2: Python skill bridge（依赖有就跑，没有就跳过）
-		layer2Hit := false
+		// ── Layer 2: Python skill bridge ─────────────────────
 		if ch.Category == "reverse" || ch.Category == "pwn" || ch.Category == "crypto" || ch.Category == "misc" {
 			if flags, ok := pyBridge.tryCategory(ctx, ch.Category, ch); ok {
 				logger.Info("Layer 2 Python skill 命中",
@@ -162,16 +164,27 @@ func main() {
 					zap.Strings("flags", flags))
 				return flags, nil
 			}
-			layer2Hit = true
-		}
-		if layer2Hit {
 			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "python skill 未命中/无依赖"})
 		} else {
 			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "python skill 跳过（非目标类别）"})
 		}
 
-		// Layer 3: LLM fallback（带工具绑定）
-		layer3Hit := false
+		// 监督反思（L1+L2 后，还没烧 LLM token）
+		if decision := ctfplatform.ReflectSupervision(
+			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 2, Candidates: &candCount},
+			supSteps, nil,
+		); decision.Decision == ctfplatform.DecisionAbandon {
+			logger.Info("监督 ABANDON：跳过 Layer 3",
+				zap.String("challenge", ch.Title),
+				zap.String("reason", decision.Reason))
+			return nil, nil
+		} else if decision.Decision == ctfplatform.DecisionSwitch {
+			logger.Info("监督 SWITCH：继续但标记后续换策略",
+				zap.String("challenge", ch.Title),
+				zap.String("reason", decision.Reason))
+		}
+
+		// ── Layer 3: LLM fallback（真 token 成本，有依赖门控）──
 		if llmFB.enabled {
 			if flags, err := llmFB.solve(ctx, ch); err != nil {
 				logger.Debug("Layer 3 LLM 调用失败（非致命）",
@@ -183,28 +196,23 @@ func main() {
 				})
 			} else if len(flags) > 0 {
 				return flags, nil
+			} else {
+				supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "LLM 未命中"})
 			}
-			layer3Hit = true
-		}
-		if layer3Hit {
-			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "LLM 未命中/未启用"})
 		} else {
 			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "LLM 跳过（未启用）"})
 		}
 
-		// 三层全空 → 监督反思
-		candCount := 0
+		// 三层全空 → 最终反思（只打日志，已无后续层可省）
 		decision := ctfplatform.ReflectSupervision(
 			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 3, Candidates: &candCount},
 			supSteps, nil,
 		)
-
 		logger.Info("三层监督反思",
 			zap.String("challenge", ch.Title),
 			zap.String("decision", decision.Decision),
 			zap.String("reason", decision.Reason))
 
-		// ABANDON → 不 retry（当前 Poller 重试未接，先只打日志；后续接 retry 控制）
 		return nil, nil
 	}
 
