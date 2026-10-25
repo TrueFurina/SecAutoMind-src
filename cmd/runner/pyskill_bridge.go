@@ -45,8 +45,9 @@ type pySkillRunner struct {
 	timeout      time.Duration     // 单次执行超时
 	hasAngr      bool              // angr 是否已装（启动时检查一次）
 	hasPwnTools  bool              // pwntools 是否已装
+	hasCrypto    bool              // pycryptodome / cryptography 是否已装
 	logger       *zap.Logger
-	skillCatalog map[string][]string // category → skill filename 列表（只列"真跑"skill）
+	skillCatalog map[string][]string // category → skill filename 列表（全量 79 skill）
 }
 
 // newPySkillRunner 初始化 bridge。启动时检查一次关键依赖，避免每次调用都 pip show。
@@ -72,25 +73,45 @@ func newPySkillRunner(ctx context.Context, logger *zap.Logger) *pySkillRunner {
 		timeout:    30 * time.Second,
 		logger:     logger,
 		skillCatalog: map[string][]string{
-			// 只列"真跑"skill（有 subprocess / angr / pwntools 调用）
-			// 提示词范式 skill 不在这里——它们返回流程指引不是 flag
+			// 扩到全量 79 skill（2026-10-25 gap 分析：之前硬编码只有 10 个，Runner L2 实际只跑这 10 个）
+			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 tryCategory 里做
+			// 前缀 → Runner Category 映射见 candidateSkillDirs 注释 + gap 分析记录
 			"crypto": {
-				"crypto_complex_mult_group", // 复数乘法群 RSA（需 factordb + PARI/GP）
-				"crypto_zip_bkcrack",        // ZIP 明文攻击（需 bkcrack CLI）
+				"base64_multilayer", "caesar_bruteforce", "crypto_complex_mult_group",
+				"crypto_coppersmith", "crypto_cycling", "crypto_ecb_block_attack",
+				"crypto_electric_mayhem_cls", "crypto_enigma_crib", "crypto_h1_buggy_rng",
+				"crypto_hastad_broadcast", "crypto_high_exponent", "crypto_keyboard_path",
+				"crypto_knapsack_mhk", "crypto_lattice_attack", "crypto_lcg_recover",
+				"crypto_legendre_phi", "crypto_modinv_factor", "crypto_pkcs1_improved",
+				"crypto_pkcs1_padding_oracle", "crypto_primes_subset", "crypto_zip_bkcrack",
+				"hash_crack", "rsa_fermat_factor", "vigenere_decode",
+				"zip_chain_decode", "zip_crypto_bruteforce", "zip_fake_encryption",
+				"zip_filename_chain_decode",
 			},
-			"reverse": {
-				"reverse_angr_solver",   // angr 符号执行（需 angr + z3）
-				"rev_const_compare",     // 常量比较 reverse（subprocess 调工具）
+			"web": {
+				"java_deserialization_flow", "java_nashorn_response", "php_unserialize_pop",
+				"source_audit_patterns", "ssti_detect", "web_jwt_prototype",
+				"web_multi_step_chain", "web_race_condition", "web_second_order_injection",
+				"web_source_audit", "web_sqli", "web_ssrf", "web_target_interact",
+				"web_upload_bypass", "web_xxe_file_read",
 			},
 			"pwn": {
-				"pwn_ret2dlresolve",     // ret2dlresolve（需 pwntools）
-				"pwn_sandbox_escape",    // 沙箱逃逸（subprocess）
+				"pwn_exploit_flow", "pwn_libc_fingerprint", "pwn_nogdb_flow",
+				"pwn_ret2dlresolve", "pwn_sandbox_escape", "pwn_tcache_safelinking",
+			},
+			"reverse": {
+				"pyc_decompile", "rev_const_compare", "rev_xor_verify",
+				"reverse_angr_solver", "reverse_elf_general", "reverse_go_apk",
+				"reverse_js_methodology", "reverse_obfuscation", "reverse_router",
 			},
 			"misc": {
-				"misc_grid_resample",   // 网格重采样（subprocess）
-				"misc_zip_fake_encryption", // ZIP 假加密（subprocess）
-				"jpeg_png_embedded",    // 图片嵌入（subprocess）
-				"svg_path_text",        // SVG 路径文本（subprocess）
+				"banana_script", "emoji_binary", "jpeg_png_embedded", "lfsr_filter_recover",
+				"mbr_sse_verify", "misc_bigfile_analysis", "misc_bigfile_traffic",
+				"misc_deflate_huffman_flag", "misc_disk_forensics", "misc_grid_resample",
+				"misc_jpeg_padding_stego", "misc_pcap_ezrat_chat", "misc_qr_matrix",
+				"misc_traffic_analysis", "misc_zip_fake_encryption", "morse_ab_decode",
+				"morse_decoder", "pcap_http_carve", "svg_path_text", "task_analyzer",
+				"thoroughlystripped",
 			},
 		},
 	}
@@ -106,12 +127,16 @@ func newPySkillRunner(ctx context.Context, logger *zap.Logger) *pySkillRunner {
 	// 依赖检查（一次性）
 	r.hasAngr = r.checkDep(ctx, "angr")
 	r.hasPwnTools = r.checkDep(ctx, "pwnlib") // pip 包名 pwntools，但 Python import 是 pwn / pwnlib
+	// Crypto 依赖：pycryptodome (import Crypto) 或 cryptography (import cryptography)，任一存在即可
+	r.hasCrypto = r.checkDep(ctx, "Crypto") || r.checkDep(ctx, "cryptography")
 
 	logger.Info("Python skill bridge 初始化",
 		zap.String("python", r.pythonPath),
 		zap.String("skills_dir", r.skillsDir),
+		zap.Int("catalog_size", totalSkills(r.skillCatalog)),
 		zap.Bool("angr", r.hasAngr),
-		zap.Bool("pwntools", r.hasPwnTools))
+		zap.Bool("pwntools", r.hasPwnTools),
+		zap.Bool("crypto", r.hasCrypto))
 
 	return r
 }
@@ -125,6 +150,15 @@ func osGetenv(key string) string {
 func osGetwd() (string, error) { return os.Getwd() }
 func osStat(name string) (os.FileInfo, error) { return os.Stat(name) }
 func execLookPath(file string) (string, error) { return exec.LookPath(file) }
+
+// totalSkills 返回 skillCatalog 总 skill 数（辅助 logger 输出）
+func totalSkills(cat map[string][]string) int {
+	n := 0
+	for _, v := range cat {
+		n += len(v)
+	}
+	return n
+}
 
 // checkDep pip show <name> 退出码 0 = 已装
 func (r *pySkillRunner) checkDep(ctx context.Context, name string) bool {
@@ -153,14 +187,23 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 		zap.Strings("skills", skills))
 
 	for _, skillName := range skills {
-		// 依赖门控
+		// 依赖门控（2026-10-25 扩：加 NeedCrypto，覆盖 crypto_* skill 大部分）
 		switch skillName {
 		case "reverse_angr_solver":
 			if !r.hasAngr {
 				continue
 			}
-		case "pwn_ret2dlresolve", "pwn_sandbox_escape":
+		case "pwn_ret2dlresolve", "pwn_nogdb_flow", "pwn_sandbox_escape", "pwn_exploit_flow":
 			if !r.hasPwnTools {
+				continue
+			}
+		// Crypto 类 skill：大部分依赖 pycryptodome / cryptography
+		case "crypto_complex_mult_group", "crypto_coppersmith", "crypto_ecb_block_attack",
+			"crypto_electric_mayhem_cls", "crypto_h1_buggy_rng", "crypto_hastad_broadcast",
+			"crypto_high_exponent", "crypto_lcg_recover", "crypto_legendre_phi",
+			"crypto_pkcs1_improved", "crypto_pkcs1_padding_oracle", "crypto_zip_bkcrack",
+			"rsa_fermat_factor":
+			if !r.hasCrypto {
 				continue
 			}
 		}
@@ -190,9 +233,10 @@ func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfp
 		return nil, false
 	}
 
-	// python -c "import sys; sys.path.insert(0, skills_dir); import skill_name; import json; print(json.dumps(skill_name.run(json.loads(sys.argv[1]))))"
+	// python -c 脚本：包装 bytes 返回值为 base64 dict（防止 json.dumps 崩溃）
+	// 2026-10-25 gap 分析：约 20 个 skill 返回 bytes（crypto_hastad_broadcast 等），json.dumps 对 bytes 会直接崩溃
 	script := fmt.Sprintf(
-		"import sys, json; sys.path.insert(0, %q); import %s as s; print(json.dumps(s.run(json.loads(sys.argv[1]))))",
+		"import sys, json, base64; sys.path.insert(0, %q); import %s as s; _r = s.run(json.loads(sys.argv[1])); _r = {\"__base64__\": base64.b64encode(_r).decode()} if isinstance(_r, bytes) else _r; print(json.dumps(_r))",
 		r.skillsDir, skillName)
 
 	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
@@ -218,6 +262,13 @@ func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfp
 	if err := json.Unmarshal(out, &result); err != nil {
 		// 有些 skill 可能返回 list 或直接字符串
 		r.logger.Debug("skill 返回值非 dict", zap.String("skill", skillName), zap.String("raw", string(out)))
+		return nil, false
+	}
+
+	// __base64__ 键 = Python 端检测到原返回值是 bytes，包装成 base64 dict
+	// bytes 返回值通常是二进制结果，不含 flag 字符串，直接跳过
+	if _, isB64 := result["__base64__"]; isB64 {
+		r.logger.Debug("skill 返回 bytes（已 base64 包装），跳过", zap.String("skill", skillName))
 		return nil, false
 	}
 
