@@ -247,12 +247,21 @@ func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfp
 
 // findSkillsDir 多路径 fallback 探测 Python skills 目录
 // 按优先级依次尝试：
-//  1. $PWD/internal/ctfplatform/pyskills/         （SecAutoMind 仓库内未来迁出位置）
-//  2. $PWD/skills/python/                        （另一个可能的仓库内位置）
-//  3. E:\Program\西湖论剑\ctf_agent\skills       （源仓库——可能已被删除）
-//  4. $PWD/CTF-Agent_融合/ctf_agent/skills       （归档副本）
+//  1. $PWD/internal/ctfplatform/pyskills/         （SecAutoMind 仓库内，未来迁出位置）
+//  2. $PWD/skills/python/                        （仓库内备选位置）
+//  3. $PWD/CTF-Agent_融合/ctf_agent/skills       （西湖论剑归档副本——唯一权威来源）
 //
 // 返回第一个存在的目录路径；都不存在则返回空串（runner 会跳过 Layer 2）。
+//
+// 【吞并收口 2026-10-25】原第 4 条硬编码路径 `E:\Program\西湖论剑\ctf_agent\skills` 已删除。理由：
+//   ① **死候选**：归档副本排在它前面且恒存在，那条永远不会命中；
+//   ② **注释与代码曾经顺序相反**（注释说源仓第 3、归档第 4，代码正好颠倒），
+//      留着只会继续误导后来人；
+//   ③ 它是「西湖论剑尚未彻底并入」在运行链上的**唯一残留**——删掉之后，
+//      "把 E:\Program\西湖论剑 整个删掉、本项目功能不受影响"才成为可验证的事实。
+//
+// 不变量由 pyskill_bridge_test.go::TestCandidateSkillDirsAreRepoLocal 锁住：
+// **候选目录一律不得含仓库外绝对路径**。
 func findSkillsDir() string {
 	for _, dir := range candidateSkillDirs() {
 		if dir == "" {
@@ -267,20 +276,19 @@ func findSkillsDir() string {
 }
 
 // candidateSkillDirs 列出所有候选路径（不做存在性判断，方便测试）
+//
+// 所有候选都必须由 cwd 派生（仓库内相对路径），**不得出现硬编码的外部绝对路径**。
+// 这条约束是「唯一主体」在运行层的落地，由 TestCandidateSkillDirsAreRepoLocal 强制。
 func candidateSkillDirs() []string {
 	cwd, _ := osGetwd()
-	var dirs []string
-
-	if cwd != "" {
-		dirs = append(dirs,
-			cwd+`\internal\ctfplatform\pyskills`,
-			cwd+`\skills\python`,
-			cwd+`\CTF-Agent_融合\ctf_agent\skills`,
-		)
+	if cwd == "" {
+		// 拿不到 cwd 就无法定位仓库，返回空让 findSkillsDir 走 fail-safe（跳过 Layer 2）。
+		// 不保留任何外部路径兜底——那正是 2026-10-25 删掉的东西。
+		return nil
 	}
-
-	// 西湖论剑源仓库（可能不存在，不影响其他候选）
-	dirs = append(dirs, `E:\Program\西湖论剑\ctf_agent\skills`)
-
-	return dirs
+	return []string{
+		cwd + `\internal\ctfplatform\pyskills`,
+		cwd + `\skills\python`,
+		cwd + `\CTF-Agent_融合\ctf_agent\skills`,
+	}
 }

@@ -173,7 +173,7 @@ func main() {
 
 		// 监督反思（L1+L2 后，还没烧 LLM token）
 		if decision := ctfplatform.ReflectSupervision(
-			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 2, Candidates: &candCount},
+			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 2, Candidates: &candCount, Challenge: ch.Title},
 			supSteps, nil,
 		); decision.Decision == ctfplatform.DecisionAbandon {
 			logger.Info("监督 ABANDON：跳过 Layer 3",
@@ -208,7 +208,7 @@ func main() {
 
 		// 三层全空 → 最终反思（只打日志，已无后续层可省）
 		decision := ctfplatform.ReflectSupervision(
-			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 3, Candidates: &candCount},
+			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 3, Candidates: &candCount, Challenge: ch.Title},
 			supSteps, nil,
 		)
 		logger.Info("三层监督反思",
@@ -251,6 +251,22 @@ func main() {
 		zap.Bool("auto_build_env", pc.AutoBuildEnv),
 		zap.Bool("auto_fetch_detail", pc.AutoFetchDetail),
 		zap.Bool("auto_release_env", pc.AutoReleaseEnv))
+
+	// ── 4.5 监督消费率账本（听风 2026-10-25）──────────────
+	// 验收口径：agent_roles #3「监督机制消费率有统计落盘」。
+	// 默认 logs/supervision_ledger.jsonl（gitignored）；CTF_SUPERVISION_LEDGER
+	// 覆盖路径，"off" 显式关闭。遥测 fail-open：启用失败仅告警，不影响求解。
+	if p := strings.TrimSpace(os.Getenv("CTF_SUPERVISION_LEDGER")); p != "off" {
+		if p == "" {
+			p = ctfplatform.DefaultSupervisionLedgerPath
+		}
+		if err := ctfplatform.EnableSupervisionLedger(p); err != nil {
+			logger.Warn("监督账本启用失败（fail-open，求解不受影响）", zap.String("path", p), zap.Error(err))
+		} else {
+			defer ctfplatform.DisableSupervisionLedger()
+			logger.Info("监督账本已启用", zap.String("path", p))
+		}
+	}
 
 	// ── 5. 开跑 ──────────────────────────────────────────
 	poller := ctfplatform.NewPoller(platform, solver, pc, logger)
