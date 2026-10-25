@@ -1,8 +1,8 @@
 {
  "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增：超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
- "frozen_at": "2026-10-25 14:09:25",
+ "frozen_at": "2026-10-25 14:16:08",
  "root": "E:\\Program\\SecAutoMind",
- "tracked_hits": 2528,
+ "tracked_hits": 2529,
  "real_brand_hits": 249,
  "real_brand_files": {
   "CTF-Agent_融合/ctf_agent/agents/math_engine.py": 1,
@@ -66,7 +66,7 @@
   "scripts/secret_guard_flag_test.py": 2,
   "scripts/secret_guard_test.py": 1
  },
- "untracked_copies": 506,
+ "untracked_copies": 505,
  "per_file": {
   "cmd/runner/llm_fallback_supervision_test.go": 6,
   "cmd/runner/pyskill_bridge.go": 1,
@@ -517,6 +517,7 @@
   "internal/workflow/eino_compile.go": 1,
   "internal/workflow/expression.go": 1,
   "scripts/audit_benchmark_validity_test.py": 7,
+  "scripts/audit_flag_provenance.py": 1,
   "scripts/build_cross_bench.py": 2,
   "scripts/build_external_bench.py": 1,
   "scripts/check_benchmark_plaintext_answer.py": 1,
@@ -549,7 +550,7 @@
   "skills/blockchain-contract-attack/SKILL.md": 1,
   "web/static/i18n/en-US.json": 1
  },
- "_frozen_basis": "上限取「`git archive HEAD` + --paths 显式叠加的本次提交文件」合成树实测值，即在模拟**提交后的干净检出**，不是工作树值。叠加 4 个文件。复现：`secret_guard.py --freeze-flag-baseline --from-head --paths scripts/secret_guard.py --paths scripts/check_flag_rules_parity.py --paths scripts/check_flag_rules_parity_test.py --paths .github/workflows/ci.yml`。 ⚠️ 另有 120 个已修改但未纳入的文件（并发会话在改/或本次不提交），它们不计入上限。",
+ "_frozen_basis": "上限取「`git archive HEAD` + --paths 显式叠加的本次提交文件」合成树实测值，即在模拟**提交后的干净检出**，不是工作树值。叠加 3 个文件。复现：`secret_guard.py --freeze-flag-baseline --from-head --paths scripts/audit_flag_provenance.py --paths scripts/audit_flag_provenance_test.py --paths .github/workflows/ci.yml`。 ⚠️ 另有 119 个已修改但未纳入的文件（并发会话在改/或本次不提交），它们不计入上限。",
  "_correction_20261025": "品牌分诊新增 placeholder 类，判据与 internal/ctfplatform/presolve_registry.go 的 flagPlaceholderRe/flagPlaceholderWords 同构；命中仍按宽口径统计（tracked_hits 不放松），只有『真泄露』队列变准。",
  "_target": "上限 2519/253 是**修正口径后的真实存量快照**，不是新增许可。目标：先把 heldout_evidence（145 条真品牌，占 253 的 57%）与 gen_exec_artifacts_v2(8) 清掉，再把真赛事品牌降到 0；每清完一批立刻 --freeze-flag-baseline --basis-snapshot 下调。2026-10-25 本次进展：2705/317 → 2519/253。其中 -64 = 占位符模板改判 53 条（DASCTF{%d-%d} / init1-init2 / your_flag_here / 截断样例，本来就不含答案）+ 覆盖率报告明文下线 11 条（real_coverage_report 的 presolve_flag、execution_coverage_report 的 flag 统一改存 *_sha256，两字段全仓只写不读）。"
 }

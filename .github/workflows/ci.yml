@@ -398,6 +398,11 @@ jobs:
         run: |
           python scripts/check_flag_rules_parity.py --check
           python scripts/check_flag_rules_parity_test.py
+      # 溯源审计的互校断言（2026-10-25）：审计脚本与门禁是两条独立扫描路径，
+      # 它们的命中总数必须相等 —— 对不上就说明有一边漏扫/多扫，那"铁实锤 N 条"
+      # 这个数字本身就不可信。不跑审计本体（只跑测试），避免 CI 依赖本地真值文件。
+      - name: Flag provenance audit cross-check (audit total must equal gate total)
+        run: python scripts/audit_flag_provenance_test.py
       - name: Generator flag externalization self-test (must fail-closed when truth missing)
         run: python scripts/externalize_generator_flags.py --selftest
       # 交付包排除面门禁（2026-10-24）：secret_guard 只按密钥形态匹配，判不出
