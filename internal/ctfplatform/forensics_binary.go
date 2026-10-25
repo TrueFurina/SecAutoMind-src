@@ -838,6 +838,14 @@ func init() {
 			})
 		},
 	})
+	// bin_deflate_stego：DEFLATE 动态 Huffman 树隐码（misc_deflate_huffman_flag 链
+	// Go 化，2026-10-25；吞并账本 #1）。双守卫（lipogram 占比 + E 码长）fail-closed。
+	RegisterSolver(SolverEntry{
+		Name: "bin_deflate_stego", Category: CategoryMiscS, Priority: 38,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryDeflateStego(text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
