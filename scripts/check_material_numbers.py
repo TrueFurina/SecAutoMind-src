@@ -26,10 +26,24 @@ import os
 import re
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PY = sys.executable
+
+# 判定「历史快照」的日期基准**必须固定时区**（2026-10-26 实锤事故）：
+# `is_historical()` 用文件名内嵌日期与"今天"比较，而 `date.today()` 取的是**本机时区**。
+# 于是同一提交在 UTC+8 的开发者机器与 UTC 的 GitHub Actions 上得到**相反结论**：
+#   · 北京 2026-10-26 03:08 → 文件名含 20261025 视为"早于今天" → 豁免 → 门禁绿
+#   · UTC   2026-10-25 19:08 → (10,25) 不早于 (10,25) → 不豁免 → caliber 报 9 处、docs-lint 报 1 处
+# 表现为「本地全绿、CI 全红」，且换一天又不复现 —— 极难归因。
+# 修法：一律按**东八区**取今天，让 CI 与本地对同一提交给出同一结论。
+CN_TZ = timezone(timedelta(hours=8))
+
+
+def today_cn():
+    """今天（东八区）。所有"历史快照"判定都用它，不用 date.today()。"""
+    return datetime.now(CN_TZ).date()
 
 # 扫描范围：对外材料。代码/数据/日志不扫（里面出现数字是正常的）。
 SCAN_DIRS = ["docs", "SecAutoMind_PPT", "官网"]
@@ -419,7 +433,8 @@ def is_historical(rpath):
         return True   # 修复脚本必须列举旧数字，列举 ≠ 使用
     for m in HIST_DATE_RE.finditer(rpath):
         mm, dd = int(m.group(1)), int(m.group(2))
-        if (mm, dd) < (date.today().month, date.today().day):
+        today = today_cn()          # 固定东八区，勿改回 date.today()（见文件头注释）
+        if (mm, dd) < (today.month, today.day):
             return True
     return False
 

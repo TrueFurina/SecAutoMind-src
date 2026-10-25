@@ -4,29 +4,29 @@
   "artifacts": {
     "ppt/SecAutoMind_参赛答辩_冲击冠军版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_冲击冠军版.pptx",
-      "sha256": "d92ec4eddab9b89dc22ee3a1328675798b276717ba7a64c2a7c172300b28b1cc",
-      "size": 68933,
+      "sha256": "4b89b346f44e62be81a53ff8599100b9712ecaeb1db7ba0aa33ebaa11882dbbd",
+      "size": 68936,
       "generator": {
         "path": "SecAutoMind_PPT/make_champion_ppt.py",
-        "sha256": "72de4092c3ed3471467e0f568990d84e2c24e304df6a252b977c8edc89ed0447"
+        "sha256": "a6056d310ba015c6bce2c873fabab5ada1e0d6e777f91494016e8ab68c41e9fd"
       }
     },
     "ppt/SecAutoMind_参赛答辩_模板版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_模板版.pptx",
-      "sha256": "f2edf1d8efb3f74209d2e9ab257cdd614b23a171a73669d70257b777f00bb5e4",
-      "size": 421331,
+      "sha256": "036e4e5589d1c3fab0afa61c426155b1dafe9d0e52fe2c27187d6bde588cc296",
+      "size": 421333,
       "generator": {
         "path": "SecAutoMind_PPT/make_template_ppt.py",
-        "sha256": "2ea0b0c8531f5450fa61f6ce6a0255621d4709cea08b8e02b38a26645f8c88d7"
+        "sha256": "c8ba213356dc29d4c158d727d2140297652d8d7cad1351d425473afa3cd0b58d"
       }
     },
     "ppt/SecAutoMind_参赛答辩_集大成版.pptx": {
       "path": "SecAutoMind_PPT/SecAutoMind_参赛答辩_集大成版.pptx",
-      "sha256": "c08c3d15ac2bcb6b704b50525da662f7c80c25fd097665babe26e963321af361",
-      "size": 78377,
+      "sha256": "2c9ee7876e4074c74d00c019e7ed011f77189b27dcb771a3c6bb3c710c74e411",
+      "size": 78379,
       "generator": {
         "path": "SecAutoMind_PPT/make_final_ppt.py",
-        "sha256": "4112d53ad250c7cf545cfddb38f5c5c3aea9dd921d27b343e5456316061c35cf"
+        "sha256": "a5ea14bc534b76ebf2a5f052fef60c548f1fcd78a75932e9dccb8a14845d0203"
       }
     },
     "ppt/SecAutoMind（闽江睿御•智体矩阵）——基于Go+大模型、可离线运行的多智能体自主决策通用网络安全平台，人机协同、全程可审计.pptx": {
@@ -41,8 +41,8 @@
     },
     "ppt/草稿内容版.pptx": {
       "path": "SecAutoMind_PPT/草稿内容版.pptx",
-      "sha256": "cec34ea6dce10f115ecbf85d79ab71fa349025e89be18eba1791acae70a42fe2",
-      "size": 78349
+      "sha256": "e9490327b45b524197ac24346f74d2ab7192f2818e8bdc5087304a62cf5358ad",
+      "size": 78355
     },
     "ppt/闽江御盾•智防矩阵.pptx": {
       "path": "SecAutoMind_PPT/闽江御盾•智防矩阵.pptx",
@@ -52,7 +52,14 @@
     "package/SecAutoMind-v1.7.28-share.tar.gz": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
       "sha256": "f88872c586a2e44df85c3371ebe5e694ddc5660b756b167e831cade41237ab12",
-      "size": 178996481
+      "size": 178996481,
+      "revived_at": "2026-10-26T03:43:04",
+      "previous_retirement": {
+        "sha256": "f88872c586a2e44df85c3371ebe5e694ddc5660b756b167e831cade41237ab12",
+        "size": 178996481,
+        "retired_at": "2026-10-26T03:42:56",
+        "reason": "磁盘上已不存在（被删/未生成/改名？）——由 --update 自动迁移留痕，**需人工复核并改写为真实原因**"
+      }
     }
   },
   "retired": {}
