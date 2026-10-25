@@ -29,6 +29,10 @@ import os
 import re
 import sys
 import json
+import subprocess
+import time
+import unicodedata
+from pathlib import Path
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -249,6 +253,190 @@ def is_placeholder(value):
     return False
 
 
+# ---------------------------------------------------------------------------
+# CTF flag 明文门禁（2026-10-25 新增 · 事故 #20）
+# ---------------------------------------------------------------------------
+# 现状：`data/ctf_benchmark/build_real_benchmark.py` **已被 git 跟踪**且内含 31 条
+# 明文 flag（picoCTF{...} 等），而原有 PATTERNS 只盯**凭证**形态，`FLAG_LIKE`
+# 更是把"形似 flag"当占位符**放行** —— 于是明文答案从没被任何门禁拦过。
+# 当前是外部公开赛事答案，严重性中等；但按同样方式存 1024 / 羊城杯的 flag 就是
+# **真泄露**（本项目红线：品牌前缀+花括号形态不得入 PUBLIC 仓）。
+#
+# 判据与 build_cross_bench.py 的 FLAG_CAND_RE **同构**（纪律：修复器/报表必须与
+# 判红门禁共用同一判据实现，避免两套口径）。finditer + group(0)（findall 恒绿的坑）。
+#
+# 分诊不用手工豁免清单 —— 那玩意在 secret_guard 里已经腐化过一次（见 SELF_EXEMPT
+# 上方注释）。改用两个不腐化的判据：
+#   ① git 跟踪状态：未跟踪文件命中 = **新泄露**，直接 BLOCK；
+#   ② 冻结上限：已跟踪文件的命中总数不得超过 baseline（"只许减不许增"），
+#      超了就是有人在历史文件里**新加**了明文。
+# 与 build_cross_bench.FLAG_CAND_RE 同源但**更严**（口径差异有意为之，别合并）：
+#   - build_cross_bench 用于「题面遮蔽」，宁宽勿窄（多遮蔽无害）；
+#   - 这里用于「泄露判红」，必须准（误报洪水会让门禁被当噪音关掉）。
+# 实测噪声 100% 是 Go 结构体字面量（`ExecuteRequest{Command: cmd}`、
+# `string{"xxe", ...}`、`Message{schema.ToolMessage(...)}`），故内容里禁止
+# 引号/冒号/逗号/分号/空格。**不禁止单引号** —— 真 flag 里出现过
+# `flag{7h3_p457_c4n'7_b3_70rn_0u7...}`，禁了就漏判。
+FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n\":;, ]{4,80}\}")
+# 明显占位（遮蔽后的 `前缀{****}`、全等字符、测试空壳）不算明文
+FLAG_PLACEHOLDER_RE = re.compile(r"\{\**\}|\{x+\}|\{XXXX\}|\{\.\.\.\}", re.I)
+# 可用 SECRET_GUARD_FLAG_BASELINE 覆盖（回归测试必须隔离，别污染真基线）
+FLAG_BASELINE = Path(
+    os.environ.get("SECRET_GUARD_FLAG_BASELINE")
+    or (Path(__file__).resolve().parent / "plaintext_flag_baseline.json"))
+
+
+def _git_tracked(root: str) -> set[str] | None:
+    """返回仓库内已跟踪文件集合；非 git 目录返回 None（调用方必须 fail-closed）。"""
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120)
+        if r.returncode != 0:
+            return None
+        return {ln.strip().replace("\\", "/") for ln in (r.stdout or "").splitlines()
+                if ln.strip()}
+    except Exception:
+        return None
+
+
+def _flag_is_printable(raw: str) -> bool:
+    """内容不得含控制字符 —— 排除二进制噪声。
+
+    实测：`.json` 里嵌的 shellcode 字节（`au{H\\x8b\\x95...}`）会被 FLAG_CAND_RE 命中，
+    它们不是答案，只是二进制被当文本读出来的乱码。
+    """
+    body = raw[raw.find("{") + 1: -1]
+    if not body:
+        return False
+    return not any(unicodedata.category(ch) == "Cc" for ch in body)
+
+
+# 真实赛事品牌前缀（残留在 PUBLIC 仓 = 真泄露）；其余多为自产构造值/题面密文
+REAL_BRAND_RE = re.compile(
+    r"^(d0g3|DASCTF|picoCTF|VNCTF|ISCTF|XCTF|NCTF|HITB|GXY|ACTF|SUCTF|"
+    r"W4ter|MiniL|西湖|虎符)\{", re.I)
+
+
+def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
+    """扫描形如 `前缀{内容}` 的 CTF flag 明文。返回 (hits, untracked_hits)。
+
+    hits: [{"file","line","masked","tracked":bool}]
+    untracked_hits: 未跟踪文件里的命中（= 新泄露，最严重）
+    """
+    hits: list[dict] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for fn in filenames:
+            ext = os.path.splitext(fn)[1].lower()
+            if ext in SKIP_FILE_SUFFIX:
+                continue
+            if ext and ext not in TEXT_EXT and fn not in (".env", "Dockerfile"):
+                continue
+            path = os.path.join(dirpath, fn)
+            try:
+                if os.path.getsize(path) > MAX_FILE_BYTES:
+                    continue
+                # ⚠️ 必须**全文口径**，不能 splitlines 逐行：str.splitlines 按 Unicode
+                # 行边界切分（\x0b \x0c \x1c \x1d \x1e \x85 \u2028 \u2029），而正则只禁
+                # \n → 含这些字符的 flag 会被逐行口径整条漏掉。实测漏过 3 条。
+                with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                    text = fh.read()
+            except Exception:
+                continue
+            rel = os.path.relpath(path, root).replace("\\", "/")
+            for m in FLAG_CAND_RE.finditer(text):
+                raw = m.group(0)
+                if FLAG_PLACEHOLDER_RE.search(raw):
+                    continue
+                if not _flag_is_printable(raw):
+                    continue
+                lineno = text.count("\n", 0, m.start()) + 1
+                is_tracked = (rel in tracked) if tracked is not None else False
+                hits.append({
+                    "file": rel,
+                    "line": lineno,
+                    "masked": mask(raw),
+                    "tracked": is_tracked,
+                    "brand": "real" if REAL_BRAND_RE.match(raw) else "self",
+                })
+    untracked = [h for h in hits if not h["tracked"]]
+    return hits, untracked
+
+
+def evaluate_flag_policy(hits, tracked_set, baseline):
+    """明文 flag 的分诊策略（纯函数，便于单测）。
+
+    返回 (block: bool, note: str, n_tracked: int, untracked: list)
+    """
+    untracked = [h for h in hits if not h["tracked"]]
+    n_tracked = len(hits) - len(untracked)
+    # 严重度分级：真赛事品牌 = 真泄露；其余多为自产构造值或题面密文，风险低得多
+    # 口径纪律：n_real 必须只在 tracked 集合内统计，不能拿"全部 hits"减去"已入库数"
+    # ——首版就是这么写的，得出 390 这个假数（真实已入库真赛事仅 105 条）。
+    n_real = sum(1 for h in hits if h["tracked"] and h.get("brand") == "real")
+    sev = (f"｜真赛事品牌 {n_real} 条（真泄露，优先清）"
+           f"／自产构造 {max(n_tracked - n_real, 0)} 条" if n_tracked else "")
+    if tracked_set is None:
+        # 非 git 目录：无法区分入库/未入库。此时**只有确有命中才 fail-closed** ——
+        # 干净目录（如门禁自测用的临时空目录）必须放行，否则 --allow-no-fingerprint
+        # 的降级放行语义会被打穿（实测把既有用例搞红过一次）。
+        if not hits:
+            return (False, "该目录不在 git 仓库中，但无任何明文 flag 命中 → 放行",
+                    n_tracked, untracked)
+        return (True, f"该目录不在 git 仓库中，无法区分新旧，且含 {len(hits)} 条明文 "
+                      f"flag → fail-closed，全部按新泄露处理", n_tracked, untracked)
+    if baseline is None:
+        return (False,
+                f"⚠️ 无冻结基线：已入库文件含明文 flag {n_tracked} 条"
+                f"（另有未入库副本 {len(untracked)} 条）{sev}。"
+                f"先清理再执行 --freeze-flag-baseline 冻结上限",
+                n_tracked, untracked)
+    cap = baseline.get("tracked_hits", 0)
+    if n_tracked > cap:
+        return (True, f"已入库文件明文 flag {n_tracked} 条 > 冻结上限 {cap} 条 —— "
+                      f"有人在历史文件里新加了答案", n_tracked, untracked)
+    return (False, f"已入库历史遗留 {n_tracked} 条（上限 {cap}），未新增",
+            n_tracked, untracked)
+
+
+def load_flag_baseline() -> dict | None:
+    try:
+        if FLAG_BASELINE.is_file():
+            return json.loads(FLAG_BASELINE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return None
+
+
+def freeze_flag_baseline(root: str) -> int:
+    tracked = _git_tracked(root)
+    hits, untracked = scan_plaintext_flags(root, tracked)
+    if tracked is None:
+        print("❌ 拒绝固化：该目录不在 git 仓库中，无法区分入库/未入库")
+        return 1
+    if untracked:
+        print(f"⚠️  另有未入库副本 {len(untracked)} 条明文 flag，不计入上限"
+              f"（不进 PUBLIC 仓，但 git add 后会变成入库泄露）")
+    tracked_hits = [h for h in hits if h["tracked"]]
+    per_file: dict[str, int] = {}
+    for h in tracked_hits:
+        per_file[h["file"]] = per_file.get(h["file"], 0) + 1
+    data = {
+        "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增："
+                "超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
+        "frozen_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "root": root,
+        "tracked_hits": len(tracked_hits),
+        "untracked_copies": len(untracked),
+        "per_file": per_file,
+    }
+    FLAG_BASELINE.write_text(json.dumps(data, ensure_ascii=False, indent=1),
+                             encoding="utf-8")
+    print(f"✅ 已固化明文 flag 上限 {len(tracked_hits)} 条（{len(per_file)} 个文件）→ {FLAG_BASELINE}")
+    return 0
+
+
 def scan_dir(root, fps=None):
     findings = []
     scanned = 0
@@ -316,6 +504,20 @@ def main():
     if "--dir" in sys.argv:
         root = os.path.abspath(sys.argv[sys.argv.index("--dir") + 1])
     allow_no_fp = "--allow-no-fingerprint" in sys.argv
+    if "--freeze-flag-baseline" in sys.argv:
+        return freeze_flag_baseline(root)
+    if "--skip-flag-scan" in sys.argv:
+        tracked_set, flag_hits, flag_untracked = set(), [], []
+        flag_block, flag_note = False, "已用 --skip-flag-scan 跳过"
+        flag_base = None
+    else:
+        tracked_set = _git_tracked(root)
+        flag_hits, flag_untracked = scan_plaintext_flags(root, tracked_set)
+        flag_base = load_flag_baseline()
+        # 只看**已入库**文件：未跟踪副本不进 PUBLIC 仓，不构成入库泄露，
+        # 但一旦 git add 就会 —— 所以它们单列告警，不计入冻结上限。
+        flag_block, flag_note, _n, flag_untracked = evaluate_flag_policy(
+            flag_hits, tracked_set, flag_base)
     scanned, findings = scan_dir(root)
 
     real = [f for f in findings
@@ -332,7 +534,7 @@ def main():
     # 传 --allow-no-fingerprint 降级，并接受"仅形态匹配"的人工复核义务。
     fingerprint_degraded = not fps
     fingerprint_block = fingerprint_degraded and not allow_no_fp
-    blocked = bool(real) or fingerprint_block
+    blocked = bool(real) or fingerprint_block or flag_block
 
     if "--json" in sys.argv:
         print(json.dumps({
@@ -344,6 +546,10 @@ def main():
             "forced_findings": forced,
             "suspect_findings": suspect,
             "placeholder_findings": len(placeholder),
+            "plaintext_flag_hits": len(flag_hits),
+            "plaintext_flag_untracked": len(flag_untracked),
+            "plaintext_flag_block": flag_block,
+            "plaintext_flag_note": flag_note,
             "verdict": "BLOCK" if blocked else "PASS",
         }, ensure_ascii=False, indent=2))
         return 1 if blocked else 0
@@ -386,6 +592,18 @@ def main():
         print("    本次仅经形态匹配、**未启用真 key 指纹反查**，请人工复核后再放行。")
     else:
         print("  [PASS] 未发现真实凭证，且真 key 指纹反查已生效，可进入打包流程。")
+    print("-" * 66)
+    print("  CTF flag 明文   %d 条（未跟踪 %d 条）%s" % (
+        len(flag_hits), len(flag_untracked), "❌" if flag_block else "✅"))
+    print("     %s" % flag_note)
+    if flag_untracked:
+        print("  ⚠️  未入库副本里的明文 flag %d 条（不进 PUBLIC 仓，故不阻断；"
+              "但 git add 后即刻变成入库泄露）：" % len(flag_untracked))
+        for f in flag_untracked[:8]:
+            print("    %s:%d  %s" % (f["file"], f["line"], f["masked"]))
+        if len(flag_untracked) > 8:
+            print("    ... 另有 %d 条" % (len(flag_untracked) - 8))
+        print("    处置：改成只存 sha256（明文放 gitignore 的本地文件），或从题面里遮蔽。")
     if suspect:
         print("\n  可疑命中清单（测试/语料，通常无需处理）：")
         for f in suspect[:15]:

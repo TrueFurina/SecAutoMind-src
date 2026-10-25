@@ -181,3 +181,6 @@ scans/
 # runner 编译产物不入库（源码 main.go/pyskill_bridge.go 正常跟踪）
 /cmd/runner/runner_ctf
 /cmd/runner/runner_linux_amd64
+data/flag_truth.local.json
+# CTF 明文答案（红线：禁止入 PUBLIC 仓）
+data/answers/

@@ -92,7 +92,9 @@ jobs:
         # real_static_real_solver 三条陈述）在 CI 里逐条机验 —— 同样"不在本 job 跑 ≠ 不跑"。
         # 同时把总预算 900s → 1800s：本会话实测（128 核服务器）该命令已需 ~990s，
         # 900s 会红；新增的链式求解器/4 个 Go 基准镜像都增加了真实工作量。
-        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 1800s -skip 'TestCrossBench_AttachmentSubset|TestExternalBench_AttachmentSubset|TestRealBenchmark_ShippedPresolve|TestRealBenchmark_RegistryPresolve|TestRealBenchmarkHitNotInflatedByPlaintextFlag'
+        # 2026-10-24 追加 TestCrossBench_BinaryAttachmentSubset（二进制附件子集，
+        # 纯测量 ~75-90s，同纪律移 cross-bench-subset job 实跑——不在本 job 跑 ≠ 不跑）。
+        run: CGO_ENABLED=1 go test -race -count=1 ./... -timeout 1800s -skip 'TestCrossBench_AttachmentSubset|TestCrossBench_BinaryAttachmentSubset|TestExternalBench_AttachmentSubset|TestRealBenchmark_ShippedPresolve|TestRealBenchmark_RegistryPresolve|TestRealBenchmarkHitNotInflatedByPlaintextFlag'
       # 附件基准逐题诊断（常驻留痕，用于排查该测试在 CI 上的偶发 9/10）。
       # 必须单独 -v 跑：Go 测试框架会捕获测试进程的 stdout/stderr，
       # 全量跑（无 -v）时连 fmt.Printf 也不会出现在日志里（实测 0 次）。
@@ -355,6 +357,11 @@ jobs:
           go-version: "1.25.x"
       - name: Cross-bench attachment subset (report-only hit rate, fail-closed manifest)
         run: go test -count=1 -v -run 'TestCrossBench_AttachmentSubset' ./internal/ctfplatform/ -timeout 600s
+      # 2026-10-24 追加：二进制附件子集（bin_flag_repair 修复链的立尺；含/剔除答案
+      # 双口径。upx 附件 git_excluded 仅本地存在——CI 含答案口径该题 exp-missing，
+      # 剔除口径 5/12 基线在 CI 可复现，本地含答案 6/12 为增强口径）。
+      - name: Cross-bench binary attachment subset (report-only, dual caliber)
+        run: go test -count=1 -v -run 'TestCrossBench_BinaryAttachmentSubset' ./internal/ctfplatform/ -timeout 600s
 
   # 密钥门禁：防止真实凭证被提交进仓库。
   # 历史教训（两次）：
@@ -381,6 +388,10 @@ jobs:
         run: python scripts/secret_guard_test.py
       - name: Secret guard mutation check (prove the self-test can kill regressions)
         run: python scripts/secret_guard_mutation_check.py
+      - name: Plaintext CTF flag gate (precision + policy + freeze-baseline end-to-end)
+        run: python scripts/secret_guard_flag_test.py
+      - name: Generator flag externalization self-test (must fail-closed when truth missing)
+        run: python scripts/externalize_generator_flags.py --selftest
       # 交付包排除面门禁（2026-10-24）：secret_guard 只按密钥形态匹配，判不出
       # 「会话记忆里中文写着的账号/密码」。而交付包此前只排除 `.workbuddy/`，
       # `.workbuddy-ai/`（AI 协作记忆目录）不在列 → 重打包会把凭证随包发给评委。
@@ -890,3 +901,31 @@ jobs:
         run: python scripts/check_external_bench.py
       - name: External bench gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_external_bench_test.py
+
+
+  # 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」。
+  # 背景：1024 快闪赛 9/9，其中 3 题靠人工补刀；核查发现 pwn_exploit_flow /
+  # web_multi_step_chain 原为「纸面 skill」（run() 只返回流程文本 / 只枚举链条不发请求），
+  # 对精确字节类题目零帮助。本 job 把「升级为可执行型」钉死：每个 skill 自带
+  # --selftest，CI 上真跑一遍，跑不通即红。
+  # 注：双写一致性（真值源 ↔ E:\Program\ctf-agent\skills）在 CI 上目标目录必然不存在，
+  #     故 sync --check 在此为 SKIP（rc=0）——避免恒红假象；赛前本机必须加 --require-dst。
+  skill-exec-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: pwn_exploit_flow selftest - ELF parse / ret2win payload / socket exec
+        run: python "CTF-Agent_融合/ctf_agent/skills/pwn_exploit_flow.py" --selftest
+      - name: source_audit_patterns selftest - pattern scan + pickle payload
+        run: python "CTF-Agent_融合/ctf_agent/skills/source_audit_patterns.py" --selftest
+      - name: web_multi_step_chain selftest - multi-step API chain with slots
+        run: python "CTF-Agent_融合/ctf_agent/skills/web_multi_step_chain.py" --selftest
+      - name: Race preflight gate regression + mutation - docker path / dep drift / skills parity
+        run: python scripts/race_preflight_test.py
+      - name: Skill dual-write sync self-check - dst absent must SKIP, never false-red
+        run: python scripts/sync_ctf_agent_skills.py --check
+      - name: Engine watchdog selftest - kill child then auto-restart under 10s
+        run: python scripts/engine_watchdog.py --selftest

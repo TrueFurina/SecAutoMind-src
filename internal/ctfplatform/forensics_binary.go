@@ -816,6 +816,28 @@ func init() {
 			})
 		},
 	})
+	// bin_upx：UPX 脱壳（exec 适配器，P2 能力项第一刀 2026-10-25）→ 解压后字节过
+	// bfx 家族。工具缺失/脱壳失败在适配器层 fail-closed，求解器侧跳过（环境缺口
+	// 不是候选；helloupx11 类反脱壳篡改样本会在适配器层失败——P2 深水区登记）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_upx", Category: CategoryMiscS, Priority: 37,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return bfxRun(attachments, func(_ string, d []byte) []string {
+				if !looksUpxPacked(d) {
+					return nil
+				}
+				un, err := upxUnpack(ctx, d)
+				if err != nil {
+					return nil
+				}
+				var out []string
+				out = append(out, bfxScanVariants(un)...)
+				out = append(out, bfxPNGMeta(un)...)
+				out = append(out, bfxJpegTailPng(un)...)
+				return bfxDedup(out)
+			})
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {

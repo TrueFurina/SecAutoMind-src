@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""明文 CTF flag 门禁的回归 + 变异测试（事故 #20）。
+
+为什么单独一个文件：secret_guard_test.py 是自带 harness 的钥匙串门禁自测，
+判据与失败语义不同；flag 门禁有独立的「精度 / 分诊策略 / 端到端防新增」三段断言，
+混进去会互相污染。CI 两处都要跑。
+
+三条不可退化的能力：
+  1. 精度：真 flag 必须命中，Go 结构体字面量 / 占位符必须**不**命中
+     （误报洪水会让门禁被当噪音关掉 —— 实测未收紧前噪声占 59%）。
+  2. 分诊：未入库副本不阻断、已入库超冻结上限必须阻断、非 git 空目录不得假红。
+  3. 端到端：冻结基线后，**新加入库的含 flag 文件必须让门禁 rc=1**。
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS = ROOT / "scripts"
+GUARD = SCRIPTS / "secret_guard.py"
+
+
+def _load_guard():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("sg_flag", GUARD)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _hits_in(tmpdir: Path, files: dict[str, str]):
+    """在临时目录写文件，返回 flag 命中列表（tracked 一律按未跟踪处理）。"""
+    sg = _load_guard()
+    for name, content in files.items():
+        p = tmpdir / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+    hits, untracked = sg.scan_plaintext_flags(str(tmpdir), set())
+    return hits, untracked
+
+
+class TestPrecision(unittest.TestCase):
+    """判据精度：真 flag 命中，代码噪声不命中。"""
+
+    def test_real_flags_are_detected(self):
+        with tempfile.TemporaryDirectory() as td:
+            # 夹具约束：只保留「品牌前缀 + 花括号」的形状用于测分类，
+            # body 一律写成 selftest_*，不得抄真题 flag 正文（PUBLIC 仓红线）。
+            hits, _ = _hits_in(Path(td), {
+                "a.txt": "flag{selftest_generic_body}\n",
+                "b.txt": "VNCTF{selftest-uuid-shape-0000}\n",
+                "c.txt": "picoCTF{selftest_body_not_real}\n",
+                "d.txt": "DASCTF{init1-init2}\n",
+            })
+            self.assertEqual(len(hits), 4, f"4 条真 flag 必须全部命中，实际 {hits}")
+
+    def test_flag_with_single_quote_is_detected(self):
+        """真 flag 里出现过单引号（c4n'7）—— 收紧噪声时不得把它一起禁掉。"""
+        with tempfile.TemporaryDirectory() as td:
+            hits, _ = _hits_in(Path(td), {
+                "a.txt": "flag{selftest_quote'body}\n",
+            })
+            self.assertEqual(len(hits), 1, hits)
+
+    def test_go_struct_literals_are_not_flags(self):
+        """Go 结构体字面量是最大的噪声源（实测占 59%），必须不命中。"""
+        with tempfile.TemporaryDirectory() as td:
+            hits, _ = _hits_in(Path(td), {
+                "a.go": 'x := ExecuteRequest{Command: cmd}\n'
+                        'y := string{"xxe", "xml外部实体"}\n'
+                        'z := Message{schema.ToolMessage("hi", "", w)}\n'
+                        'c := countResult{name: n, count: -1}\n',
+            })
+            self.assertEqual(hits, [], f"Go 结构体字面量被误判为 flag: {hits}")
+
+    def test_placeholders_are_not_flags(self):
+        with tempfile.TemporaryDirectory() as td:
+            hits, _ = _hits_in(Path(td), {
+                "a.txt": "flag{****}\npicoCTF{xxxx}\nflag{...}\n",
+            })
+            self.assertEqual(hits, [], hits)
+
+    def test_finditer_over_findall(self):
+        """纪律：正则带捕获组，必须用 finditer + group(0)，findall 恒绿。"""
+        src = GUARD.read_text(encoding="utf-8")
+        self.assertIn("finditer", src)
+        self.assertNotIn("FLAG_CAND_RE.findall", src)
+
+
+class TestPolicy(unittest.TestCase):
+    """分诊策略：不阻断未入库副本，只卡已入库的新增。"""
+
+    def _eval(self, hits, tracked_set, baseline):
+        return _load_guard().evaluate_flag_policy(hits, tracked_set, baseline)
+
+    def test_no_git_no_hits_passes(self):
+        """非 git 的干净目录不得假红（打穿过 --allow-no-fingerprint 放行语义）。"""
+        block, note, _, _ = self._eval([], None, None)
+        self.assertFalse(block, note)
+
+    def test_no_git_with_hits_blocks(self):
+        block, note, _, _ = self._eval(
+            [{"file": "a", "line": 1, "masked": "flag{**}", "tracked": False}],
+            None, None)
+        self.assertTrue(block, note)
+
+    def test_no_baseline_warns(self):
+        block, note, _, _ = self._eval(
+            [{"file": "a", "line": 1, "masked": "flag{**}", "tracked": True}],
+            {"a"}, None)
+        self.assertFalse(block, "无基线时应告警而非阻断（避免新判据一上就把 CI 打红）")
+        self.assertIn("无冻结基线", note)
+
+    def test_over_cap_blocks(self):
+        hits = [{"file": "a", "line": 1, "masked": "flag{**}", "tracked": True}]
+        block, note, _, _ = self._eval(hits, {"a"}, {"tracked_hits": 0})
+        self.assertTrue(block, note)
+        self.assertIn("冻结上限", note)
+
+    def test_at_cap_passes(self):
+        hits = [{"file": "a", "line": 1, "masked": "flag{**}", "tracked": True}]
+        block, note, n, _ = self._eval(hits, {"a"}, {"tracked_hits": 1})
+        self.assertFalse(block, note)
+        self.assertEqual(n, 1)
+
+    def test_untracked_copies_do_not_block(self):
+        """未入库副本不进 PUBLIC 仓，不计入上限，也不阻断。"""
+        hits = [{"file": "copy", "line": 1, "masked": "flag{**}", "tracked": False}]
+        block, note, n, untracked = self._eval(hits, set(), {"tracked_hits": 0})
+        self.assertFalse(block, note)
+        self.assertEqual(n, 0)
+        self.assertEqual(len(untracked), 1)
+
+
+class TestEndToEnd(unittest.TestCase):
+    """端到端：冻结基线后，新加入库的含 flag 文件必须让门禁 rc=1。"""
+
+    def _git(self, cwd, *args):
+        return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                               "-C", str(cwd)] + list(args),
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=60)
+
+    def _run_guard(self, cwd, baseline_path, *extra):
+        env = dict(os.environ)
+        env["SECRET_GUARD_FLAG_BASELINE"] = str(baseline_path)
+        return subprocess.run([sys.executable, str(GUARD), "--dir", str(cwd),
+                               "--allow-no-fingerprint"] + list(extra),
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=120, env=env)
+
+    def test_new_tracked_flag_file_is_blocked(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            root.mkdir()
+            base = Path(td) / "baseline.json"
+            self.assertEqual(self._git(root, "init").returncode, 0)
+            (root / "clean.txt").write_text("nothing here\n", encoding="utf-8")
+            self._git(root, "add", "clean.txt")
+            self.assertEqual(self._git(root, "commit", "-m", "init").returncode, 0)
+
+            # 冻结：干净状态 = 0 条
+            r = self._run_guard(root, base, "--freeze-flag-baseline")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            data = json.loads(base.read_text(encoding="utf-8"))
+            self.assertEqual(data["tracked_hits"], 0)
+
+            # 新增未入库文件：不阻断（还没进 git）
+            (root / "leak.txt").write_text("flag{TEST_ONLY_NEVER_REAL}\n",
+                                           encoding="utf-8")
+            r2 = self._run_guard(root, base)
+            self.assertEqual(r2.returncode, 0,
+                             "未入库文件不该阻断（不进 PUBLIC 仓）：" + r2.stdout)
+
+            # git add 之后 = 入库泄露，必须阻断
+            self._git(root, "add", "leak.txt")
+            r3 = self._run_guard(root, base)
+            self.assertEqual(r3.returncode, 1,
+                             "新加入库的明文 flag 必须让门禁 rc=1：" + r3.stdout[-1500:])
+            self.assertIn("冻结上限", r3.stdout)
+
+    def test_baseline_is_not_polluted(self):
+        """回归测试必须通过环境变量隔离基线，绝不能**改动**真基线文件。
+
+        首版断言的是「真基线文件不存在」——人工冻结后该前提过期（基线本就该存在），
+        于是假红。正确语义是「跑完测试后内容不变」：既能防污染，又不与人工冻结冲突。
+        """
+        self.assertTrue("SECRET_GUARD_FLAG_BASELINE" in GUARD.read_text(encoding="utf-8"))
+        real = SCRIPTS / "plaintext_flag_baseline.json"
+        if not real.is_file():
+            return  # 尚未冻结：本轮无法判定污染，跳过而非假红
+        before = real.read_text(encoding="utf-8")
+        # 在临时仓库上跑一次完整 guard（基线走环境变量隔离），再验真基线未被改动
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            root.mkdir()
+            (root / "clean.txt").write_text("nothing here\n", encoding="utf-8")
+            self._run_guard(root, Path(td) / "isolated_baseline.json")
+        self.assertEqual(real.read_text(encoding="utf-8"), before,
+                         "测试运行改动了真基线文件（污染）")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
