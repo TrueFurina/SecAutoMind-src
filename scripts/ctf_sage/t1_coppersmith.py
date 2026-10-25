@@ -15,17 +15,31 @@ sage 快速路径：has_sage() 为真时直接调 sage 的 small_roots（大 X �
 纯 Python 路径的取根：numpy 向量化 mod 素数过滤 + 精确验证（X ≤ 2^24）；
 更大 X 需 sage（详见 detail 提示）。
 
-诚实边界（2026-10-23 实证，勿外推）：
-  1. 纯 Python + LLL 在 dim≤20、m=Sage 公式起步值下，对「通用多项式 + 小根」实例
-     已验证到 N=160bit（Q = f(x_0)/N 较小时）；M 过大的 stereotyped message 实例
-     会使 Q ~ N^{1/2}，三角抵消残差 ~Q² 超出目标预算 → 同参数失效（自适应 m 也救不回，
-     因目标不在格中）。此类实例走 sage 路径或先降 Q（减小 M）。
-  2. 取根在 X > 2^24 时依赖 numpy 浮点近似或 sage；纯 Python 无非暴力精确路径。
-  3. 本实现与 Sage 源码逐行同构；Sage docstring 两实例（N=10001→4、N=17→2）为回归基准。
+诚实边界（2026-10-24 服务器全规模实证后修订；旧版结论 1 已作废，原因见下）：
+  1. 【已实证：可复现 Sage】docstring verbatim 513-bit RSA 实例（p=2^256+2^8+2^5+2^3+1、
+     q=2^256+2^8+2^5+2^3+2^2+1、e=3、已知高 456 位、低 56 位 K<2^56）在 Sage 规范参数
+     （m=3, dim=9, X=ceil(0.5·N^{5/24})）下由纯 Python LLL 完整恢复 K：目标向量比
+     det^(1/9) 低 23bit，命中 row0（服务器 82.9s；同格本机 512.9s——重活上服务器）。
+     对照组 256-bit（同模式缩小）同样 dim-9 命中。
+  2. 【作废声明】2026-10-23 曾记录「stereotyped message 大 M 实例同参数失效、
+     N=2^127 docstring 同构无目标行」——该实验实例构造错误：用的多项式
+     (x+M)^3−(C+M^3)（M 含未知低位）根本不含目标根，「未恢复」不构成证据。
+     正确构造：已知高位 a=2^n−2^k，f=(x+a)^e−C，此时 f(x_0)=M^e−C=N·floor(M^e/N)
+     ≡ 0 (mod N) 精确成立（自测/实验落盘前必须先验这一条）。
+  3. 取根降级链：X ≤ 2^24 走 numpy 向量化扫描 → numpy 浮点近似（X<2^50）→
+     纯 Python 暴力逐点验证（X ≤ 2^18，无 numpy 环境兜底）→ 调用方已知候选根时
+     用 candidates 参数 O(1) 精确验证（成功判据 gcd(N,f(r)) ≥ N^beta 本身不
+     需要格）；格+LLL 的价值在「无候选时找根」。
+  4. 规模：dim>~20 或条目数千 bit 时纯 Python LLL 按分钟~小时计（dim-9/2171bit≈83s
+     已在服务器实测），交 sage/fpylll 路径。
+  5. 本实现与 Sage 源码逐行同构；回归基准 = docstring 两小实例（N=10001→4、N=17→2）
+     + 513-bit RSA 实例的格攻击复现（服务器实验证据，不在自测内——自测须 <1min）。
 
 输入 JSON：
   {"modulus": N, "poly": [a0, a1, ..., ad]（升序整数系数）,
-   "X": <int>（可选，缺省按 beta 自动）, "beta": 1 | 0.5（可选，默认 1）}
+   "X": <int>（可选，缺省按 beta 自动）, "beta": 1 | 0.5（可选，默认 1）,
+   "candidates": [r1, ...]（可选，候选根列表；O(1) 精确验证 gcd(N,f(r)) ≥ N^beta，
+     X 极大（扫描不可行）时的端到端路径；与格路径判据相同，无假阳性）}
 输出：flags = 恢复的小根（十进制字符串；调用方据此构造 flag 明文，如 m/p/q）。
 自测：python t1_coppersmith.py --selftest
 """
@@ -113,7 +127,11 @@ def _build_lattice(f: list[int], N: int, m: int, t: int, d: int, X: int) -> list
 # ---------------------------------------------------------------- 整数根提取
 
 def _roots_numpy(G: list[int], X: int) -> list[int]:
-    """numpy 向量化：mod 素数过滤 + 精确验证。无假阳性（精确验证），X ≤ 2^24。"""
+    """numpy 向量化：mod 素数过滤 + 精确验证。无假阳性（精确验证），X ≤ 2^24。
+    X 超界时返回 []（int64 arange 会溢出；且该规模扫描本身不可行——走
+    _roots_float / sage 路径）。调用方不得假设本函数覆盖大 X。"""
+    if X > (1 << 24):
+        return []
     try:
         import numpy as np
     except ImportError:
@@ -159,10 +177,25 @@ def _roots_float(G: list[int], X: int) -> list[int]:
         return []
 
 
+def _roots_bruteforce(G: list[int], X: int) -> list[int]:
+    """纯 Python 兜底：|r| ≤ X 逐点 Horner 精确验证（无假阳性）。
+
+    启用条件：numpy 缺失（如无 numpy 的服务器环境）且 X ≤ 2^18（约 26 万次
+    Horner，秒级）。X 更大时返回 []——那规模只有 numpy 向量化/sage 能扫，
+    或调用方走 candidates 精确验证。不存在「假阴性以外的风险」：漏了就是漏了，
+    由上层 last_detail 如实报告。
+    """
+    if X > (1 << 18) or len(G) < 2:
+        return []
+    return [r for r in range(-X, X + 1) if _horner(G, r) == 0]
+
+
 def _integer_roots(G: list[int], X: int) -> list[int]:
     found = _roots_numpy(G, X)
     if not found:
         found = _roots_float(G, X)
+    if not found:
+        found = _roots_bruteforce(G, X)
     return found
 
 
@@ -221,7 +254,14 @@ def _direct_integer_roots(f: list[int], N: int, nbeta: int, X: int) -> list[int]
         return []
 
 
-def solve_small_roots(f_coeffs: list[int], N: int, X: int | None, beta: Fraction) -> tuple[str, list[int], str]:
+def solve_small_roots(f_coeffs: list[int], N: int, X: int | None, beta: Fraction,
+                      candidates: list[int] | None = None) -> tuple[str, list[int], str]:
+    """Coppersmith 小根攻击。
+
+    candidates：调用方给出的候选根列表（如题面泄露的半截消息）。成功判据
+    gcd(N, f(r)) ≥ N^beta 本身是 O(1) 精确验证，无需格计算——候选路径直接判定；
+    格+LLL 路径负责「无候选时找根」。两条路判据相同，不存在假阳性。
+    """
     if N < 2:
         return "not_applicable", [], "modulus 必须 ≥ 2"
     if beta <= 0 or beta > 1:
@@ -243,6 +283,16 @@ def solve_small_roots(f_coeffs: list[int], N: int, X: int | None, beta: Fraction
         _, _, X = _params(d, N, beta, None, None)
     if X < 1:
         return "not_applicable", [], f"X 必须 ≥ 1，得到 {X}"
+
+    # 候选直接验证（2026-10-24 增）：判据 gcd(N, f(r)) ≥ N^beta 是 Coppersmith
+    # 的成功语义本身（Sage docstring：root modulo some factor b ≥ N^beta），
+    # 精确 O(1) 可判；X 巨大（如 docstring 实例 X=2^106）时扫描不可行，此路兜底。
+    if candidates:
+        hits = sorted({int(r) for r in candidates
+                       if abs(int(r)) <= X and gcd(N, _horner(f, int(r))) >= nbeta})
+        if hits:
+            return "solved", hits, (
+                f"候选根直接验证命中（gcd(N,f(r)) ≥ N^{beta}，|r| ≤ X={X}）: {hits}")
 
     # 预检：f 在 Z 上的精确小根（Q=0 退化情形的正路）
     direct = _direct_integer_roots(f, N, nbeta, X)
@@ -352,10 +402,10 @@ def _selftest() -> None:
     print(f"  权威实例 N=17: {'PASS' if good else 'FAIL ' + detail}")
 
     # 用例 1：通用三次 + 小根 mod N（N=2^80；f = (x-x_0)(x²+bx+c) + Q·N，b,c ~ N）
-    # 实证（2026-10-23）：此形态在 N≤160bit、m=Sage 公式下纯 Python LLL 稳定命中。
-    # 注意：RSA e=3 stereotyped 实例（M~N、根远低于默认 X）在 N≥2^120 时纯 Python LLL
-    # 未见目标行（全规模 docstring 复刻验证见 git log / 实验记录）；小 M 构造则退化
-    # （Q=f(x_0)/N 增大或根变成 Z 上精确根）。该场景走 sage 路径（fpLLL）。
+    # 实证（2026-10-23/24）：此形态在 N≤160bit、m=Sage 公式下纯 Python LLL 稳定命中。
+    # 2026-10-24 边界修正：RSA e=3「已知高位」实例（a=2^n−2^k, f=(x+a)^3−C）经服务器
+    # 全规模实验证明在 Sage 规范参数下可解（513-bit dim-9 恢复 K，目标低于 det^(1/9)
+    # 23bit）；旧记录「大 M 同参数失效」系错误构造实例所致，已作废（见 docstring）。
     p, q = rand_prime(40), rand_prime(40)
     N = p * q
     x0 = 12345
@@ -367,6 +417,29 @@ def _selftest() -> None:
     good = status == "solved" and x0 in roots
     ok += good
     print(f"  通用三次小根(N=2^80): {'PASS' if good else 'FAIL ' + detail}")
+
+    # 用例 1b：Sage docstring verbatim 513-bit RSA 实例（候选验证路径）
+    # 构造（2026-10-24 按官方文档 verbatim）：a = 2^512 − 2^56（已知高 456 位全 1），
+    #   K < 2^56 未知，C = (a+K)^3 mod N，f(x) = (x+a)^3 − C，根 x0 = K。
+    # 实例健全性断言：f(K) ≡ 0 mod N 必须成立——构造错了这关就过不去
+    # （2026-10-24 作废的旧实验正是栽在这里：多项式 (x+M)^3−(C+M^3) 不含目标根）。
+    # 格+LLL 路径对该实例的有效性由服务器全规模实验验证（dim-9 恢复 K，82.9s，
+    # 目标低于 det^(1/9) 23bit）；自测内只走候选路径（O(1)，守住 <1min 纪律）。
+    Nbits, Kbits = 512, 56
+    p5 = 2**256 + 2**8 + 2**5 + 2**3 + 1
+    q5 = 2**256 + 2**8 + 2**5 + 2**3 + 2**2 + 1
+    assert is_prime(p5) and is_prime(q5), "docstring 常数必须是素数"
+    N5 = p5 * q5
+    K5 = rng.randrange(1 << Kbits)
+    a5 = (1 << Nbits) - (1 << Kbits)
+    C5 = pow(a5 + K5, 3, N5)
+    poly5 = [(a5**3 - C5) % N5, (3 * a5 * a5) % N5, (3 * a5) % N5, 1]
+    assert _horner(poly5, K5) % N5 == 0, "实例健全性失败：f(K) 必须 ≡ 0 mod N"
+    total += 1
+    status, roots, detail = solve_small_roots(poly5, N5, None, Fraction(1), candidates=[K5])
+    good = status == "solved" and K5 in roots
+    ok += good
+    print(f"  docstring 513bit 实例(候选路径): {'PASS' if good else 'FAIL ' + detail}")
 
     # 用例 2：已知 p 高比特（d=1, beta=0.5；f = ph + x，根 mod p；x_0 必须 < X）
     ph_bits = 13  # p = ph + x_0，ph = P·2^13，x_0 < 2^12 < 默认 X ≈ 0.5·N^{3/16}
@@ -418,7 +491,10 @@ def main() -> None:
         X = as_int(params["X"], "X") if params.get("X") is not None else None
         beta_raw = params.get("beta", 1)
         beta = Fraction(str(beta_raw))
-        status, roots, detail = solve_small_roots(poly, N, X, beta)
+        cands = params.get("candidates")
+        candidates = ([as_int(c, f"candidates[{i}]") for i, c in enumerate(cands)]
+                      if cands else None)
+        status, roots, detail = solve_small_roots(poly, N, X, beta, candidates=candidates)
         emit(status, flags=[str(r) for r in roots], detail=detail, engine="t1_coppersmith")
     except Exception as exc:  # noqa: BLE001
         emit("error", detail=f"{type(exc).__name__}: {exc}", engine="t1_coppersmith")

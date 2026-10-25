@@ -80,3 +80,25 @@ func TestShellExecGuidance(t *testing.T) {
 		t.Error("recon suffix should mention subfinder")
 	}
 }
+
+// TestCTFGovernanceSection 锁死 P0-1 治理段的核心契约（2026-10-25）：
+// 六模板一个不少、IO 契约与 not_applicable 语义在场、四条纪律齐全。
+// 防重构时把「模板优先」悄悄删掉——那正是 AICrypto 实证的头号失败模式。
+func TestCTFGovernanceSection(t *testing.T) {
+	s := CTFGovernanceSection()
+	if strings.TrimSpace(s) == "" {
+		t.Fatal("CTF governance section empty")
+	}
+	for _, want := range []string{
+		// 六模板 + IO 契约
+		"t1_coppersmith.py", "t2_ecdsa_hnp.py", "t3_truncated_lfsr.py",
+		"t4_boneh_durfee.py", "t5_dlp_bsgs_ph.py", "t6_hastad_broadcast.py",
+		"scripts/ctf_sage/", "stdin", "not_applicable",
+		// 四条纪律
+		"前提检查", "禁网", "flag", "降级",
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("governance section missing %q", want)
+		}
+	}
+}

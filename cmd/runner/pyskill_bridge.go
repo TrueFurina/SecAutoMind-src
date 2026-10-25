@@ -228,6 +228,77 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 //   ① 从 description regex 提取 text（密文）和 key（密钥）
 //   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
 func (r *pySkillRunner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
+	params := r.buildSkillParams(ctx, ch)
+
+	// 从 description 提取 text（密文）——匹配 "密文: xxx" / "cipher: xxx" / "text=xxx" 等常见格式
+	if text := extractSkillText(ch.Description); text != "" {
+		params["text"] = text
+	}
+	// 从 description 提取 key（Vigenère 等需要密钥）
+	if key := extractSkillKey(ch.Description); key != "" {
+		params["key"] = key
+	}
+
+	// 附件：如果有 URL，下载第一个到临时文件并传 path
+	if len(ch.AttachmentURLs) > 0 {
+		params["attachment_urls"] = ch.AttachmentURLs
+		if localPath, err := r.downloadAttachment(ctx, ch.AttachmentURLs[0]); err == nil {
+			params["path"] = localPath
+		} else {
+			r.logger.Debug("附件下载失败，跳过 path 参数", zap.String("url", ch.AttachmentURLs[0]), zap.Error(err))
+		}
+	}
+
+	out, ok := r.execSkillSubprocess(ctx, skillName, params)
+	if !ok {
+		return nil, false
+	}
+
+	// 解析 JSON 返回值
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		// 有些 skill 可能返回 list 或直接字符串
+		r.logger.Debug("skill 返回值非 dict", zap.String("skill", skillName), zap.String("raw", out))
+		return nil, false
+	}
+
+	// __base64__ 键 = Python 端检测到原返回值是 bytes，包装成 base64 dict
+	// bytes 返回值通常是二进制结果，不含 flag 字符串，直接跳过
+	if _, isB64 := result["__base64__"]; isB64 {
+		r.logger.Debug("skill 返回 bytes（已 base64 包装），跳过", zap.String("skill", skillName))
+		return nil, false
+	}
+
+	// 提取 flag
+	solved, _ := result["solved"].(bool)
+	okFlag, _ := result["ok"].(bool)
+	if solved || okFlag {
+		if flag, ok := result["flag"].(string); ok && flag != "" {
+			return []string{flag}, true
+		}
+		if flags, ok := result["flags"].([]interface{}); ok {
+			out := make([]string, 0, len(flags))
+			for _, f := range flags {
+				if s, ok := f.(string); ok && s != "" {
+					out = append(out, s)
+				}
+			}
+			if len(out) > 0 {
+				return out, true
+			}
+		}
+		// 有些 skill 返回 flow/note 但没 flag——不算成功
+	}
+
+	return nil, false
+}
+
+// buildSkillParams 从 Challenge 组装 skill 入参（RunSkill / RunSkillRich 共用）。
+// 2026-10-25 参数契约：Runner 之前只传 4 字段（name/category/description/attachment_urls），
+// 但 skill 通常需要 text/path/key。现在：
+//   ① 从 description regex 提取 text（密文）和 key（密钥）
+//   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
+func (r *pySkillRunner) buildSkillParams(ctx context.Context, ch *ctfplatform.Challenge) map[string]interface{} {
 	params := map[string]interface{}{
 		"name":        ch.Title,
 		"category":    ch.Category,
@@ -252,11 +323,18 @@ func (r *pySkillRunner) RunSkill(ctx context.Context, skillName string, ch *ctfp
 			r.logger.Debug("附件下载失败，跳过 path 参数", zap.String("url", ch.AttachmentURLs[0]), zap.Error(err))
 		}
 	}
+	return params
+}
 
+// execSkillSubprocess 以子进程跑单个 skill 模块，返回 (原始输出文本, 是否成功)。
+// RunSkill 与 RunSkillRich 共用同一调用契约：skillsDir 进 sys.path → import 模块 →
+// run(json params) → print(json.dumps(result))；bytes 值递归 sanitize 成 base64 dict。
+// 输出为 stdout/stderr 合并文本，解析方式由调用方决定（flag 提取或原样交 LLM）。
+func (r *pySkillRunner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}) (string, bool) {
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		r.logger.Warn("skill 参数序列化失败", zap.String("skill", skillName), zap.Error(err))
-		return nil, false
+		return "", false
 	}
 
 	// python -c 脚本：递归 sanitize 所有 bytes 值为 base64 包装 dict（防止 json.dumps 崩溃）
@@ -295,53 +373,30 @@ except Exception as _e:
 
 	if ctx2.Err() == context.DeadlineExceeded {
 		r.logger.Warn("skill 超时", zap.String("skill", skillName), zap.Duration("timeout", r.timeout))
-		return nil, false
+		return "", false
 	}
 	if err != nil {
 		r.logger.Debug("skill 执行失败",
 			zap.String("skill", skillName),
 			zap.Error(err),
 			zap.String("stderr", string(out)))
-		return nil, false
+		return "", false
 	}
+	return string(out), true
+}
 
-	// 解析 JSON 返回值
-	var result map[string]interface{}
-	if err := json.Unmarshal(out, &result); err != nil {
-		// 有些 skill 可能返回 list 或直接字符串
-		r.logger.Debug("skill 返回值非 dict", zap.String("skill", skillName), zap.String("raw", string(out)))
-		return nil, false
+// RunSkillRich 是 internal/runnerl3.RichSkillRunner 的实现（P0-1 ctf_sage 模板接入，2026-10-25）。
+// 与 RunSkill 的两点区别：
+//  ① extra（LLM 经 execute_python 的 params 字段传入的数学参数：n/e/c/f_coeffs/sigs…）
+//     并入 skill params，优先级高于 description 正则提取值——数学模板要精确参数，不要猜；
+//  ② 返回完整结果文本而非只提取 flag——数学模板的产出是中间量（小根/私钥/明文），
+//     flag 契约会把它们丢掉；LLM 需要看到原始结果才能决定下一步（如解密得 flag）。
+func (r *pySkillRunner) RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool) {
+	params := r.buildSkillParams(ctx, ch)
+	for k, v := range extra {
+		params[k] = v
 	}
-
-	// __base64__ 键 = Python 端检测到原返回值是 bytes，包装成 base64 dict
-	// bytes 返回值通常是二进制结果，不含 flag 字符串，直接跳过
-	if _, isB64 := result["__base64__"]; isB64 {
-		r.logger.Debug("skill 返回 bytes（已 base64 包装），跳过", zap.String("skill", skillName))
-		return nil, false
-	}
-
-	// 提取 flag
-	solved, _ := result["solved"].(bool)
-	ok, _ := result["ok"].(bool)
-	if solved || ok {
-		if flag, ok := result["flag"].(string); ok && flag != "" {
-			return []string{flag}, true
-		}
-		if flags, ok := result["flags"].([]interface{}); ok {
-			out := make([]string, 0, len(flags))
-			for _, f := range flags {
-				if s, ok := f.(string); ok && s != "" {
-					out = append(out, s)
-				}
-			}
-			if len(out) > 0 {
-				return out, true
-			}
-		}
-		// 有些 skill 返回 flow/note 但没 flag——不算成功
-	}
-
-	return nil, false
+	return r.execSkillSubprocess(ctx, skillName, params)
 }
 
 // extractSkillText 从 Challenge.Description 中提取密文文本。

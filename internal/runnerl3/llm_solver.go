@@ -58,6 +58,18 @@ type SkillRunner interface {
 	RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool)
 }
 
+// RichSkillRunner 是 SkillRunner 的可选富结果扩展（P0-1 ctf_sage 模板接入，2026-10-25）。
+// 存在原因：数学模板（t1-t6）的产出是中间量（小根/私钥/明文），flag 契约会把它们
+// 丢掉，LLM 拿不到任何可用信息；且 execute_python 工具描述一直承诺 params 可传、
+// 实现却忽略（LLM 无法向 skill 传数学参数）。本接口同时补这两个洞：
+//   - extra：LLM 经工具参数 params 传入的数学参数（n/e/c/f_coeffs/sigs...）；
+//   - 返回完整结果文本（截断后进 ToolMessage），由 LLM 决定怎么用。
+// 实现方（cmd/runner 的 *pySkillRunner）可选实现；未实现时 execute_python 自动
+// 回落到既有 flag 契约——现有 fake 与生产行为零变化。
+type RichSkillRunner interface {
+	RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool)
+}
+
 // LLMFallback 是 Layer 3（真 token 成本）的求解器。
 type LLMFallback struct {
 	// model 放宽为接口（BaseChatModel = BaseModel[*schema.Message]）：生产注入
@@ -337,6 +349,16 @@ skill_name 可选值（按题目类别选）：
 - pwn: pwn_checksec, pwn_ret2libc, pwn_ret2win, pwn_ret2dlresolve, pwn_canary_bruteforce
 - crypto: factor_integer, rsa_wiener_attack, rsa_hastad_attack, xor_bruteforce
 - misc: zip_crack, image_steg, pcap_analyze
+- crypto 数学模板（ctf_sage_*，纯 Python 自包含，P0-1 接入；数学参数必须经 params 传入，
+  返回值含中间量如小根/私钥/明文，由你决定后续怎么用）：
+  ctf_sage_t1_coppersmith  → params: {"modulus":N,"poly":[a0..ad],"X":可选,"beta":"1"|"0.5","candidates":可选}
+  ctf_sage_t2_ecdsa_hnp    → params: {"mode":"nonce_reuse","n":N,"r":r,"s1":s1,"z1":z1,"s2":s2,"z2":z2}
+                              或 {"mode":"hnp","n":N,"nonce_bits":k,"sigs":[{"r":..,"s":..,"z":..},...]}
+  ctf_sage_t3_truncated_lfsr → params: {"mode":"full","outputs":[...],"width":w,"predict_count":k}
+                              或 {"mode":"truncated","outputs":[...],"width":w,"known_high":k,"taps":[...]}
+  ctf_sage_t4_boneh_durfee → params: {"n":N,"e":e,"c":可选,"delta":0.26}
+  ctf_sage_t5_dlp_bsgs_ph  → params: {"g":g,"h":h,"p":p,"order":可选}
+  ctf_sage_t6_hastad_broadcast → params: {"e":e,"pairs":[[n1,c1],...]}
 参数中 skill_name 必填，params 选填（JSON 对象，skill 的特殊参数）。`),
 			ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 				"skill_name": {
@@ -395,6 +417,7 @@ func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *c
 
 // toolExecutePython 调 pyBridge.RunSkill（subprocess 执行 Python skill）。
 // 硬限：120s 子进程超时（由 ctx 控制 + bridge 自身 timeout）。
+// P0-1：params 透传 + 富结果路径见下方 if rich 块与 parseExtraParams。
 func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any, ch *ctfplatform.Challenge) string {
 	if f.pyBridge == nil {
 		return "[execute_python 不可用：pyBridge 未初始化]"
@@ -409,6 +432,23 @@ func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any
 	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
+	// P0-1（2026-10-25）：args["params"] 透传。工具描述一直承诺可传 skill 特殊
+	// 参数，旧实现直接忽略——ctf_sage 数学模板（需要 n/e/c/f_coeffs 等入参）
+	// 因此在 L3 不可用。RichSkillRunner + 非空 params 双条件才走富结果路径，
+	// 否则逐字节保持旧行为（现有 fake 与生产零变化）。
+	if rich, ok := f.pyBridge.(RichSkillRunner); ok {
+		if extra := parseExtraParams(args["params"]); extra != nil {
+			text, ran := rich.RunSkillRich(execCtx, skillName, ch, extra)
+			if !ran {
+				return fmt.Sprintf("[execute_python skill 执行失败或无依赖] skill=%s", skillName)
+			}
+			if strings.TrimSpace(text) == "" {
+				return fmt.Sprintf("[execute_python skill 执行成功但无输出] skill=%s", skillName)
+			}
+			return fmt.Sprintf("[execute_python 成功] skill=%s → %s", skillName, truncate(text, 4000))
+		}
+	}
+
 	flags, ok := f.pyBridge.RunSkill(execCtx, skillName, ch)
 	if !ok {
 		return fmt.Sprintf("[execute_python skill 执行失败或无依赖] skill=%s", skillName)
@@ -419,6 +459,30 @@ func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any
 	}
 
 	return fmt.Sprintf("[execute_python 成功] skill=%s → flags: %s", skillName, strings.Join(flags, ", "))
+}
+
+// parseExtraParams 解析 execute_python 的 params 参数。
+// 容错两种形态：JSON 字符串（工具契约写法）或已解析的 object（部分模型直发）。
+// 空/缺失/解析失败 → nil（调用方回落到 flag 契约，不制造新失败模式）。
+func parseExtraParams(v any) map[string]any {
+	switch t := v.(type) {
+	case map[string]any:
+		if len(t) == 0 {
+			return nil
+		}
+		return t
+	case string:
+		s := strings.TrimSpace(t)
+		if s == "" || s == "{}" {
+			return nil
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(s), &m); err != nil || len(m) == 0 {
+			return nil
+		}
+		return m
+	}
+	return nil
 }
 
 // toolReadAttachment 下载附件到 /tmp，返回路径 + 文件信息 + strings 前 80 行。
@@ -546,7 +610,10 @@ func (f *LLMFallback) buildSystemPrompt() string {
 解题流程（按题类别选策略）：
 - reverse: 先用 read_attachment 下载二进制，再用 execute_python(angr_decompile 或 angr_symbolic) 做反编译/符号执行
 - pwn: read_attachment → execute_python(pwn_checksec) 查保护 → pwn_ret2libc/ret2win 打利用
-- crypto: 先人工推理（公式攻击/参数异常），参数过大时 execute_python 跑因子分解/rsa 攻击
+- crypto: 优先 execute_python 调 ctf_sage_* 数学模板（t1 Coppersmith 小根 / t2 ECDSA-HNP /
+  t3 截断 LFSR / t4 Boneh-Durfee / t5 DLP / t6 Håstad 广播）——先从题干提取数学参数
+  （n/e/c/签名序列/输出序列）经 params 传入；模板返回 not_applicable = 前提不满足，
+  换攻击路或换模板；人工推理只用于模板库不适用的题。禁止从零推格攻击或重写 LLL。
 - web: 纯人工推理（SQLi/XSS/反序列化），不需要工具
 - misc: 看附件类型选工具（PCAP→pcap_analyze，图片→image_steg，压缩包→zip_crack）
 

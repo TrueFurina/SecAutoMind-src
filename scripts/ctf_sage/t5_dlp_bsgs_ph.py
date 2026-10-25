@@ -35,7 +35,12 @@ def _baby_step_giant_step(g: int, h: int, p: int, order: int) -> int | None:
         e = e * g % p
     factor = pow(g, -m, p) if m else 1
     gamma = h % p
-    for i in range(m + 1):
+    # 巨步必须覆盖 i ∈ [0, ceil(order/m)]：旧代码 range(m+1) 在 m·(m+1) < order 时
+    # 漏解——最小反例 order=3（m=1，只覆盖 d∈{0,1}，d=2 永远找不到）。
+    # 2026-10-25 p=1009(order=1008=2^4·3^2·7) 冒烟实测抓出：PH 数位 d=2 全挂。
+    # 任何命中都满足 d ≡ x (mod order)（群同态），故直接 % order 返回即真解。
+    steps = (order + m - 1) // m
+    for i in range(steps + 1):
         if gamma in table:
             return (i * m + table[gamma]) % order
         gamma = gamma * factor % p
@@ -74,13 +79,19 @@ def solve_dlp(g: int, h: int, p: int, order: int | None = None) -> tuple[str, in
     residues, moduli = [], []
     for q, e in factors.items():
         pe = q**e
-        # 子群里求 x mod q^e：数位剥离（digit-by-digit）
-        gamma = pow(g, order // pe, p)
+        # 数位剥离（digit-by-digit）：每位 d_k ∈ [0, q)。
+        # 关键：hk = (h·g^(-x_k))^(order/q^(k+1)) 落在 **阶 q 的子群**里
+        # （x-x_k ≡ d_k·q^k mod q^(k+1) ⇒ hk = (g^(order/q))^{d_k}），
+        # 所以 BSGS 的生成元必须是 gamma_q = g^(order/q)（阶 q），不是 g^(order/pe)。
+        # 2026-10-25 修真 bug：旧代码用 g^(order/pe)，e=1 时两者巧合相同故自测全过，
+        # q^e（e≥2，如 order=100=2²·5² 的 p=101）时 BSGS 在错误子群里必然找不到 d_k。
+        # 回归：p=101, g=2, h=8 → x=3（旧代码报「PH 子步失败 q=2 k=0」）。
+        gamma_q = pow(g, order // q, p)
         xk = 0
         for k in range(e):
             hk = (pow(pow(g, xk, p), -1, p) * h) % p
             hk = pow(hk, order // (q ** (k + 1)), p)
-            d = _baby_step_giant_step(gamma, hk, p, q)
+            d = _baby_step_giant_step(gamma_q, hk, p, q)
             if d is None:
                 return "error", None, f"PH 子步失败：q={q}, k={k}（子群结构异常）"
             xk += d * q**k
@@ -145,6 +156,36 @@ def _selftest() -> None:
     good = status == "not_applicable"
     ok += good
     print(f"  前提拒绝: status={status} {'PASS' if good else 'FAIL'}")
+    # 用例 4：重复素因子阶（e≥2 数位剥离）——2026-10-25 服务器冒烟试出的真 bug 回归：
+    # 旧实现 BSGS 生成元误用 g^(order/pe)，q^e（e≥2）场景必报「PH 子步失败」。
+    # p=101: order=100=2²·5²，g=2 是生成元，h=8=2³ → x=3。
+    for p_, g_, h_, expect in [(101, 2, 8, 3)]:
+        total += 1
+        status, got, detail = solve_dlp(g_, h_, p_, None)
+        good = status == "solved" and got == expect
+        ok += good
+        print(f"  重复素因子(order={p_-1}=2^2*5^2): x={expect} got={got} {'PASS' if good else 'FAIL ' + str(detail)}")
+    # p=1009: order=1008=2^4·3^2·7 —— 4 位 + 2 位 + 1 位混合剥离
+    p4 = 1009
+    while not _is_prime(p4):
+        p4 += 2
+    g4 = _find_generator(p4)
+    for x in (0, 1, 7, 123, 1007):
+        h4 = pow(g4, x, p4)
+        total += 1
+        status, got, detail = solve_dlp(g4, h4, p4, p4 - 1)
+        good = status == "solved" and got == x
+        ok += good
+        print(f"  多位剥离(order={p4-1}): x={x} got={got} {'PASS' if good else 'FAIL ' + str(detail)}")
+    # 显式子群 order=3²（e=2，子群+多位组合）
+    g9 = pow(g4, (p4 - 1) // 9, p4)
+    for x in (0, 1, 4, 8):
+        h9 = pow(g9, x, p4)
+        total += 1
+        status, got, detail = solve_dlp(g9, h9, p4, 9)
+        good = status == "solved" and got == x
+        ok += good
+        print(f"  子群9(order=3^2): x={x} got={got} {'PASS' if good else 'FAIL ' + str(detail)}")
     print(f"t5 selftest: {ok}/{total}")
     sys.exit(0 if ok == total else 1)
 
