@@ -21,8 +21,8 @@
       "hit_first": true,
       "scanned_bytes": 34,
       "sample_candidates": [
-        "d0g3{71b2b56162a46397d979de964c}",
-        "d0g3{71b2b56162a46397d979de964c}"
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -33,11 +33,11 @@
       "hit_first": false,
       "scanned_bytes": 69092,
       "sample_candidates": [
-        "D0g3{cyzcc_have_ten_girlfriends}",
-        "flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}",
-        "flag{722b6d90a64c25782af42d14d784ce1c}",
-        "d0g3{71b2b5616ee2a4639a07d979ebde964c}",
-        "d0g3{71b2b5616**2a4639**7d979**de964c}"
+        "D0g3{****}",
+        "flag{****}",
+        "flag{****}",
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -48,8 +48,8 @@
       "hit_first": true,
       "scanned_bytes": 74,
       "sample_candidates": [
-        "flag{7h3_73rr1b13_7h1ng_15_7h47_7h3_p457_c4n'7_b3_70rn_0u7_by_175_r0075}",
-        "flag{7h3_73rr1b13_7h1ng_15_7h47_7h3_p457_c4n'7_b3_70rn_0u7_by_175_r0075}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -60,8 +60,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "flag{a4e3676e1e340581f7018972dd1905be}",
-        "flag{a4e3676e1e340581f7018972dd1905be}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -120,8 +120,8 @@
       "hit_first": false,
       "scanned_bytes": 3012,
       "sample_candidates": [
-        "DASCTF{%d-%d}",
-        "DASCTF{%d-%d}"
+        "DASCTF{****}",
+        "DASCTF{****}"
       ]
     },
     {
@@ -132,8 +132,8 @@
       "hit_first": true,
       "scanned_bytes": 43,
       "sample_candidates": [
-        "flag{e3c6235c-05d9434d-04b1edf3-04034083}",
-        "flag{e3c6235c-05d9434d-04b1edf3-04034083}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -144,8 +144,8 @@
       "hit_first": true,
       "scanned_bytes": 24,
       "sample_candidates": [
-        "flag{Che11y_1s_EG0IST}",
-        "flag{Che11y_1s_EG0IST}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -156,8 +156,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{760958c9-cca9-458b-9cbe-ea07aa1668e4}",
-        "flag{760958c9-cca9-458b-9cbe-ea07aa1668e4}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -168,8 +168,8 @@
       "hit_first": true,
       "scanned_bytes": 38,
       "sample_candidates": [
-        "ISCTF{as_her_never_will_come_back!!}",
-        "ISCTF{as_her_never_will_come_back!!}"
+        "ISCTF{****}",
+        "ISCTF{****}"
       ]
     },
     {
@@ -180,8 +180,8 @@
       "hit_first": true,
       "scanned_bytes": 23,
       "sample_candidates": [
-        "flag{WelC0m5_TO_H3re}",
-        "flag{WelC0m5_TO_H3re}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -219,8 +219,8 @@
       "hit_first": true,
       "scanned_bytes": 36,
       "sample_candidates": [
-        "UDOM{4dvanc3d_3ncrypt10n_5tand4rd}",
-        "UDOM{4dvanc3d_3ncrypt10n_5tand4rd}"
+        "UDOM{****}",
+        "UDOM{****}"
       ]
     },
     {
@@ -231,8 +231,8 @@
       "hit_first": true,
       "scanned_bytes": 39,
       "sample_candidates": [
-        "UMDCTF{d1d_y0u_use_k4s!sk1_0r_IoC???}",
-        "UMDCTF{d1d_y0u_use_k4s!sk1_0r_IoC???}"
+        "UMDCTF{****}",
+        "UMDCTF{****}"
       ]
     },
     {
@@ -252,8 +252,8 @@
       "hit_first": false,
       "scanned_bytes": 670,
       "sample_candidates": [
-        "D0g3{1nV1sible_flag_Can_You_find?!}",
-        "D0g3{1nV1sible_flag_Can_You_find?!}"
+        "D0g3{****}",
+        "D0g3{****}"
       ]
     },
     {
@@ -264,8 +264,8 @@
       "hit_first": false,
       "scanned_bytes": 1146,
       "sample_candidates": [
-        "flag{1200-2016-GRANDMENU-RCHITECTURE-1335}",
-        "flag{1200-2016-GRANDMENU-RCHITECTURE-1335}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -276,8 +276,8 @@
       "hit_first": false,
       "scanned_bytes": 776,
       "sample_candidates": [
-        "flag{zip&crc_we_can_do_it}",
-        "flag{zip&crc_we_can_do_it}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -288,8 +288,8 @@
       "hit_first": false,
       "scanned_bytes": 639,
       "sample_candidates": [
-        "flag{j5w2a0o0}",
-        "flag{j5w2a0o0}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -300,11 +300,11 @@
       "hit_first": false,
       "scanned_bytes": 69092,
       "sample_candidates": [
-        "D0g3{cyzcc_have_ten_girlfriends}",
-        "flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}",
-        "flag{722b6d90a64c25782af42d14d784ce1c}",
-        "d0g3{71b2b5616ee2a4639a07d979ebde964c}",
-        "d0g3{71b2b5616**2a4639**7d979**de964c}"
+        "D0g3{****}",
+        "flag{****}",
+        "flag{****}",
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -315,8 +315,8 @@
       "hit_first": true,
       "scanned_bytes": 31,
       "sample_candidates": [
-        "ByteCTF{1golcwm6q_ymz7fm0dfx}",
-        "ByteCTF{1golcwm6q_ymz7fm0dfx}"
+        "ByteCTF{****}",
+        "ByteCTF{****}"
       ]
     },
     {
@@ -327,8 +327,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{27033a89-55dd-46dc-82b9-cd89a4da957d}",
-        "flag{27033a89-55dd-46dc-82b9-cd89a4da957d}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -339,8 +339,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{866q3755-t358-5119-txnr-juw666e8099d}",
-        "flag{866q3755-t358-5119-txnr-juw666e8099d}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -351,8 +351,8 @@
       "hit_first": true,
       "scanned_bytes": 36,
       "sample_candidates": [
-        "flag{dc1d03c554150acedca6d71ce394}",
-        "flag{dc1d03c554150acedca6d71ce394}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -363,8 +363,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{70854278-ea0c-462e-bc18-468c7a04a505}",
-        "flag{70854278-ea0c-462e-bc18-468c7a04a505}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -375,8 +375,8 @@
       "hit_first": true,
       "scanned_bytes": 20,
       "sample_candidates": [
-        "flag{PHisHhuntinG}",
-        "flag{PHisHhuntinG}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -387,8 +387,8 @@
       "hit_first": true,
       "scanned_bytes": 17,
       "sample_candidates": [
-        "flag{WelcOmeTO}",
-        "flag{WelcOmeTO}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -399,8 +399,8 @@
       "hit_first": true,
       "scanned_bytes": 36,
       "sample_candidates": [
-        "flag{N0wY0u_Kn0wH0wt0_ANAlys1sDNS}",
-        "flag{N0wY0u_Kn0wH0wt0_ANAlys1sDNS}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -411,8 +411,8 @@
       "hit_first": true,
       "scanned_bytes": 30,
       "sample_candidates": [
-        "flag{5tay4wayFr0m8reakp0int}",
-        "flag{5tay4wayFr0m8reakp0int}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -423,8 +423,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "flag{e27d3de27d3de27d3d7d3de27dde27d3}",
-        "flag{e27d3de27d3de27d3d7d3de27dde27d3}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -457,8 +457,8 @@
       "hit_first": true,
       "scanned_bytes": 29,
       "sample_candidates": [
-        "ISCTF{7HI5_i5_R3AllY_3z_R3}",
-        "ISCTF{7HI5_i5_R3AllY_3z_R3}"
+        "ISCTF{****}",
+        "ISCTF{****}"
       ]
     },
     {
@@ -469,8 +469,8 @@
       "hit_first": true,
       "scanned_bytes": 30,
       "sample_candidates": [
-        "ISCTF{Th3_ROmaNtic_Of_Rad1o}",
-        "ISCTF{Th3_ROmaNtic_Of_Rad1o}"
+        "ISCTF{****}",
+        "ISCTF{****}"
       ]
     },
     {
@@ -481,8 +481,8 @@
       "hit_first": true,
       "scanned_bytes": 24,
       "sample_candidates": [
-        "ISCTF{Beat_SfTian!!!!}",
-        "ISCTF{Beat_SfTian!!!!}"
+        "ISCTF{****}",
+        "ISCTF{****}"
       ]
     },
     {
@@ -493,8 +493,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{ad9bca48-c7b0-4bd6-b6fb-aef90090bb98}",
-        "flag{ad9bca48-c7b0-4bd6-b6fb-aef90090bb98}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -505,8 +505,8 @@
       "hit_first": true,
       "scanned_bytes": 46,
       "sample_candidates": [
-        "NSSCTF{7d9ddff2-2d67-4eba-9e48-b91c26c42337}",
-        "NSSCTF{7d9ddff2-2d67-4eba-9e48-b91c26c42337}"
+        "NSSCTF{****}",
+        "NSSCTF{****}"
       ]
     },
     {
@@ -517,8 +517,8 @@
       "hit_first": true,
       "scanned_bytes": 45,
       "sample_candidates": [
-        "flag3{8f0dffac-5801-44a9-bd49-e66192ce4f57}",
-        "flag3{8f0dffac-5801-44a9-bd49-e66192ce4f57}"
+        "flag3{****}",
+        "flag3{****}"
       ]
     },
     {
@@ -547,8 +547,8 @@
       "hit_first": true,
       "scanned_bytes": 45,
       "sample_candidates": [
-        "flag3{8f0dffac-5801-44a9-bd49-e66192ce4f57}",
-        "flag3{8f0dffac-5801-44a9-bd49-e66192ce4f57}"
+        "flag3{****}",
+        "flag3{****}"
       ]
     },
     {
@@ -577,8 +577,8 @@
       "hit_first": true,
       "scanned_bytes": 41,
       "sample_candidates": [
-        "flag{app_part2!@#_The_Last_Part_U_Fin3}",
-        "flag{app_part2!@#_The_Last_Part_U_Fin3}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -589,8 +589,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "flag{22f0478916408f8026b4eb61204ab930}",
-        "flag{22f0478916408f8026b4eb61204ab930}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -601,8 +601,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "flag{3bfc26f5d9f932ccf73f356019585edf}",
-        "flag{3bfc26f5d9f932ccf73f356019585edf}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -613,8 +613,8 @@
       "hit_first": true,
       "scanned_bytes": 31,
       "sample_candidates": [
-        "flag{can~you~speak~chi~ness~}",
-        "flag{can~you~speak~chi~ness~}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -625,8 +625,8 @@
       "hit_first": true,
       "scanned_bytes": 24,
       "sample_candidates": [
-        "flag{this_is_the_flag}",
-        "flag{this_is_the_flag}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -637,8 +637,8 @@
       "hit_first": true,
       "scanned_bytes": 50,
       "sample_candidates": [
-        "nactf{1_h0pe_y0u_d1dnt_d0_th4t_by_h4nd_87ce45b0}",
-        "nactf{1_h0pe_y0u_d1dnt_d0_th4t_by_h4nd_87ce45b0}"
+        "nactf{****}",
+        "nactf{****}"
       ]
     },
     {
@@ -649,8 +649,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{QWB_water_problem_give_you_the_score}",
-        "flag{QWB_water_problem_give_you_the_score}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -661,8 +661,8 @@
       "hit_first": true,
       "scanned_bytes": 27,
       "sample_candidates": [
-        "flag{te11_me_y0u_like_it}",
-        "flag{te11_me_y0u_like_it}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -718,8 +718,8 @@
       "hit_first": true,
       "scanned_bytes": 37,
       "sample_candidates": [
-        "UDOM{M0RS3S0UND5B3TT3R1NMIL1TAR13S}",
-        "UDOM{M0RS3S0UND5B3TT3R1NMIL1TAR13S}"
+        "UDOM{****}",
+        "UDOM{****}"
       ]
     },
     {
@@ -745,11 +745,11 @@
       "hit_first": false,
       "scanned_bytes": 95230,
       "sample_candidates": [
-        "VNCTF{TimeFl20211205ightMachine}",
-        "VNCTF{801f190737434100e7d2790bd5b0732e}",
-        "VNCTF{93ee7688-f216-42cb-a5c2-191ff4e412ba}",
-        "VNCTF{93ee7688-f216-42cb-a5c2-191ff4e412ba}",
-        "VNCTF{ecd63ae5-8945-4ac4-b5a5-34fc3ade81e7}"
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}"
       ]
     },
     {
@@ -760,8 +760,8 @@
       "hit_first": true,
       "scanned_bytes": 41,
       "sample_candidates": [
-        "vnctf{d23903879df57503879bcdf1efc141fe}",
-        "vnctf{d23903879df57503879bcdf1efc141fe}"
+        "vnctf{****}",
+        "vnctf{****}"
       ]
     },
     {
@@ -787,8 +787,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "flag{3901afdc7f79dedfdb062a241eb3a575}",
-        "flag{3901afdc7f79dedfdb062a241eb3a575}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -799,8 +799,8 @@
       "hit_first": true,
       "scanned_bytes": 36,
       "sample_candidates": [
-        "flag{5hen_m3_5hi_kuai_1e_xin9_Qiu}",
-        "flag{5hen_m3_5hi_kuai_1e_xin9_Qiu}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -811,11 +811,11 @@
       "hit_first": true,
       "scanned_bytes": 69092,
       "sample_candidates": [
-        "D0g3{cyzcc_have_ten_girlfriends}",
-        "flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}",
-        "flag{722b6d90a64c25782af42d14d784ce1c}",
-        "d0g3{71b2b5616ee2a4639a07d979ebde964c}",
-        "d0g3{71b2b5616**2a4639**7d979**de964c}"
+        "D0g3{****}",
+        "flag{****}",
+        "flag{****}",
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -826,11 +826,11 @@
       "hit_first": false,
       "scanned_bytes": 69092,
       "sample_candidates": [
-        "D0g3{cyzcc_have_ten_girlfriends}",
-        "flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}",
-        "flag{722b6d90a64c25782af42d14d784ce1c}",
-        "d0g3{71b2b5616ee2a4639a07d979ebde964c}",
-        "d0g3{71b2b5616**2a4639**7d979**de964c}"
+        "D0g3{****}",
+        "flag{****}",
+        "flag{****}",
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -841,8 +841,8 @@
       "hit_first": true,
       "scanned_bytes": 25,
       "sample_candidates": [
-        "flag{B4se64_1s_s0_e4sy}",
-        "flag{B4se64_1s_s0_e4sy}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -853,11 +853,11 @@
       "hit_first": false,
       "scanned_bytes": 6082,
       "sample_candidates": [
-        "synt{wzwXucoqcootxowdp}",
-        "synt{oxwxuXcqwcotWUxwxT}",
-        "synt{yzwXuXoqwootWUxwxT}",
-        "synt{wzwXucoqcootxowdp}",
-        "synt{oxwxuXcqwcotWUxwxT}"
+        "synt{****}",
+        "synt{****}",
+        "synt{****}",
+        "synt{****}",
+        "synt{****}"
       ]
     },
     {
@@ -892,11 +892,11 @@
       "hit_first": false,
       "scanned_bytes": 95230,
       "sample_candidates": [
-        "VNCTF{TimeFl20211205ightMachine}",
-        "VNCTF{801f190737434100e7d2790bd5b0732e}",
-        "VNCTF{93ee7688-f216-42cb-a5c2-191ff4e412ba}",
-        "VNCTF{93ee7688-f216-42cb-a5c2-191ff4e412ba}",
-        "VNCTF{ecd63ae5-8945-4ac4-b5a5-34fc3ade81e7}"
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}",
+        "VNCTF{****}"
       ]
     },
     {
@@ -916,8 +916,8 @@
       "hit_first": true,
       "scanned_bytes": 34,
       "sample_candidates": [
-        "VNCTF{TimeFl20211205ightMachine}",
-        "VNCTF{TimeFl20211205ightMachine}"
+        "VNCTF{****}",
+        "VNCTF{****}"
       ]
     },
     {
@@ -928,11 +928,11 @@
       "hit_first": false,
       "scanned_bytes": 69092,
       "sample_candidates": [
-        "D0g3{cyzcc_have_ten_girlfriends}",
-        "flag{i_am_not_right_but_i_believe_you_can_find_out_what_happened}",
-        "flag{722b6d90a64c25782af42d14d784ce1c}",
-        "d0g3{71b2b5616ee2a4639a07d979ebde964c}",
-        "d0g3{71b2b5616**2a4639**7d979**de964c}"
+        "D0g3{****}",
+        "flag{****}",
+        "flag{****}",
+        "d0g3{****}",
+        "d0g3{****}"
       ]
     },
     {
@@ -943,8 +943,8 @@
       "hit_first": true,
       "scanned_bytes": 39,
       "sample_candidates": [
-        "flag{563eab9ce2fifd50e21404ae971fBa8}",
-        "flag{563eab9ce2fifd50e21404ae971fBa8}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -955,8 +955,8 @@
       "hit_first": true,
       "scanned_bytes": 46,
       "sample_candidates": [
-        "dice{1_d00r_y0u_d00r_w3_a11_d00r_f0r_1_d00r}",
-        "dice{1_d00r_y0u_d00r_w3_a11_d00r_f0r_1_d00r}"
+        "dice{****}",
+        "dice{****}"
       ]
     },
     {
@@ -967,8 +967,8 @@
       "hit_first": true,
       "scanned_bytes": 36,
       "sample_candidates": [
-        "hope{cA5e_anD_P0iNt_Ar3_1mp0rT4nT}",
-        "hope{cA5e_anD_P0iNt_Ar3_1mp0rT4nT}"
+        "hope{****}",
+        "hope{****}"
       ]
     },
     {
@@ -979,10 +979,10 @@
       "hit_first": true,
       "scanned_bytes": 3442,
       "sample_candidates": [
-        "flag{MBeGEaS67008RGb9}",
-        "flag{MBeGEaS67008RGb9}",
-        "flag{MBeGEaS67008RGb9}",
-        "flag{MBeGEaS67008RGb9}"
+        "flag{****}",
+        "flag{****}",
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -993,8 +993,8 @@
       "hit_first": true,
       "scanned_bytes": 37,
       "sample_candidates": [
-        "HTB{t3mpl4t3_1nj3ct10n_1s_$p00ky!!}",
-        "HTB{t3mpl4t3_1nj3ct10n_1s_$p00ky!!}"
+        "HTB{****}",
+        "HTB{****}"
       ]
     },
     {
@@ -1005,8 +1005,8 @@
       "hit_first": true,
       "scanned_bytes": 38,
       "sample_candidates": [
-        "LINECTF{country_roads_takes_me_home}",
-        "LINECTF{country_roads_takes_me_home}"
+        "LINECTF{****}",
+        "LINECTF{****}"
       ]
     },
     {
@@ -1029,8 +1029,8 @@
       "hit_first": true,
       "scanned_bytes": 44,
       "sample_candidates": [
-        "flag{9236b29d-5488-41e6-a04b-53b0d8276542}",
-        "flag{9236b29d-5488-41e6-a04b-53b0d8276542}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -1041,8 +1041,8 @@
       "hit_first": true,
       "scanned_bytes": 31,
       "sample_candidates": [
-        "ctfplus{Wow_u_2re_sql_master}",
-        "ctfplus{Wow_u_2re_sql_master}"
+        "ctfplus{****}",
+        "ctfplus{****}"
       ]
     },
     {
@@ -1053,8 +1053,8 @@
       "hit_first": true,
       "scanned_bytes": 27,
       "sample_candidates": [
-        "UDOM{G00d_with_1nj3ct10n}",
-        "UDOM{G00d_with_1nj3ct10n}"
+        "UDOM{****}",
+        "UDOM{****}"
       ]
     },
     {
@@ -1065,8 +1065,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "wgmy{72718ee56cff19d67ddf309de74d160a}",
-        "wgmy{72718ee56cff19d67ddf309de74d160a}"
+        "wgmy{****}",
+        "wgmy{****}"
       ]
     },
     {
@@ -1077,8 +1077,8 @@
       "hit_first": true,
       "scanned_bytes": 40,
       "sample_candidates": [
-        "wgmy{79fd0d773b8641b99e76eac31bdd93b1}",
-        "wgmy{79fd0d773b8641b99e76eac31bdd93b1}"
+        "wgmy{****}",
+        "wgmy{****}"
       ]
     }
   ]

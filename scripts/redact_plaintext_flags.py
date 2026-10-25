@@ -68,7 +68,27 @@ RISKY_RE = re.compile(
     r"benchmark\.json|coverage_report|real_coverage_report|xhlj_legacy|"
     r"questions_real|questions_external", re.I)
 # 默认只处理**零代码消费**的证据/归档面（实测无人读取其内容）
-DEFAULT_INCLUDE = ("data/ctf_benchmark/heldout_evidence/", "docs/archive/")
+#
+# 2026-10-25 扩面：`CTF-Agent_融合/ctf_agent/heldout_evidence/` 是同一批证据的
+# 另一份拷贝（50 个 json / 801 条，占全仓 1/3），此前漏在覆盖面外——理由已核过：
+#   - 消费方只有 `_kpi_canonical.py`（取 KPI 数字，读 `summary` 与 `*_verdict`）
+#     与 3 个测试（读 `leak_provenance_*` 的 id/verdict），**无一处读 flag 明文**
+#   - `sample_candidates`（_baseline_naive.py 产出）仅作人读样例，命中判定
+#     早在 `hit_any = expected in shas` 里由 sha256 完成
+#   - `with_answers`/`no_answers` 被 `_leak_provenance.py:218` 读，但它只是把
+#     明文抄进 leak 报告——遮蔽后抄进去的是 `前缀{****}`，泄漏证明力由 sha256 承担
+DEFAULT_INCLUDE = (
+    "data/ctf_benchmark/heldout_evidence/",
+    "CTF-Agent_融合/ctf_agent/heldout_evidence/",
+    "docs/archive/",
+)
+
+# 逐文件白名单：纯文档/台账，正文里的真题 flag 只为叙述，遮蔽后论述仍成立
+# （`REAL_SOLVES_LEDGER.md` 的条目本身就并列写了 sha256，遮蔽是**无损**的）
+DOC_INCLUDE = (
+    "CTF-Agent_融合/协同任务总账-TOP0.md",
+    "CTF-Agent_融合/ctf_agent/REAL_SOLVES_LEDGER.md",
+)
 # 生成器：含真值逻辑，需显式开关
 GENERATOR_SUFFIX = ("build_real_benchmark.py",)
 
@@ -79,6 +99,8 @@ REDACTED = "{****}"
 
 def classify(rel: str, include_generators: bool) -> str:
     """返回 'act'（可遮蔽）/ 'skip'（排除）。"""
+    if rel in DOC_INCLUDE:
+        return "act"
     if EXCLUDE_RE.search(rel):
         return "skip"
     if RISKY_RE.search(rel):
@@ -326,6 +348,22 @@ def main() -> int:
             print(f"⚠️  跳过 {a['rel']}: {e}", file=sys.stderr)
 
     TRUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
+    # 合并而非覆盖：分多批清理（证据面 → 文档面 → 生成器）时，后一批不能把前一批
+    # 的 sha256 抹掉——真值一旦丢，被遮蔽的答案就永久不可复原了。
+    prev: list = []
+    if TRUTH_FILE.is_file():
+        try:
+            old = json.loads(TRUTH_FILE.read_text(encoding="utf-8"))
+            prev = old.get("items", []) if isinstance(old, dict) else list(old)
+        except Exception:
+            prev = []
+    seen = {(i.get("file"), i.get("line"), i.get("sha256")) for i in prev if isinstance(i, dict)}
+    for row in truth:
+        k = (row.get("file"), row.get("line"), row.get("sha256"))
+        if k not in seen:
+            seen.add(k)
+            prev.append(row)
+    truth = prev
     TRUTH_FILE.write_text(json.dumps({
         "_why": "被遮蔽的 CTF flag 明文真值（sha256 + 位置）。本文件不入库。",
         "count": len(truth),

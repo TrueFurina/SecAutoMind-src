@@ -12,8 +12,8 @@
       "hit_first": false,
       "scanned_bytes": 16748,
       "sample_candidates": [
-        "flag{secret_placeholder_flag_decrypt_for_real_flag}",
-        "flag{secret_placeholder_flag_decrypt_for_real_flag}"
+        "flag{****}",
+        "flag{****}"
       ]
     },
     {
@@ -339,8 +339,8 @@
       "hit_first": true,
       "scanned_bytes": 16152,
       "sample_candidates": [
-        "csawctf{st1ng_th30ry_a1nt_so_h4rd}",
-        "csawctf{st1ng_th30ry_a1nt_so_h4rd}"
+        "csawctf{****}",
+        "csawctf{****}"
       ]
     },
     {

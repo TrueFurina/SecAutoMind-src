@@ -149,6 +149,40 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual(n, 0)
         self.assertEqual(len(untracked), 1)
 
+    # ── 真赛事品牌独立卡口（堵「总数不变」的洗白通道）──────────────────
+    def test_real_brand_over_cap_blocks_even_if_total_under_cap(self):
+        """删掉 5 条自产夹具、换进 5 条真题答案 → 总数不变，必须仍拦。
+
+        这是只卡总数时的真实漏洞：清理动作让总数下降，顺手塞真题答案进来，
+        总数仍 ≤ 上限，门禁全绿，而真题答案已经进了 PUBLIC 仓。
+        """
+        hits = [
+            {"file": "a", "line": 1, "masked": "flag{**}", "tracked": True, "brand": "self"},
+            {"file": "a", "line": 2, "masked": "flag{**}", "tracked": True, "brand": "self"},
+            {"file": "b", "line": 3, "masked": "DASCTF{**}", "tracked": True, "brand": "real"},
+        ]
+        # 总数 3 ≤ 上限 10，但真品牌 1 > 上限 0
+        block, note, _, _ = self._eval(
+            hits, {"a", "b"}, {"tracked_hits": 10, "real_brand_hits": 0})
+        self.assertTrue(block, note)
+        self.assertIn("真题答案", note)
+
+    def test_real_brand_at_cap_passes(self):
+        hits = [{"file": "b", "line": 3, "masked": "DASCTF{**}", "tracked": True,
+                 "brand": "real"}]
+        block, note, n, _ = self._eval(
+            hits, {"b"}, {"tracked_hits": 5, "real_brand_hits": 1})
+        self.assertFalse(block, note)
+        self.assertEqual(n, 1)
+
+    def test_old_baseline_without_real_key_still_passes(self):
+        """旧基线没有 real_brand_hits 键 → 不阻断（否则一升级就把 CI 打红）。"""
+        hits = [{"file": "b", "line": 3, "masked": "DASCTF{**}", "tracked": True,
+                 "brand": "real"}]
+        block, note, _, _ = self._eval(hits, {"b"}, {"tracked_hits": 5})
+        self.assertFalse(block, note)
+        self.assertIn("未记真品牌上限", note)
+
 
 class TestTrackedEncoding(unittest.TestCase):
     """非 ASCII 路径的入库判定（2026-10-25 实测缺陷）。"""

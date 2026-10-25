@@ -398,11 +398,20 @@ def evaluate_flag_policy(hits, tracked_set, baseline):
                 f"先清理再执行 --freeze-flag-baseline 冻结上限",
                 n_tracked, untracked)
     cap = baseline.get("tracked_hits", 0)
+    # 真赛事品牌独立卡口（比总数更严）：总数口径存在洗白通道 ——
+    # 「删 5 条自产夹具 + 加 5 条真题答案」总数不变，只卡总数就照样放行。
+    # 旧基线没有这个键（None）时不阻断，只提示重冻，避免把历史基线判成假红。
+    cap_real = baseline.get("real_brand_hits")
+    if cap_real is not None and n_real > cap_real:
+        return (True, f"真赛事品牌明文 flag {n_real} 条 > 冻结上限 {cap_real} 条 —— "
+                      f"新增了真题答案（即使总数 {n_tracked} 未超 {cap} 也必须拦）",
+                n_tracked, untracked)
     if n_tracked > cap:
         return (True, f"已入库文件明文 flag {n_tracked} 条 > 冻结上限 {cap} 条 —— "
                       f"有人在历史文件里新加了答案", n_tracked, untracked)
-    return (False, f"已入库历史遗留 {n_tracked} 条（上限 {cap}），未新增",
-            n_tracked, untracked)
+    extra = "" if cap_real is not None else "；⚠️ 基线未记真品牌上限，请重跑 --freeze-flag-baseline"
+    return (False, f"已入库历史遗留 {n_tracked} 条（上限 {cap}），未新增"
+                   f"{sev}{extra}", n_tracked, untracked)
 
 
 def load_flag_baseline() -> dict | None:
@@ -427,12 +436,20 @@ def freeze_flag_baseline(root: str) -> int:
     per_file: dict[str, int] = {}
     for h in tracked_hits:
         per_file[h["file"]] = per_file.get(h["file"], 0) + 1
+    # 真赛事品牌单独成账：只卡总数会留下「删 5 条自产夹具 + 加 5 条真题答案」
+    # 的洗白通道（总数不变 → 放行），而真题答案才是唯一真正不可外流的资产。
+    real_hits = [h for h in tracked_hits if h.get("brand") == "real"]
+    real_files: dict[str, int] = {}
+    for h in real_hits:
+        real_files[h["file"]] = real_files.get(h["file"], 0) + 1
     data = {
         "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增："
                 "超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
         "frozen_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "root": root,
         "tracked_hits": len(tracked_hits),
+        "real_brand_hits": len(real_hits),
+        "real_brand_files": real_files,
         "untracked_copies": len(untracked),
         "per_file": per_file,
     }

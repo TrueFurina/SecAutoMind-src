@@ -32,7 +32,7 @@
   + 附件本地落库 + REGRESSION_CHECKS 入条目），但两者题面均**无官方 flag_sha256 外部真值闭环**，
   **不进 PROMOTION_EVIDENCE、水位=基线+晋升数保持诚实口径**——见各题块 ⛔→✅ 治理标注与
   `scripts/_antifraud.py` 治理注释：
-  - 10732（PKCS#1 v1.5）：视觉读+vision LLM 兜底 flag = `DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}`，
+  - 10732（PKCS#1 v1.5）：视觉读+vision LLM 兜底 flag = `DASCTF{****}`，
     与台账 2026-08-24 sha256 前缀 `337eadc1a305b60f` 不一致（内部不自洽）；
   - 10735（logbool pcap 盲注）：pcap 重放 flag.txt sha256=`67f3e126d51a6169…` 与台账 2026-08-24
     记录前缀 + 归档中间产物**逐字节一致**（双独立运行互证，证据强于 10732），但同属无题面官方锚点）。
@@ -100,10 +100,10 @@
 - **类型**：crypto / RSA PKCS#1 v1.5 + AES
 - **状态**：✅ 可机器复现（治理修复 2026-09-03 落库，scripts/verify_10732.py + REGRESSION_CHECKS 入项）⛔ 不进严格 KPI（**无外部 sha256 真值闭环**，详见下方诚实标注）
 - **可复现命令**：`scripts/verify_10732.py`（强校验 AES_KEY=`44bfc33d0bfb3cd688a074a7adad1504` + PDF 头 `%PDF-1.4` + 38624 字节 + 视觉裁切 flag 行）→ 实测 `REGRESS_PASS`
-- **flag 视觉读法**：`DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}`（斜体，PDF 第 3 页 Congratulations 下方；肉眼 + 二值化高对比裁切 + baidu ernie-4.5-turbo-vl vision LLM 兜底三读一致；与台账 2026-08-24 记录的 sha256 前缀 `337eadc1a305b60f` 不一致，公开 writeup 同名系列题非本 PKCS#1 题，**无外部真值闭环**）
+- **flag 视觉读法**：`DASCTF{****}`（斜体，PDF 第 3 页 Congratulations 下方；肉眼 + 二值化高对比裁切 + baidu ernie-4.5-turbo-vl vision LLM 兜底三读一致；与台账 2026-08-24 记录的 sha256 前缀 `337eadc1a305b60f` 不一致，公开 writeup 同名系列题非本 PKCS#1 题，**无外部真值闭环**）
 - **核验方式**：
   - PyMuPDF 提取 `data/results/_verify_10732_visual/_10732_decrypted.pdf` 三页文本层只有 Congratulations 一句（"You seem to know RSA and python very well ,congratulations!"），**flag 在视觉渲染层、文本层无明文**；
-  - 视觉渲染第 3 页 → 二值化裁斜体 flag 行 → 三读一致 = `DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}`
+  - 视觉渲染第 3 页 → 二值化裁斜体 flag 行 → 三读一致 = `DASCTF{****}`
 - **攻击链**：
   1. 解析附件 task.py 注释里的 padded_long（pow(AES_KEY_ENC, d, q*r) 的输出，255 字节值，>600 位十进制）
   2. padded_long 转 256 字节 EM；EM 形如 `00 02 [全 0 PS] 00 [M]`（题方改写 Crypto/Cipher/PKCS1_v1_5.encrypt 为全 0 PS 后门，标准 PKCS#1 v1.5 要求 PS 全非非0）
@@ -212,7 +212,7 @@
 - **flag**：`<REDACTED> sha256=d5e1894ae1bb4e4d191702604bfea3ceb7a006074721d6fc3a05b8c601f42b83`（明文见本地 gitignored `data/results/verified_flags.json`）
 - **核验方式**：
   1. `skills/jpeg_png_embedded.run()` 定位 JPEG 尾 FFD9，提取其后 PNG（89504E47 魔数）→ 写 `_extracted.png`（1913×1135）；
-  2. tesseract OCR 读取 PNG 内视觉文字得 `flag{mooaudqxs5nbydw3}`，与题面自带 `flag_sha256` 逐字匹配；
+  2. tesseract OCR 读取 PNG 内视觉文字得 `flag{****}`，与题面自带 `flag_sha256` 逐字匹配；
   3. presolve 确定性管线（`_try_jpeg_png_embedded`）已自动覆盖本题（见第二节-B 第 10 行）。
 - **可复现命令**：`.venv/Scripts/python.exe -c "from skills import jpeg_png_embedded as J; print(J.run({'path':'data/questions_real/_attachments/misc/real_misc_xuanhun_signin/xz1.jpg'}))"`
 - **备注**：与 vnctf_flag 同类——flag 在图像内，文本 LLM 无法读取，须 OCR/视觉模型；本环境 tesseract 直出可读，确定性可复现、不谎报。
@@ -302,7 +302,7 @@
 ### 20. 西湖论剑2021 FilterRandom（外部真题 · 噪声混合双 LFSR 恢复）
 
 - **来源**：原 `E:/Program/Cybersecurity/比赛真题/西湖论剑2021中国杭州网络安全技能大赛/CRYPTO/FilterRandom.py`——**2026-08-26 清理删除；2026-08-27 公开 writeup(cn-sec)给出完整源码与 LFSR 结构，已重建**
-- **类型**：crypto / 噪声混合双 LFSR（l1 占 ~90% / l2 占 ~10%，恢复 init1/init2 → DASCTF{init1-init2}）
+- **类型**：crypto / 噪声混合双 LFSR（l1 占 ~90% / l2 占 ~10%，恢复 init1/init2 → DASCTF{****}）
 - **状态**：✅ offline_verified（2026-08-25 初核）——**2026-08-27 仓库内重建复现通过**：按公开源码重建 `FilterRandom.py` 于 `data/questions_real/_attachments/xihu2021/`，`skills/lfsr_filter_recover.py` 从恢复源码跑通恢复 DASCTF flag
 - **flag**：原实例输出不可恢复；重建实例 flag = `DASCTF{<REDACTED> sha256=89fc7945a2a48b2da80fdcbb6d3ab967411c122b12d71c1b2987a5fe99c45ac8}`（重建实例值，非原赛 flag）
 - **核验方式**：`skills/lfsr_filter_recover.py` 读取重建 FilterRandom.py，恢复 DASCTF flag
@@ -313,7 +313,7 @@
 - **来源**：`data/questions_real/reverse/real_reverse_vnctf_cm1.json` + 附件 `ctf_agent/scripts/_solve_vnctf_cm1.py`（writeup 重构确定性 solver，source: VNCTF 2022 Official WriteUp）
 - **类型**：reverse / Android 二进制 XXTEA 解密恢复 flag（asset 'ooo' XOR "vn2022" + XXTEA key "H4pPY_VNCTF!!OvO"）
 - **状态**：✅ offline_verified（2026-09-15 严格诚实晋升——presolve 确定性管线 `force=True` 真跑 `_solve_vnctf_cm1.py`，XXTEA 解密 writeup 公开密文 `AIM` + 密钥还原 flag，`flag_sha256` 逐字匹配题面真值；flag 不出现于任何附件/题面，非读泄露答案）
-- **flag（规范）**：`<VNCTF{93ee7688-f216-42cb-a5c2-191ff4e412ba} sha256=a9bb88af16508d85215cfd72a3145a8db76d54930fbd5a1834d032e2309606fa>`
+- **flag（规范）**：`<VNCTF{****} sha256=a9bb88af16508d85215cfd72a3145a8db76d54930fbd5a1834d032e2309606fa>`
 - **核验方式**：`.venv/Scripts/python.exe scripts/_regress_one.py real_reverse_vnctf_cm1` → REGRESS_PASS（71ms）
 - **备注**：solver 从 writeup 公开密文 + XXTEA 密钥确定性解密还原 flag，与 specialcurve2 同属「writeup 重构确定性 solver」B类口径。晋升经 `PROMOTION_EVIDENCE` 带证据入 `_antifraud.AUTHORIZED_KPI_SOLVES`，KPI 水位 13→14。同批扫描另 57 道 `real_past_ctf` 真题虽 presolve 亦命中，但 55 道系读泄露附件 `flag.txt`（数据集"含答案密钥泄露，未经清洗"已知属性，非能力）、1 道 dnui_keyboard 系题面直接给答案（D类，按项目自有分类排除），均不计入严格 KPI。
 
@@ -360,7 +360,7 @@
 > verify_hgame2022_rsa.py 3/3 复现一致，三题已全部升级为 offline_verified（见第二节第 6/7/8 条）。
 > 当前无待核验项。
 > 10733 已于 2026-08-24 离线跑通转为 offline_verified（见第二节第 3 条）。
-> 原“附件题 5 题”claim 经核验为**本地自出题训练题库**（`flag{b'…'}`、`flag{b'…'}` 等带 `b'...'` 与 `_2026` 后缀的合成 flag），属 `self_authored_training`，按本台账口径**不计入解题数**，已归入第四节撤销项。
+> 原“附件题 5 题”claim 经核验为**本地自出题训练题库**（`flag{****}`、`flag{****}` 等带 `b'...'` 与 `_2026` 后缀的合成 flag），属 `self_authored_training`，按本台账口径**不计入解题数**，已归入第四节撤销项。
 
 ---
 
@@ -372,7 +372,7 @@
 | `da53656` web 10/10 | 客场 web 解出 | `scripts/web_range_target.py` 是本地硬编码靶机，payload 特征命中即返回 flag | 已 revert（commit 1d0278b） |
 | `real_drill_manifest.json` flag | 真题答案已知 | manifest 直接给出答案，非解题过程 | 不计入 |
 | 主场 93.3% / 训练进度 | 解出率 | 自产题/本地靶场 | 仅作训练管道验证，不作战绩 |
-| 离线刷题 “附件题 5 题”/13/60/15/60 | 本地题库解出 | 全部为自出题训练题库（`flag{b'…'}`、`flag{b'…'}` 等合成 flag），非 DASCTF 正式平台战绩 | 不计入；见 `_archive_离线刷题复盘-20260822.md` 诚实声明 |
+| 离线刷题 “附件题 5 题”/13/60/15/60 | 本地题库解出 | 全部为自出题训练题库（`flag{****}`、`flag{****}` 等合成 flag），非 DASCTF 正式平台战绩 | 不计入；见 `_archive_离线刷题复盘-20260822.md` 诚实声明 |
 
 ### 4. `scripts/_verify_presolve_only.py` 输出 12/15「presolve 命中」——**不计入解题数**
 
@@ -415,7 +415,7 @@
 - **验证实验**：`scripts/demo_llm_rag_solve.py` 对 **10733（高偶指数 RSA + hint 泄露 p + ROT13）** 端到端验证：
   1. RAG 检索召回 `crypto-rsa-high-exponent` 等 3 篇相关 writeup；
   2. LLM（deepseek）基于 writeup 方法写出完整解题脚本（`W=pow(e,n,n); p=gcd(W²-hint,n)` → 逐层 `sqrt_mod` 16 次 → ROT13 解码）；
-  3. 脚本执行输出 `DASCTF{rabbits6sc5mpl8x6s9w6n6nc5mpl8x6s9w6n6nc5mpl8x6s9w6n6nc5mpl8}`，**与 10733 真值完全一致**（`demo_llm_rag_solve.py` 退出码 0）。
+  3. 脚本执行输出 `DASCTF{****}`，**与 10733 真值完全一致**（`demo_llm_rag_solve.py` 退出码 0）。
 - **意义（待校正）**：`demo_llm_rag_solve.py` 的"验证"**不构成 genuine 推理突破**——flag(EXPECTED)与 n/hint/c/E 明文硬编码于脚本、完整解法推导（W=pow(e,n,n); p=gcd(W²−hint,n)；逐层 sqrt_mod 16 次；ROT13）直接写进 PROBLEM prompt 喂给 LLM，LLM 仅把现成推导抄成 sympy 代码。属"答案+解法喂模型再比对硬编码 flag"的泄露式演示，不满足本台账 genuine 推理标准（见上表"LLM 真推理贡献 = 0"）。**请勿据此宣称"LLM 推理从 0 突破"。**
 - **与 KPI 关系**：10733 已计入严格 KPI（presolve 口径）；本演示是**泄露式实验**，不重复计数、不计入 LLM 真推理贡献。下一步：把 writeup_rag 接入主 agent 循环（已完成：CTF_AGENT_WRITEUP_RAG 开关，每步检索注入 plan prompt，零回归），并以**无泄露**方式做 genuine 端到端验证（题目参数与 flag 均不预置，由 LLM 基于检索 writeup 独立推理解出）。
 
