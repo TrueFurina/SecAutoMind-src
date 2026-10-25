@@ -139,6 +139,7 @@ type SupervisionState struct {
 	BudgetUsed  int      // 已用步数
 	Candidates  *int     // 本次求解至今的候选 flag 数（不可自欺硬信号）
 	TokenRatio  *float64 // 真实 token 用量 / 单题预算（0..1）
+	Challenge   string   // 题目标识（仅遥测落盘用；不参与判定）
 }
 
 // SupervisionStep 一步的进展信号（最小接口：非空 observation 且无错误）。
@@ -161,7 +162,14 @@ type SupervisionDecision struct {
 // ReflectSupervision 核心反思（确定性、无 LLM）。confidence nil 视为 0.5 中性。
 // 消费方：agent 求解循环每 N 步调用；ABANDON → 提前收口该题；
 // SWITCH → 交监督层换策略（换工具面/换模型档）；CONTINUE → 继续。
+// 每次调用经包级账本（若已 Enable）落盘一条遥测（fail-open，见 supervision_ledger.go）。
 func ReflectSupervision(state SupervisionState, steps []SupervisionStep, confidence *float64) SupervisionDecision {
+	dec := reflectSupervisionCore(state, steps, confidence)
+	recordSupervision(state, dec)
+	return dec
+}
+
+func reflectSupervisionCore(state SupervisionState, steps []SupervisionStep, confidence *float64) SupervisionDecision {
 	total := state.BudgetTotal
 	if total < 1 {
 		total = 12
