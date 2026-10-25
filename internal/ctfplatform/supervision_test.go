@@ -84,11 +84,32 @@ func TestReflectRule1AbandonLowConfidence(t *testing.T) {
 }
 
 func TestReflectRule1NotAbandonWithCandidates(t *testing.T) {
-	// ① 候选在手时不早停（主循环立即收敛）
+	// ① 候选在手时不早停（主循环立即收敛；交给 ② 换策略）
 	d := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 11, Candidates: fi(2)},
 		stuck(6), fp(0.2))
 	if d.Decision == DecisionAbandon {
 		t.Fatalf("有候选不应早停: %s", d.Reason)
+	}
+}
+
+// 听风第四刀：① token 口径驱动——步数仅 50%（远低于 85%）但 token 已 90%，
+// 零候选 + 零进展 + 低信心 → ABANDON。证明 ① 不再被 ⑥ 的 60% 步数闸遮蔽、
+// 改由真实 token 预算驱动可达。
+func TestReflectRule1TokenDrivenAbandon(t *testing.T) {
+	d := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 6, // 步数 0.5，不足以触发旧步数口径
+		TokenRatio: fp(0.9)}, stuck(6), fp(0.2))
+	if d.Decision != DecisionAbandon {
+		t.Fatalf("规则① token 口径: got %s (%s)", d.Decision, d.Reason)
+	}
+}
+
+// ① token 门控：步数已到 85% 但 token 仅 50%（token 还剩大半）→ 不早停。
+// 即 race_abandon×5「步数先到、token 剩大半不应认输」精神在 ① 上的落地。
+func TestReflectRule1NotAbandonWhenTokensRemain(t *testing.T) {
+	d := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 11,
+		TokenRatio: fp(0.5)}, stuck(6), fp(0.2))
+	if d.Decision == DecisionAbandon {
+		t.Fatalf("token 仅 0.5 不应早停（token 口径门控）: %s", d.Reason)
 	}
 }
 

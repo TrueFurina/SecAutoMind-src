@@ -11,7 +11,9 @@
 //  2. Budget 反思（CONTINUE / SWITCH / ABANDON）——预算比例 + 进展信号 +
 //     信心 + token 口径的确定性早停/换路。规则⑥含 2026-10-03 修正：
 //     零候选 ABANDON 需 token 也过 60%，防「步数口径先到、token 还剩大半」
-//     的过早认输（race_abandon ×5 实证）。
+//     的过早认输（race_abandon ×5 实证）。规则①（听风第四刀）同样改走 token
+//     口径：token 先耗尽、步数还没到 85% 时抢在 ⑥ 的 60% 步数闸前收口，
+//     解除此前 ① 恒被 ⑥ 遮蔽、不可达的死代码状态。
 package ctfplatform
 
 import (
@@ -182,6 +184,12 @@ func reflectSupervisionCore(state SupervisionState, steps []SupervisionStep, con
 		used = total
 	}
 	ratio := float64(used) / float64(total)
+	// effRatio：真实预算口径。TokenRatio 非空时优先用 token（步数先到但 token 还剩
+	// 大半时不应认输，race_abandon×5 实证），否则回退步数口径（向后兼容）。
+	effRatio := ratio
+	if state.TokenRatio != nil {
+		effRatio = *state.TokenRatio
+	}
 	conf := 0.5
 	if confidence != nil {
 		conf = *confidence
@@ -209,6 +217,7 @@ func reflectSupervisionCore(state SupervisionState, steps []SupervisionStep, con
 
 	metrics := map[string]any{
 		"budget_ratio":         ratio,
+		"eff_ratio":            effRatio,
 		"confidence":           conf,
 		"progress_in_window":   progressInWindow,
 		"trailing_no_progress": trailing,
@@ -217,10 +226,14 @@ func reflectSupervisionCore(state SupervisionState, steps []SupervisionStep, con
 	}
 	hasCand := state.Candidates != nil && *state.Candidates > 0
 
-	// ① 预算将尽 + 零进展 + 低信心 → 早停（候选在手时不早停：主循环立即收敛）
-	if ratio >= 0.85 && noProgressRecent && conf < 0.4 && !hasCand {
+	// ① 真实预算（token 口径，缺则回退步数）将尽 + 近期零进展 + 低信心 → 早停。
+	// token 口径让 ① 能在「token 先耗尽、步数还没到 85%」时抢在 ⑥ 的 60% 步数闸前
+	// 收口（听风第四刀：此前 ① 恒被 ⑥ 遮蔽、不可达）。⑥ 仍覆盖零候选的高信心分支。
+	// 保留 !hasCand：候选在手→交给 ② 换策略而非 ① 早停（TestSwitchFiresOnLowConfidenceErrors
+	// 锁死此不变量——候选在手的低信心卡死只 SWITCH、不 ABANDON）。
+	if effRatio >= 0.85 && noProgressRecent && conf < 0.4 && !hasCand {
 		return SupervisionDecision{DecisionAbandon,
-			"预算将尽(>=85%)+近期零进展+低信心：早停避免空烧", metrics}
+			"真实预算将尽(token>=85%)+近期零进展+低信心：早停避免空烧（信心口径）", metrics}
 	}
 	// ② 过半预算 + 低信心 + 连续>=4步无进展 → 换策略
 	if ratio >= 0.5 && conf < 0.3 && trailing >= 4 {

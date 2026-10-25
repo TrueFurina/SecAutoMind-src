@@ -148,6 +148,9 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
 	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
 
+	tokenBudget := f.maxRounds * envInt("RUNNER_LLM_MAX_TOKENS", 2048)
+	usedTokens := 0 // 累计 token 用量（听风第四刀：喂监督 TokenRatio，走真实预算口径）
+
 	for round := 0; round < f.maxRounds; round++ {
 		opts := []model.Option{}
 		if len(tools) > 0 {
@@ -164,6 +167,13 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 
 		if resp == nil {
 			return nil, nil
+		}
+
+		// token 用量采集（听风第四刀）：喂给监督的 TokenRatio，让规则①走真实预算口径。
+		// 仅在确有用量时累加；模型不报用量则 usedTokens 恒 0 → TokenRatio 不设置 →
+		// 规则⑥ 回落步数口径（nil 分支），避免 nil→0.0 误关 ⑥ 的 token 双口径闸。
+		if resp.ResponseMeta != nil && resp.ResponseMeta.Usage != nil {
+			usedTokens += resp.ResponseMeta.Usage.TotalTokens
 		}
 
 		// 自评信心（听风第三刀）：按契约解析 CONFIDENCE 行；缺失保持上次值
@@ -204,30 +214,32 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				break
 			}
 
-			// ── 监督反思（逐轮真信号，听风 2026-10-25 第二/三刀）──────
-			// 预算=轮数；候选=工具输出实际提取数（硬信号，累积）；信心=模型
-			// 自评（缺失=中性 0.5）；进展口径诚实化：整轮全是错误调用才算
-			// 错误步，不再「非空=有进展」。
-			// 规则②（低信心+连续无进展→SWITCH）由此可达；规则①仍被规则⑥
-			// 遮蔽（零候选时 ⑥ 在 60% 先触发）——待 token 口径接入后再解。
-			obs := roundObs.String()
-			candSeen += len(extractFlagCandidates(obs))
-			step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
-			if callsThisRound > 0 && allErr {
-				step.ErrCategory = "tool_error"
-			}
-			supSteps = append(supSteps, step)
-			confArg := (*float64)(nil)
-			if haveConf {
-				confArg = &conf // 至少解析到一次自评信心才传入；否则诚实保持中性
-			}
-			if dec := ctfplatform.ReflectSupervision(
-				ctfplatform.SupervisionState{
-					BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
-					Candidates: &candSeen, Challenge: ch.Title,
-				},
-				supSteps, confArg,
-			); dec.Decision == ctfplatform.DecisionAbandon {
+		// ── 监督反思（逐轮真信号，听风 2026-10-25 第二/三/四刀）──────
+		// 预算=轮数；候选=工具输出实际提取数（硬信号，累积）；信心=模型
+		// 自评（缺失=中性 0.5）；进展口径诚实化：整轮全是错误调用才算
+		// 错误步，不再「非空=有进展」。
+		// 规则②（低信心+连续无进展→SWITCH）由此可达；规则① 经第四刀走 token 口径
+		// 后，在「token 先耗尽、步数未到 85%」的零候选场景抢在 ⑥ 前收口（不再被遮蔽）。
+		obs := roundObs.String()
+		candSeen += len(extractFlagCandidates(obs))
+		step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
+		if callsThisRound > 0 && allErr {
+			step.ErrCategory = "tool_error"
+		}
+		supSteps = append(supSteps, step)
+		confArg := (*float64)(nil)
+		if haveConf {
+			confArg = &conf // 至少解析到一次自评信心才传入；否则诚实保持中性
+		}
+		st := ctfplatform.SupervisionState{
+			BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
+			Candidates: &candSeen, Challenge: ch.Title,
+		}
+		if tokenBudget > 0 && usedTokens > 0 {
+			tr := float64(usedTokens) / float64(tokenBudget)
+			st.TokenRatio = &tr
+		}
+		if dec := ctfplatform.ReflectSupervision(st, supSteps, confArg); dec.Decision == ctfplatform.DecisionAbandon {
 				f.logger.Info("监督 ABANDON：LLM 循环提前收口（省剩余轮次 token）",
 					zap.String("challenge", ch.Title),
 					zap.Int("round_used", round+1), zap.Int("budget", f.maxRounds),
