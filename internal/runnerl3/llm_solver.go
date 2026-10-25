@@ -812,6 +812,18 @@ func (f *LLMFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
 
 	b.WriteString("\n题目描述：\n")
 	b.WriteString(truncate(ch.Description, 8000))
+
+	// P1-1 攻击向量编排层：把题面线索编排成结构化攻击假设，随题面注入。
+	// 治失败模式①②（不读题面盲扫 / 选错攻击面）—— 假设来自**本题**线索并带证据与排序，
+	// 与"在 prompt 里罗列攻击类型表"本质不同（罗列式已被基线实证会首项锁死）。
+	desc := ch.Description
+	if ch.Category != "" {
+		desc = ch.Title + "\n" + ch.Description
+	}
+	if hs := ctfplatform.BuildAttackHypotheses(desc, ctfplatform.ParseWebHints(desc)); len(hs) > 0 {
+		b.WriteString("\n\n")
+		b.WriteString(ctfplatform.RenderAttackHypotheses(hs))
+	}
 	return b.String()
 }
 
