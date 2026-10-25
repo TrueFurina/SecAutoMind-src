@@ -5,7 +5,8 @@
 背景
 ----
 `scripts/secret_guard.py` 的明文 flag 门禁实测：**已入库文件含明文 flag 1876 条**
-（263 个文件），其中 `d0g3{71b2…}` 正是 commit a87b812「清除 PUBLIC 仓 7 条真题真
+（263 个文件），其中前缀 `d0g3` 的那条（正文已遮蔽，真值见
+`scripts/plaintext_flag_baseline.json`）正是 commit a87b812「清除 PUBLIC 仓 7 条真题真
 flag」以为清掉过的那条 —— 实际没清干净。本仓是 **PUBLIC**，答案明文入库即泄露。
 
 为什么必须分类，不能全量替换
