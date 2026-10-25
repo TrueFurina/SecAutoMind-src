@@ -870,6 +870,16 @@ func init() {
 			return tryMbrSse(text, attachments)
 		},
 	})
+	// bin_zip_chain_decode：多层嵌套 zip 文件名链解码（zip_filename_chain_decode 链
+	// Go 化，2026-10-25；吞并账本 #8——合成口径，10663 载荷不在库；reversed/forward
+	// × base32/64/hex/58/62/36/morse 多解码器。与 forensics 的关键词提示检测器互补：
+	// 本体为真解码器，加密分支由 python 兜底覆盖）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_zip_chain_decode", Category: CategoryMiscS, Priority: 44,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryZipChainDecode(text, attachments)
+		},
+	})
 	// bin_emoji_binary：二进制 emoji 序列解码（emoji_binary 链 Go 化，2026-10-25；
 	// 吞并账本 #5——CSAW-Finals 2023 emoji 真实端到端；DFS + 可打印剪枝 + 择优）。
 	RegisterSolver(SolverEntry{
