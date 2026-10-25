@@ -88,6 +88,49 @@ func firstBloodActive(cfg PollerConfig) bool {
 		cfg.FirstBloodInterval < cfg.PollInterval
 }
 
+// ValidatePollerConfig 集中校验 PollerConfig 各开关的语义倒挂 / 危险值。
+// 返回：修正后的配置、告警列表、致命错误。规则：
+//   - 致命倒挂（死锁 / 空转 / 零解题）fail-closed 返回 error，拒绝启动；
+//   - 非致命倒挂修正后告警，保持向后兼容（默认配置必须零告警零错误）。
+//
+// 这是监听风「止损大脑」职责：配置倒挂会让止损静默失效，必须显形。
+// 此前仅首血扫描有零散告警，其余开关的非法值会在赛时静默导致死锁 /
+// 忙循环 / 零题可解 —— 四类缺口在此一并补齐（听风第五刀）。
+func ValidatePollerConfig(cfg PollerConfig) (PollerConfig, []string, error) {
+	var warns, fatal []string
+
+	// MaxConcurrency<=0：求解信号量容量为 0，goroutine 永远拿不到令牌 → 死锁。
+	if cfg.MaxConcurrency <= 0 {
+		fatal = append(fatal, fmt.Sprintf("max_concurrency=%d 非法：<=0 导致求解并发信号量死锁", cfg.MaxConcurrency))
+	}
+	// PollInterval<=0：sleepCtx(0) 立即返回，轮询器空转忙循环烧 CPU 且高频打平台。
+	if cfg.PollInterval <= 0 {
+		fatal = append(fatal, fmt.Sprintf("poll_interval=%v 非法：<=0 导致轮询空转忙循环", cfg.PollInterval))
+	}
+	// SolveTimeout<=0：WithTimeout(0) 每题瞬间超时，零题可解。
+	if cfg.SolveTimeout <= 0 {
+		fatal = append(fatal, fmt.Sprintf("solve_timeout=%v 非法：<=0 导致每题瞬间超时零题可解", cfg.SolveTimeout))
+	}
+	// MaxRetrySubmit<0：提交循环 `i > MaxRetrySubmit` 立即为真 → 0 次提交（想交却交不出）。
+	if cfg.MaxRetrySubmit < 0 {
+		warns = append(warns, fmt.Sprintf("max_retry_submit=%d 非法：<0 导致 0 次提交，已修正为 0", cfg.MaxRetrySubmit))
+		cfg.MaxRetrySubmit = 0
+	}
+	// 首血扫描：Window>0 但 Interval 不落在 (0, PollInterval) 内 = 语义倒挂，
+	// 按关闭处理并告警（沿用 RunForever 既有逻辑，统一收口于此）。
+	if cfg.FirstBloodWindow > 0 && !(cfg.FirstBloodInterval > 0 && cfg.FirstBloodInterval < cfg.PollInterval) {
+		warns = append(warns, fmt.Sprintf("首血扫描配置无效（需 window>0 且 0<interval<poll_interval），已按关闭处理：window=%v interval=%v poll_interval=%v",
+			cfg.FirstBloodWindow, cfg.FirstBloodInterval, cfg.PollInterval))
+		cfg.FirstBloodWindow = 0
+		cfg.FirstBloodInterval = 0
+	}
+
+	if len(fatal) > 0 {
+		return cfg, warns, fmt.Errorf("PollerConfig 校验失败：%s", strings.Join(fatal, "; "))
+	}
+	return cfg, warns, nil
+}
+
 // Poller 平台轮询器：定时拉题 → 去重 → 求解 → 提交。
 type Poller struct {
 	platform PlatformAPI
@@ -200,17 +243,22 @@ func (p *Poller) RunOnce(ctx context.Context) ([]PollRecord, error) {
 //   - ⑤ WAF 冷却中 → 跳过本轮，休眠至冷却结束，避免雪崩；
 //   - ④ 连续 429 ≥3 → 按阶梯拉长本轮等待（30s/60s/120s/300s），而非死磕平台。
 func (p *Poller) RunForever(ctx context.Context) error {
+	// 启动期集中校验：PollerConfig 各开关语义倒挂/危险值 fail-closed 拒绝启动，
+	// 非致命项修正后告警（听风第五刀：配置倒挂=止损失效静默，必须显形）。
+	fixed, warns, verr := ValidatePollerConfig(p.config)
+	if verr != nil {
+		p.logger.Error("轮询器配置校验失败，拒绝启动", zap.Error(verr))
+		return verr
+	}
+	p.config = fixed
+	for _, w := range warns {
+		p.logger.Warn("轮询器配置告警（已自动修正）", zap.String("detail", w))
+	}
 	p.logger.Info("轮询器启动",
 		zap.Duration("interval", p.config.PollInterval),
 		zap.Bool("submit_after_solve", p.config.SubmitAfterSolve),
 		zap.Bool("first_blood_scan", firstBloodActive(p.config)),
 		zap.Duration("first_blood_window", p.config.FirstBloodWindow))
-	if p.config.FirstBloodWindow > 0 && !firstBloodActive(p.config) {
-		p.logger.Warn("首血扫描配置无效，已按关闭处理（需 window>0 且 0<interval<PollInterval）",
-			zap.Duration("window", p.config.FirstBloodWindow),
-			zap.Duration("interval", p.config.FirstBloodInterval),
-			zap.Duration("poll_interval", p.config.PollInterval))
-	}
 	startedAt := time.Now()
 
 	// 启动轻量获取比赛信息（规则/时间窗），best-effort：失败仅告警，不阻塞解题主路径。
