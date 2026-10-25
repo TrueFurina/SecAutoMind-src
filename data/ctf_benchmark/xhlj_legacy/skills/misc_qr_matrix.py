@@ -6,7 +6,7 @@
 
     例（NYU CTF Bench 2023q-for-1black0white）：
         qr_code.txt = 29 行十进制整数，每行 29 位 → 29×29 = QR 版本 3，
-        解码得 csawctf{1_d1dnt_kn0w_th1s_w0uld_w0rk}。
+        解码得 csawctf{**}。
 
 为什么手写解码器而不是装第三方库：
     QR 解码只需「格式信息(BCH) + 掩码表 + 之字形取码字 + 分块反交织 + 段解析」，

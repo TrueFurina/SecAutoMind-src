@@ -36,7 +36,7 @@
 
 诚实口径：这是「弱 nonce ECDSA → 格攻击」这一真实密码学攻击的确定性实现
 （非 grep 明文、非读答案密钥）。实测解出
-flag=CTF{But_in_real_life_devs_would_never_use_such_a_buggy_RNG_right?}
+flag=CTF{**}
 且与题库 flag_sha256 逐字匹配。
 """
 

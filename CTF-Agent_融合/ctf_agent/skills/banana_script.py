@@ -16,7 +16,7 @@
      约束解出后 3 字节（每题 8 字节密钥，48 字符 → 48 词，长度逐字吻合）。
 
 motivating 真题：NYU CTF Bench `2017q_rev_bananascript`（CSAW-Quals 2017
-rev/bananaScript，450 分）。解出 `flag{0r4ng3_3w3_ch1pp3r_1_h47h_n07_s4y_b4n4n4rs}`，
+rev/bananaScript，450 分）。解出 `flag{**}`，
 sha256 = 2819d24b75a686324e1d7222101999def0e6a99ffe3bde0e8ebf7388a128653f，
 与题面 `flag_sha256` 逐字吻合。
 

@@ -125,9 +125,10 @@ func main() {
 	// ── 2.5 Python skill bridge（西湖论剑真跑 skill）─────
 	pyBridge := newPySkillRunner(context.Background(), logger)
 
-	// ── 2.6 LLM fallback Layer 3（Eino ChatModel 独立调用）──
+	// ── 2.6 LLM fallback Layer 3（Eino ChatModel + 工具绑定）──
 	// 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
-	llmFB := newLLMFallback(context.Background(), logger)
+	// pyBridge 传入 → execute_python 工具可用；nil → 自动降级
+	llmFB := newLLMFallback(context.Background(), logger, pyBridge)
 
 	// ── 3. Solver 闭包（三层链）────────────────────────
 	//   Layer 1: Presolve 确定性求解（189 Go solver，0 token）
@@ -158,15 +159,10 @@ func main() {
 			}
 		}
 
-		// Layer 3: LLM fallback（依赖门控，默认关闭）
+		// Layer 3: LLM fallback（带工具绑定：execute_python + read_attachment）
+		// 依赖门控：RUNNER_LLM_FALLBACK=true + API key 才启用
 		if llmFB.enabled {
-			// 收集附件 URL 提示供 LLM 参考
-			attHint := ""
-			if len(ch.AttachmentURLs) > 0 {
-				attHint = "附件 URL: " + strings.Join(ch.AttachmentURLs, ", ")
-			}
-			if flags, err := llmFB.solve(ctx, ch.Title, ch.Category, ch.Description, attHint); err != nil {
-				// LLM 超时或报错 → 不阻塞，继续返回 nil
+			if flags, err := llmFB.solve(ctx, ch); err != nil {
 				logger.Debug("Layer 3 LLM 调用失败（非致命）",
 					zap.String("challenge", ch.Title),
 					zap.Error(err))

@@ -17,7 +17,7 @@
     3) 逐位还原二进制串，按 8 位对齐转 bytes 即得明文 flag。
 
     实测 real_crypto_simplelegendre：分解出 1024-bit p、q，逐位 Legendre 还原
-    flag{GO0D_J0b_of_TH1s_encrYption}，与题面 flag_sha256 逐字匹配
+    flag{**}，与题面 flag_sha256 逐字匹配
     （2026-09-03 验证通过，~1s）。
 
 接口对齐 skills/caesar_bruteforce.run：run(params) -> flag 明文 或 None。

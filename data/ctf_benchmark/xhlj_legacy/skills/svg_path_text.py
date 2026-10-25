@@ -7,7 +7,7 @@
 
     例（NYU CTF Bench 2023f-for-floating_points，CSAW-Finals 2023）：
         floating_points --bzip2--> Ascii85 --> SVG path --> 渲染 -->
-        csawctf{did_you_try_w3schools_path_d=}
+        csawctf{**}
 
 为什么这样实现：
     · **渲染**只依赖「解析 SVG path 指令 + 多边形栅格化」，是公开标准的确定性

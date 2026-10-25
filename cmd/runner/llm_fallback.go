@@ -1,52 +1,73 @@
-// llm_fallback —— runner Layer 3: Eino ChatModel 独立调用。
+// llm_fallback —— runner Layer 3: Eino ChatModel 独立调用 + 工具绑定。
 //
 // 设计原则：
-//   1. 不启动 agent/db/mcp —— 纯 ChatModel.Generate()，零 Web 依赖
-//   2. 只做纯文本推理：把题干喂给 LLM，让它输出 flag 候选（纯 flag{...} 格式）
-//      - 今天版本没有工具绑定（那是赛后 +3 天的事）
-//      - reverse/pwn 需要动态执行二进制 → 留给 Python skill bridge（Layer 2）
-//      - crypto/web/misc 需要纯推理 → 这个 Layer 能覆盖
-//   3. 依赖门控：RUNNER_LLM_FALLBACK=false 或没有 API key → 自动跳过
+//   1. 不启动 agent/db/mcp —— 纯 ChatModel.Generate() + 手动 tool calling 循环
+//   2. 两个工具（最小集）：
+//      - execute_python: 桥接 Layer 2 Python skill（angr/pwntools 真跑）
+//      - read_attachment: 下载 CTF 附件到临时目录，返回 strings 输出
+//   3. 安全硬限：
+//      - 每题最多 5 次工具调用 + 3 轮 LLM 对话（防无限循环）
+//      - execute_python subprocess 超时 120s
+//      - read_attachment 下载超时 30s
+//      - 总 LLM 调用超时由 ctx + RUNNER_LLM_TIMEOUT_SEC 双重控制
+//   4. 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
 //
-// Env 变量约定（全部 runner 专属，和 app.go 里的模型配置无关）：
+// Env 变量约定（全部 runner 专属）：
 //   RUNNER_LLM_FALLBACK     默认 false，显式 true 才启用
 //   RUNNER_LLM_API_KEY      API key（必需，缺则跳过）
 //   RUNNER_LLM_BASE_URL     默认 https://api.deepseek.com/v1
-//   RUNNER_LLM_MODEL        默认 deepseek-reasoner（推理型模型性价比高）
-//   RUNNER_LLM_TIMEOUT_SEC  默认 60 秒
+//   RUNNER_LLM_MODEL        默认 deepseek-reasoner
+//   RUNNER_LLM_TIMEOUT_SEC  默认 60
 //   RUNNER_LLM_MAX_TOKENS   默认 2048
+//   RUNNER_LLM_MAX_TOOL_CALLS 默认 5（每题工具调用上限）
+//   RUNNER_LLM_MAX_ROUNDS   默认 3（LLM 对话轮数上限）
 
 package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	einoopenai "github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 	"go.uber.org/zap"
+
+	"secautomind-ai/internal/ctfplatform"
 )
 
 type llmFallback struct {
-	model   *einoopenai.ChatModel
-	logger  *zap.Logger
-	enabled bool
+	model    *einoopenai.ChatModel
+	pyBridge *pySkillRunner
+	logger   *zap.Logger
+	enabled  bool
+
+	maxToolCalls int // 每题工具调用上限
+	maxRounds    int // LLM 对话轮数上限
 }
 
 // newLLMFallback 从 env 变量构造 LLM fallback。缺任何必需项返回 disabled 实例。
-// runner 启动时调一次，之后 solver 闭包里读 f.enabled 决定是否调。
-func newLLMFallback(ctx context.Context, logger *zap.Logger) *llmFallback {
+// pyBridge 用于 execute_python 工具，nil 时工具自动降级。
+func newLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge *pySkillRunner) *llmFallback {
 	if !envBool("RUNNER_LLM_FALLBACK", false) {
 		logger.Info("LLM fallback 未启用（RUNNER_LLM_FALLBACK 未设或非 true）")
-		return &llmFallback{logger: logger}
+		return &llmFallback{logger: logger, pyBridge: pyBridge}
 	}
 
 	apiKey := strings.TrimSpace(os.Getenv("RUNNER_LLM_API_KEY"))
 	if apiKey == "" {
 		logger.Warn("LLM fallback 启用但 RUNNER_LLM_API_KEY 未设 → 跳过")
-		return &llmFallback{logger: logger}
+		return &llmFallback{logger: logger, pyBridge: pyBridge}
 	}
 
 	baseURL := envOrDefault("RUNNER_LLM_BASE_URL", "https://api.deepseek.com/v1")
@@ -62,14 +83,26 @@ func newLLMFallback(ctx context.Context, logger *zap.Logger) *llmFallback {
 	if err != nil {
 		logger.Warn("LLM fallback 初始化失败 → 跳过", zap.Error(err),
 			zap.String("base_url", baseURL), zap.String("model", modelName))
-		return &llmFallback{logger: logger}
+		return &llmFallback{logger: logger, pyBridge: pyBridge}
 	}
 
-	logger.Info("LLM fallback 就绪",
-		zap.String("base_url", baseURL),
-		zap.String("model", modelName))
+	ff := &llmFallback{
+		model:        m,
+		pyBridge:     pyBridge,
+		logger:       logger,
+		enabled:      true,
+		maxToolCalls: envInt("RUNNER_LLM_MAX_TOOL_CALLS", 5),
+		maxRounds:    envInt("RUNNER_LLM_MAX_ROUNDS", 3),
+	}
 
-	return &llmFallback{model: m, logger: logger, enabled: true}
+	logger.Info("LLM fallback 就绪（含工具绑定）",
+		zap.String("base_url", baseURL),
+		zap.String("model", modelName),
+		zap.Int("max_tool_calls", ff.maxToolCalls),
+		zap.Int("max_rounds", ff.maxRounds),
+		zap.Bool("execute_python", pyBridge != nil))
+
+	return ff
 }
 
 func envOrDefault(key, fallback string) string {
@@ -80,10 +113,10 @@ func envOrDefault(key, fallback string) string {
 	return v
 }
 
-// solve 把题干喂给 LLM，让它输出 flag 候选列表（flag{...} 格式）。
-// 返回 nil, nil 表示要么 disabled、要么 LLM 报错、要么没输出 flag。
-// 超时由 ctx 控制（Poller 的 SolveTimeout 已经包了一层）。
-func (f *llmFallback) solve(ctx context.Context, title, category, description, attachmentHint string) ([]string, error) {
+// solve 把题干喂给 LLM（带工具绑定），让它输出 flag 候选列表。
+// 手动 tool calling 循环：LLM → 检查 ToolCalls → 执行 → 追加 ToolMessage → 再 Generate。
+// 硬限：maxToolCalls 次工具调用 + maxRounds 轮对话，超过就停。
+func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 	if !f.enabled || f.model == nil {
 		return nil, nil
 	}
@@ -92,82 +125,361 @@ func (f *llmFallback) solve(ctx context.Context, title, category, description, a
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	systemPrompt := `你是一个 CTF 解题助手。根据题目描述推理出正确的 flag。
+	// 准备工具定义（动态根据 pyBridge 可用性）
+	tools := f.buildToolDefs()
 
-规则：
-1. 只输出最终 flag，格式必须是 flag{...}
-2. 如果不确定，按"最可能的前 3 个候选"格式输出，每行一个 flag{...}
-3. 如果完全无法推理，输出 "NO_SOLUTION"
-4. 不要解释推理过程，不要输出代码，只输出 flag`
-
-	userContent := buildLLMPrompt(title, category, description, attachmentHint)
+	systemPrompt := f.buildSystemPrompt()
+	userContent := f.buildUserPrompt(ch)
 
 	msgs := []*schema.Message{
 		schema.SystemMessage(systemPrompt),
 		schema.UserMessage(userContent),
 	}
 
-	resp, err := f.model.Generate(callCtx, msgs)
-	if err != nil {
-		f.logger.Warn("LLM fallback 调用失败",
-			zap.String("title", title),
-			zap.Error(err))
-		return nil, nil
+	toolCallCount := 0
+
+	for round := 0; round < f.maxRounds; round++ {
+		opts := []model.Option{}
+		if len(tools) > 0 {
+			opts = append(opts, model.WithTools(tools))
+		}
+
+		resp, err := f.model.Generate(callCtx, msgs, opts...)
+		if err != nil {
+			f.logger.Warn("LLM fallback 调用失败",
+				zap.String("challenge", ch.Title),
+				zap.Int("round", round), zap.Error(err))
+			return nil, nil
+		}
+
+		if resp == nil {
+			return nil, nil
+		}
+
+		// 检查工具调用
+		if len(resp.ToolCalls) > 0 {
+			msgs = append(msgs, resp) // 助手消息（含 ToolCalls）
+
+			for _, tc := range resp.ToolCalls {
+				toolCallCount++
+				if toolCallCount > f.maxToolCalls {
+					f.logger.Warn("LLM 工具调用超上限，截断",
+						zap.Int("limit", f.maxToolCalls),
+						zap.String("challenge", ch.Title))
+					break
+				}
+
+				// 执行工具
+				result := f.executeTool(callCtx, tc, ch)
+				msgs = append(msgs, schema.ToolMessage(result, tc.ID))
+			}
+
+			if toolCallCount > f.maxToolCalls {
+				break
+			}
+
+			// 继续下一轮（工具结果已经追加）
+			continue
+		}
+
+		// 无工具调用 → LLM 直接输出文本
+		if len(resp.Content) == 0 {
+			return nil, nil
+		}
+
+		raw := strings.TrimSpace(resp.Content)
+		if strings.Contains(raw, "NO_SOLUTION") {
+			return nil, nil
+		}
+
+		candidates := extractFlagCandidates(raw)
+		if len(candidates) == 0 {
+			f.logger.Debug("LLM 输出里没找到 flag 格式",
+				zap.String("challenge", ch.Title),
+				zap.String("raw", truncate(raw, 200)))
+			return nil, nil
+		}
+
+		f.logger.Info("Layer 3 LLM fallback 命中",
+			zap.String("challenge", ch.Title),
+			zap.String("category", ch.Category),
+			zap.Int("tool_calls_used", toolCallCount),
+			zap.Strings("candidates", candidates))
+
+		return candidates, nil
 	}
 
-	if resp == nil || len(resp.Content) == 0 {
-		return nil, nil
-	}
-
-	raw := strings.TrimSpace(resp.Content)
-	if strings.Contains(raw, "NO_SOLUTION") {
-		return nil, nil
-	}
-
-	// 从 LLM 输出里提取所有 flag{...} 候选
-	candidates := extractFlagCandidates(raw)
-	if len(candidates) == 0 {
-		f.logger.Debug("LLM fallback 输出里没找到 flag 格式",
-			zap.String("title", title),
-			zap.String("raw", truncate(raw, 200)))
-		return nil, nil
-	}
-
-	f.logger.Info("Layer 3 LLM fallback 命中",
-		zap.String("challenge", title),
-		zap.String("category", category),
-		zap.Strings("candidates", candidates))
-
-	return candidates, nil
+	f.logger.Debug("LLM fallback 达到轮数上限",
+		zap.String("challenge", ch.Title),
+		zap.Int("rounds", f.maxRounds),
+		zap.Int("tool_calls", toolCallCount))
+	return nil, nil
 }
 
-// buildLLMPrompt 组装 LLM 输入题干。保持简洁——token 是真金白银。
-func buildLLMPrompt(title, category, description, attachmentHint string) string {
+// ── 工具定义 ────────────────────────────────────────────────
+
+// buildToolDefs 构造工具列表。pyBridge nil 时跳过 execute_python。
+func (f *llmFallback) buildToolDefs() []*schema.ToolInfo {
+	var tools []*schema.ToolInfo
+
+	if f.pyBridge != nil {
+		tools = append(tools, &schema.ToolInfo{
+			Name: "execute_python",
+			Desc: strings.TrimSpace(`
+执行 Python 解题 skill（angr/pwntools 真跑）。当题目属于 reverse/pwn/crypto/misc 且需要动态执行二进制或利用 Python 生态工具时调用。
+skill_name 可选值（按题目类别选）：
+- reverse: angr_decompile, angr_symbolic, ghidra_analyze, objdump_disasm
+- pwn: pwn_checksec, pwn_ret2libc, pwn_ret2win, pwn_ret2dlresolve, pwn_canary_bruteforce
+- crypto: factor_integer, rsa_wiener_attack, rsa_hastad_attack, xor_bruteforce
+- misc: zip_crack, image_steg, pcap_analyze
+参数中 skill_name 必填，params 选填（JSON 对象，skill 的特殊参数）。`),
+			ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+				"skill_name": {
+					Type:     schema.String,
+					Desc:     "skill 名称（见 desc 中可选值列表）",
+					Required: true,
+				},
+				"params": {
+					Type: schema.String,
+					Desc: "JSON 字符串格式的额外参数（选填）",
+				},
+			}),
+		})
+	}
+
+	tools = append(tools, &schema.ToolInfo{
+		Name: "read_attachment",
+		Desc: strings.TrimSpace(`
+下载题目附件（二进制/PCAP/ZIP/内存镜像等），保存到临时目录后返回：
+1. 文件本地路径
+2. 文件大小（字节）和 MIME 类型
+3. strings 输出前 80 行（文本类附件直接给内容，二进制类给可打印字符串）
+如果附件是 ELF/PE 等二进制，你拿到路径后可以再决定用 execute_python 调 angr 或 pwntools 分析。`),
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"attachment_url": {
+				Type:     schema.String,
+				Desc:     "附件下载 URL（从题目信息里获取）",
+				Required: true,
+			},
+		}),
+	})
+
+	return tools
+}
+
+// executeTool 根据 ToolCall 的 Function.Name 路由到对应实现。
+// 统一返回文本结果（LLM 读 ToolMessage.Content）。
+func (f *llmFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge) string {
+	// 解析参数 JSON
+	var args map[string]any
+	if tc.Function.Arguments != "" {
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return fmt.Sprintf("[工具 %s 参数解析失败] %v", tc.Function.Name, err)
+		}
+	}
+
+	switch tc.Function.Name {
+	case "execute_python":
+		return f.toolExecutePython(ctx, args, ch)
+	case "read_attachment":
+		return f.toolReadAttachment(ctx, args)
+	default:
+		return fmt.Sprintf("[未知工具: %s]", tc.Function.Name)
+	}
+}
+
+// toolExecutePython 调 pyBridge.runSkill（subprocess 执行 Python skill）。
+// 硬限：120s 子进程超时（由 ctx 控制 + bridge 自身 timeout）。
+func (f *llmFallback) toolExecutePython(ctx context.Context, args map[string]any, ch *ctfplatform.Challenge) string {
+	if f.pyBridge == nil {
+		return "[execute_python 不可用：pyBridge 未初始化]"
+	}
+
+	skillName, _ := args["skill_name"].(string)
+	if skillName == "" {
+		return "[execute_python 缺少 skill_name]"
+	}
+
+	// 120s subprocess 硬超时
+	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
+	flags, ok := f.pyBridge.runSkill(execCtx, skillName, ch)
+	if !ok {
+		return fmt.Sprintf("[execute_python skill 执行失败或无依赖] skill=%s", skillName)
+	}
+
+	if len(flags) == 0 {
+		return fmt.Sprintf("[execute_python skill 执行成功但无 flag 输出] skill=%s", skillName)
+	}
+
+	return fmt.Sprintf("[execute_python 成功] skill=%s → flags: %s", skillName, strings.Join(flags, ", "))
+}
+
+// toolReadAttachment 下载附件到 /tmp，返回路径 + 文件信息 + strings 前 80 行。
+// 硬限：30s 下载超时。
+func (f *llmFallback) toolReadAttachment(ctx context.Context, args map[string]any) string {
+	attURL, _ := args["attachment_url"].(string)
+	if attURL == "" {
+		return "[read_attachment 缺少 attachment_url]"
+	}
+
+	// 30s 下载超时
+	dlCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// 解析 URL，取文件名
+	parsed, err := url.Parse(attURL)
+	if err != nil {
+		return fmt.Sprintf("[read_attachment URL 解析失败] %v", err)
+	}
+	fileName := filepath.Base(parsed.Path)
+	if fileName == "" || fileName == "/" {
+		fileName = "attachment"
+	}
+
+	// 下载到临时目录
+	tmpDir := os.TempDir()
+	localPath := filepath.Join(tmpDir, "secautomind_att_"+sanitize(fileName))
+
+	req, err := http.NewRequestWithContext(dlCtx, "GET", attURL, nil)
+	if err != nil {
+		return fmt.Sprintf("[read_attachment 请求构造失败] %v", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Sprintf("[read_attachment 下载失败] %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Sprintf("[read_attachment HTTP %d] url=%s", resp.StatusCode, attURL)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 50*1024*1024)) // 50MB 上限防大文件
+	if err != nil {
+		return fmt.Sprintf("[read_attachment 读取失败] %v", err)
+	}
+
+	if err := os.WriteFile(localPath, data, 0644); err != nil {
+		return fmt.Sprintf("[read_attachment 落盘失败] %v", err)
+	}
+
+	// 判断文件类型（简化版）
+	mime := resp.Header.Get("Content-Type")
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+
+	// strings 前 80 行
+	stringsOut := runStrings(localPath, 80)
+
+	return fmt.Sprintf("附件下载成功:\n路径: %s\n大小: %d bytes\nMIME: %s\n--- strings 前 80 行 ---\n%s",
+		localPath, len(data), mime, stringsOut)
+}
+
+// runStrings 执行 strings 命令取前 N 行可打印字符串。
+// strings 不存在时 fallback 到文件直接读取前 4096 字节。
+func runStrings(path string, lines int) string {
+	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(timeout, "strings", "-n", "4", path)
+	out, err := cmd.Output()
+	if err != nil {
+		// fallback: 直接读文件前 4096 字节
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return "[strings 命令不可用且读文件失败]"
+		}
+		return extractPrintable(string(data[:min(len(data), 4096)]))
+	}
+
+	content := string(out)
+	// 按行截断
+	allLines := strings.Split(strings.TrimSpace(content), "\n")
+	end := min(lines, len(allLines))
+	return strings.Join(allLines[:end], "\n")
+}
+
+func extractPrintable(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= 32 && r < 127 || r == '\n' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('.')
+		}
+	}
+	return b.String()
+}
+
+func sanitize(name string) string {
+	re := regexp.MustCompile(`[^\w\-\.]`)
+	return re.ReplaceAllString(name, "_")
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// ── Prompt / 提取 helper ──────────────────────────────────
+
+func (f *llmFallback) buildSystemPrompt() string {
+	tools := f.buildToolDefs()
+	var toolNames []string
+	for _, t := range tools {
+		toolNames = append(toolNames, t.Name)
+	}
+
+	system := `你是一个 CTF 解题助手，拥有以下工具：` + strings.Join(toolNames, ", ") + `
+
+解题流程（按题类别选策略）：
+- reverse: 先用 read_attachment 下载二进制，再用 execute_python(angr_decompile 或 angr_symbolic) 做反编译/符号执行
+- pwn: read_attachment → execute_python(pwn_checksec) 查保护 → pwn_ret2libc/ret2win 打利用
+- crypto: 先人工推理（公式攻击/参数异常），参数过大时 execute_python 跑因子分解/rsa 攻击
+- web: 纯人工推理（SQLi/XSS/反序列化），不需要工具
+- misc: 看附件类型选工具（PCAP→pcap_analyze，图片→image_steg，压缩包→zip_crack）
+
+规则：
+1. 最终输出必须是 flag{...} 格式（或多个候选，每行一个）
+2. 如果用了工具，把工具结果融合进推理
+3. 如果实在没思路，直接输出 NO_SOLUTION
+4. 不要输出推理过程、不要输出代码，只输出 flag 或 NO_SOLUTION`
+
+	return system
+}
+
+func (f *llmFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
 	var b strings.Builder
 	b.WriteString("题目：")
-	b.WriteString(title)
+	b.WriteString(ch.Title)
 	b.WriteString("\n类别：")
-	b.WriteString(category)
-	if attachmentHint != "" {
-		b.WriteString("\n附件信息：")
-		b.WriteString(attachmentHint)
+	b.WriteString(ch.Category)
+
+	if len(ch.AttachmentURLs) > 0 {
+		b.WriteString("\n附件 URL 列表（可用 read_attachment 下载）：\n")
+		for i, url := range ch.AttachmentURLs {
+			fmt.Fprintf(&b, "  %d. %s\n", i+1, url)
+		}
 	}
-	b.WriteString("\n\n题目描述：\n")
-	b.WriteString(truncate(description, 8000)) // 限制 token
+
+	b.WriteString("\n题目描述：\n")
+	b.WriteString(truncate(ch.Description, 8000))
 	return b.String()
 }
 
 // extractFlagCandidates 从文本里提取所有 flag{...} 格式的候选。
-// 支持常见格式：flag{...} / FLAG{...} / xxxxx{...} 等。
 func extractFlagCandidates(text string) []string {
-	// 简单正则：找所有 {...} 包围的，前缀通常是 flag 或 FLAG 或 xxxxx
 	var flags []string
 	seen := make(map[string]bool)
 
-	// 按行分割，每行可能包含一个或多个候选
 	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
-		// 找 flag{...} 或 FLAG{...}
 		lower := strings.ToLower(line)
 		if idx := strings.Index(lower, "flag{"); idx >= 0 {
 			end := strings.Index(line[idx:], "}")

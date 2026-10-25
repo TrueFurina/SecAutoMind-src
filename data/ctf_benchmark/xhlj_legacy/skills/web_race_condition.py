@@ -82,8 +82,10 @@ def web_race_condition(params: dict) -> dict:
 
 
 def run(params):
-    """SkillManager 统一入口：转发到业务函数。"""
-    return web_race_condition(params)
+    """SkillManager 统一入口：转发到业务函数（async 用 asyncio.run 收敛）。"""
+    import asyncio
+
+    return asyncio.run(web_race_condition(params))
 
 
 def main() -> None:

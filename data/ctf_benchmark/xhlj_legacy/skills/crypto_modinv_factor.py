@@ -18,7 +18,7 @@
     3) N = p·q、d = e^{-1} mod phi，正常 RSA 解密 m = c^d mod N。
 
     实测 real_crypto_exciting_inverse：判别式开方直接解出 1024-bit p/q，
-    解密 flag{QUITE_S1mpLe_TAsk}，与题面 flag_sha256 逐字匹配（2026-09-03 验证）。
+    解密 flag{**}，与题面 flag_sha256 逐字匹配（2026-09-03 验证）。
 
 接口对齐 skills/caesar_bruteforce.run：run(params) -> flag 明文 或 None。
     params:

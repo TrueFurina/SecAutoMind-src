@@ -27,7 +27,7 @@
 （FactorDB 离线可预先缓存因子列表）。
 
 诚实口径：这是「RSA cycling attack」这一真实密码学攻击的确定性实现
-（非 grep 明文、非读答案密钥）。实测解出 flag=CTF{Recycling_Is_Great}
+（非 grep 明文、非读答案密钥）。实测解出 flag=CTF{**}
 且与题库 flag_sha256 逐字匹配。
 """
 

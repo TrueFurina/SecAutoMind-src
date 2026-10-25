@@ -10,7 +10,7 @@ motivating 真题：CSAW-Quals 2017 forensics「missed_registration」
 `POST / HTTP/1.1` 表单发往 `192.168.0.21:8080`，其中 125 个带多余字段 `x`
 （urlencoded，值为 BMP 的 hex，尾部以 NUL 填充）。按序拼接 125 段恰得
 13714 字节 = BMP 头里声明的文件大小，还原出 323x39 的 8bpp BMP，渲染
-`FLAG{3Am_LaunDR3Y_FL4G_L34kz!}`。
+`FLAG{**}`。
 
 诚实口径：本 skill 只做**确定性的字节搬运与读图**——不做明文嗅探、不猜 flag。
 命中与否由调用方（presolve）用题面 flag_pattern / flag_sha256 把关；无把握

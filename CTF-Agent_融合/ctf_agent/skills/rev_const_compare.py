@@ -9,12 +9,12 @@
 
 已实现的三类变换（均来自实测真题）：
   1. ``xor_const``   —— 输入整体 XOR 单字节常量 后 strcmp 常量数组。
-       CSAW-Quals 2023 **whataxor** → ``csawctf{0ne_sheeP_1wo_sheWp_2hree_5heeks...xor}``。
+       CSAW-Quals 2023 **whataxor** → ``csawctf{**}``。
   2. ``subst_table`` —— 附件内经 2 字节/项替换表 (from→to) 逐字节映射 后 strncmp 常量。
-       CSAW-Quals 2017 **tablez** → ``flag{t4ble_l00kups_ar3_b3tter_f0r_m3}``。
+       CSAW-Quals 2017 **tablez** → ``flag{**}``。
   3. ``tree_index``  —— 常量数组被视为二叉查找树（左子 2i+1 / 右子 2i+2），
        函数返回「字符在树中的下标」，再与下标数组比对。
-       CSAW-Quals 2019 **beleaf** → ``flag{we_beleaf_in_your_re_future}``。
+       CSAW-Quals 2019 **beleaf** → ``flag{**}``。
 
 依赖：系统 ``objdump``（mingw-w64 自带）；无则返回 None（不谎报）。
 诚实口径：本 skill 只做**确定性静态求解**，命中仍由 sha256/flag_pattern 校验；

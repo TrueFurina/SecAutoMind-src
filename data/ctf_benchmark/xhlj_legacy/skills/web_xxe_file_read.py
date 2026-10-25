@@ -89,8 +89,10 @@ def _extract_flag(text: str) -> str:
 
 
 def run(params):
-    """SkillManager 统一入口：转发到业务函数。"""
-    return web_xxe_file_read(params)
+    """SkillManager 统一入口：转发到业务函数（async 用 asyncio.run 收敛）。"""
+    import asyncio
+
+    return asyncio.run(web_xxe_file_read(params))
 
 
 def main() -> None:
