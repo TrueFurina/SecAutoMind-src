@@ -32,6 +32,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -343,11 +344,11 @@ except Exception as _e:
 }
 
 // extractSkillText 从 Challenge.Description 中提取密文文本。
-// 匹配常见格式："密文: xxx" / "cipher: xxx" / "text=xxx" / "密文=xxx" / "Ciphertext: xxx"
+// 匹配常见格式："密文: xxx" / "cipher: xxx" / "text=xxx" / "密文=xxx" / "Ciphertext: xxx" / "encoded: xxx"
 func extractSkillText(desc string) string {
 	patterns := []*regexp.Regexp{
-		regexp.MustCompile(`(?i)(?:密文|cipher|ciphertext|encrypted|编码|text)\s*[:=]\s*[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
-		regexp.MustCompile(`(?i)(?:密文|cipher)\s+is\s+[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
+		regexp.MustCompile(`(?i)(?:密文|cipher|ciphertext|encrypted|编码|encoded|text)\s*[:=]\s*[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
+		regexp.MustCompile(`(?i)(?:密文|cipher|encoded)\s+is\s+[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
 	}
 	for _, p := range patterns {
 		if m := p.FindStringSubmatch(desc); len(m) > 1 {
@@ -358,10 +359,10 @@ func extractSkillText(desc string) string {
 }
 
 // extractSkillKey 从 Challenge.Description 中提取密钥（Vigenère/Playfair 等需要）
-// 匹配："key: SECRET" / "密钥=SECRET" / "key=SECRET"
+// 匹配："key: SECRET" / "密钥=SECRET" / "key SECRET"（空格也接受，因为 CTF 题描述常省冒号）
 func extractSkillKey(desc string) string {
 	patterns := []*regexp.Regexp{
-		regexp.MustCompile(`(?i)(?:密钥|key|secret)\s*[:=]\s*[` + "`" + `"]?([A-Za-z0-9_\-]{2,})[` + "`" + `"]?`),
+		regexp.MustCompile(`(?i)(?:密钥|key|secret)\s*[:=\s]\s*[` + "`" + `"]?([A-Za-z0-9_\-]{2,})[` + "`" + `"]?`),
 	}
 	for _, p := range patterns {
 		if m := p.FindStringSubmatch(desc); len(m) > 1 {
@@ -448,9 +449,12 @@ func candidateSkillDirs() []string {
 		// 不保留任何外部路径兜底——那正是 2026-10-25 删掉的东西。
 		return nil
 	}
+	// 用 filepath.Join 而非硬编码反斜杠：Runner 二进制最终 scp 到 Linux 服务器运行，
+	// 反斜杠在 Linux 上会被当成普通字符，导致候选路径根本不存在、Layer 2 静默失效。
+	// 2026-10-25 实测：本机(Windows)测试能过，但服务器(Linux) findSkillsDir 恒返回空。
 	return []string{
-		cwd + `\internal\ctfplatform\pyskills`,
-		cwd + `\skills\python`,
-		cwd + `\CTF-Agent_融合\ctf_agent\skills`,
+		filepath.Join(cwd, "internal", "ctfplatform", "pyskills"),
+		filepath.Join(cwd, "skills", "python"),
+		filepath.Join(cwd, "CTF-Agent_融合", "ctf_agent", "skills"),
 	}
 }
