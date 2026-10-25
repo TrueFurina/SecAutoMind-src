@@ -322,6 +322,36 @@ REAL_BRAND_RE = re.compile(
     r"^(d0g3|DASCTF|picoCTF|VNCTF|ISCTF|XCTF|NCTF|HITB|GXY|ACTF|SUCTF|"
     r"W4ter|MiniL|西湖|虎符)\{", re.I)
 
+# ── 占位符模板 ≠ 答案 ────────────────────────────────────────────────────────
+# 判据与 internal/ctfplatform/presolve_registry.go 的 flagPlaceholderRe +
+# flagPlaceholderWords **同构**（纪律：引擎与门禁必须共用同一判据，否则引擎已经
+# 判定「这不是 flag」的串，门禁还报成「真赛事品牌真泄露」）。
+# 实测动机（2026-10-25）：161 条「真赛事品牌」里 53 条是占位符模板
+# （`DASCTF{%d-%d}` printf 模板、`DASCTF{init1-init2}` 格式声明、
+#  `picoCTF{your_flag_here}`、截断样例 `DASCTF{3792...}`），虚报 +33%。
+# 这类串**不含答案**，出现在 PUBLIC 仓不构成泄露；把它们算进最高优先级的
+# 「真泄露」队列，只会让真正的 108 条被稀释、排序失真。
+PLACEHOLDER_BODY_RE = re.compile(r"(?i)(\binit\d+\b|x{4,}|\.\.\.|\byour|\*{4,}|%[a-z]|\?{2,})")
+PLACEHOLDER_WORDS = frozenset({
+    "flag", "flags", "flaghere", "yourflag", "yourflaghere", "insertflag",
+    "insertflaghere", "putflaghere", "test", "testflag", "example", "sample", "demo",
+})
+
+
+def classify_brand(raw: str) -> str:
+    """把一条 flag 外形命中原分为三类：placeholder / real / self。
+
+    只影响**优先级分诊**，不影响「命中」本身：命中数（tracked_hits 上限）仍按
+    「像 flag 就算」的宽口径统计，避免放宽判据给自己开后门。
+    """
+    body = raw[raw.find("{") + 1: -1]
+    if PLACEHOLDER_BODY_RE.search(body):
+        return "placeholder"
+    key = re.sub(r"[^a-z0-9]", "", body.lower())
+    if key in PLACEHOLDER_WORDS:
+        return "placeholder"
+    return "real" if REAL_BRAND_RE.match(raw) else "self"
+
 
 def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
     """扫描形如 `前缀{内容}` 的 CTF flag 明文。返回 (hits, untracked_hits)。
@@ -363,7 +393,7 @@ def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
                     "line": lineno,
                     "masked": mask(raw),
                     "tracked": is_tracked,
-                    "brand": "real" if REAL_BRAND_RE.match(raw) else "self",
+                    "brand": classify_brand(raw),
                 })
     untracked = [h for h in hits if not h["tracked"]]
     return hits, untracked
@@ -380,8 +410,12 @@ def evaluate_flag_policy(hits, tracked_set, baseline):
     # 口径纪律：n_real 必须只在 tracked 集合内统计，不能拿"全部 hits"减去"已入库数"
     # ——首版就是这么写的，得出 390 这个假数（真实已入库真赛事仅 105 条）。
     n_real = sum(1 for h in hits if h["tracked"] and h.get("brand") == "real")
+    # 占位符模板（printf 模板 / 格式声明 / 截断样例）不是答案，单列出来而不是塞进
+    # 「真泄露」——否则最高优先级队列会被假阳性稀释（2026-10-25 实测虚报 33%）。
+    n_ph = sum(1 for h in hits if h["tracked"] and h.get("brand") == "placeholder")
     sev = (f"｜真赛事品牌 {n_real} 条（真泄露，优先清）"
-           f"／自产构造 {max(n_tracked - n_real, 0)} 条" if n_tracked else "")
+           f"／自产构造 {max(n_tracked - n_real - n_ph, 0)} 条"
+           f"／占位符模板 {n_ph} 条（非答案）" if n_tracked else "")
     if tracked_set is None:
         # 非 git 目录：无法区分入库/未入库。此时**只有确有命中才 fail-closed** ——
         # 干净目录（如门禁自测用的临时空目录）必须放行，否则 --allow-no-fingerprint
@@ -423,12 +457,35 @@ def load_flag_baseline() -> dict | None:
     return None
 
 
-def freeze_flag_baseline(root: str) -> int:
-    tracked = _git_tracked(root)
-    hits, untracked = scan_plaintext_flags(root, tracked)
-    if tracked is None:
-        print("❌ 拒绝固化：该目录不在 git 仓库中，无法区分入库/未入库")
-        return 1
+def freeze_flag_baseline(root: str, snapshot: str | None = None) -> int:
+    """固化明文 flag 上限。
+
+    `snapshot` 非空时，改为在「HEAD + 本次提交文件」的导出快照上测量（快照内
+    所有文件都视为已入库）。**这是并发开发下唯一正确的口径**：工作树里常有别的
+    会话尚未提交的遮蔽改动，按工作树冻结会让 CI 在干净检出上看到更高数值 →
+    门禁假红 → 门禁被绕过（2026-10-25 实际踩过一次）。
+    """
+    if snapshot:
+        snap = os.path.abspath(snapshot)
+        if not os.path.isdir(snap):
+            print(f"❌ 快照目录不存在：{snap}")
+            return 1
+        tracked = set()
+        for dp, dn, fn in os.walk(snap):
+            dn[:] = [d for d in dn if d not in SKIP_DIRS]
+            for f in fn:
+                tracked.add(os.path.relpath(os.path.join(dp, f), snap).replace(os.sep, "/"))
+        hits, _untracked_snap = scan_plaintext_flags(snap, tracked)
+        untracked = [h for h in hits if not h["tracked"]]
+        basis = (f"上限取 `git archive HEAD` + 本次提交文件 的导出快照（{snap}）实测值，"
+                 f"不是当前工作树值 —— 工作树含并发会话未提交的改动。")
+    else:
+        tracked = _git_tracked(root)
+        if tracked is None:
+            print("❌ 拒绝固化：该目录不在 git 仓库中，无法区分入库/未入库")
+            return 1
+        hits, untracked = scan_plaintext_flags(root, tracked)
+        basis = "上限取当前工作树实测值（单会话、无并发未提交改动时才可用）。"
     if untracked:
         print(f"⚠️  另有未入库副本 {len(untracked)} 条明文 flag，不计入上限"
               f"（不进 PUBLIC 仓，但 git add 后会变成入库泄露）")
@@ -452,6 +509,9 @@ def freeze_flag_baseline(root: str) -> int:
         "real_brand_files": real_files,
         "untracked_copies": len(untracked),
         "per_file": per_file,
+        # 口径来源必须随基线一起落盘：否则下一个人看到 2519 会以为是工作树实测值，
+        # 又按工作树重冻一次，把并发未提交的遮蔽抹掉 → 上限被打回高位。
+        "_frozen_basis": basis,
     }
     # 保住人工写下的 `_target` / `_correction_*` 等元数据：每次冻结都重算会把
     # 「为什么是这个数、要降到多少」抹掉，那正是下一次误判的起点。
@@ -606,7 +666,10 @@ def main():
     if "--audit-allowlist" in sys.argv:
         return audit_allowlist(root)
     if "--freeze-flag-baseline" in sys.argv:
-        return freeze_flag_baseline(root)
+        snap = None
+        if "--basis-snapshot" in sys.argv:
+            snap = sys.argv[sys.argv.index("--basis-snapshot") + 1]
+        return freeze_flag_baseline(root, snap)
     if "--skip-flag-scan" in sys.argv:
         tracked_set, flag_hits, flag_untracked = set(), [], []
         flag_block, flag_note = False, "已用 --skip-flag-scan 跳过"

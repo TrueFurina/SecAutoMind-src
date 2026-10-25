@@ -7,103 +7,103 @@
     {
       "id": "exec_strings",
       "skill": "strings_flag",
-      "flag": "flag{str1ngs_r3v34l5_5ecret5}",
+      "flag_sha256": "9563247d091166c37ae8051b75ca4e25402e730c49817522172f094a86424538",
       "sha256_match": true
     },
     {
       "id": "exec_base64_source",
       "skill": "web_source_audit",
-      "flag": "flag{v13w_50urc3_70_f1nd}",
+      "flag_sha256": "867508870baa43ce72ddc8f7543d4a29719310cff74bb8a78f843f46eb605d61",
       "sha256_match": true
     },
     {
       "id": "exec_cookie",
       "skill": "cookie_decode",
-      "flag": "flag{c00k13_c4n_h1d3}",
+      "flag_sha256": "a5678709a4b3f1e3d5e41f050a7b96f98013f97c4225e38788a55874f4f832cb",
       "sha256_match": true
     },
     {
       "id": "exec_endian",
       "skill": "endian_swap",
-      "flag": "flag{3nd14n_sw4p}",
+      "flag_sha256": "b654076ccd97ff8e5cda53bfc351fe67dc950d0dfa038f8b11bbc4ee4406a489",
       "sha256_match": true
     },
     {
       "id": "exec_git",
       "skill": "git_history",
-      "flag": "flag{g1t_h1st0ry_l34ks}",
+      "flag_sha256": "2fe91f53d01ac8569c22d725fd11003f9ec059563f8690e7d976b2e344caf878",
       "sha256_match": true
     },
     {
       "id": "exec_pcap",
       "skill": "pcap_http",
-      "flag": "flag{http_p0st_b0dy}",
+      "flag_sha256": "b2870ebfcc31a2496abdaea0ab2629b8002e9cd7751658da995edf827dfe4f3f",
       "sha256_match": true
     },
     {
       "id": "live_sqli",
       "skill": "live_sqli",
-      "flag": "flag{l1v3_sqli_byp4ss_rce_demo}",
+      "flag_sha256": "e60f857930208ccf3a10c21cc87f494c4d5426905af50eef0b1aa9079cb9c7e4",
       "sha256_match": true
     },
     {
       "id": "live_ssti",
       "skill": "live_ssti",
-      "flag": "flag{l1v3_sst1_t3mplat3_1nj3ct10n}",
+      "flag_sha256": "f1dcb29e1568362b195adf2d0144a8be39f8d66fd71aea3dfb460c549ded7bd2",
       "sha256_match": true
     },
     {
       "id": "exec_disk_image",
       "skill": "strings_flag",
-      "flag": "picoCTF{d1sk_f0r3ns1cs_r0cks}",
+      "flag_sha256": "aa3483ce65fc2f3296f938defc9e5b8231007d73e61ed7a5211a0ceb24915333",
       "sha256_match": true
     },
     {
       "id": "exec_memdump",
       "skill": "strings_flag",
-      "flag": "picoCTF{m3m0ry_dump_v0lat1l1ty}",
+      "flag_sha256": "f06d437866fac90d4e2f9b51d25c5be5046ea7789709fff72af4ca035bc35dad",
       "sha256_match": true
     },
     {
       "id": "exec_git_cred",
       "skill": "git_history",
-      "flag": "picoCTF{l34k3d_cr3d_in_g1t_h1st}",
+      "flag_sha256": "ff5ebade0a2a18835d025a26aeeec7de03de4116aeaa324002f8f87cbd457dbb",
       "sha256_match": true
     },
     {
       "id": "exec_pcap_get",
       "skill": "pcap_http",
-      "flag": "flag{pcap_g3t_l34k_2026}",
+      "flag_sha256": "f5ec3fc7cc167aa930edbf88507a4b62a628b28345acd76aa9a00f90d1934941",
       "sha256_match": true
     },
     {
       "id": "exec_morse",
       "skill": "morse_decode",
-      "flag": "flag{m0rs3c0d3f0r3ns1c5}",
+      "flag_sha256": "561094e6dfd50c2bf69463c67fa2748fb515c6419d645cf242ff968a30b544c0",
       "sha256_match": true
     },
     {
       "id": "exec_log_forensics",
       "skill": "web_source_audit",
-      "flag": "picoCTF{l0g_4ud1t_b64_l34k}",
+      "flag_sha256": "4033f5fbe7f88408ddccdcc0f3d9766ca463512716d0f911eb82cfee4d045beb",
       "sha256_match": true
     },
     {
       "id": "exec_common_modulus",
       "skill": "common_modulus_attack",
-      "flag": "flag{c0mm0n_m0dulus_1s_f4t4l}",
+      "flag_sha256": "5b22c6e114b58adaa55e6696f497add723e399bd8650852ed117fdd701280dff",
       "sha256_match": true
     },
     {
       "id": "exec_hastad_broadcast",
       "skill": "hastad_broadcast_attack",
-      "flag": "flag{h4st4d_br04dc4st_cr7}",
+      "flag_sha256": "aad6ccfcffd14ce679245ebce858d5b34ae0d30f963f0ebe76d29761cc243dc7",
       "sha256_match": true
     },
     {
       "id": "exec_rsa_wiener",
       "skill": "rsa_wiener_attack",
-      "flag": "flag{w13n3r_c0nt1nu3d_fr4ct10ns}",
+      "flag_sha256": "5eab8e4d838a32dabe058a84e699abf55b92d100e0771691c21aec505599362b",
       "sha256_match": true
     }
   ]

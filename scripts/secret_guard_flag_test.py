@@ -184,6 +184,56 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("未记真品牌上限", note)
 
 
+class TestBrandClassification(unittest.TestCase):
+    """品牌分诊：占位符模板不是答案，不得计进「真赛事品牌真泄露」队列。
+
+    动机（2026-10-25 实测）：此前 `brand` 只分 real/self，`DASCTF{%d-%d}`
+    （printf 模板）、`DASCTF{init1-init2}`（题面格式声明）、`picoCTF{your_flag_here}`
+    这些**不含答案**的串全被算成「真泄露」，161 条里 53 条是假阳性（虚报 33%），
+    把真正要清的 108 条稀释掉了。判据与 internal/ctfplatform/presolve_registry.go
+    的 flagPlaceholderRe / flagPlaceholderWords 同构 —— 引擎已判「不是 flag」的串，
+    门禁不能还报「真泄露」。
+    """
+
+    def _cls(self, raw):
+        return _load_guard().classify_brand(raw)
+
+    def test_printf_templates_are_placeholders(self):
+        for raw in ("DASCTF{%d-%d}", "DASCTF{uid_%d}", "DASCTF{%s}"):
+            self.assertEqual(self._cls(raw), "placeholder", raw)
+
+    def test_format_declarations_are_placeholders(self):
+        for raw in ("DASCTF{init1-init2}", "picoCTF{your_flag_here}",
+                    "flag{****}", "picoCTF{xxxx}", "flag{...}"):
+            self.assertEqual(self._cls(raw), "placeholder", raw)
+
+    def test_truncated_samples_are_placeholders(self):
+        """文档里的截断样例（`DASCTF{3792...}`）不含完整答案，不是泄露。"""
+        self.assertEqual(self._cls("DASCTF{3792...}"), "placeholder")
+
+    def test_placeholder_words_are_placeholders(self):
+        for raw in ("DASCTF{test}", "picoCTF{example}", "flag{sample}"):
+            self.assertEqual(self._cls(raw), "placeholder", raw)
+
+    def test_real_brand_answer_is_real(self):
+        """正文是真答案（非占位形态）时必须仍判 real —— 别把判据放宽成恒假。"""
+        for raw in ("DASCTF{selftest_abc123}", "picoCTF{selftest_body}"):
+            self.assertEqual(self._cls(raw), "real", raw)
+
+    def test_generic_brand_is_self(self):
+        self.assertEqual(self._cls("flag{selftest_body}"), "self")
+
+    def test_placeholder_does_not_consume_real_brand_quota(self):
+        """占位符不能挤占真品牌配额：真品牌 0 条 + 占位符 5 条 → 不得拦。"""
+        hits = [{"file": "d", "line": i, "masked": "DASCTF{**}",
+                 "tracked": True, "brand": "placeholder"} for i in range(5)]
+        block, note, n, _ = _load_guard().evaluate_flag_policy(
+            hits, {"d"}, {"tracked_hits": 10, "real_brand_hits": 0})
+        self.assertFalse(block, note)
+        self.assertEqual(n, 5)
+        self.assertIn("占位符模板 5 条", note)
+
+
 class TestTrackedEncoding(unittest.TestCase):
     """非 ASCII 路径的入库判定（2026-10-25 实测缺陷）。"""
 

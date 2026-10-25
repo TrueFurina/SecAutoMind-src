@@ -539,7 +539,11 @@ def main():
             'sub': p.get('sub', ''),
             'difficulty': p['difficulty'],
             'presolve_engine': engine,
-            'presolve_flag': flag,
+            # 判据迁移（2026-10-25）：报告落盘只写 sha256，不写 flag 明文。
+            # 依据：`presolve_flag` 全仓**只写不读**（grep 实证唯一写入点就是本行，
+            # 无任何消费方），删明文对下游零影响；而本仓是 PUBLIC，报告里的明文
+            # 等于把真题答案直接贴到公网。保留 sha256 仍可核对解出的串是否等于真值。
+            'presolve_flag_sha256': (sha256(flag) if flag else ''),
             'sha256_match': matched,
             'expected_skill': p.get('presolve_skill', ''),
         })

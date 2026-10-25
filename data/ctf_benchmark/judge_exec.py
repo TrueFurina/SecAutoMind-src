@@ -361,7 +361,11 @@ def main():
                 miss += 1
         else:
             miss += 1
-        results.append({"id": pid, "skill": skill, "flag": flag, "sha256_match": matched})
+        # 判据迁移（2026-10-25）：落盘只写 sha256，不写 flag 明文（PUBLIC 仓红线）。
+        # 该 `flag` 字段全仓只写不读，删明文对下游零影响。
+        results.append({"id": pid, "skill": skill,
+                        "flag_sha256": (sha256(flag) if flag else ""),
+                        "sha256_match": matched})
         print("  %s %s  skill=%s flag=%s" % (
             "✅" if matched else "❌", pid, skill,
             (flag[:40] + "…") if flag and len(flag) > 40 else flag))
