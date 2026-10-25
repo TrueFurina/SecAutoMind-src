@@ -2,7 +2,7 @@
  "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增：超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
  "frozen_at": "2026-10-25 10:22:44",
  "root": "E:\\Program\\SecAutoMind",
- "tracked_hits": 2700,
+ "tracked_hits": 2705,
  "real_brand_hits": 317,
  "real_brand_files": {
   ".workbuddy-ai/memory/2026-10-22.md": 1,
@@ -573,13 +573,15 @@
    },
    "plaintext": {
     "HEAD": 3525,
-    "提交后预期": 2700
+    "提交后预期": 2700,
+    "提交后实测": 2705
    },
    "why_lossless": "证据文件里的 flag 只出现在 sample_candidates（人读样例）与 with_answers/no_answers（抄进 leak 报告）两处，命中判定由 hit_any = expected in shas 用 sha256 完成；遮蔽后 KPI 派生值逐字节一致（_kpi_canonical.py --json 前后 diff = 0），相关 3 个测试文件 39 项结果与改动前完全相同（含 2 个既存 README 漂移失败）。",
    "truth_ledger": "遮蔽真值 sha256 已存 data/flag_truth.local.json（gitignored，823 条）",
-   "remaining_hot": "剩下 317 条真品牌集中在生成器 (gen_exec_artifacts_v2 8 / _gen_local_text 4)、测试夹具 (test_presolve_answer_check 6 / presolve_no_false_positive_test.go 6 / protocol_golden.json 6 / presolve_lfsr_test.go 5)、coverage 报告、memory 日志、以及 skills/lfsr_filter_recover.py(4×2)。这些要么改判据为 sha256、要么外置真值，属另一项工程，不在本轮范围。"
+   "remaining_hot": "剩下 317 条真品牌集中在生成器 (gen_exec_artifacts_v2 8 / _gen_local_text 4)、测试夹具 (test_presolve_answer_check 6 / presolve_no_false_positive_test.go 6 / protocol_golden.json 6 / presolve_lfsr_test.go 5)、coverage 报告、memory 日志、以及 skills/lfsr_filter_recover.py(4×2)。这些要么改判据为 sha256、要么外置真值，属另一项工程，不在本轮范围。",
+   "note_2705": "实测 2705 而非预估 2700：并发会话 01f8398（deflate-stego Go 化）在提交后带入 5 条，已按 HEAD 实测校正。真品牌 317 与预估一致。"
   }
  },
  "_target": "上限 2475 是**修正口径后的真实存量**，不是新增许可。目标：先清 heldout_evidence(801) 与 tests(416) 两块，再把真实赛事品牌降到 0；每清完一批立刻 --freeze-flag-baseline 下调。",
- "_frozen_basis": "上限取「HEAD + 本次提交的 28 个文件」快照实测值（2700 / 317），不是当前工作树值（1650 / 161）。原因：工作树里另有并发会话尚未提交的 21 个 data/ctf_benchmark/heldout_evidence 遮蔽；若按工作树冻结，CI 在干净检出上会看到 2700 > 1650 而假红——门禁一红就会被绕过。等那批改动入账后重跑 --freeze-flag-baseline 自动下调。"
+ "_frozen_basis": "上限取「HEAD + 本次提交的 28 个文件」快照实测值（2705 / 317），不是当前工作树值（1650 / 161）。原因：工作树里另有并发会话尚未提交的 21 个 data/ctf_benchmark/heldout_evidence 遮蔽；若按工作树冻结，CI 在干净检出上会看到 2705 > 1650 而假红——门禁一红就会被绕过。等那批改动入账后重跑 --freeze-flag-baseline 自动下调。"
 }
