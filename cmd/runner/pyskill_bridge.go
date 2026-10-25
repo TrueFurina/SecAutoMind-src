@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -193,7 +194,8 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 			if !r.hasAngr {
 				continue
 			}
-		case "pwn_ret2dlresolve", "pwn_nogdb_flow", "pwn_sandbox_escape", "pwn_exploit_flow":
+		case "pwn_ret2dlresolve", "pwn_nogdb_flow", "pwn_sandbox_escape":
+			// pwn_exploit_flow 故意不在此列——它不 import pwntools（Advisor 复核我扫描结果：NeedPwn=False）
 			if !r.hasPwnTools {
 				continue
 			}
@@ -233,11 +235,30 @@ func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfp
 		return nil, false
 	}
 
-	// python -c 脚本：包装 bytes 返回值为 base64 dict（防止 json.dumps 崩溃）
-	// 2026-10-25 gap 分析：约 20 个 skill 返回 bytes（crypto_hastad_broadcast 等），json.dumps 对 bytes 会直接崩溃
-	script := fmt.Sprintf(
-		"import sys, json, base64; sys.path.insert(0, %q); import %s as s; _r = s.run(json.loads(sys.argv[1])); _r = {\"__base64__\": base64.b64encode(_r).decode()} if isinstance(_r, bytes) else _r; print(json.dumps(_r))",
-		r.skillsDir, skillName)
+	// python -c 脚本：递归 sanitize 所有 bytes 值为 base64 包装 dict（防止 json.dumps 崩溃）
+	// 2026-10-25 嵌套 bytes 修复：之前只处理顶层 isinstance(_r, bytes)，dict/list 内部嵌套的 bytes 仍会让 json.dumps 崩
+	// 递归 walk 所有 dict/list 元素，任何 bytes 值都 base64 编码成 {"__base64__": "...", "__orig__": "bytes"}
+	const scriptTpl = `
+import sys, json, base64
+sys.path.insert(0, %q)
+def _sanitize(obj):
+    if isinstance(obj, bytes):
+        return {"__base64__": base64.b64encode(obj).decode(), "__orig__": "bytes"}
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(item) for item in obj]
+    return obj
+import %s as s
+try:
+    _r = s.run(json.loads(sys.argv[1]))
+    _r = _sanitize(_r)
+    print(json.dumps(_r))
+except Exception as _e:
+    print(json.dumps({"__error__": str(_e)}), file=sys.stderr)
+    sys.exit(1)
+`
+	script := fmt.Sprintf(scriptTpl, r.skillsDir, skillName)
 
 	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
