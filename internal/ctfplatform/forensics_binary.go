@@ -862,6 +862,14 @@ func init() {
 			return tryXorVerify(ctx, text, attachments)
 		},
 	})
+	// bin_mbr_sse：MBR 内 SSE 校验链反推（mbr_sse_verify 链 Go 化，2026-10-25；
+	// 吞并账本 #4——CSAW realism 真实端到端 + 仿真自检双保险）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_mbr_sse", Category: CategoryMiscS, Priority: 41,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryMbrSse(text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
