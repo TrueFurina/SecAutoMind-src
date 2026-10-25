@@ -841,9 +841,18 @@ def _resolve_settings(model: Optional[str], provider: Optional[str] = None) -> d
         # P1 修复（2026-08-21 第五轮锐评）：重型模型 read timeout 须放宽——
         # v4-pro 深推理常态 60-300s；deepseek 官方已无 reasoner 档（静默路由 flash）。
         # 60s 统一 read timeout 会掐死 attempt≥2 升级路径。
+        # D 通道（2026-10-25）：397B 档补齐——ModelScope 生产链路实测（腾讯云→
+        # api-inference.modelscope.cn，TLS 51ms，5 次真调用）：mtok=600 时 26.9s；
+        # mtok=1500 时 92.5s/126.0s/26.4s（P50≈92s，方差大）。60s 必然掐死长
+        # token 调用 → ReadTimeout。与 reasoner/v4-pro 同式放宽到 300s。
         _ml = str(model).lower()
-        if "reasoner" in _ml or "v4-pro" in _ml:
+        if "reasoner" in _ml or "v4-pro" in _ml or "397b" in _ml:
             timeout_seconds = max(timeout_seconds, 300)
+        # 环境显式覆盖口（最后生效）：跑批脚本/赛时可按通道直接钉超时，免改代码。
+        # 非数字/<=0 视为未设（fail-closed 到既有值）。
+        _env_to = os.getenv("CTF_AGENT_LLM_TIMEOUT_SECONDS", "").strip()
+        if _env_to.isdigit() and int(_env_to) > 0:
+            timeout_seconds = int(_env_to)
     except (TypeError, ValueError):
         timeout_seconds = DEFAULT_TIMEOUT_SECONDS
 
