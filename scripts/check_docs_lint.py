@@ -166,6 +166,29 @@ def check_links(text, filedir):
     return problems
 
 
+def _resolve_script_ref(token, root):
+    """把 `scripts/x.py` 这类引用解析成真实路径；解析不到返回 None。
+
+    为什么需要后缀回退（2026-10-26 实锤）：
+      `SCRIPT_REF_RE` 从 `scripts/` 起匹配，所以文档里写
+      `CTF-Agent_融合/ctf_agent/scripts/_kpi_canonical.py` 时，
+      正则只截出 `scripts/_kpi_canonical.py` —— 而顶层 `scripts/` 下并没有它，
+      于是**真实存在的脚本被判成"不存在"**（4 处误报，全部指向同一个随迁脚本）。
+    做法：顶层找不到时，按后缀在仓库里再找一次（排除 .git）。
+    """
+    direct = os.path.join(root, token)
+    if os.path.exists(direct):
+        return direct
+    suffix = os.sep + token.replace("/", os.sep)
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d != ".git"]
+        for fn in filenames:
+            full = os.path.join(dirpath, fn)
+            if full.endswith(suffix):
+                return full
+    return None
+
+
 def check_script_refs(text, root):
     """scripts/ 引用必须真实存在。"""
     problems = []
@@ -174,7 +197,7 @@ def check_script_refs(text, root):
         if not token.lower().endswith(SCRIPT_EXT):
             continue
         token = token.rstrip(".,);:、。")
-        if not os.path.exists(os.path.join(root, token)):
+        if _resolve_script_ref(token, root) is None:
             line_no = text[:m.start()].count("\n") + 1
             problems.append((line_no, f"引用了不存在的脚本：`{token}`"))
     return problems

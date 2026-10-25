@@ -39,6 +39,11 @@ ROUTES_DOC = "docs/AGENT_ROUTES.md"
 INDEX_DOC = "docs/INDEX.md"
 CLOSING_DOC = "docs/收尾清单.md"
 
+# 工具/agent 状态目录：被 .gitignore 覆盖，干净检出里永远不存在。
+# 路由表提到它们属正当（如"交付包排除面必须覆盖 .workbuddy-ai/"这条教训），
+# 不能按"引用了不存在的路径"判红（2026-10-26 修：此前 CI 因此恒红）。
+TOOL_STATE_DIRS = {".workbuddy", ".workbuddy-ai", ".box-agent", ".git", "node_modules"}
+
 # 反引号里"像路径"的 token：不含通配符/占位符/空格
 PATH_TOKEN = re.compile(r"^[A-Za-z0-9_./\-\u4e00-\u9fff]+$")
 PATH_EXT = (".go", ".py", ".js", ".css", ".yaml", ".yml", ".md", ".sh",
@@ -86,6 +91,11 @@ def check_routes_paths(root):
         if tok in seen:
             continue
         seen.add(tok)
+        # 工具态目录（被 .gitignore 覆盖）**永远不存在于干净检出**，但路由表里
+        # 提到它们是正当的（例如"交付包排除面必须覆盖 .workbuddy-ai/"这条教训）。
+        # 2026-10-26：此前把它们当"引用了不存在的路径"，导致 CI 在干净检出上恒红。
+        if tok.rstrip("/").split("/")[0] in TOOL_STATE_DIRS:
+            continue
         if not os.path.exists(os.path.join(root, tok.rstrip("/"))):
             bad.append(tok)
     return ["C2 路由表引用了不存在的路径: %s" % b for b in bad]
@@ -253,9 +263,17 @@ def self_test():
                      "    runs-on: ubuntu-latest\n    steps:\n"
                      "      - name: n\n        run: python scripts/n.py\n")
 
+    def m_tool_state_dir(b):
+        # 2026-10-26 回归：路由表提到 gitignored 的工具态目录**不得**判红。
+        # 真事故：CI 在干净检出上恒红，报 "C2 路由表引用了不存在的路径: .workbuddy-ai/"，
+        # 而那句话是教训（"交付包排除面必须覆盖 .workbuddy-ai/"），目录本身永远不入仓。
+        with open(os.path.join(b, ROUTES_DOC), "a", encoding="utf-8") as fh:
+            fh.write("\n交付包排除面必须覆盖 `.workbuddy-ai/`（曾把账号口令发给评委）\n")
+
     case("基线应通过", m_baseline, False)
     case("AGENTS 超 300 行应红", m_agents_long, True)
     case("路由表假路径应红", m_fake_path, True)
+    case("路由表工具态目录应绿（不误报）", m_tool_state_dir, False)
     case("INDEX 漏登文档应红", m_index_missing, True)
     case("INDEX 指向幽灵文档应红", m_index_ghost, True)
     case("收尾清单缺项应红", m_closing_short, True)
