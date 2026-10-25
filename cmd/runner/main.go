@@ -130,19 +130,23 @@ func main() {
 	// pyBridge 传入 → execute_python 工具可用；nil → 自动降级
 	llmFB := newLLMFallback(context.Background(), logger, pyBridge)
 
-	// ── 3. Solver 闭包（三层链 + 监督 per-layer 短路）──────
+	// ── 3. Solver 闭包（三层链 + 跨层监督网关）──────────
 	//   Layer 1: Presolve 确定性求解（189 Go solver，0 token）
 	//   Layer 2: Python skill bridge（angr/pwntools 真跑，有依赖门控）
 	//   Layer 3: Eino ChatModel + 工具绑定（可选，真 token 成本）
-	// 每层结束喂 SupervisionStep + ReflectSupervision：
-	//   ABANDON → 立即 return nil（省后续层 token/时间）
-	//   SWITCH / CONTINUE → 继续
+	// 跨层网关（L175/L210）喂入真实候选线索数(candCount)与每步观察，供监督账本
+	// 显形"确定性层是否产出线索"。注意：监督规则⑥(used>=5)按 LLM 轮数尺度调参，
+	// 在 3 层抽象下不可达 → 本网关设计上以放行(CONTINUE)为主，真正的 ABANDON/
+	// SWITCH 决策发生在 Layer3 内部的 llmFB.solve()（轮数尺度，规则可达）。
 	solver := func(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
 		var supSteps []ctfplatform.SupervisionStep
 		candCount := 0
 
 		// ── Layer 1: presolve（0 token，永远先跑）──────────
 		res := presolver.Presolve(ctx, ch, nil)
+		// 真实候选线索计数：presolve 即便未"解出"，extract 到的 flag 形字符串也是
+		// 有效线索（规则⑥ 零候选即 ABANDON；账本 candidates_found 据此显形）。
+		candCount += len(res.Flags)
 		if res.Solved {
 			candidates := ctfplatform.FilterFlagCandidates(res.Flags)
 			if len(candidates) > 0 {
@@ -172,6 +176,7 @@ func main() {
 		}
 
 		// 监督反思（L1+L2 后，还没烧 LLM token）
+		// candCount 已是 L1 真实提取的候选线索数（presolve 即便未解出也计入）
 		if decision := ctfplatform.ReflectSupervision(
 			ctfplatform.SupervisionState{BudgetTotal: 3, BudgetUsed: 2, Candidates: &candCount, Challenge: ch.Title},
 			supSteps, nil,
