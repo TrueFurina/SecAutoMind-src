@@ -161,19 +161,18 @@ func main() {
 		supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "presolve 未命中"})
 
 		// ── Layer 2: Python skill bridge ─────────────────────
-		if ch.Category == "reverse" || ch.Category == "pwn" || ch.Category == "crypto" || ch.Category == "misc" {
-			if flags, ok := pyBridge.tryCategory(ctx, ch.Category, ch); ok {
-				ch.SolvedBy = "python_skill"
-				logger.Info("Layer 2 Python skill 命中",
-					zap.String("challenge", ch.Title),
-					zap.String("category", ch.Category),
-					zap.Strings("flags", flags))
-				return flags, nil
-			}
-			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "python skill 未命中/无依赖"})
-		} else {
-			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "python skill 跳过（非目标类别）"})
+		// 放开类别闸门（2026-10-25）：除 reverse/pwn/crypto/misc 外，
+		// web/zip/java/morse 等 skill 已接入 skillCatalog，直接尝试即可；
+		// tryCategory 对 catalog 中不存在的类别会优雅返回 false，不会误伤。
+		if flags, ok := pyBridge.tryCategory(ctx, ch.Category, ch); ok {
+			ch.SolvedBy = "python_skill"
+			logger.Info("Layer 2 Python skill 命中",
+				zap.String("challenge", ch.Title),
+				zap.String("category", ch.Category),
+				zap.Strings("flags", flags))
+			return flags, nil
 		}
+		supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "python skill 未命中/无依赖/无此类 skill"})
 
 		// 监督反思（L1+L2 后，还没烧 LLM token）
 		// candCount 已是 L1 真实提取的候选线索数（presolve 即便未解出也计入）

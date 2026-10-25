@@ -1,0 +1,22 @@
+# Runner v4 Layer 2 (Python skill bridge) 依赖清单
+# 桥接进程用 CTF_PYTHON_PATH 指定的解释器（默认 workbuddy 托管 venv）subprocess 调用这些包。
+# 安装：<python> -m pip install -r cmd/runner/requirements.txt
+# 注意：angr / pwntools 体积较大（angr ~500MB+），按需安装；缺失时对应 skill 会被依赖门控静默跳过。
+
+# 逆向 / 符号执行
+angr
+z3-solver
+
+# Pwn / 二进制利用
+pwntools
+
+# 密码学
+pycryptodome
+cryptography
+
+# 图像处理（jpeg/png/svg 隐写类 skill）
+Pillow
+numpy
+
+# 通用
+requests
