@@ -878,6 +878,14 @@ func init() {
 			return tryEmojiBinary(text, attachments)
 		},
 	})
+	// bin_banana_script：bananascript VM 编码解码 + 滚动异或（banana_script 链
+	// Go 化，2026-10-25；吞并账本 #6——CSAW 2017 bananascript 真实端到端）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_banana_script", Category: CategoryRevS, Priority: 43,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryBananaScript(text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
