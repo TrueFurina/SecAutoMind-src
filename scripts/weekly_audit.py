@@ -15,6 +15,8 @@
   6 归因分桶      最新结果记录的 solved_by 分布（presolve/python_skill/llm；
                     无记录=WARN 不 FAIL——LLM 层尚未跑批时正常）
   7 钩子激活位    .git/hooks/pre-commit 存在且含 secret_guard 调用（防被清空）
+  8 记忆完整性    MEMORY.md 行数≥200 + 锚存在 + 双路径检测（2026-10-25 删除事故防线）
+  9 报告位卫生    顶层 benchmark_report.json 不得被 mock 残留占据（mock 冒充战绩温床）
 
 用法：
   python scripts/weekly_audit.py           # 人读报告
@@ -193,12 +195,54 @@ def check_hook_live():
     return "PASS", "激活位在且含门禁调用"
 
 
+# 第 8 项背景：2026-10-25 MEMORY.md（352 行）被删，靠回收站救回（破晓处置）。
+# 机检化：行数硬下限 + 标题锚存在 + 双路径并存检测（.workbuddy/ 旧版残留）。
+MEMORY_FILE = os.path.join(".workbuddy-ai", "memory", "MEMORY.md")
+MEMORY_MIN_LINES = 200  # 现值 352；跌破即疑遭删/截断（回收站先查，禁急重构）
+
+
+def check_memory_integrity():
+    p = os.path.join(ROOT, MEMORY_FILE)
+    if not os.path.isfile(p):
+        return "FAIL", "MEMORY.md 缺失——先查回收站恢复（2026-10-25 事故先例），禁急重构"
+    n = sum(1 for _ in open(p, encoding="utf-8", errors="ignore"))
+    if n < MEMORY_MIN_LINES:
+        return "FAIL", "MEMORY.md 仅 %d 行（<%d）——疑删/截断，查回收站" % (n, MEMORY_MIN_LINES)
+    head = open(p, encoding="utf-8", errors="ignore").read(400)
+    if "KPI" not in head and "真值" not in head:
+        return "WARN", "MEMORY.md 头部缺 KPI/真值锚——内容疑被替换（人工复核）"
+    if os.path.isdir(os.path.join(ROOT, ".workbuddy", "memory")):
+        return "WARN", "%d 行在位；但 .workbuddy/memory/ 旧路径并存（配置漂移，建议合并清理）" % n
+    return "PASS", "%d 行在位" % n
+
+
+# 第 9 项背景：2026-10-25 顶层 benchmark_report.json 被 mock 残留占据，真实报告在
+# mm_* 子目录——真实落盘位与 mock 覆盖位混用是「mock 冒充战绩」病史的温床。
+BENCH_REPORT = os.path.join("CTF-Agent_融合", "ctf_agent", "data", "results",
+                            "benchmark_report.json")
+
+
+def check_report_hygiene():
+    p = os.path.join(ROOT, BENCH_REPORT)
+    if not os.path.isfile(p):
+        return "PASS", "顶层报告位空置（无混用）"
+    try:
+        mode = json.load(open(p, encoding="utf-8")).get("mode", "?")
+    except Exception:
+        return "WARN", "顶层报告 JSON 损坏"
+    if mode == "mock":
+        return "WARN", "顶层落盘位被 mock 残留占据（mode=mock）——真实跑批应另落 mm_* 类目录，mock 残留宜清"
+    return "PASS", "顶层 mode=%s" % mode
+
+
 CHECKS = [
     ("红测试核验", check_red_tests),
     ("白名单腐化", check_allowlist),
     ("门禁健康", check_gate_health),
     ("数据资产断链", check_external_deps),
     ("钩子激活位", check_hook_live),
+    ("记忆完整性", check_memory_integrity),
+    ("报告位卫生", check_report_hygiene),
 ]
 
 
