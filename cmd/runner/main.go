@@ -250,21 +250,24 @@ func mask(s string) string {
 
 // detectConflictingProcs 检测已有参赛进程（runner 或 ctf-agent）。
 // 返回命中的 PID 列表（字符串格式），空列表表示无冲突。
+// 排除本进程自己（os.Getpid），避免自匹配。
 func detectConflictingProcs() []string {
+	selfPid := strconv.Itoa(os.Getpid())
+
 	var patterns []string
 	if runtime.GOOS == "windows" {
-		// Windows: 精确匹配 exe 名（覆盖所有版本号后缀）
 		patterns = []string{
 			"runner.exe", "runner_ctf.exe", "runner_ctf2.exe",
 			"runner_v2.exe", "runner_v3.exe", "runner_v4.exe",
 			"final_entry.py", "runner_ctf2.py",
 		}
 	} else {
-		// Linux: pgrep -f 模糊匹配（覆盖所有 runner 变体 + 版本号）
+		// pgrep -f 收紧：匹配二进制路径片段，排除 bash -c wrapper 里的 runner 文字
 		patterns = []string{
-			"runner_ctf", "runner_ctf2", "final_entry",
-			"runner_v2", "runner_v3", "runner_v4",
-			"/runner", // 任何 /path/to/runner* 二进制
+			"ctf_run/runner",   // 服务器标准路径 ~/ctf_run/runner_v*
+			"/runner_ctf",      // runner_ctf / runner_ctf2
+			"/final_entry",     // final_entry.py 或二进制
+			"sm_dev_20261020/cmd/runner", // go run 临时二进制
 		}
 	}
 
@@ -274,7 +277,6 @@ func detectConflictingProcs() []string {
 	for _, p := range patterns {
 		var out string
 		if runtime.GOOS == "windows" {
-			// 用 tasklist 查，输出里找 pattern
 			outBytes, e := exec.Command("tasklist", "/FI", "IMAGENAME eq "+p).CombinedOutput()
 			if e != nil {
 				continue
@@ -289,7 +291,7 @@ func detectConflictingProcs() []string {
 		}
 		for _, line := range strings.Split(out, "\n") {
 			pid := strings.TrimSpace(line)
-			if pid == "" {
+			if pid == "" || pid == selfPid {
 				continue
 			}
 			if !seen[pid] {
