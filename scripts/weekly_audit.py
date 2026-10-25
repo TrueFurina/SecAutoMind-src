@@ -68,9 +68,10 @@ EXTERNAL_DEPS_KNOWN_LOST = [
     ("hg2022/RSA Attack 3/output.txt", "同上"),
 ]
 # 第 5 项：基准新鲜度盯的对象
+# 只盯"跑出来的报告"，不盯静态题库（benchmark.json=55 题题面输入，天生不变；
+# 把输入当报告监控=天天假红——2026-10-25 立尺自纠）
 FRESHNESS_TARGETS = [
     "data/ctf_benchmark/all_benchmarks_summary.json",
-    "data/ctf_benchmark/benchmark.json",
 ]
 # 第 6 项：结果记录扫描位（runner/Poller 落盘；按 solved_by 键聚合）
 RECORD_GLOBS = ["logs/**/poll_records*.json", "data/results/**/*records*.json"]
