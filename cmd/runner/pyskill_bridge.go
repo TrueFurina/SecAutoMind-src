@@ -28,9 +28,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
-	"sort"
+	"regexp"
 	"strings"
 	"time"
 
@@ -219,14 +221,34 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 }
 
 // runSkill subprocess 调单个 Python skill，返回 (flag candidates, 是否成功)
+// 2026-10-25 参数契约增强：Runner 之前只传 4 字段（name/category/description/attachment_urls），
+// 但 skill 通常需要 text/path/key。现在：
+//   ① 从 description regex 提取 text（密文）和 key（密钥）
+//   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
 func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
 	params := map[string]interface{}{
 		"name":        ch.Title,
 		"category":    ch.Category,
 		"description": ch.Description,
 	}
+
+	// 从 description 提取 text（密文）——匹配 "密文: xxx" / "cipher: xxx" / "text=xxx" 等常见格式
+	if text := extractSkillText(ch.Description); text != "" {
+		params["text"] = text
+	}
+	// 从 description 提取 key（Vigenère 等需要密钥）
+	if key := extractSkillKey(ch.Description); key != "" {
+		params["key"] = key
+	}
+
+	// 附件：如果有 URL，下载第一个到临时文件并传 path
 	if len(ch.AttachmentURLs) > 0 {
 		params["attachment_urls"] = ch.AttachmentURLs
+		if localPath, err := r.downloadAttachment(ctx, ch.AttachmentURLs[0]); err == nil {
+			params["path"] = localPath
+		} else {
+			r.logger.Debug("附件下载失败，跳过 path 参数", zap.String("url", ch.AttachmentURLs[0]), zap.Error(err))
+		}
 	}
 
 	paramsJSON, err := json.Marshal(params)
@@ -239,8 +261,9 @@ func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfp
 	// 2026-10-25 嵌套 bytes 修复：之前只处理顶层 isinstance(_r, bytes)，dict/list 内部嵌套的 bytes 仍会让 json.dumps 崩
 	// 递归 walk 所有 dict/list 元素，任何 bytes 值都 base64 编码成 {"__base64__": "...", "__orig__": "bytes"}
 	const scriptTpl = `
-import sys, json, base64
+import sys, json, base64, os, asyncio
 sys.path.insert(0, %q)
+sys.path.insert(0, os.path.dirname(%q))
 def _sanitize(obj):
     if isinstance(obj, bytes):
         return {"__base64__": base64.b64encode(obj).decode(), "__orig__": "bytes"}
@@ -252,13 +275,15 @@ def _sanitize(obj):
 import %s as s
 try:
     _r = s.run(json.loads(sys.argv[1]))
+    if asyncio.iscoroutine(_r):
+        _r = asyncio.run(_r)
     _r = _sanitize(_r)
     print(json.dumps(_r))
 except Exception as _e:
     print(json.dumps({"__error__": str(_e)}), file=sys.stderr)
     sys.exit(1)
 `
-	script := fmt.Sprintf(scriptTpl, r.skillsDir, skillName)
+	script := fmt.Sprintf(scriptTpl, r.skillsDir, r.skillsDir, skillName)
 
 	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
@@ -315,6 +340,71 @@ except Exception as _e:
 	}
 
 	return nil, false
+}
+
+// extractSkillText 从 Challenge.Description 中提取密文文本。
+// 匹配常见格式："密文: xxx" / "cipher: xxx" / "text=xxx" / "密文=xxx" / "Ciphertext: xxx"
+func extractSkillText(desc string) string {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)(?:密文|cipher|ciphertext|encrypted|编码|text)\s*[:=]\s*[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
+		regexp.MustCompile(`(?i)(?:密文|cipher)\s+is\s+[` + "`" + `"]?([A-Za-z0-9+/={}._\-;,\s]{4,})[` + "`" + `"]?`),
+	}
+	for _, p := range patterns {
+		if m := p.FindStringSubmatch(desc); len(m) > 1 {
+			return strings.TrimSpace(m[1])
+		}
+	}
+	return ""
+}
+
+// extractSkillKey 从 Challenge.Description 中提取密钥（Vigenère/Playfair 等需要）
+// 匹配："key: SECRET" / "密钥=SECRET" / "key=SECRET"
+func extractSkillKey(desc string) string {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)(?:密钥|key|secret)\s*[:=]\s*[` + "`" + `"]?([A-Za-z0-9_\-]{2,})[` + "`" + `"]?`),
+	}
+	for _, p := range patterns {
+		if m := p.FindStringSubmatch(desc); len(m) > 1 {
+			return strings.TrimSpace(m[1])
+		}
+	}
+	return ""
+}
+
+// downloadAttachment 从 URL 下载附件到系统临时目录，返回文件路径。
+// 超时 30s，最大 50MB（与 Runner LLM read_attachment 工具一致）
+func (r *pySkillRunner) downloadAttachment(ctx context.Context, url string) (string, error) {
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// 50MB 上限
+	const maxSize = 50 * 1024 * 1024
+	if resp.ContentLength > maxSize {
+		return "", fmt.Errorf("附件太大: %d bytes (上限 %d)", resp.ContentLength, maxSize)
+	}
+
+	// 写临时文件
+	tmp, err := os.CreateTemp("", "runner-attach-*")
+	if err != nil {
+		return "", err
+	}
+	defer tmp.Close()
+
+	// 带大小限制的复制器
+	limited := io.LimitReader(resp.Body, maxSize+1)
+	if _, err := io.Copy(tmp, limited); err != nil {
+		os.Remove(tmp.Name())
+		return "", err
+	}
+	return tmp.Name(), nil
 }
 
 // findSkillsDir 多路径 fallback 探测 Python skills 目录
