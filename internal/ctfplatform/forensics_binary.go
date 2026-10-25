@@ -854,6 +854,14 @@ func init() {
 			return tryConstCompare(ctx, text, attachments)
 		},
 	})
+	// bin_xor_verify：C++ 口令校验器 XOR+查表 反推（rev_xor_verify 链 Go 化，
+	// 2026-10-25；吞并账本 #3——CSAW rox 真实端到端；无反汇编器依赖）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_xor_verify", Category: CategoryRevS, Priority: 40,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryXorVerify(ctx, text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
