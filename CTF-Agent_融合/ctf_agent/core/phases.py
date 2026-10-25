@@ -518,6 +518,30 @@ def _broad_sha256_flag(ctx, text: str) -> Optional[str]:
     return None
 
 
+def _record_rejected_candidate(ctx, stage: str, value: str, reason: str) -> None:
+    """C 诊断线（2026-10-25）：拒绝分支保留候选值，供 extract_fail 后验分析。
+
+    只追加、不改控制流；value 截断 240 字符防膨胀；AgentContext 类定义在
+    main_agent.py（A 文件域），此处对实例惰性初始化，不动类定义。
+    诊断消费方：eval/benchmark.py 汇总 rejected_candidates（C 线闭环）。
+    """
+    try:
+        recs = getattr(ctx, "rejected_candidates", None)
+        if recs is None:
+            recs = []
+            ctx.rejected_candidates = recs
+        q = getattr(ctx, "question", None)
+        qid = getattr(q, "id", "?") if q is not None else "?"
+        recs.append({
+            "stage": str(stage),
+            "value": str(value)[:240],
+            "reason": str(reason)[:120],
+            "question": qid,
+        })
+    except Exception:  # noqa: BLE001 — 诊断记录绝不影响主流程
+        pass
+
+
 def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
     """从执行结果中提取 flag（优先用 checker，其次正则）。原 MainAgent._extract_flag。
 
@@ -532,6 +556,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
         logger.info("[%s] flag 含格式符模板（疑似抄题面），主输出拒绝: %s",
                     getattr(ctx, "question", None) and ctx.question.id or "?",
                     str(output)[:60])
+        _record_rejected_candidate(ctx, "template_placeholder", str(output),
+                                   "格式符模板未替换")
         ctx._extract_failed = True  # 提取错埋点（2026-08-22 M1.3）
         primary_blocked = True
     if not primary_blocked and agent.checker is not None:
@@ -543,6 +569,7 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] flag 三态校验 REJECT（疑似 hallucination，丢弃）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             flag[:40])
+                _record_rejected_candidate(ctx, "checker_reject", flag, "V_REJECT")
                 ctx._extract_failed = True  # 提取错埋点（2026-08-22 M1.3）
                 _mark_hallucination(ctx)    # 2026-09-01 P1：累计幻觉命中，强制下一步实算
                 return None
@@ -557,6 +584,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] flag 与题面 sha256 真值不符（确定性幻觉，丢弃）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             flag[:40])
+                _record_rejected_candidate(ctx, "checker_sha256_mismatch", flag,
+                                           "sha256 真值不符")
                 ctx._extract_failed = True
                 _mark_hallucination(ctx)
                 return None
@@ -570,6 +599,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] 反幻觉闸拒绝（%s）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             _reason, flag[:40])
+                _record_rejected_candidate(ctx, "checker_provenance_reject", flag,
+                                           _reason)
                 ctx._extract_failed = True  # 提取错埋点（2026-08-22 M1.3）
                 _mark_hallucination(ctx)    # 2026-09-01 P1：累计幻觉命中，强制下一步实算
                 return None
@@ -595,6 +626,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] 兜底 flag 与题面 sha256 真值不符（确定性幻觉，丢弃）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             _f[:40])
+                _record_rejected_candidate(ctx, "fallback_sha256_mismatch", _f,
+                                           "sha256 真值不符")
                 ctx._extract_failed = True
                 _mark_hallucination(ctx)
                 return None
@@ -607,6 +640,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] 正则兜底反幻觉闸拒绝（%s）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             _reason, _f[:40])
+                _record_rejected_candidate(ctx, "fallback_provenance_reject", _f,
+                                           _reason)
                 ctx._extract_failed = True
                 _mark_hallucination(ctx)
                 return None
@@ -639,6 +674,8 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                 logger.info("[%s] 候选兜底反幻觉闸拒绝（%s）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             _reason, mc.group(0)[:40])
+                _record_rejected_candidate(ctx, "e1_provenance_reject",
+                                           mc.group(0), _reason)
                 ctx._extract_failed = True
                 _mark_hallucination(ctx)
                 return None
