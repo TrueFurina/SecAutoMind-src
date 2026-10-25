@@ -549,7 +549,7 @@
   "skills/blockchain-contract-attack/SKILL.md": 1,
   "web/static/i18n/en-US.json": 1
  },
- "_frozen_basis": "上限取 `git archive HEAD` + 本次提交文件 的导出快照（E:\\Program\\SecAutoMind\\.workbuddy\\tmp\\headsig）实测值，不是当前工作树值 —— 工作树含并发会话未提交的改动。",
+ "_frozen_basis": "上限取 `git archive HEAD` + 本次提交文件 的导出快照实测值（快照目录为临时导出、用完即删；复现方法：`git archive HEAD | tar -x -C <tmpdir>`，把本次提交的文件覆盖进去，再 `secret_guard.py --freeze-flag-baseline --basis-snapshot <tmpdir>`），**不是当前工作树值** —— 工作树含并发会话未提交的遮蔽，按工作树冻结会让 CI 在干净检出上看到更高数值而假红，门禁一红就会被绕过。已在 `git archive HEAD`(e4525c1) 上验证：实测 2519/253 与上限恰好相等 → PASS。",
  "_correction_20261025": "品牌分诊新增 placeholder 类，判据与 internal/ctfplatform/presolve_registry.go 的 flagPlaceholderRe/flagPlaceholderWords 同构；命中仍按宽口径统计（tracked_hits 不放松），只有『真泄露』队列变准。",
  "_target": "上限 2519/253 是**修正口径后的真实存量快照**，不是新增许可。目标：先把 heldout_evidence（145 条真品牌，占 253 的 57%）与 gen_exec_artifacts_v2(8) 清掉，再把真赛事品牌降到 0；每清完一批立刻 --freeze-flag-baseline --basis-snapshot 下调。2026-10-25 本次进展：2705/317 → 2519/253。其中 -64 = 占位符模板改判 53 条（DASCTF{%d-%d} / init1-init2 / your_flag_here / 截断样例，本来就不含答案）+ 覆盖率报告明文下线 11 条（real_coverage_report 的 presolve_flag、execution_coverage_report 的 flag 统一改存 *_sha256，两字段全仓只写不读）。"
 }
