@@ -184,3 +184,5 @@ scans/
 data/flag_truth.local.json
 # CTF 明文答案（红线：禁止入 PUBLIC 仓）
 data/answers/
+# 会话记忆日志：并行会话会往里贴真题 flag / 靶机凭证，绝不能入 PUBLIC 仓
+.workbuddy-ai/memory/
