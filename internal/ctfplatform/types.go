@@ -13,20 +13,26 @@ import (
 
 // Challenge 表示一道 CTF 题目。
 type Challenge struct {
-	ID            string                 `json:"id"`
-	Title         string                 `json:"title"`
-	Category      string                 `json:"category"` // web / crypto / misc / reverse / pwn
-	Description   string                 `json:"description"`
-	FlagFormat    string                 `json:"flag_format"` // 如 "flag{[^}]+}"
-	Score         int                    `json:"score"`
-	HasInstance   bool                   `json:"has_instance"`   // 是否需要启动容器
-	HasAttachment bool                   `json:"has_attachment"` // 是否有附件
+	ID string `json:"id"`
+	// SolvedBy 解出归因（测量口径基建，立尺 2026-10-25）：由求解链命中层写入
+	// "presolve" / "python_skill" / "llm" / ""（未解出）。序列化忽略——它不是
+	// 题目属性，是本次求解的 provenance，经 PollRecord.SolvedBy 对外报告。
+	// 🔴 口径铁律：presolve/python_skill 命中不得计入 LLM 解出（A 库 E3 报告
+	// 实证：无归因字段时 14/15 presolve 直出曾整体冒充链路能力）。
+	SolvedBy      string `json:"-"`
+	Title         string `json:"title"`
+	Category      string `json:"category"` // web / crypto / misc / reverse / pwn
+	Description   string `json:"description"`
+	FlagFormat    string `json:"flag_format"` // 如 "flag{[^}]+}"
+	Score         int    `json:"score"`
+	HasInstance   bool   `json:"has_instance"`   // 是否需要启动容器
+	HasAttachment bool   `json:"has_attachment"` // 是否有附件
 	// AttachmentURLs 由 parseChallenge 从题目详情提取的附件下载 URL（供 DownloadAttachment 使用）。
 	// 平台把附件 URL 嵌在详情 JSON 的 attachment/attachments/file 字段里（DASCTF 形态），
 	// 不另设独立下载 API，故先提取再 HTTP GET 落盘。
 	AttachmentURLs []string               `json:"attachment_urls,omitempty"`
-	Difficulty    string                 `json:"difficulty"`     // VERY_EASY / EASY / MEDIUM / HARD
-	Extra         map[string]interface{} `json:"extra,omitempty"`
+	Difficulty     string                 `json:"difficulty"` // VERY_EASY / EASY / MEDIUM / HARD
+	Extra          map[string]interface{} `json:"extra,omitempty"`
 }
 
 // Instance 表示一个启动的题目环境实例。
@@ -79,6 +85,7 @@ type PollRecord struct {
 	Detail          string    `json:"detail"`
 	Error           string    `json:"error"`
 	ErrorClass      string    `json:"error_class,omitempty"` // supervision.go 单一真值分类（truncated/non-retryable 口径）
+	SolvedBy        string    `json:"solved_by,omitempty"`   // 解出归因：presolve / python_skill / llm（口径铁律见 Challenge.SolvedBy）
 	ExtraCandidates []string  `json:"extra_candidates,omitempty"`
 }
 
