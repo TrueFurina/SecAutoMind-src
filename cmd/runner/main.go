@@ -146,6 +146,7 @@ func main() {
 		if res.Solved {
 			candidates := ctfplatform.FilterFlagCandidates(res.Flags)
 			if len(candidates) > 0 {
+				ch.SolvedBy = "presolve"
 				logger.Info("Layer 1 Presolve 命中",
 					zap.String("challenge", ch.Title),
 					zap.String("category", ch.Category),
@@ -158,6 +159,7 @@ func main() {
 		// ── Layer 2: Python skill bridge ─────────────────────
 		if ch.Category == "reverse" || ch.Category == "pwn" || ch.Category == "crypto" || ch.Category == "misc" {
 			if flags, ok := pyBridge.tryCategory(ctx, ch.Category, ch); ok {
+				ch.SolvedBy = "python_skill"
 				logger.Info("Layer 2 Python skill 命中",
 					zap.String("challenge", ch.Title),
 					zap.String("category", ch.Category),
@@ -195,6 +197,7 @@ func main() {
 					ErrCategory: string(ctfplatform.ClassifyError(err.Error())),
 				})
 			} else if len(flags) > 0 {
+				ch.SolvedBy = "llm"
 				return flags, nil
 			} else {
 				supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: "LLM 未命中"})
@@ -298,9 +301,9 @@ func detectConflictingProcs() []string {
 	} else {
 		// pgrep -f 收紧：匹配二进制路径片段，排除 bash -c wrapper 里的 runner 文字
 		patterns = []string{
-			"ctf_run/runner",   // 服务器标准路径 ~/ctf_run/runner_v*
-			"/runner_ctf",      // runner_ctf / runner_ctf2
-			"/final_entry",     // final_entry.py 或二进制
+			"ctf_run/runner",             // 服务器标准路径 ~/ctf_run/runner_v*
+			"/runner_ctf",                // runner_ctf / runner_ctf2
+			"/final_entry",               // final_entry.py 或二进制
 			"sm_dev_20261020/cmd/runner", // go run 临时二进制
 		}
 	}
