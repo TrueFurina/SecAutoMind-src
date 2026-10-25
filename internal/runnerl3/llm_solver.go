@@ -1,4 +1,7 @@
-// llm_fallback —— runner Layer 3: Eino ChatModel 独立调用 + 工具绑定。
+// Package runnerl3 —— SecAutoMind runner Layer 3: Eino ChatModel 独立调用 + 工具绑定。
+//
+// 本包从 cmd/runner 抽出，使 Layer 3 求解逻辑可被其他入口（如 cmd/evalharness
+// 的离线真机评测）复用，而不必把整个 runner 作为 main 包依赖。
 //
 // 设计原则：
 //   1. 不启动 agent/db/mcp —— 纯 ChatModel.Generate() + 手动 tool calling 循环
@@ -24,8 +27,7 @@
 //   RUNNER_LLM_MAX_TOKENS   默认 2048
 //   RUNNER_LLM_MAX_TOOL_CALLS 默认 12（每题工具调用上限）
 //   RUNNER_LLM_MAX_ROUNDS   默认 12（LLM 对话轮数上限 = 监督步数预算）
-
-package main
+package runnerl3
 
 import (
 	"context"
@@ -38,6 +40,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,31 +52,38 @@ import (
 	"secautomind-ai/internal/ctfplatform"
 )
 
-type llmFallback struct {
+// SkillRunner 是 execute_python 工具的依赖抽象，使本包不耦合 cmd/runner 的
+// pySkillRunner 具体类型。cmd/runner 的 *pySkillRunner 实现 RunSkill 后即满足。
+type SkillRunner interface {
+	RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool)
+}
+
+// LLMFallback 是 Layer 3（真 token 成本）的求解器。
+type LLMFallback struct {
 	// model 放宽为接口（BaseChatModel = BaseModel[*schema.Message]）：生产注入
 	// *einoopenai.ChatModel，测试可注入 fake（监督逐轮反思需要可脚本化模型，
 	// 原具体类型不可 fake）。
 	model    model.BaseChatModel
-	pyBridge *pySkillRunner
+	pyBridge SkillRunner
 	logger   *zap.Logger
-	enabled  bool
+	Enabled  bool
 
 	maxToolCalls int // 每题工具调用上限
 	maxRounds    int // LLM 对话轮数上限（= 监督步数预算，A 库口径 12）
 }
 
-// newLLMFallback 从 env 变量构造 LLM fallback。缺任何必需项返回 disabled 实例。
+// NewLLMFallback 从 env 变量构造 LLM fallback。缺任何必需项返回 disabled 实例。
 // pyBridge 用于 execute_python 工具，nil 时工具自动降级。
-func newLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge *pySkillRunner) *llmFallback {
+func NewLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge SkillRunner) *LLMFallback {
 	if !envBool("RUNNER_LLM_FALLBACK", false) {
 		logger.Info("LLM fallback 未启用（RUNNER_LLM_FALLBACK 未设或非 true）")
-		return &llmFallback{logger: logger, pyBridge: pyBridge}
+		return &LLMFallback{logger: logger, pyBridge: pyBridge}
 	}
 
 	apiKey := strings.TrimSpace(os.Getenv("RUNNER_LLM_API_KEY"))
 	if apiKey == "" {
 		logger.Warn("LLM fallback 启用但 RUNNER_LLM_API_KEY 未设 → 跳过")
-		return &llmFallback{logger: logger, pyBridge: pyBridge}
+		return &LLMFallback{logger: logger, pyBridge: pyBridge}
 	}
 
 	baseURL := envOrDefault("RUNNER_LLM_BASE_URL", "https://api.deepseek.com/v1")
@@ -89,14 +99,14 @@ func newLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge *pySkillRu
 	if err != nil {
 		logger.Warn("LLM fallback 初始化失败 → 跳过", zap.Error(err),
 			zap.String("base_url", baseURL), zap.String("model", modelName))
-		return &llmFallback{logger: logger, pyBridge: pyBridge}
+		return &LLMFallback{logger: logger, pyBridge: pyBridge}
 	}
 
-	ff := &llmFallback{
+	ff := &LLMFallback{
 		model:        m,
 		pyBridge:     pyBridge,
 		logger:       logger,
-		enabled:      true,
+		Enabled:      true,
 		maxToolCalls: envInt("RUNNER_LLM_MAX_TOOL_CALLS", 12),
 		maxRounds:    envInt("RUNNER_LLM_MAX_ROUNDS", 12),
 	}
@@ -119,11 +129,30 @@ func envOrDefault(key, fallback string) string {
 	return v
 }
 
-// solve 把题干喂给 LLM（带工具绑定），让它输出 flag 候选列表。
+func envBool(key string, fallback bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if v == "" {
+		return fallback
+	}
+	return v == "true" || v == "1" || v == "yes"
+}
+
+func envInt(key string, fallback int) int {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	if n, e := strconv.Atoi(v); e == nil && n >= 0 {
+		return n
+	}
+	return fallback
+}
+
+// Solve 把题干喂给 LLM（带工具绑定），让它输出 flag 候选列表。
 // 手动 tool calling 循环：LLM → 检查 ToolCalls → 执行 → 追加 ToolMessage → 再 Generate。
 // 硬限：maxToolCalls 次工具调用 + maxRounds 轮对话，超过就停。
-func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
-	if !f.enabled || f.model == nil {
+func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
+	if !f.Enabled || f.model == nil {
 		return nil, nil
 	}
 
@@ -295,7 +324,7 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 // ── 工具定义 ────────────────────────────────────────────────
 
 // buildToolDefs 构造工具列表。pyBridge nil 时跳过 execute_python。
-func (f *llmFallback) buildToolDefs() []*schema.ToolInfo {
+func (f *LLMFallback) buildToolDefs() []*schema.ToolInfo {
 	var tools []*schema.ToolInfo
 
 	if f.pyBridge != nil {
@@ -345,7 +374,7 @@ skill_name 可选值（按题目类别选）：
 
 // executeTool 根据 ToolCall 的 Function.Name 路由到对应实现。
 // 统一返回文本结果（LLM 读 ToolMessage.Content）。
-func (f *llmFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge) string {
+func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge) string {
 	// 解析参数 JSON
 	var args map[string]any
 	if tc.Function.Arguments != "" {
@@ -364,9 +393,9 @@ func (f *llmFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *c
 	}
 }
 
-// toolExecutePython 调 pyBridge.runSkill（subprocess 执行 Python skill）。
+// toolExecutePython 调 pyBridge.RunSkill（subprocess 执行 Python skill）。
 // 硬限：120s 子进程超时（由 ctx 控制 + bridge 自身 timeout）。
-func (f *llmFallback) toolExecutePython(ctx context.Context, args map[string]any, ch *ctfplatform.Challenge) string {
+func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any, ch *ctfplatform.Challenge) string {
 	if f.pyBridge == nil {
 		return "[execute_python 不可用：pyBridge 未初始化]"
 	}
@@ -380,7 +409,7 @@ func (f *llmFallback) toolExecutePython(ctx context.Context, args map[string]any
 	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	flags, ok := f.pyBridge.runSkill(execCtx, skillName, ch)
+	flags, ok := f.pyBridge.RunSkill(execCtx, skillName, ch)
 	if !ok {
 		return fmt.Sprintf("[execute_python skill 执行失败或无依赖] skill=%s", skillName)
 	}
@@ -394,7 +423,7 @@ func (f *llmFallback) toolExecutePython(ctx context.Context, args map[string]any
 
 // toolReadAttachment 下载附件到 /tmp，返回路径 + 文件信息 + strings 前 80 行。
 // 硬限：30s 下载超时。
-func (f *llmFallback) toolReadAttachment(ctx context.Context, args map[string]any) string {
+func (f *LLMFallback) toolReadAttachment(ctx context.Context, args map[string]any) string {
 	attURL, _ := args["attachment_url"].(string)
 	if attURL == "" {
 		return "[read_attachment 缺少 attachment_url]"
@@ -505,7 +534,7 @@ func min(a, b int) int {
 
 // ── Prompt / 提取 helper ──────────────────────────────────
 
-func (f *llmFallback) buildSystemPrompt() string {
+func (f *LLMFallback) buildSystemPrompt() string {
 	tools := f.buildToolDefs()
 	var toolNames []string
 	for _, t := range tools {
@@ -575,7 +604,7 @@ func parseConfidence(text string) (float64, bool) {
 	return v, true
 }
 
-func (f *llmFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
+func (f *LLMFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
 	var b strings.Builder
 	b.WriteString("题目：")
 	b.WriteString(ch.Title)

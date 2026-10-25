@@ -42,6 +42,7 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+	"secautomind-ai/internal/runnerl3"
 )
 
 var (
@@ -128,7 +129,7 @@ func main() {
 	// ── 2.6 LLM fallback Layer 3（Eino ChatModel + 工具绑定）──
 	// 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
 	// pyBridge 传入 → execute_python 工具可用；nil → 自动降级
-	llmFB := newLLMFallback(context.Background(), logger, pyBridge)
+	llmFB := runnerl3.NewLLMFallback(context.Background(), logger, pyBridge)
 
 	// ── 3. Solver 闭包（三层链 + 跨层监督网关）──────────
 	//   Layer 1: Presolve 确定性求解（189 Go solver，0 token）
@@ -191,8 +192,8 @@ func main() {
 		}
 
 		// ── Layer 3: LLM fallback（真 token 成本，有依赖门控）──
-		if llmFB.enabled {
-			if flags, err := llmFB.solve(ctx, ch); err != nil {
+		if llmFB.Enabled {
+			if flags, err := llmFB.Solve(ctx, ch); err != nil {
 				logger.Debug("Layer 3 LLM 调用失败（非致命）",
 					zap.String("challenge", ch.Title),
 					zap.Error(err))

@@ -213,7 +213,7 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 			}
 		}
 
-		flags, ok := r.runSkill(ctx, skillName, ch)
+		flags, ok := r.RunSkill(ctx, skillName, ch)
 		if ok && len(flags) > 0 {
 			return flags, true
 		}
@@ -221,12 +221,13 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 	return nil, false
 }
 
-// runSkill subprocess 调单个 Python skill，返回 (flag candidates, 是否成功)
+// RunSkill subprocess 调单个 Python skill，返回 (flag candidates, 是否成功)
+// 导出为 RunSkill：供 internal/runnerl3.SkillRunner 接口解耦（execute_python 工具依赖）。
 // 2026-10-25 参数契约增强：Runner 之前只传 4 字段（name/category/description/attachment_urls），
 // 但 skill 通常需要 text/path/key。现在：
 //   ① 从 description regex 提取 text（密文）和 key（密钥）
 //   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
-func (r *pySkillRunner) runSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
+func (r *pySkillRunner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
 	params := map[string]interface{}{
 		"name":        ch.Title,
 		"category":    ch.Category,
