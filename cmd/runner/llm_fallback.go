@@ -6,7 +6,10 @@
 //      - execute_python: 桥接 Layer 2 Python skill（angr/pwntools 真跑）
 //      - read_attachment: 下载 CTF 附件到临时目录，返回 strings 输出
 //   3. 安全硬限：
-//      - 每题最多 5 次工具调用 + 3 轮 LLM 对话（防无限循环）
+//      - 每题最多 12 次工具调用 + 12 轮 LLM 对话（防无限循环）
+//        （2026-10-25 听风第二刀：3/5 → 12/12 对齐 A 库步数预算——原 3 轮
+//        预算下监督规则⑥（零候选需 used>=5）结构上不可触发；预算放大后
+//        由逐轮 ReflectSupervision 守护尾部：零候选 60% 即 ABANDON 收口）
 //      - execute_python subprocess 超时 120s
 //      - read_attachment 下载超时 30s
 //      - 总 LLM 调用超时由 ctx + RUNNER_LLM_TIMEOUT_SEC 双重控制
@@ -19,8 +22,8 @@
 //   RUNNER_LLM_MODEL        默认 deepseek-reasoner
 //   RUNNER_LLM_TIMEOUT_SEC  默认 60
 //   RUNNER_LLM_MAX_TOKENS   默认 2048
-//   RUNNER_LLM_MAX_TOOL_CALLS 默认 5（每题工具调用上限）
-//   RUNNER_LLM_MAX_ROUNDS   默认 3（LLM 对话轮数上限）
+//   RUNNER_LLM_MAX_TOOL_CALLS 默认 12（每题工具调用上限）
+//   RUNNER_LLM_MAX_ROUNDS   默认 12（LLM 对话轮数上限 = 监督步数预算）
 
 package main
 
@@ -47,13 +50,16 @@ import (
 )
 
 type llmFallback struct {
-	model    *einoopenai.ChatModel
+	// model 放宽为接口（BaseChatModel = BaseModel[*schema.Message]）：生产注入
+	// *einoopenai.ChatModel，测试可注入 fake（监督逐轮反思需要可脚本化模型，
+	// 原具体类型不可 fake）。
+	model    model.BaseChatModel
 	pyBridge *pySkillRunner
 	logger   *zap.Logger
 	enabled  bool
 
 	maxToolCalls int // 每题工具调用上限
-	maxRounds    int // LLM 对话轮数上限
+	maxRounds    int // LLM 对话轮数上限（= 监督步数预算，A 库口径 12）
 }
 
 // newLLMFallback 从 env 变量构造 LLM fallback。缺任何必需项返回 disabled 实例。
@@ -91,8 +97,8 @@ func newLLMFallback(ctx context.Context, logger *zap.Logger, pyBridge *pySkillRu
 		pyBridge:     pyBridge,
 		logger:       logger,
 		enabled:      true,
-		maxToolCalls: envInt("RUNNER_LLM_MAX_TOOL_CALLS", 5),
-		maxRounds:    envInt("RUNNER_LLM_MAX_ROUNDS", 3),
+		maxToolCalls: envInt("RUNNER_LLM_MAX_TOOL_CALLS", 12),
+		maxRounds:    envInt("RUNNER_LLM_MAX_ROUNDS", 12),
 	}
 
 	logger.Info("LLM fallback 就绪（含工具绑定）",
@@ -137,6 +143,8 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	}
 
 	toolCallCount := 0
+	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
+	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
 
 	for round := 0; round < f.maxRounds; round++ {
 		opts := []model.Option{}
@@ -160,6 +168,7 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		if len(resp.ToolCalls) > 0 {
 			msgs = append(msgs, resp) // 助手消息（含 ToolCalls）
 
+			roundObs := &strings.Builder{}
 			for _, tc := range resp.ToolCalls {
 				toolCallCount++
 				if toolCallCount > f.maxToolCalls {
@@ -171,11 +180,39 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 
 				// 执行工具
 				result := f.executeTool(callCtx, tc, ch)
+				roundObs.WriteString(result)
+				roundObs.WriteString("\n")
 				msgs = append(msgs, schema.ToolMessage(result, tc.ID))
 			}
 
 			if toolCallCount > f.maxToolCalls {
 				break
+			}
+
+			// ── 监督反思（逐轮真信号，听风 2026-10-25 第二刀）────────
+			// 预算 = LLM 轮数（A 库步数口径）；候选 = 工具输出实际提取数。
+			// token/信心暂无真实来源 → nil（诚实未知），规则①②待结构化
+			// 输出自评信心接入后另行激活；规则⑥（零候选+60%轮数）现在
+			// 可真触发 → 空转题在第 8 轮收口，省 4 轮 token。
+			obs := roundObs.String()
+			candSeen += len(extractFlagCandidates(obs))
+			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: truncate(obs, 200)})
+			if dec := ctfplatform.ReflectSupervision(
+				ctfplatform.SupervisionState{
+					BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
+					Candidates: &candSeen, Challenge: ch.Title,
+				},
+				supSteps, nil,
+			); dec.Decision == ctfplatform.DecisionAbandon {
+				f.logger.Info("监督 ABANDON：LLM 循环提前收口（省剩余轮次 token）",
+					zap.String("challenge", ch.Title),
+					zap.Int("round_used", round+1), zap.Int("budget", f.maxRounds),
+					zap.Int("candidates_seen", candSeen),
+					zap.String("reason", dec.Reason))
+				return nil, nil
+			} else if dec.Decision == ctfplatform.DecisionSwitch {
+				f.logger.Info("监督 SWITCH：建议换策略（暂无备选策略面，留痕）",
+					zap.String("challenge", ch.Title), zap.String("reason", dec.Reason))
 			}
 
 			// 继续下一轮（工具结果已经追加）
