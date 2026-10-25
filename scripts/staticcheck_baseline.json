@@ -1,134 +1,142 @@
 {
- "_readme": [
-  "staticcheck 2025.1.1 全仓基线（2026-10-21 首跑 156 条 → 修复 21 条后 135 条）。",
-  "守卫：scripts/check_staticcheck_baseline.py --report <staticcheck -f json 的输出>。",
-  "键 = (code, 仓库相对路径)，**不含行号**：本轮实测，删两行循环后 U1000 行号漂移，凭空多出 2 条「新增」（REA #258 同款教训）。",
-  "阻断档（新增即红）：SA4000 / SA4004 / SA4006 / SA5011 / SA9009 / ST1008 —— 正确性类。",
-  "观察档（只提示）：风格类与死代码；--strict 下也判红，供本地自查。",
-  "file = \"*\" 表示类级豁免（死代码台账 / 上游弃用），不做 stale 判定。",
-  "新增语义类告警时：要么修掉，要么在此登记豁免（reason + reviewed_on）。不得删判据了事（REA #257）。",
-  "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。",
-  "2026-10-22：SA1019 8 → 7（exporter.go 的 header.SetModTime → header.Modified 已修，豁免条目随之删除）。U1000 110 → 87：9 个 P1 适配函数接线后，它们连同 10 个叶子随根复活（19 条）；另有 4 条（solveROT13/tryROT13/solveVigenereDecode/tryVigenereDecode）**只因 _test.go 引用**才从 U1000 消失——staticcheck 把测试引用算作可达，而它们在生产链路从未被调用。逐条明细见 scripts/dead_code_ledger.json。",
-  "⚠️ U1000 的已知局限（REA #300）：它把 _test.go 引用也算作可达。一个只在测试里被调用、生产从不调用的函数，在 U1000 里看起来是「活」的。故**U1000 数量下降 ≠ 能力上线**，判断生产可达性要看注册表等运行时证据，本仓由 ctfplatform 的 TestUnwiredSolversRemainUnwired 在注册表层面机验。"
- ],
- "tool": "staticcheck 2025.1.1（go install honnef.co/go/tools/cmd/staticcheck@2025.1.1）",
- "generated_on": "2026-10-21",
- "scan_root_note": "报告内为绝对路径时，用环境变量 SECAUTOMIND_STATICCHECK_ROOT 归一化成仓库相对路径",
- "blocking_codes": {
-  "SA4000": 0,
-  "SA4004": 0,
-  "SA4006": 3,
-  "SA5011": 1,
-  "SA9009": 0,
-  "ST1008": 0
- },
- "observed_codes": {
-  "S1005": 1,
-  "S1009": 0,
-  "S1011": 0,
-  "S1017": 0,
-  "S1039": 0,
-  "SA1012": 10,
-  "SA1019": 7,
-  "ST1005": 2,
-  "U1000": 87
- },
- "exemptions": [
-  {
-   "code": "SA4006",
-   "file": "internal/ctfplatform/presolve_misc.go",
-   "symbol": "bestLike（2 处）",
-   "reason": "块内赋值后，出了块只读 best、不再读 bestLike（死存储属实）。保留赋值是为了让「命中即更新最优解」这层意图留在代码里，而不是靠读者从 best 的间接变化反推；已就地加注释。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
+  "_readme": [
+    "staticcheck 2025.1.1 全仓基线（2026-10-21 首跑 156 条 → 修复 21 条后 135 条）。",
+    "守卫：scripts/check_staticcheck_baseline.py --report <staticcheck -f json 的输出>。",
+    "键 = (code, 仓库相对路径)，**不含行号**：本轮实测，删两行循环后 U1000 行号漂移，凭空多出 2 条「新增」（REA #258 同款教训）。",
+    "阻断档（新增即红）：SA4000 / SA4004 / SA4006 / SA5011 / SA9009 / ST1008 —— 正确性类。",
+    "观察档（只提示）：风格类与死代码；--strict 下也判红，供本地自查。",
+    "file = \"*\" 表示类级豁免（死代码台账 / 上游弃用），不做 stale 判定。",
+    "新增语义类告警时：要么修掉，要么在此登记豁免（reason + reviewed_on）。不得删判据了事（REA #257）。",
+    "复跑命令见 docs/Go静态检查基线-2026-10-21.md §2。",
+    "2026-10-22：SA1019 8 → 7（exporter.go 的 header.SetModTime → header.Modified 已修，豁免条目随之删除）。U1000 110 → 87：9 个 P1 适配函数接线后，它们连同 10 个叶子随根复活（19 条）；另有 4 条（solveROT13/tryROT13/solveVigenereDecode/tryVigenereDecode）**只因 _test.go 引用**才从 U1000 消失——staticcheck 把测试引用算作可达，而它们在生产链路从未被调用。逐条明细见 scripts/dead_code_ledger.json。",
+    "⚠️ U1000 的已知局限（REA #300）：它把 _test.go 引用也算作可达。一个只在测试里被调用、生产从不调用的函数，在 U1000 里看起来是「活」的。故**U1000 数量下降 ≠ 能力上线**，判断生产可达性要看注册表等运行时证据，本仓由 ctfplatform 的 TestUnwiredSolversRemainUnwired 在注册表层面机验。"
+  ],
+  "tool": "staticcheck 2025.1.1（go install honnef.co/go/tools/cmd/staticcheck@2025.1.1）",
+  "generated_on": "2026-10-21",
+  "scan_root_note": "报告内为绝对路径时，用环境变量 SECAUTOMIND_STATICCHECK_ROOT 归一化成仓库相对路径",
+  "blocking_codes": {
+    "SA4000": 0,
+    "SA4004": 0,
+    "SA4006": 4,
+    "SA5011": 1,
+    "SA9009": 0,
+    "ST1008": 0
   },
-  {
-   "code": "SA4006",
-   "file": "internal/handler/batch_task_manager.go",
-   "symbol": "taskIndex",
-   "reason": "首次查找只为判存在，索引必然被「重新加锁后的二次查找」覆盖（防加锁间隙队列被换=TOCTOU 防护）。删掉会让两段查找看起来像重复代码；已就地加注释。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
+  "observed_codes": {
+    "S1005": 1,
+    "S1009": 0,
+    "S1011": 0,
+    "S1017": 0,
+    "S1039": 0,
+    "SA1012": 10,
+    "SA1019": 7,
+    "ST1005": 2,
+    "U1000": 87
   },
-  {
-   "code": "SA5011",
-   "file": "internal/agent/agent.go",
-   "symbol": "result.IsError",
-   "reason": "假阳性：同一函数上方已 `for _, content := range result.Content` 解引用，result 为 nil 时更早已 panic；此处的 != nil 判断是防御性冗余，不是漏判。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1012",
-   "file": "internal/authctx/principal_test.go",
-   "symbol": "WithPrincipal(nil, ...)",
-   "reason": "测试**故意**传 nil Context 验证容错（用例名即写「nil context is safe」）。改成 context.TODO() 会失去这条覆盖——静态检查建议与测试意图冲突时，以测试意图为准。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1012",
-   "file": "internal/multiagent/eino_tool_result_progress_emitter_test.go",
-   "symbol": "emitter.Emit(nil, ...)",
-   "reason": "同上：验证 Emit 对 nil Context 的容忍，改掉即失去覆盖。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "ST1005",
-   "file": "internal/workflow/validation.go",
-   "symbol": "fmt.Errorf(\"Agent 节点…\")（2 处）",
-   "reason": "中文错误文案以专有名词 Agent 开头而触发「首字母不得大写」规则；中文语境下该规则不适用，改小写反而破坏对外文案。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/knowledge/wire_retriever.go",
-   "symbol": "model.ChatModel",
-   "reason": "上游 eino 弃用（→ ToolCallingChatModel）。迁移要跟上游节奏，单仓先改会与未来 API 冲突；登记观察。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/llm/agentic_chat_adapter.go",
-   "symbol": "model.ChatModel",
-   "reason": "同上（eino 弃用 API）。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/multiagent/eino_input_telemetry.go",
-   "symbol": "mc.Tools",
-   "reason": "eino 明示该字段「remains populated for backward compatibility」，替换需改到 TypedChatModelAgentState；登记观察。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/multiagent/eino_turn_loop_runtime.go",
-   "symbol": "schema.ChatMessagePart",
-   "reason": "eino 弃用：需改用 MessageInputPart / MessageOutputPart，属跨版本迁移项。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "SA1019",
-   "file": "internal/multiagent/hitl_middleware.go",
-   "symbol": "adk.State",
-   "reason": "adk 明示该字段仅为 checkpoint 向后兼容保留、不应直接使用；改造面大，登记观察。",
-   "reviewed_on": "2026-10-21",
-   "reviewed_by": "张敏杰"
-  },
-  {
-   "code": "U1000",
-   "file": "*",
-   "symbol": "110 处未使用的函数/类型/变量（2026-10-22 起**不再是兜底豁免**）",
-   "reason": "**本条已于 2026-10-22 降级为说明性条目，U1000 的实际守门人是 scripts/dead_code_ledger.py --gate。** 原因：file:\"*\" 意味着任何新增死代码都会被这条挡住——今天写一个没人调的函数，明天加十个，门禁一路绿灯。那不是登记，是闭眼。现在 check_staticcheck_baseline.py 会做双向对账：报告里每条 U1000 的 (文件::符号) 必须能在 scripts/dead_code_ledger.json 的 rules 里找到，找不到即 exit 1；台账文件本身缺失同样 exit 1。台账现状 110 条全覆盖，自动分类 dead_root 79 / dead_dependent 22 / dup_of_live 7 / test_only 2，人工裁定 wire_up 57 / investigate 48 / keep 3 / archival_candidate 2。纪律：本轮不删任何代码，archival_candidate 只是候选。",
-   "reviewed_on": "2026-10-22",
-   "reviewed_by": "张敏杰"
-  }
- ]
+  "exemptions": [
+    {
+      "code": "SA4006",
+      "file": "internal/ctfplatform/presolve_misc.go",
+      "symbol": "bestLike（2 处）",
+      "reason": "块内赋值后，出了块只读 best、不再读 bestLike（死存储属实）。保留赋值是为了让「命中即更新最优解」这层意图留在代码里，而不是靠读者从 best 的间接变化反推；已就地加注释。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA4006",
+      "file": "internal/handler/batch_task_manager.go",
+      "symbol": "taskIndex",
+      "reason": "首次查找只为判存在，索引必然被「重新加锁后的二次查找」覆盖（防加锁间隙队列被换=TOCTOU 防护）。删掉会让两段查找看起来像重复代码；已就地加注释。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA5011",
+      "file": "internal/agent/agent.go",
+      "symbol": "result.IsError",
+      "reason": "假阳性：同一函数上方已 `for _, content := range result.Content` 解引用，result 为 nil 时更早已 panic；此处的 != nil 判断是防御性冗余，不是漏判。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1012",
+      "file": "internal/authctx/principal_test.go",
+      "symbol": "WithPrincipal(nil, ...)",
+      "reason": "测试**故意**传 nil Context 验证容错（用例名即写「nil context is safe」）。改成 context.TODO() 会失去这条覆盖——静态检查建议与测试意图冲突时，以测试意图为准。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1012",
+      "file": "internal/multiagent/eino_tool_result_progress_emitter_test.go",
+      "symbol": "emitter.Emit(nil, ...)",
+      "reason": "同上：验证 Emit 对 nil Context 的容忍，改掉即失去覆盖。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "ST1005",
+      "file": "internal/workflow/validation.go",
+      "symbol": "fmt.Errorf(\"Agent 节点…\")（2 处）",
+      "reason": "中文错误文案以专有名词 Agent 开头而触发「首字母不得大写」规则；中文语境下该规则不适用，改小写反而破坏对外文案。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1019",
+      "file": "internal/knowledge/wire_retriever.go",
+      "symbol": "model.ChatModel",
+      "reason": "上游 eino 弃用（→ ToolCallingChatModel）。迁移要跟上游节奏，单仓先改会与未来 API 冲突；登记观察。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1019",
+      "file": "internal/llm/agentic_chat_adapter.go",
+      "symbol": "model.ChatModel",
+      "reason": "同上（eino 弃用 API）。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1019",
+      "file": "internal/multiagent/eino_input_telemetry.go",
+      "symbol": "mc.Tools",
+      "reason": "eino 明示该字段「remains populated for backward compatibility」，替换需改到 TypedChatModelAgentState；登记观察。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1019",
+      "file": "internal/multiagent/eino_turn_loop_runtime.go",
+      "symbol": "schema.ChatMessagePart",
+      "reason": "eino 弃用：需改用 MessageInputPart / MessageOutputPart，属跨版本迁移项。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA1019",
+      "file": "internal/multiagent/hitl_middleware.go",
+      "symbol": "adk.State",
+      "reason": "adk 明示该字段仅为 checkpoint 向后兼容保留、不应直接使用；改造面大，登记观察。",
+      "reviewed_on": "2026-10-21",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "U1000",
+      "file": "*",
+      "symbol": "110 处未使用的函数/类型/变量（2026-10-22 起**不再是兜底豁免**）",
+      "reason": "**本条已于 2026-10-22 降级为说明性条目，U1000 的实际守门人是 scripts/dead_code_ledger.py --gate。** 原因：file:\"*\" 意味着任何新增死代码都会被这条挡住——今天写一个没人调的函数，明天加十个，门禁一路绿灯。那不是登记，是闭眼。现在 check_staticcheck_baseline.py 会做双向对账：报告里每条 U1000 的 (文件::符号) 必须能在 scripts/dead_code_ledger.json 的 rules 里找到，找不到即 exit 1；台账文件本身缺失同样 exit 1。台账现状 110 条全覆盖，自动分类 dead_root 79 / dead_dependent 22 / dup_of_live 7 / test_only 2，人工裁定 wire_up 57 / investigate 48 / keep 3 / archival_candidate 2。纪律：本轮不删任何代码，archival_candidate 只是候选。",
+      "reviewed_on": "2026-10-22",
+      "reviewed_by": "张敏杰"
+    },
+    {
+      "code": "SA4006",
+      "file": "internal/ctfplatform/presolve_zip_chain.go",
+      "symbol": "layers",
+      "reason": "死存储属实：循环末尾 `layers = layer + 1` 之后再无读取，函数返回的是 maxLayers。正确修法是删掉该赋值（连带变量声明），但该文件属 internal/ctfplatform/ —— 当前有并行会话在该包上跑 3 个未合并提交，此时改动既易冲突、又会强制整条exe/安装包/证据包重建。故本期只登记债务并放宽限值到 4；**待并行分支合并后按「删死存储」清理，届时把限值降回 3**。",
+      "reviewed_on": "2026-10-26",
+      "reviewed_by": "AI会话(待人工复核)"
+    }
+  ]
 }
