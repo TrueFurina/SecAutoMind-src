@@ -20,7 +20,7 @@
 
 honest 边界：
   - verifier 仅断言攻击链各步成功（附件存在 / padded_long 解析 / AES_KEY 匹配 / PDF 头与大小 / 视觉裁切成功）
-  - flag 真值需 sha256 闭环：视觉读法 + baidu ernie-4.5-turbo-vl 兜底读出的 flag 字符 = `DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}`
+  - flag 真值需 sha256 闭环：视觉读法 + baidu ernie-4.5-turbo-vl 兜底读出的 flag 字符 = `DASCTF{...}`（32 位 hex，按门禁纪律遮蔽）
     （与台账 2026-08-24 记录的 sha256 前缀 337eadc1a305b60f 不一致，公开 writeup(CSDN 2026.1.25) 是同系列
     MT 随机数预测题而非本 PKCS#1 题，无可用外部真值闭环）
   - 因此 10732 治理归位 = 可机器复现 verifier 落库 + REGRESSION_CHECKS 入条目 + KNOWN_GAP 移除；
@@ -166,7 +166,7 @@ def main() -> int:
         "flag_visual_path": flag_visual,
         "flag_visual_note": (
             "DASCTF{<32hex>} 斜体，渲染层。flag 字符视觉读法 + baidu ernie-4.5-turbo-vl 兜底 = "
-            "'DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}'（与台账 2026-08-24 sha256 前缀 "
+            "'DASCTF{...}'（32 位 hex，按门禁纪律遮蔽；与台账 2026-08-24 sha256 前缀 "
             "337eadc1a305b60f 不一致，无可用外部真值闭环；故 10732 不进 "
             "PROMOTION_EVIDENCE，KPI 水位保持 12 不动）"
         ),

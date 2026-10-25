@@ -103,7 +103,7 @@ HONOR_CODE = os.path.join(GOV_DIR, "HONOR_CODE.md")
 #   - REGRESSION_CHECKS 12→13、KNOWN_GAP 3→2（剩 10735 + specialcurve2）
 #   - **不进 PROMOTION_EVIDENCE 原因（诚信底线）**：10732 题面 `data/race_details/10732.json`
 #     **无 flag_sha256 字段**，无可自动化校验的外部真值库。视觉读 + baidu vision LLM 兜底
-#     flag = `DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}`，其 sha256 =
+#     flag = `DASCTF{...}`（32 位 hex，按门禁纪律遮蔽），其 sha256 =
 #     `2e9af0b34fa6476a638674bc6342f5aa28ec3187898b98fb3abc2b3be17b75db`，与台账 2026-08-24
 #     记录的 sha256 前缀 `337eadc1a305b60f` 不一致（公开 writeup 同名系列 MT 随机数预测题非
 #     本 PKCS#1 题），无外部真值闭环。若写 PROMOTION_EVIDENCE 把这条 sha256 写进去则属「自

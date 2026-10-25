@@ -98,7 +98,7 @@ REGRESSION_CHECKS = [
     # 落 scripts/verify_10732.py（读本地附件 task.py + PKCS#1.v1.5.enc → 剥 PKCS 填充
     # 取 AES_KEY=44bfc33d0bfb3cd688a074a7adad1504 → AES-ECB 解密 → %PDF-1.4 38624B），
     # 实测 REGRESS_PASS。与 9→10/10→11/11→12 三道带证晋级模式不同：10732 无可用外部
-    # sha256 真值闭环（视觉读 + vision LLM 兜底 = DASCTF{6b3ed7dc3c1c6615fb97a7020922f7a5}，
+    # sha256 真值闭环（视觉读 + vision LLM 兜底 = DASCTF{...}，32 位 hex 按门禁纪律遮蔽，
     # 与台账 2026-08-24 记录的 sha256 前缀 337eadc1a305b60f 不一致；公开 writeup 同名系列
     # MT 随机数预测题非本 PKCS#1 题；不进 _antifraud.PROMOTION_EVIDENCE = KPI 水位 12 不动）。
     {
