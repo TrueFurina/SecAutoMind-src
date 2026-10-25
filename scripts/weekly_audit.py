@@ -74,7 +74,11 @@ FRESHNESS_TARGETS = [
     "data/ctf_benchmark/all_benchmarks_summary.json",
 ]
 # 第 6 项：结果记录扫描位（runner/Poller 落盘；按 solved_by 键聚合）
-RECORD_GLOBS = ["logs/**/poll_records*.json", "data/results/**/*records*.json"]
+RECORD_GLOBS = ["logs/**/poll_records*.json", "data/results/**/*records*.json",
+                # A 库路径（CTF-Agent_融合 eval/benchmark.py 跑批；mm_* 多模型目录）
+                "CTF-Agent_融合/ctf_agent/data/results/**/benchmark_report.json"]
+# 归因值跨路径映射（Go 侧封闭枚举 vs A 库 eval 路径的历史命名）——统计前归一
+SOLVED_BY_ALIASES = {"main_agent_llm": "llm", "presolve_llm": "llm"}
 
 
 def run(cmd, cwd=ROOT, timeout=900):
@@ -159,6 +163,7 @@ def check_attribution():
                 if not isinstance(rec, dict):
                     continue
                 sb = rec.get("solved_by")
+                sb = SOLVED_BY_ALIASES.get(sb, sb)
                 if rec.get("accepted") or rec.get("flag"):
                     if sb in buckets:
                         buckets[sb] += 1
