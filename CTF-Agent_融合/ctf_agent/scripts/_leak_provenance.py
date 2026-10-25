@@ -214,10 +214,41 @@ def main() -> int:
     hit: set = set()
     if args.presolve_json:
         pj = json.loads(Path(args.presolve_json).read_text(encoding="utf-8"))
+        n_true = n_plain = n_migrated = n_masked = 0
         for r in pj.get("rows", []):
-            if r.get("with_answers_verdict") == "TRUE" and r.get("with_answers"):
-                oracle[r["id"]] = r["with_answers"]
+            if r.get("with_answers_verdict") != "TRUE":
+                continue
+            n_true += 1
+            ans = r.get("with_answers")
+            # ⚠️ 遮蔽值 `前缀{****}` 是 **truthy 字符串**，会被原逻辑当成 oracle
+            # 塞进去，然后拿去在附件里找 `****` —— 永远找不到 → 泄漏全判成
+            # computed/unsolved。这是「非空 ≠ 可用」的经典坑，必须显式排除。
+            if ans and "****" not in str(ans):
+                n_plain += 1
+                oracle[r["id"]] = ans
                 hit.add(r["id"])
+            elif ans:
+                n_masked += 1
+            elif "with_answers_sha256" in r:
+                n_migrated += 1
+        # ⚠️ 2026-10-25 判据迁移后 `with_answers` 一律为 null（只留 sha256）。
+        # 此时本脚本的 oracle **必然为空**，`computed`/`unsolved` 会被全量错判，
+        # 而输出仍然「看起来正常」—— 静默少报泄漏，比报错危险得多。故 fail-fast。
+        if (n_migrated or n_masked) and not n_plain:
+            sys.stderr.write(
+                f"[FAIL] {args.presolve_json}：{n_plain} 条可用明文 oracle，"
+                f"{n_masked} 条为遮蔽值（`前缀{{****}}`，不可用），"
+                f"{n_migrated} 条已迁移为 `with_answers_sha256`。\n"
+                "       本脚本的 `--presolve-json` 是**明文 oracle** 通道，此刻拿不到"
+                "任何答案，继续跑会把 computed/unsolved 全判错（静默少报泄漏）。\n"
+                "       请改用 `with_answers_sha256` 做哈希 oracle（对齐 "
+                "`_bare_token_hit` 的精确哈希口径），或在一个仍有明文的旧快照上跑。\n")
+            return 2
+        if n_true and n_plain < n_true:
+            sys.stderr.write(
+                f"[WARN] oracle 部分缺失：verdict=TRUE 共 {n_true} 条，"
+                f"可用明文 {n_plain} 条、遮蔽 {n_masked} 条、已迁移 {n_migrated} 条 —— "
+                "缺失的那些会落进 computed/unsolved，泄漏可能被少报。\n")
 
     qs = load_questions(args.dir)
     rows = []

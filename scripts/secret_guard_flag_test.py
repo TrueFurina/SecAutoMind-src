@@ -80,6 +80,27 @@ class TestPrecision(unittest.TestCase):
             })
             self.assertEqual(len(hits), 1, hits)
 
+    def test_long_flag_body_is_detected(self):
+        """真答案 body 可超过 80 字符。
+
+        2026-10-25 实锤：heldout_evidence 里有条 90 字符的真答案被旧正则的
+        `{4,80}` 上限整条漏掉 —— 外形通道抽不到，后面的 sha256 命中通道就
+        无从谈起，两条防线同时失效。**漏报比误报危险**：误报还能人工筛。
+        """
+        body = "selftest_" + "abcdefghij" * 9  # 99 字符，且不含占位符特征
+        with tempfile.TemporaryDirectory() as td:
+            hits, _ = _hits_in(Path(td), {"a.txt": _mk("flag", body) + "\n"})
+            self.assertEqual(len(hits), 1, f"长 body 真 flag 未命中: {hits}")
+
+    def test_flag_body_with_comma_is_detected(self):
+        """真答案 body 可含逗号（同夜实锤：含逗号的答案被旧字符类整条漏掉）。
+
+        夹具纪律：用虚构的 `11,22,33`，**不抄真答案正文**。
+        """
+        with tempfile.TemporaryDirectory() as td:
+            hits, _ = _hits_in(Path(td), {"a.txt": _mk("flag", "11,22,33") + "\n"})
+            self.assertEqual(len(hits), 1, f"含逗号真 flag 未命中: {hits}")
+
     def test_go_struct_literals_are_not_flags(self):
         """Go 结构体字面量是最大的噪声源（实测占 59%），必须不命中。"""
         with tempfile.TemporaryDirectory() as td:

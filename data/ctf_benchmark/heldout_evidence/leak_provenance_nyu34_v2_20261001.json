@@ -14,7 +14,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_cry_almost_xor",
@@ -24,7 +26,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_cry_another_xor",
@@ -34,7 +38,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_cry_babycrypto",
@@ -44,7 +50,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_cry_collusion",
@@ -54,7 +62,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_cry_lowe",
@@ -64,7 +74,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2019q_cry_des2bites",
@@ -74,7 +86,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9",
@@ -84,7 +98,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017f_for_thoroughlystripped",
@@ -94,7 +110,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_for_missed_registration",
@@ -104,7 +122,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_for_simple_recovery",
@@ -114,7 +134,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_for_whyos",
@@ -124,7 +146,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023f_for_emoji",
@@ -134,7 +158,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023f_for_floating_points",
@@ -144,7 +170,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023f_for_hypokrinesthai",
@@ -154,7 +182,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023q_for_1black0white",
@@ -164,7 +194,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
@@ -174,7 +206,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_msc_short_circuit",
@@ -184,7 +218,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2022f_msc_farmlang",
@@ -194,7 +230,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017f_rev_rabbithole",
@@ -204,7 +242,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_rev_bananascript",
@@ -214,7 +254,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_rev_realism",
@@ -224,7 +266,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2017q_rev_tablez",
@@ -234,7 +278,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018f_rev_1nsayne",
@@ -244,7 +290,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018f_rev_bdos",
@@ -254,7 +302,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom",
@@ -264,7 +314,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2",
@@ -274,7 +326,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2018q_rev_kvm",
@@ -284,7 +338,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2019f_rev_steady_counting",
@@ -294,7 +350,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2019q_rev_beleaf",
@@ -304,7 +362,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2019q_rev_halfpike",
@@ -314,7 +374,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023q_rev_baby_s_third",
@@ -324,7 +386,9 @@
       "in_attachment": true,
       "attachment_file": "babysthird",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023q_rev_rox",
@@ -334,7 +398,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_nyu_ctf_bench_2023q_rev_whataxor",
@@ -344,7 +410,13 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     }
-  ]
+  ],
+  "_sha256_migration": {
+    "date": "2026-10-25",
+    "note": "with_answers/no_answers 已由明文/遮蔽值迁移为 null + *_sha256；verdict 字段保持原值，聚合口径不变"
+  }
 }

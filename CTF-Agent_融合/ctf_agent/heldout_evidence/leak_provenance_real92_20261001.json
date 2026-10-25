@@ -16,7 +16,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_anxun2020_aes",
@@ -26,7 +28,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": true,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_anxun2020_coolboy",
@@ -36,7 +40,9 @@
       "in_attachment": true,
       "attachment_file": "anxun2020_official.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_changan2021_checkin",
@@ -46,7 +52,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_changan2021_easyrsa",
@@ -56,7 +64,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_changan2021_ezpy",
@@ -66,7 +76,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_dnui_keyboard",
@@ -76,7 +88,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": true,
-      "provenance": "desc_leak"
+      "provenance": "desc_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_exciting_inverse",
@@ -86,7 +100,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_ezmult",
@@ -96,7 +112,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_ezrsa",
@@ -106,7 +124,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_filterrandom",
@@ -116,7 +136,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_gaoxiao2024_z3",
@@ -126,7 +148,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_gkctf2020_che11y",
@@ -136,7 +160,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_gkctf2020_rsa",
@@ -146,7 +172,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_isctf2024_decrypt",
@@ -156,7 +184,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_longjian2023_hd1",
@@ -166,7 +196,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_qiangwang_classic",
@@ -176,7 +208,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_simplelegendre",
@@ -186,7 +220,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_specialcurve2",
@@ -196,7 +232,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_udomctf2022_aes",
@@ -206,7 +244,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_crypto_umdctf2022_vigenere",
@@ -216,7 +256,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_taishan2021_crypto_cgroup",
@@ -226,7 +268,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_anxun2020_BeCare4",
@@ -236,7 +280,9 @@
       "in_attachment": true,
       "attachment_file": "BeCare4.md",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_anxun2020_depressed",
@@ -246,7 +292,9 @@
       "in_attachment": true,
       "attachment_file": "depressed.md",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_anxun2020_easyzip",
@@ -256,7 +304,9 @@
       "in_attachment": true,
       "attachment_file": "easyzip.md",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_anxun2020_love_letter",
@@ -266,7 +316,9 @@
       "in_attachment": true,
       "attachment_file": "love_letter.md",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_anxun2020_722b6d",
@@ -276,7 +328,9 @@
       "in_attachment": true,
       "attachment_file": "anxun2020_official.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_bytectf_flag",
@@ -286,7 +340,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_chunqiu2022_checkin",
@@ -296,7 +352,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_chunqiu2022_tiger",
@@ -306,7 +364,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gaoxiao2024_cve41773",
@@ -316,7 +376,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gaoxiao2024_file_extract",
@@ -326,7 +388,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gaoxiao2024_phish_link",
@@ -336,7 +400,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gaoxiao2024_phish_sender",
@@ -346,7 +412,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gaoxiao2024_xiandian",
@@ -356,7 +424,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_gkctf2020_pokemon",
@@ -366,7 +436,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_hws2022_badpdf",
@@ -376,7 +448,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_isctf2024_checkin02",
@@ -386,7 +460,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_isctf2024_park2",
@@ -396,7 +472,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_isctf2024_pixel",
@@ -406,7 +484,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_isctf2024_sstv",
@@ -416,7 +496,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_isctf2024_win_rar",
@@ -426,7 +508,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2023_baby_forensics3",
@@ -436,7 +520,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2023_bf",
@@ -446,7 +532,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2023_smallsword3",
@@ -456,7 +544,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2024_smallsword1",
@@ -466,7 +556,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2024_smallsword2",
@@ -476,7 +568,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2024_smallsword3",
@@ -486,7 +580,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2024_ssw_redis",
@@ -496,7 +592,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2024_telnet",
@@ -506,7 +604,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2025_app_part2",
@@ -516,7 +616,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2025_data_security1",
@@ -526,7 +628,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_longjian2025_siem",
@@ -536,7 +640,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_mjuctf_speak",
@@ -546,7 +652,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_mjuctf_this_is_the_flag",
@@ -556,7 +664,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_nactf2020_zip_madness",
@@ -566,7 +676,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_qiangwang2020_cefang",
@@ -576,7 +688,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_qiangwang2020_upload",
@@ -586,7 +700,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_sheng2022_traffic_bruteforce_count",
@@ -596,7 +712,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_sheng2022_traffic_enable_pwd",
@@ -606,7 +724,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
@@ -616,7 +736,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_sheng2022_traffic_ftp_port",
@@ -626,7 +748,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_sheng2022_traffic_telnet_pwd",
@@ -636,7 +760,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "unsolved"
+      "provenance": "unsolved",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_udomctf2022_morse",
@@ -646,7 +772,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_vnctf_flag",
@@ -656,7 +784,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_vnctf_strangeflag",
@@ -666,7 +796,9 @@
       "in_attachment": true,
       "attachment_file": "vnctf2022.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_vnctf_vnloan",
@@ -676,7 +808,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_misc_xuanhun_signin",
@@ -686,7 +820,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_pwn_changan2021_pwn3",
@@ -696,7 +832,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_pwn_hws2022_peach",
@@ -706,7 +844,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_anxun2020_easycm",
@@ -716,7 +856,9 @@
       "in_attachment": true,
       "attachment_file": "anxun2020_official.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_anxun2020_notright",
@@ -726,7 +868,9 @@
       "in_attachment": true,
       "attachment_file": "anxun2020_official.txt",
       "in_description": true,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_gaoxiao2024_upx",
@@ -736,7 +880,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_js",
@@ -746,7 +892,9 @@
       "in_attachment": true,
       "attachment_file": "index.html",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_sheng",
@@ -756,7 +904,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_upx",
@@ -766,7 +916,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_vnctf_babymaze",
@@ -776,7 +928,9 @@
       "in_attachment": true,
       "attachment_file": "vnctf2022.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_vnctf_cm1",
@@ -786,7 +940,9 @@
       "in_attachment": false,
       "attachment_file": "",
       "in_description": false,
-      "provenance": "computed"
+      "provenance": "computed",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_reverse_vnctf_timeflies",
@@ -796,7 +952,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_anxun2020_welcome",
@@ -806,7 +964,9 @@
       "in_attachment": true,
       "attachment_file": "anxun2020_official.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_changan2021_soeasy",
@@ -816,7 +976,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_dicectf2022_knockknock",
@@ -826,7 +988,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_dicectf2022_point",
@@ -836,7 +1000,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_gongye_web2",
@@ -846,7 +1012,9 @@
       "in_attachment": true,
       "attachment_file": "index.php",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_hacktheboo2022_spookifier",
@@ -856,7 +1024,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_linectf2022_ssti_jwt",
@@ -866,7 +1036,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_longjian2023_hard_web1",
@@ -876,7 +1048,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_longjian2023_hard_web2",
@@ -886,7 +1060,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_longjian2025_which_sql",
@@ -896,7 +1072,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": true,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_udomctf2022_cmdinj",
@@ -906,7 +1084,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_wgmy2022_christmas_wishlist",
@@ -916,7 +1096,9 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "real_web_wgmy2022_christmas_wishlist2",
@@ -926,7 +1108,13 @@
       "in_attachment": true,
       "attachment_file": "flag.txt",
       "in_description": false,
-      "provenance": "att_leak"
+      "provenance": "att_leak",
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     }
-  ]
+  ],
+  "_sha256_migration": {
+    "date": "2026-10-25",
+    "note": "with_answers/no_answers 已由明文/遮蔽值迁移为 null + *_sha256；verdict 字段保持原值，聚合口径不变"
+  }
 }

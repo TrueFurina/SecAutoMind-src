@@ -11,7 +11,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 1018424,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity",
@@ -20,7 +22,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 1366,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_very_easy_dynastic",
@@ -34,7 +38,9 @@
         "HTB{*************************************************************************}",
         "HTB{*************************************************************************}",
         "HTB{*************************************************************************}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_very_easy_primary_knowledge",
@@ -46,7 +52,9 @@
       "sample_candidates": [
         "HTB{****}",
         "HTB{****}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient",
@@ -55,7 +63,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 4859,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware",
@@ -64,7 +74,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 9271,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_medium_data_siege",
@@ -76,7 +88,9 @@
       "sample_candidates": [
         "NPF_{****}",
         "NPF_{****}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun",
@@ -85,7 +99,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 2269,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_urgent",
@@ -94,7 +110,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 7324,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing",
@@ -103,7 +121,9 @@
       "hit_any": false,
       "hit_first": false,
       "scanned_bytes": 25656,
-      "sample_candidates": []
+      "sample_candidates": [],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold",
@@ -118,7 +138,9 @@
         "t{HëI}",
         "T{\u0000\u0000Èëôÿp{\u0000\u0000èìôÿÀ{\u0000\u00008íôÿØ{\u0000\u0000íôÿð{\u0000\u0000Èîôÿ0|\u0000\u0000HïôÿL|\u0000\u0000\bðôÿh|\u0000\u0000¸ðôÿ|\u0000\u0000Øðôÿ|\u0000\u0000ñôÿ´|\u0000\u0000\u0018ôôÿ\u0000}",
         "X{õÿØ\u0000\u00008|õÿ$\u0000\u0000è|õÿP\u0000\u0000¸}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_lootstash",
@@ -130,7 +152,9 @@
       "sample_candidates": [
         "HTB{****}",
         "HTB{****}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     },
     {
       "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway",
@@ -141,7 +165,13 @@
       "scanned_bytes": 8848,
       "sample_candidates": [
         "N{\u0006w°ý}"
-      ]
+      ],
+      "with_answers_sha256": null,
+      "no_answers_sha256": null
     }
-  ]
+  ],
+  "_sha256_migration": {
+    "date": "2026-10-25",
+    "note": "with_answers/no_answers 已由明文/遮蔽值迁移为 null + *_sha256；verdict 字段保持原值，聚合口径不变"
+  }
 }

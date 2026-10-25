@@ -179,6 +179,16 @@ def redact_text(text: str, rel: str, truth: list[dict]) -> tuple[str, int]:
 # external_westlake/benchmark.json 的 problem 已无 flag 字段 —— 本模式就是把它补齐。
 TRUTH_KEYS = ("flag", "presolve_flag", "real_flag", "answer")
 SHA_KEY = "flag_sha256"
+# 2026-10-25 实锤：`with_answers` / `no_answers` 不在 TRUTH_KEYS 里，于是够不到
+# 「删字段 + 留 sha256」的字段级通道，只能被**文本通道**打成 `前缀{****}` ——
+# 结果 heldout_evidence 里 1821 处遮蔽**一个哈希都没随文件落盘**（哈希只在本地
+# gitignore 的真值库里），仓库内的 `with_answers_verdict: TRUE` 变成不可复核的断言。
+# 证据不可复核 = 没有证据。故把这两个字段纳入，并用自己的 `_sha256` 键配对；
+# 它们与 with_answers/no_answers 一一对应，下游只多一个字段，不改语义。
+SELF_HASH_FIELDS = {
+    "with_answers": "with_answers_sha256",
+    "no_answers": "no_answers_sha256",
+}
 # 题面/叙述字段：绝不触碰（清掉会毁题，且里面的 flag 形态多为密文而非答案）
 PROSE_KEYS = frozenset({
     "description", "title", "notes", "note", "writeup", "content",
@@ -198,26 +208,41 @@ def _looks_like_flag(s: str) -> bool:
 
 
 def redact_json_obj(node, rel: str, truth: list, stats: dict) -> None:
-    """递归删明文字段。仅当同对象内存在 flag_sha256 才删（fail-closed：
-    绝不制造「真值丢失」——没有 sha256 兜底就跳过，留给人处理）。"""
+    """递归删明文字段。
+
+    两条通道，区别在「哈希从哪来」：
+
+    - `TRUTH_KEYS`（flag/presolve_flag/...）：哈希必须**已在同对象里**（判据链
+      本来就是按 sha256 比对，明文字段是冗余）。缺整定哈希就跳过 —— fail-closed，
+      绝不制造「真值丢失」。
+    - `SELF_HASH_FIELDS`（with_answers/no_answers）：明文当场就能算出哈希，
+      由本函数自己写 `<field>_sha256`，不依赖别处先备好。缺哈希不再是跳过理由。
+    """
     if isinstance(node, dict):
         for k in list(node.keys()):
             if k in PROSE_KEYS:
                 continue  # 题面字段，跳过（含 description 内的密文 flag）
             v = node.get(k)
-            if k in TRUTH_KEYS and isinstance(v, str) and _looks_like_flag(v):
-                if node.get(SHA_KEY):
-                    truth.append({
-                        "file": rel, "field": k,
-                        "sha256": hashlib.sha256(v.encode("utf-8")).hexdigest(),
-                        "len": len(v),
-                    })
-                    del node[k]
+            if isinstance(v, str) and _looks_like_flag(v):
+                h = hashlib.sha256(v.encode("utf-8")).hexdigest()
+                if k in SELF_HASH_FIELDS:
+                    sha_key = SELF_HASH_FIELDS[k]
+                    node[sha_key] = node.get(sha_key) or h
+                    truth.append({"file": rel, "field": k, "sha256": h, "len": len(v)})
+                    # 置 null 而非 del：与 `migrate_heldout_answers_to_sha256.py`
+                    # 的产物形态保持一致（字段在、明文无），消费方 `r.get()` 等价。
+                    node[k] = None
                     stats["cleared"] += 1
-                else:
-                    stats["skipped_no_sha"] += 1  # 无 sha256 兜底 → 不动
-            else:
-                redact_json_obj(v, rel, truth, stats)
+                    continue
+                if k in TRUTH_KEYS:
+                    if node.get(SHA_KEY):
+                        truth.append({"file": rel, "field": k, "sha256": h, "len": len(v)})
+                        del node[k]
+                        stats["cleared"] += 1
+                    else:
+                        stats["skipped_no_sha"] += 1  # 无 sha256 兜底 → 不动
+                    continue
+            redact_json_obj(v, rel, truth, stats)
     elif isinstance(node, list):
         for x in node:
             redact_json_obj(x, rel, truth, stats)
