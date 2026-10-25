@@ -870,6 +870,14 @@ func init() {
 			return tryMbrSse(text, attachments)
 		},
 	})
+	// bin_emoji_binary：二进制 emoji 序列解码（emoji_binary 链 Go 化，2026-10-25；
+	// 吞并账本 #5——CSAW-Finals 2023 emoji 真实端到端；DFS + 可打印剪枝 + 择优）。
+	RegisterSolver(SolverEntry{
+		Name: "bin_emoji_binary", Category: CategoryMiscS, Priority: 42,
+		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
+			return tryEmojiBinary(text, attachments)
+		},
+	})
 	RegisterSolver(SolverEntry{
 		Name: "bin_carve", Category: CategoryMiscS, Priority: 35,
 		Solver: func(ctx context.Context, text string, attachments map[string]string) []string {
