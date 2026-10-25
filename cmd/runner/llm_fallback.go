@@ -145,6 +145,8 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	toolCallCount := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
 	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
+	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
+	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
 
 	for round := 0; round < f.maxRounds; round++ {
 		opts := []model.Option{}
@@ -164,11 +166,20 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 			return nil, nil
 		}
 
+		// 自评信心（听风第三刀）：按契约解析 CONFIDENCE 行；缺失保持上次值
+		// （首次缺失 = nil → 中性 0.5，不伪造）。
+		if c, ok := parseConfidence(resp.Content); ok {
+			conf = c
+			haveConf = true
+		}
+
 		// 检查工具调用
 		if len(resp.ToolCalls) > 0 {
 			msgs = append(msgs, resp) // 助手消息（含 ToolCalls）
 
 			roundObs := &strings.Builder{}
+			callsThisRound := 0
+			allErr := true // 一轮内所有调用都是错误才算错误步（混合=有实质进展）
 			for _, tc := range resp.ToolCalls {
 				toolCallCount++
 				if toolCallCount > f.maxToolCalls {
@@ -182,6 +193,10 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				result := f.executeTool(callCtx, tc, ch)
 				roundObs.WriteString(result)
 				roundObs.WriteString("\n")
+				if !isToolError(result) {
+					allErr = false
+				}
+				callsThisRound++
 				msgs = append(msgs, schema.ToolMessage(result, tc.ID))
 			}
 
@@ -189,30 +204,42 @@ func (f *llmFallback) solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				break
 			}
 
-			// ── 监督反思（逐轮真信号，听风 2026-10-25 第二刀）────────
-			// 预算 = LLM 轮数（A 库步数口径）；候选 = 工具输出实际提取数。
-			// token/信心暂无真实来源 → nil（诚实未知），规则①②待结构化
-			// 输出自评信心接入后另行激活；规则⑥（零候选+60%轮数）现在
-			// 可真触发 → 空转题在第 8 轮收口，省 4 轮 token。
+			// ── 监督反思（逐轮真信号，听风 2026-10-25 第二/三刀）──────
+			// 预算=轮数；候选=工具输出实际提取数（硬信号，累积）；信心=模型
+			// 自评（缺失=中性 0.5）；进展口径诚实化：整轮全是错误调用才算
+			// 错误步，不再「非空=有进展」。
+			// 规则②（低信心+连续无进展→SWITCH）由此可达；规则①仍被规则⑥
+			// 遮蔽（零候选时 ⑥ 在 60% 先触发）——待 token 口径接入后再解。
 			obs := roundObs.String()
 			candSeen += len(extractFlagCandidates(obs))
-			supSteps = append(supSteps, ctfplatform.SupervisionStep{Observation: truncate(obs, 200)})
+			step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
+			if callsThisRound > 0 && allErr {
+				step.ErrCategory = "tool_error"
+			}
+			supSteps = append(supSteps, step)
+			confArg := (*float64)(nil)
+			if haveConf {
+				confArg = &conf // 至少解析到一次自评信心才传入；否则诚实保持中性
+			}
 			if dec := ctfplatform.ReflectSupervision(
 				ctfplatform.SupervisionState{
 					BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
 					Candidates: &candSeen, Challenge: ch.Title,
 				},
-				supSteps, nil,
+				supSteps, confArg,
 			); dec.Decision == ctfplatform.DecisionAbandon {
 				f.logger.Info("监督 ABANDON：LLM 循环提前收口（省剩余轮次 token）",
 					zap.String("challenge", ch.Title),
 					zap.Int("round_used", round+1), zap.Int("budget", f.maxRounds),
 					zap.Int("candidates_seen", candSeen),
+					zap.Float64("confidence", conf),
 					zap.String("reason", dec.Reason))
 				return nil, nil
 			} else if dec.Decision == ctfplatform.DecisionSwitch {
 				f.logger.Info("监督 SWITCH：建议换策略（暂无备选策略面，留痕）",
-					zap.String("challenge", ch.Title), zap.String("reason", dec.Reason))
+					zap.String("challenge", ch.Title),
+					zap.Float64("confidence", conf),
+					zap.String("reason", dec.Reason))
 			}
 
 			// 继续下一轮（工具结果已经追加）
@@ -486,9 +513,54 @@ func (f *llmFallback) buildSystemPrompt() string {
 1. 最终输出必须是 flag{...} 格式（或多个候选，每行一个）
 2. 如果用了工具，把工具结果融合进推理
 3. 如果实在没思路，直接输出 NO_SOLUTION
-4. 不要输出推理过程、不要输出代码，只输出 flag 或 NO_SOLUTION`
+4. 不要输出推理过程、不要输出代码，只输出 flag 或 NO_SOLUTION
+5. 每轮回复末尾输出一行 CONFIDENCE: 0.x（0~1，一位小数），表示你对
+   当前路径最终解出此题的信心。工具调用轮也要带（写在文本部分）。
+   该数值是预算监督信号：低信心+连续无进展会被提前收口/要求换策略，
+   高信心会保住预算。不许虚报——虚报高信心烧的是你自己的预算。`
 
 	return system
+}
+
+// toolErrorPrefixes executeTool 错误返回的已知前缀（bracket 约定的精确枚举，
+// 不用泛 IsPrefix("[")——skill 正常输出可能以 "[" 开头如 JSON 数组，会误判）。
+var toolErrorPrefixes = []string{
+	"[未知工具:", "[工具 ", "[execute_python", "[read_attachment",
+}
+
+// isToolError 按 executeTool 的错误返回约定判定该步是否为错误步。
+// 错误步不算进展（进展口径诚实化：非空 ≠ 有进展）。
+func isToolError(result string) bool {
+	s := strings.TrimSpace(result)
+	for _, p := range toolErrorPrefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// confRe 自评信心解析（听风第三刀）：LLM 每轮按契约输出 CONFIDENCE: 0.x。
+var confRe = regexp.MustCompile(`(?i)confidence\s*[:：]\s*([0-9]*\.?[0-9]+)`)
+
+// parseConfidence 从模型回复中解析自评信心。缺省/非法 → ok=false（调用方
+// 保持 nil = 中性 0.5，不伪造信号）。越界值 clamp 到 [0,1]。
+func parseConfidence(text string) (float64, bool) {
+	m := confRe.FindStringSubmatch(text)
+	if m == nil {
+		return 0, false
+	}
+	var v float64
+	if _, err := fmt.Sscanf(m[1], "%g", &v); err != nil {
+		return 0, false
+	}
+	if v < 0 {
+		v = 0
+	}
+	if v > 1 {
+		v = 1
+	}
+	return v, true
 }
 
 func (f *llmFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {

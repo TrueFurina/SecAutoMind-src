@@ -55,6 +55,13 @@ func toolResp(name, argsJSON string) *schema.Message {
 	}
 }
 
+// confToolResp 带自评信心的工具轮响应（听风第三刀契约：CONFIDENCE 写在文本部分）。
+func confToolResp(name, argsJSON, content string) *schema.Message {
+	m := toolResp(name, argsJSON)
+	m.Content = content
+	return m
+}
+
 func textResp(content string) *schema.Message {
 	return &schema.Message{Role: schema.Assistant, Content: content}
 }
@@ -180,5 +187,127 @@ func TestSupervisionAbandonRecordedInLedger(t *testing.T) {
 	data, _ := os.ReadFile(path) //nolint:errcheck // 内容断言失败由下方捕获
 	if !strings.Contains(string(data), `"challenge":"监督测试题"`) {
 		t.Fatalf("账本记录必须带题目标识，内容: %s", truncate(string(data), 300))
+	}
+}
+
+// ── 听风第三刀：自评信心 + 进展口径诚实化 ────────────────────────
+
+func TestParseConfidence(t *testing.T) {
+	cases := []struct {
+		in    string
+		want  float64
+		wantOK bool
+	}{
+		{"CONFIDENCE: 0.2", 0.2, true},
+		{"推理...\nconfidence：0.35", 0.35, true}, // 全角冒号
+		{"CONFIDENCE: 0", 0, true},
+		{"CONFIDENCE: 1.5", 1.0, true},  // 越界 clamp
+		{"CONFIDENCE: -0.3", 0, false},  // 契约违规（非 0~1 形态）→ 拒绝 = 无信号
+		{"没有任何信号", 0, false},
+		{"CONFIDENCE: abc", 0, false},
+	}
+	for _, c := range cases {
+		got, ok := parseConfidence(c.in)
+		if ok != c.wantOK {
+			t.Fatalf("parseConfidence(%q) ok=%v want %v", c.in, ok, c.wantOK)
+		}
+		if ok && (got < c.want-1e-9 || got > c.want+1e-9) {
+			t.Fatalf("parseConfidence(%q) = %v want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestIsToolError(t *testing.T) {
+	yes := []string{"[未知工具: x]", "[工具 foo 参数解析失败] boom", "[execute_python 不可用：pyBridge 未初始化]",
+		"[read_attachment HTTP 404] url=x", "  [未知工具: y]"}
+	no := []string{"附件下载成功:\n路径: /tmp/x", "[1, 2, 3] 数组输出不算错误", "flag{here}", ""}
+	for _, s := range yes {
+		if !isToolError(s) {
+			t.Fatalf("isToolError(%q) 应为 true", s)
+		}
+	}
+	for _, s := range no {
+		if isToolError(s) {
+			t.Fatalf("isToolError(%q) 应为 false", s)
+		}
+	}
+}
+
+// 规则②可达性：候选在手（⑥/①被 hasCand 抑制）+ 每轮自评低信心 + 连续错误步 →
+// SWITCH 必须在第 6 轮（ratio 0.5）触发并落账本，循环继续跑满。
+func TestSwitchFiresOnLowConfidenceErrors(t *testing.T) {
+	ctfplatform.DisableSupervisionLedger()
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	if err := ctfplatform.EnableSupervisionLedger(path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ctfplatform.DisableSupervisionLedger)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "found flag{cand_lowconf_1}")
+	}))
+	defer srv.Close()
+
+	// 候选入账（第 1 轮 read_attachment 成功），此后每轮 unknown 工具制造
+	// 连续错误步：candSeen 累积=1（抑制 ⑥/①），trailing 错误累积（喂 ②）。
+	m := &fakeModel{resps: []*schema.Message{
+		confToolResp("read_attachment", fmt.Sprintf(`{"attachment_url": %q}`, srv.URL+"/flag.txt"),
+			"下载了但没思路 CONFIDENCE: 0.1"),
+		confToolResp("no_such_tool", "{}", "卡住了 CONFIDENCE: 0.1"),
+	}}
+	ff := newTestFallback(m, 12, 12)
+
+	flags, err := ff.solve(context.Background(), testChallenge())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if flags != nil {
+		t.Fatalf("无终局命中应 nil，got %v", flags)
+	}
+	if m.calls != 12 {
+		t.Fatalf("候选在手且仅 SWITCH，应跑满 12 轮，实际 %d", m.calls)
+	}
+	stats, err := ctfplatform.SummarizeSupervisionLedger(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ByDecision["SWITCH"] < 1 {
+		t.Fatalf("低信心+连续错误步必须触发 SWITCH，账本: %+v", stats.ByDecision)
+	}
+	if stats.ByDecision["ABANDON"] != 0 {
+		t.Fatalf("候选在手时不得 ABANDON，账本: %+v", stats.ByDecision)
+	}
+}
+
+// 信心因果隔离：同样的错误步与候选，高信心下不得触发 SWITCH。
+func TestNoSwitchOnHighConfidence(t *testing.T) {
+	ctfplatform.DisableSupervisionLedger()
+	path := filepath.Join(t.TempDir(), "ledger.jsonl")
+	if err := ctfplatform.EnableSupervisionLedger(path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ctfplatform.DisableSupervisionLedger)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "found flag{cand_highconf_1}")
+	}))
+	defer srv.Close()
+
+	m := &fakeModel{resps: []*schema.Message{
+		confToolResp("read_attachment", fmt.Sprintf(`{"attachment_url": %q}`, srv.URL+"/flag.txt"),
+			"稳步推进 CONFIDENCE: 0.9"),
+	}}
+	ff := newTestFallback(m, 12, 12)
+
+	_, _ = ff.solve(context.Background(), testChallenge()) //nolint:errcheck
+	stats, err := ctfplatform.SummarizeSupervisionLedger(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.ByDecision["SWITCH"] != 0 {
+		t.Fatalf("高信心不得触发 SWITCH，账本: %+v", stats.ByDecision)
+	}
+	if m.calls != 12 {
+		t.Fatalf("应跑满 12 轮，实际 %d", m.calls)
 	}
 }
