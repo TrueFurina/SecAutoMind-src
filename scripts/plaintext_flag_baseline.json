@@ -1,9 +1,9 @@
 {
- "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增：超过此数即视为新泄露并 BLOCK。清一条就重跑 `--freeze-flag-baseline` 下调上限。",
- "frozen_at": "2026-10-25 09:52:11",
+ "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增：超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
+ "frozen_at": "2026-10-25 09:57:40",
  "root": "E:\\Program\\SecAutoMind",
- "tracked_hits": 2473,
- "untracked_copies": 481,
+ "tracked_hits": 2476,
+ "untracked_copies": 479,
  "per_file": {
   ".workbuddy-ai/memory/2026-10-22.md": 1,
   ".workbuddy-ai/memory/2026-10-24.md": 8,
@@ -335,6 +335,7 @@
   "docs/archive/2026-09/质检报告_20260908_多透镜锐评.md": 1,
   "docs/evidence/1024快闪赛_20261024/challenges_cache/调试-·-签到/metadata.yml": 1,
   "docs/evidence/1024快闪赛_20261024/engine_mods/runner_ctf2.py": 1,
+  "docs/evidence/西湖论剑归档_20260821/solutions/锐评证据核实报告.md": 2,
   "docs/writeups/GraphNexus_DASCTF_20261024.md": 2,
   "docs/zh-CN/competition-2026/诚实KPI报告_20260906.md": 2,
   "internal/app/asset_tools.go": 1,
@@ -461,6 +462,7 @@
   "scripts/gen_forensics_artifacts.py": 10,
   "scripts/gen_request_golden.py": 2,
   "scripts/mock_sim_platform.py": 3,
+  "scripts/plaintext_flag_baseline.json": 1,
   "scripts/secret_guard.py": 4,
   "scripts/secret_guard_test.py": 1,
   "scripts/verify_live_contract.py": 1,
@@ -495,8 +497,9 @@
    "CTF-Agent_融合/ctf_agent/tests": 416,
    "data/ctf_benchmark": 301,
    "internal/ctfplatform": 271,
-   "其余(scripts/live_target/复盘赛报/xhlj_legacy/core/docs/skills…)": null
-  }
+   "其余(scripts/live_target/复盘赛报/xhlj_legacy/core/docs/skills…)": "≈684"
+  },
+  "note_plus2": "2475 = 2473 + 2：来自 docs/evidence/…/锐评证据核实报告.md 的「凯撒演示」自造样例（密文 iodj{…} → 明文 flag{caesar_shift_2026}），属示例豁免；遮蔽会破坏该段「密文→明文」论证本身，故计入上限而非清掉。"
  },
- "_target": "上限 2473 是**修正口径后的真实存量**，不是新增许可。目标：先把 heldout_evidence(801) 与 tests(416) 两处外置/遮蔽，再把真实赛事品牌降到 0；任何一波开始前先用本文件兜住，改完立刻重跑 --freeze-flag-baseline 下调，不允许只增不减。"
+ "_target": "上限 2475 是**修正口径后的真实存量**，不是新增许可。目标：先清 heldout_evidence(801) 与 tests(416) 两块，再把真实赛事品牌降到 0；每清完一批立刻 --freeze-flag-baseline 下调。"
 }

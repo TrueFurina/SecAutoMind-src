@@ -436,6 +436,11 @@ def freeze_flag_baseline(root: str) -> int:
         "untracked_copies": len(untracked),
         "per_file": per_file,
     }
+    # 保住人工写下的 `_target` / `_correction_*` 等元数据：每次冻结都重算会把
+    # 「为什么是这个数、要降到多少」抹掉，那正是下一次误判的起点。
+    for k, v in (load_flag_baseline() or {}).items():
+        if k.startswith("_") and k not in data:
+            data[k] = v
     FLAG_BASELINE.write_text(json.dumps(data, ensure_ascii=False, indent=1),
                              encoding="utf-8")
     print(f"✅ 已固化明文 flag 上限 {len(tracked_hits)} 条（{len(per_file)} 个文件）→ {FLAG_BASELINE}")

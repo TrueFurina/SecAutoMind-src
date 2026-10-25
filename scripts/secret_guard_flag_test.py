@@ -150,6 +150,43 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual(len(untracked), 1)
 
 
+class TestTrackedEncoding(unittest.TestCase):
+    """非 ASCII 路径的入库判定（2026-10-25 实测缺陷）。"""
+
+    def _git(self, cwd, *args):
+        return subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                               "-c", "commit.gpgsign=false", *args],
+                              cwd=cwd, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
+
+    def test_non_ascii_path_counts_as_tracked(self):
+        """`git ls-files` 默认把非 ASCII 路径转义成带引号的八进制串。
+
+        不修的话 `rel in tracked` 永远为 False —— 整个 `CTF-Agent_融合/`
+        （本仓 153 个 skill + core/presolve.py）被当成"未入库副本"，
+        既漏判真泄露，又让"未入库 N 条"虚高到失真。
+        """
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self._git(root, "init", "-q")
+            sub = root / "融合仓" / "skills"
+            sub.mkdir(parents=True)
+            (sub / "a.py").write_text(_mk("flag", "non_ascii_path_body") + "\n",
+                                      encoding="utf-8")
+            r = self._git(root, "add", "-A")
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+            guard = _load_guard()
+            tracked = guard._git_tracked(str(root))
+            self.assertIsNotNone(tracked)
+            self.assertIn("融合仓/skills/a.py", tracked,
+                          f"非 ASCII 路径没进 tracked：{sorted(tracked)}")
+            hits, untracked = guard.scan_plaintext_flags(str(root), tracked)
+            self.assertEqual(len(hits), 1, hits)
+            self.assertTrue(hits[0]["tracked"], "非 ASCII 路径必须被识别为已入库")
+            self.assertEqual(untracked, [])
+
+
 class TestEndToEnd(unittest.TestCase):
     """端到端：冻结基线后，新加入库的含 flag 文件必须让门禁 rc=1。"""
 
