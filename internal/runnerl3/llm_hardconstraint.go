@@ -40,6 +40,11 @@ var toolSchemas = map[string]toolSchema{
 	"read_attachment": {
 		required: []string{"attachment_url"},
 	},
+	// P1-2 有状态会话：code 必填，reset 选填（清空变量但保留 cwd）
+	"python_session": {
+		required: []string{"code"},
+		optional: []string{"reset"},
+	},
 }
 
 // validateToolCall 强校验一次工具调用。返回非空错误 = 拒绝执行。

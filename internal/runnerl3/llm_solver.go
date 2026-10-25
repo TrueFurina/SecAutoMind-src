@@ -204,6 +204,10 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	// P0-3：本轮的环境事实源（只由工具成功返回写入，模型复述不算）
 	facts := newFactLedger()
 
+	// P1-2：本轮的有状态 Python 会话（惰性启动；Solve 返回即销毁，题目间零状态泄漏）
+	sess := newPySessionMgr(f.logger)
+	defer sess.Close()
+
 	// 准备工具定义（动态根据 pyBridge 可用性）
 	tools := f.buildToolDefs()
 
@@ -273,7 +277,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				}
 
 				// 执行工具
-				result := f.executeTool(callCtx, tc, ch, facts)
+				result := f.executeTool(callCtx, tc, ch, facts, sess)
 				roundObs.WriteString(result)
 				roundObs.WriteString("\n")
 				if !isToolError(result) {
@@ -435,6 +439,32 @@ skill_name 可选值（按题目类别选）：
 		}),
 	})
 
+	// P1-2：有状态 Python 会话。变量/import/cwd/打开的文件句柄**跨调用保持**，
+	// 故多步推导不必把中间结果写回文本再重述（独白式漂移的主要来源）。
+	tools = append(tools, &schema.ToolInfo{
+		Name: "python_session",
+		Desc: strings.TrimSpace(`
+在**有状态**的 Python 会话里执行代码：变量、import、当前目录、已打开的文件句柄
+在后续调用里仍然存在（与 execute_python 的一次性 skill 调用不同）。
+适合需要多步推导/反复试算的题目：先取数据 → 存进变量 → 逐步变换 → 验证。
+约定：
+- 需要带出结果时把它赋给 _ （下划线），会话会回显 repr(_)；
+- 用 print() 输出中间过程；
+- reset=true 会清空用户变量（保留当前目录）；
+- 单条命令 120s 超时；超时会销毁会话，此时**状态丢失**，需重新计算（工具会明说）。`),
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"code": {
+				Type:     schema.String,
+				Desc:     "要执行的 Python 代码（可多行）",
+				Required: true,
+			},
+			"reset": {
+				Type: schema.String,
+				Desc: "是否清空变量（\"true\"/\"false\"，选填；默认 false，保留 cwd）",
+			},
+		}),
+	})
+
 	return tools
 }
 
@@ -444,7 +474,7 @@ skill_name 可选值（按题目类别选）：
 // P0-3：①先过 schema 强校验（工具名/必填/未知参数），非法调用不执行、直接回错误；
 // ②成功后把工具返回里的环境事实（如附件真实落盘路径）记进 factLedger ——
 // 事实源只认工具返回，模型复述不算。
-func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge, facts *factLedger) string {
+func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge, facts *factLedger, sess *pySessionMgr) string {
 	// 解析参数 JSON
 	var args map[string]any
 	if tc.Function.Arguments != "" {
@@ -465,6 +495,8 @@ func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *c
 		result = f.toolExecutePython(ctx, args, ch)
 	case "read_attachment":
 		result = f.toolReadAttachment(ctx, args)
+	case "python_session":
+		result = f.toolPythonSession(ctx, args, sess)
 	default:
 		return fmt.Sprintf("[未知工具: %s]", tc.Function.Name)
 	}
@@ -520,6 +552,36 @@ func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any
 	}
 
 	return fmt.Sprintf("[execute_python 成功] skill=%s → flags: %s", skillName, strings.Join(flags, ", "))
+}
+
+// toolPythonSession 在**有状态会话**里执行代码（P1-2）。
+// 与 execute_python（一次性 skill 子进程）的区别：变量/import/cwd/文件句柄跨步保持，
+// 模型不必把中间结果写回文本再重述 —— 治独白与上下文漂移（失败模式 ⑨⑪）。
+func (f *LLMFallback) toolPythonSession(ctx context.Context, args map[string]any, sess *pySessionMgr) string {
+	if sess == nil {
+		return "[python_session 不可用：本轮未创建会话]"
+	}
+	code, _ := args["code"].(string)
+	if strings.TrimSpace(code) == "" {
+		return "[python_session 缺少 code]"
+	}
+	reset := false
+	switch v := args["reset"].(type) {
+	case bool:
+		reset = v
+	case string:
+		reset = strings.EqualFold(strings.TrimSpace(v), "true")
+	}
+
+	// 单条命令硬超时 120s（与 execute_python 同口径）
+	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+
+	out, err := sess.Exec(execCtx, code, reset)
+	if err != nil {
+		return fmt.Sprintf("[python_session 失败] %v", err)
+	}
+	return out
 }
 
 // parseExtraParams 解析 execute_python 的 params 参数。
@@ -694,7 +756,9 @@ func (f *LLMFallback) buildSystemPrompt() string {
 // toolErrorPrefixes executeTool 错误返回的已知前缀（bracket 约定的精确枚举，
 // 不用泛 IsPrefix("[")——skill 正常输出可能以 "[" 开头如 JSON 数组，会误判）。
 var toolErrorPrefixes = []string{
-	"[未知工具:", "[工具 ", "[execute_python", "[read_attachment",
+	// P1-2：python_session 的错误返回同样必须被监督计为错误步（漏登记会让
+	// 会话失败被当成"有进展"，规则⑥收口就被架空 —— 由 TestPythonSessionToolRouting 锁住）。
+	"[未知工具:", "[工具 ", "[execute_python", "[read_attachment", "[python_session 失败", "[python_session 缺少", "[python_session 不可用",
 }
 
 // isToolError 按 executeTool 的错误返回约定判定该步是否为错误步。

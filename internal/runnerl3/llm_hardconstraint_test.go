@@ -155,7 +155,7 @@ func TestExecuteToolRejectsUnknownParam(t *testing.T) {
 			Name:      "read_attachment",
 			Arguments: `{"attachment_url":"http://x/y","extra":"zzz"}`,
 		},
-	}, testChallenge(), newFactLedger())
+	}, testChallenge(), newFactLedger(), nil) // 本例走 read_attachment 分支，不需要会话
 
 	if !isToolError(got) {
 		t.Fatalf("非法参数必须判为工具错误步（供监督计数），实际 %q", got)
