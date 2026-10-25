@@ -390,6 +390,14 @@ jobs:
         run: python scripts/secret_guard_mutation_check.py
       - name: Plaintext CTF flag gate (precision + policy + freeze-baseline end-to-end)
         run: python scripts/secret_guard_flag_test.py
+      # 跨语言判据一致性（2026-10-25）：同一个「占位符」判据在 Go 引擎与 Python 门禁
+      # 各写一份，靠手抄同步 → 实测抄漏 7 个词、自造 1 个词、缺低信息量检查，
+      # 导致同一条串 Go 判「不是 flag」、Python 判「真泄露」。本步解析 Go 源码逐项比对，
+      # 漂移即红；只读源码文本，不需要 go 工具链。
+      - name: Flag-rule parity gate (Go presolve ⇄ Python secret_guard must not drift)
+        run: |
+          python scripts/check_flag_rules_parity.py --check
+          python scripts/check_flag_rules_parity_test.py
       - name: Generator flag externalization self-test (must fail-closed when truth missing)
         run: python scripts/externalize_generator_flags.py --selftest
       # 交付包排除面门禁（2026-10-24）：secret_guard 只按密钥形态匹配，判不出

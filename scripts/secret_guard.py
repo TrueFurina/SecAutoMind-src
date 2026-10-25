@@ -332,10 +332,33 @@ REAL_BRAND_RE = re.compile(
 # 这类串**不含答案**，出现在 PUBLIC 仓不构成泄露；把它们算进最高优先级的
 # 「真泄露」队列，只会让真正的 108 条被稀释、排序失真。
 PLACEHOLDER_BODY_RE = re.compile(r"(?i)(\binit\d+\b|x{4,}|\.\.\.|\byour|\*{4,}|%[a-z]|\?{2,})")
+# ⚠️ 这张表**必须与 Go 侧逐词相同**。2026-10-25 复盘实锤：本表首版是手抄 Go 的
+# `flagPlaceholderWords`，抄漏 7 个词（placeholder/redacted/dummy/changeme/todo/
+# tbd/filler）、又自造了一个 Go 里没有的 `demo` —— 手抄即刻漂移，正是本轮 53 条
+# 假阳性同一个病根。现在由 `scripts/check_flag_rules_parity.py` 解析 Go 源码逐项
+# 比对，漂移即红；改这张表前先改 Go，或两边一起改。
 PLACEHOLDER_WORDS = frozenset({
     "flag", "flags", "flaghere", "yourflag", "yourflaghere", "insertflag",
-    "insertflaghere", "putflaghere", "test", "testflag", "example", "sample", "demo",
+    "insertflaghere", "putflaghere", "test", "testflag", "example",
+    "placeholder", "redacted", "dummy", "sample",
+    "changeme", "todo", "tbd", "filler",
 })
+
+
+def is_low_information_content(s: str) -> bool:
+    """花括号内是否「低信息量」：去掉分隔符后只剩 ≤1 种字符。
+
+    对齐 Go `isLowInformationContent`：`????` / `aaaa` / `0000` / `----` 这类
+    只由一个字符构成的串不可能是真答案（真 flag 不可能只有一个字符种类）。
+    """
+    distinct = set()
+    for ch in s:
+        if ch in "_- .":
+            continue
+        distinct.add(ch)
+        if len(distinct) > 1:
+            return False
+    return len(distinct) == 1
 
 
 def classify_brand(raw: str) -> str:
@@ -346,6 +369,8 @@ def classify_brand(raw: str) -> str:
     """
     body = raw[raw.find("{") + 1: -1]
     if PLACEHOLDER_BODY_RE.search(body):
+        return "placeholder"
+    if is_low_information_content(body):
         return "placeholder"
     key = re.sub(r"[^a-z0-9]", "", body.lower())
     if key in PLACEHOLDER_WORDS:
@@ -457,39 +482,179 @@ def load_flag_baseline() -> dict | None:
     return None
 
 
-def freeze_flag_baseline(root: str, snapshot: str | None = None) -> int:
+def _git_modified_vs_head(root: str) -> list[str]:
+    """工作树里相对 HEAD 有改动（含未跟踪）的文件清单。
+
+    用途：冻结上限时把「没被计入」的文件显式点名。静默忽略未提交改动，会让上限
+    与 CI 实际值产生看不见的偏差 —— 偏差本身不致命，**看不见**才致命。
+    """
+    out: list[str] = []
+    try:
+        r = subprocess.run(["git", "-C", root, "-c", "core.quotepath=false",
+                            "status", "--porcelain", "-z"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120)
+        if r.returncode != 0:
+            return out
+        for entry in (r.stdout or "").split("\0"):
+            if len(entry) > 3:
+                out.append(entry[3:].replace("\\", "/"))
+    except Exception:
+        return out
+    return out
+
+
+def _walk_files(base: str) -> set[str]:
+    """列出目录下所有参与扫描的文件（相对路径，正斜杠）。"""
+    out: set[str] = set()
+    for dp, dn, fn in os.walk(base):
+        dn[:] = [d for d in dn if d not in SKIP_DIRS]
+        for f in fn:
+            out.add(os.path.relpath(os.path.join(dp, f), base).replace(os.sep, "/"))
+    return out
+
+
+def _measure_as_tracked(base: str) -> list[dict]:
+    """把一个目录整体当作「已入库」来扫描，返回命中列表。
+
+    快照/合成目录不在 git 里，`_git_tracked` 会返回 None（fail-closed 会把整个
+    目录判成新泄露）。冻结的上限只关心「这批文件都在版本控制里」这个事实，
+    故这里直接令 tracked = 目录内全部文件。
+    """
+    tracked = _walk_files(base)
+    hits, _ = scan_plaintext_flags(base, tracked)
+    return [h for h in hits if h["tracked"]]
+
+
+def _build_head_tree(root: str, paths: list[str], workdir: str) -> tuple[list[str], list[str]]:
+    """构造「HEAD + 本次提交文件」的合成树：解包 `git archive HEAD`，再叠加 paths。
+
+    返回 (实际叠加的文件, 被删除的文件)。
+    ⚠️ 解包走 Python tarfile 而不是 `git archive | tar -x` 管道：本仓已有实测，
+    bash 管道会静默损坏 git 的输出（见 MEMORY 里 `git show 远端:path` 那条），
+    而这里一旦解包不全，上限会被算低 —— 算低比算高更危险（CI 假红 → 门禁被绕过）。
+    """
+    import io
+    import shutil
+    import tarfile
+
+    buf = io.BytesIO()
+    r = subprocess.run(["git", "-C", root, "archive", "HEAD"], stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, timeout=300)
+    if r.returncode != 0:
+        raise RuntimeError(f"git archive HEAD 失败: {r.stderr.decode('utf-8', 'replace')[:300]}")
+    buf.write(r.stdout)
+    buf.seek(0)
+    with tarfile.open(fileobj=buf) as tf:
+        tf.extractall(workdir)
+
+    added, removed = [], []
+    for rel in paths:
+        rel = rel.replace("\\", "/").strip()
+        if not rel:
+            continue
+        src = os.path.join(root, rel)
+        dst = os.path.join(workdir, rel)
+        if os.path.exists(src):
+            os.makedirs(os.path.dirname(dst) or workdir, exist_ok=True)
+            shutil.copy2(src, dst)
+            added.append(rel)
+        else:
+            # 工作树已不存在 = 本次提交里的删除（如 git rm --cached 后文件被移出版本控制）
+            if os.path.lexists(dst):
+                os.remove(dst)
+            removed.append(rel)
+    return added, removed
+
+
+def freeze_flag_baseline(root: str, snapshot: str | None = None,
+                         from_head: bool = False,
+                         paths: list[str] | None = None) -> int:
     """固化明文 flag 上限。
 
-    `snapshot` 非空时，改为在「HEAD + 本次提交文件」的导出快照上测量（快照内
-    所有文件都视为已入库）。**这是并发开发下唯一正确的口径**：工作树里常有别的
-    会话尚未提交的遮蔽改动，按工作树冻结会让 CI 在干净检出上看到更高数值 →
-    门禁假红 → 门禁被绕过（2026-10-25 实际踩过一次）。
+    三种口径，按可信度从高到低：
+
+    1. `from_head=True` + `paths=[...]`（**推荐，一条命令**）：解包 `git archive HEAD`，
+       把本次要提交的文件叠加进去，在合成树上测量。等价于「提交后的干净检出」，
+       正是 CI 将来看到的东西。
+    2. `snapshot=<dir>`：调用方自己拼好的导出目录，同 1 但手工准备（易漏文件，保留兼容）。
+    3. 都不给：按**当前工作树**测量。只在「单会话、无并发未提交改动」时可用；
+       并发工作树下会算高 → CI 干净检出假红 → 门禁被绕过（2026-10-25 实际踩过一次）。
+
+    为什么不能简单按工作树冻结：工作树里常有别的会话**尚未提交**的遮蔽改动，
+    它们会让工作树数值偏低；按偏低值冻结，CI 在干净检出上看到更高数值就假红。
+    反过来，算太高又会让真泄露藏在余量里。唯一稳的口径就是「提交后 HEAD」。
     """
-    if snapshot:
-        snap = os.path.abspath(snapshot)
-        if not os.path.isdir(snap):
-            print(f"❌ 快照目录不存在：{snap}")
-            return 1
-        tracked = set()
-        for dp, dn, fn in os.walk(snap):
-            dn[:] = [d for d in dn if d not in SKIP_DIRS]
-            for f in fn:
-                tracked.add(os.path.relpath(os.path.join(dp, f), snap).replace(os.sep, "/"))
-        hits, _untracked_snap = scan_plaintext_flags(snap, tracked)
-        untracked = [h for h in hits if not h["tracked"]]
-        basis = (f"上限取 `git archive HEAD` + 本次提交文件 的导出快照（{snap}）实测值，"
-                 f"不是当前工作树值 —— 工作树含并发会话未提交的改动。")
-    else:
-        tracked = _git_tracked(root)
-        if tracked is None:
-            print("❌ 拒绝固化：该目录不在 git 仓库中，无法区分入库/未入库")
-            return 1
-        hits, untracked = scan_plaintext_flags(root, tracked)
-        basis = "上限取当前工作树实测值（单会话、无并发未提交改动时才可用）。"
-    if untracked:
-        print(f"⚠️  另有未入库副本 {len(untracked)} 条明文 flag，不计入上限"
+    import shutil
+    import tempfile
+
+    tmpdir = None
+    added: list[str] = []
+    removed: list[str] = []
+    try:
+        if from_head:
+            if _git_tracked(root) is None:
+                print("❌ 拒绝固化：该目录不在 git 仓库中（--from-head 需要 git）")
+                return 1
+            tmpdir = tempfile.mkdtemp(prefix="sguard-head-")
+            try:
+                added, removed = _build_head_tree(root, paths or [], tmpdir)
+            except Exception as exc:  # noqa: BLE001
+                print(f"❌ 构造 HEAD 合成树失败：{exc}")
+                return 1
+            tracked_hits = _measure_as_tracked(tmpdir)
+            # 未提交改动必须显式点名：它们**没有**被计入，若其中有遮蔽/新增答案，
+            # 上限就会偏离 CI 实际值。宁可吵，也不许静默。
+            modified = _git_modified_vs_head(root)
+            skipped = sorted(set(modified) - set(added))
+            basis = (
+                "上限取「`git archive HEAD` + --paths 显式叠加的本次提交文件」合成树实测值，"
+                "即在模拟**提交后的干净检出**，不是工作树值。"
+                f"叠加 {len(added)} 个文件"
+                + (f"、删除 {len(removed)} 个" if removed else "")
+                + "。复现：`secret_guard.py --freeze-flag-baseline --from-head"
+                + "".join(f" --paths {p}" for p in added)
+                + "`。"
+            )
+            if skipped:
+                basis += (f" ⚠️ 另有 {len(skipped)} 个已修改但未纳入的文件（并发会话在改/"
+                          f"或本次不提交），它们不计入上限。")
+        elif snapshot:
+            snap = os.path.abspath(snapshot)
+            if not os.path.isdir(snap):
+                print(f"❌ 快照目录不存在：{snap}")
+                return 1
+            tracked_hits = _measure_as_tracked(snap)
+            basis = (f"上限取调用方手工准备的导出快照（{snap}）实测值，"
+                     f"不是当前工作树值。⚠️ 手工快照易漏文件，建议改用 --from-head --paths。")
+        else:
+            tracked = _git_tracked(root)
+            if tracked is None:
+                print("❌ 拒绝固化：该目录不在 git 仓库中，无法区分入库/未入库")
+                return 1
+            hits, _ = scan_plaintext_flags(root, tracked)
+            tracked_hits = [h for h in hits if h["tracked"]]
+            untracked_copies = len([h for h in hits if not h["tracked"]])
+            basis = ("上限取**当前工作树**实测值 —— 仅当单会话、无并发未提交改动时正确；"
+                     "并发开发请改用 --from-head --paths。")
+        # 未入库副本一律**实测**，不允许因为换了口径就写死 0：一个恒 0 的字段等于
+        # 「没测」冒充「没问题」，正是本仓明令禁止的静默接线缺口。
+        if from_head or snapshot:
+            wt_tracked = _git_tracked(root)
+            if wt_tracked is None:
+                untracked_copies = None
+            else:
+                wt_hits, _ = scan_plaintext_flags(root, wt_tracked)
+                untracked_copies = len([h for h in wt_hits if not h["tracked"]])
+    finally:
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    if untracked_copies is None:
+        print("⚠️  工作树不在 git 仓库中，未入库副本数无法测量（记 null，不记 0）")
+    elif untracked_copies:
+        print(f"⚠️  工作树另有未入库副本 {untracked_copies} 条明文 flag，不计入上限"
               f"（不进 PUBLIC 仓，但 git add 后会变成入库泄露）")
-    tracked_hits = [h for h in hits if h["tracked"]]
     per_file: dict[str, int] = {}
     for h in tracked_hits:
         per_file[h["file"]] = per_file.get(h["file"], 0) + 1
@@ -507,7 +672,7 @@ def freeze_flag_baseline(root: str, snapshot: str | None = None) -> int:
         "tracked_hits": len(tracked_hits),
         "real_brand_hits": len(real_hits),
         "real_brand_files": real_files,
-        "untracked_copies": len(untracked),
+        "untracked_copies": untracked_copies,
         "per_file": per_file,
         # 口径来源必须随基线一起落盘：否则下一个人看到 2519 会以为是工作树实测值，
         # 又按工作树重冻一次，把并发未提交的遮蔽抹掉 → 上限被打回高位。
@@ -669,7 +834,16 @@ def main():
         snap = None
         if "--basis-snapshot" in sys.argv:
             snap = sys.argv[sys.argv.index("--basis-snapshot") + 1]
-        return freeze_flag_baseline(root, snap)
+        paths = []
+        for i, a in enumerate(sys.argv):
+            if a == "--paths":
+                for nxt in sys.argv[i + 1:]:
+                    if nxt.startswith("--"):
+                        break
+                    paths.append(nxt)
+        return freeze_flag_baseline(root, snapshot=snap,
+                                    from_head="--from-head" in sys.argv,
+                                    paths=paths)
     if "--skip-flag-scan" in sys.argv:
         tracked_set, flag_hits, flag_untracked = set(), [], []
         flag_block, flag_note = False, "已用 --skip-flag-scan 跳过"
