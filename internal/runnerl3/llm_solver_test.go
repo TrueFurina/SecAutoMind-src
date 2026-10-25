@@ -8,7 +8,7 @@
 //   B. 工具输出中出现候选 flag（不可自欺硬信号）→ 规则⑥不得触发，
 //      循环必须跑满预算——监督不许杀死有收敛信号的努力。
 //   C. 候选账本端到端：ABANDON 决策必须落监督消费率账本。
-package main
+package runnerl3
 
 import (
 	"context"
@@ -66,9 +66,9 @@ func textResp(content string) *schema.Message {
 	return &schema.Message{Role: schema.Assistant, Content: content}
 }
 
-func newTestFallback(m model.BaseChatModel, rounds, toolCalls int) *llmFallback {
-	return &llmFallback{
-		model: m, logger: zap.NewNop(), enabled: true,
+func newTestFallback(m model.BaseChatModel, rounds, toolCalls int) *LLMFallback {
+	return &LLMFallback{
+		model: m, logger: zap.NewNop(), Enabled: true,
 		maxRounds: rounds, maxToolCalls: toolCalls,
 	}
 }
@@ -82,7 +82,7 @@ func TestSupervisionAbandonsZeroCandidateLoop(t *testing.T) {
 	m := &fakeModel{resps: []*schema.Message{toolResp("no_such_tool", "{}")}}
 	ff := newTestFallback(m, 12, 12)
 
-	flags, err := ff.solve(context.Background(), testChallenge())
+	flags, err := ff.Solve(context.Background(), testChallenge())
 	if err != nil {
 		t.Fatalf("solve 不应报错: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestSmallBudgetDefeatsSupervision(t *testing.T) {
 	m := &fakeModel{resps: []*schema.Message{toolResp("no_such_tool", "{}")}}
 	ff := newTestFallback(m, 3, 5) // 旧默认
 
-	_, _ = ff.solve(context.Background(), testChallenge())
+	_, _ = ff.Solve(context.Background(), testChallenge())
 	if m.calls != 3 {
 		t.Fatalf("3 轮预算下无监督介入，应跑满 3 轮，实际 %d", m.calls)
 	}
@@ -117,7 +117,7 @@ func TestSupervisionCandidateKeepsLoopAlive(t *testing.T) {
 	}}
 	ff := newTestFallback(m, 12, 12)
 
-	flags, err := ff.solve(context.Background(), testChallenge())
+	flags, err := ff.Solve(context.Background(), testChallenge())
 	if err != nil {
 		t.Fatalf("solve 不应报错: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestLLMFinalTextHitReturns(t *testing.T) {
 	}}
 	ff := newTestFallback(m, 12, 12)
 
-	flags, err := ff.solve(context.Background(), testChallenge())
+	flags, err := ff.Solve(context.Background(), testChallenge())
 	if err != nil {
 		t.Fatalf("solve 不应报错: %v", err)
 	}
@@ -153,9 +153,9 @@ func TestLLMFinalTextHitReturns(t *testing.T) {
 // C. 未启用 → 零模型调用。
 func TestLLMFallbackDisabledNoModelCalls(t *testing.T) {
 	m := &fakeModel{resps: []*schema.Message{textResp("x")}}
-	ff := &llmFallback{model: m, logger: zap.NewNop(), enabled: false}
+	ff := &LLMFallback{model: m, logger: zap.NewNop(), Enabled: false}
 
-	flags, err := ff.solve(context.Background(), testChallenge())
+	flags, err := ff.Solve(context.Background(), testChallenge())
 	if err != nil || flags != nil {
 		t.Fatalf("disabled 应 (nil,nil)，got (%v,%v)", flags, err)
 	}
@@ -175,7 +175,7 @@ func TestSupervisionAbandonRecordedInLedger(t *testing.T) {
 
 	m := &fakeModel{resps: []*schema.Message{toolResp("no_such_tool", "{}")}}
 	ff := newTestFallback(m, 12, 12)
-	_, _ = ff.solve(context.Background(), testChallenge()) //nolint:errcheck
+	_, _ = ff.Solve(context.Background(), testChallenge()) //nolint:errcheck
 
 	stats, err := ctfplatform.SummarizeSupervisionLedger(path)
 	if err != nil {
@@ -257,7 +257,7 @@ func TestSwitchFiresOnLowConfidenceErrors(t *testing.T) {
 	}}
 	ff := newTestFallback(m, 12, 12)
 
-	flags, err := ff.solve(context.Background(), testChallenge())
+	flags, err := ff.Solve(context.Background(), testChallenge())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestNoSwitchOnHighConfidence(t *testing.T) {
 	}}
 	ff := newTestFallback(m, 12, 12)
 
-	_, _ = ff.solve(context.Background(), testChallenge()) //nolint:errcheck
+	_, _ = ff.Solve(context.Background(), testChallenge()) //nolint:errcheck
 	stats, err := ctfplatform.SummarizeSupervisionLedger(path)
 	if err != nil {
 		t.Fatal(err)
