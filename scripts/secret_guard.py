@@ -29,6 +29,7 @@ import os
 import re
 import sys
 import json
+import hashlib
 import subprocess
 import time
 import unicodedata
@@ -378,6 +379,110 @@ def classify_brand(raw: str) -> str:
     return "real" if REAL_BRAND_RE.match(raw) else "self"
 
 
+# ---------------------------------------------------------------------------
+# 题库真值集与「溯源分档」（2026-10-25 从 audit_flag_provenance.py 下沉）
+#
+# 为什么下沉：门禁要卡「铁实锤真题答案」这个数，就得有真值集；audit 也要展示它。
+# 同一个判据在上下两层各写一份 = 必然漂移（本仓在 Go/Python 占位词表上已经因此
+# 栽过一次，漏 7 词、多 1 词、还漏了低信息量检查）。所以真值收集与分档**只在这里
+# 实现一次**，audit 只 import 本模块的实现做展示。
+# ---------------------------------------------------------------------------
+FLAG_SHA_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+# 题库里表示「答案哈希」的键名（含各 benchmark 的历史命名变体）
+SHA_KEY_HINTS = ("flag_sha256", "answer_sha256", "expected_sha256", "sha256")
+
+
+def _iter_sha_values(doc):
+    """深度遍历任意 JSON 结构，产出所有像 sha256 的字符串值。"""
+    stack = [doc]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict):
+            for k, v in cur.items():
+                if isinstance(v, str) and FLAG_SHA_HEX64.match(v.lower()):
+                    if any(h in k.lower() for h in SHA_KEY_HINTS):
+                        yield v.lower()
+                elif isinstance(v, (dict, list)):
+                    stack.append(v)
+        elif isinstance(cur, list):
+            stack.extend(x for x in cur if isinstance(x, (dict, list)))
+
+
+def harvest_truth_hashes(root: str, use_local: bool = True) -> tuple[set, dict]:
+    """收集题库真值 sha256 集。返回 (集合, 统计)。
+
+    `use_local=False` 用于模拟 CI 环境（本地真值文件被 gitignore，CI 上不存在）。
+    """
+    truth: set[str] = set()
+    stats = {"benchmark_files": 0, "local_file": False, "local_values": 0}
+    data_dir = os.path.join(root, "data")
+    local_path = os.path.join(data_dir, "flag_truth.local.json")
+    for dp, dn, fn in os.walk(data_dir):
+        dn[:] = [d for d in dn if d not in SKIP_DIRS]
+        for f in fn:
+            if not f.endswith(".json"):
+                continue
+            path = os.path.join(dp, f)
+            # 本地真值文件**永远**从常规扫描里排除，只在 use_local=True 时显式加入。
+            # 否则 use_local=False（模拟 CI）会偷偷把它算进来 —— 那个开关就只是装饰。
+            if os.path.abspath(path) == os.path.abspath(local_path):
+                continue
+            try:
+                if os.path.getsize(path) > 8 * 1024 * 1024:
+                    continue
+                doc = json.load(open(path, encoding="utf-8"))
+            except Exception:
+                continue
+            stats["benchmark_files"] += 1
+            truth.update(_iter_sha_values(doc))
+    if use_local and os.path.isfile(local_path):
+        try:
+            doc = json.load(open(local_path, encoding="utf-8"))
+            vals = set(_iter_sha_values(doc))
+            stats["local_file"] = True
+            stats["local_values"] = len(vals)
+            truth.update(vals)
+        except Exception:
+            pass
+    return truth, stats
+
+
+def provenance_of(brand: str, sha: str, truth) -> str:
+    """由已算好的 brand 与 sha256 定档。纯函数，门禁与 audit 共用这一份。
+
+    **事实优先于外形，但「不是答案」的判定优先于两者**：档位顺序固定为
+        placeholder → known_answer（sha 命中真值）→ self → unknown_brand
+
+    为什么 placeholder 排在 sha 前面：题库里确实存在把占位符登记成答案的脏数据
+    （实测 64 个 `DASCTF` 前缀的 printf 模板 / 格式声明字符串，其哈希躺在真值集里）。若让哈希优先，这些模板会被算成「铁实锤真题答案」，把门禁的硬指标灌水。
+    占位符「不是答案」是形态层面的硬事实，不依赖题库登记是否正确。
+
+    为什么 sha 命中要排在 self 前面：真答案是内容，不是前缀。2026-10-25 实测 HEAD
+    上 2536 条命中里，只有 157 条带真题品牌，而 **1144 条**的 sha256 命中真值 ——
+    旧口径把 987 条 `flag{真答案}` 归成「自产构造」，直接从真泄露队列里消失。
+    改个前缀就能洗白的判据，不能用来报数。
+    """
+    if brand == "placeholder":
+        return "placeholder"
+    if truth is not None and sha in truth:
+        return "known_answer"
+    if brand == "self":
+        return "self"
+    return "unknown_brand"
+
+
+def classify_provenance(raw: str, truth) -> tuple[str, str]:
+    """把一条命中分档：placeholder / self / known_answer / unknown_brand。
+
+    与 `classify_brand` 的分工：brand 只看**外形**（快、宽，用于分诊噪声），
+    provenance 看 **sha256 是否命中题库真值**（准、可机验）。真泄露只认后者 ——
+    10663 那种「DASCTF 前缀 + ni_cai?」的陷阱串外形是真品牌，但哈希不在真值集里。
+    （本条注释原先原样引用了那个串，反而让门禁多出一条「真品牌命中」——实测被自己抓到。）
+    """
+    sha = hashlib.sha256(raw.encode()).hexdigest()
+    return provenance_of(classify_brand(raw), sha, truth), sha
+
+
 def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
     """扫描形如 `前缀{内容}` 的 CTF flag 明文。返回 (hits, untracked_hits)。
 
@@ -419,13 +524,19 @@ def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
                     "masked": mask(raw),
                     "tracked": is_tracked,
                     "brand": classify_brand(raw),
+                    # sha256 随命中一起算：真泄露的唯一机验判据是「哈希命中题库真值」，
+                    # 外形判不出来。算一次的成本相对于 IO 可忽略。
+                    "sha256": hashlib.sha256(raw.encode()).hexdigest(),
                 })
     untracked = [h for h in hits if not h["tracked"]]
     return hits, untracked
 
 
-def evaluate_flag_policy(hits, tracked_set, baseline):
+def evaluate_flag_policy(hits, tracked_set, baseline, truth=None):
     """明文 flag 的分诊策略（纯函数，便于单测）。
+
+    `truth` = 题库真值 sha256 集合，用于数「铁实锤真题答案」。传 None 表示调用方
+    没有真值集（例如非 git 目录自测），此时该卡口跳过并明说跳过，不静默放行。
 
     返回 (block: bool, note: str, n_tracked: int, untracked: list)
     """
@@ -441,6 +552,23 @@ def evaluate_flag_policy(hits, tracked_set, baseline):
     sev = (f"｜真赛事品牌 {n_real} 条（真泄露，优先清）"
            f"／自产构造 {max(n_tracked - n_real - n_ph, 0)} 条"
            f"／占位符模板 {n_ph} 条（非答案）" if n_tracked else "")
+    # 铁实锤：唯一可机验的判据 = 「sha256 命中题库真值」。品牌是外形，改名即洗白；
+    # 总数会被「删夹具 + 加答案」换料平账。只有这一条是事实。
+    n_known = None
+    if truth is not None:
+        # 判据只有一条：sha256 命中题库真值。**不按品牌过滤** —— 品牌是外形，
+        # 改个前缀就能洗白（`DASCTF{真答案}` → `flag{真答案}`），而哈希改不了。
+        # 唯一例外是占位符：题库里有把 `DASCTF` 前缀 printf 模板登记成答案的脏数据，
+        # 它们不是答案，不能算进这个硬指标（否则指标被灌水，就失去约束力）。
+        n_known = sum(1 for h in hits
+                      if h["tracked"] and h.get("brand") != "placeholder"
+                      and h.get("sha256", "") in truth)
+        if n_tracked:
+            cap_known = baseline.get("known_answer_hits") if baseline else None
+            sev += (f"｜铁实锤真题答案 {n_known} 条"
+                    f"（上限 {cap_known if cap_known is not None else '未记'}）")
+    elif n_tracked:
+        sev += "｜⚠️ 未提供题库真值集，铁实锤卡口本次**跳过**（未验证 ≠ 无泄露）"
     if tracked_set is None:
         # 非 git 目录：无法区分入库/未入库。此时**只有确有命中才 fail-closed** ——
         # 干净目录（如门禁自测用的临时空目录）必须放行，否则 --allow-no-fingerprint
@@ -465,6 +593,13 @@ def evaluate_flag_policy(hits, tracked_set, baseline):
         return (True, f"真赛事品牌明文 flag {n_real} 条 > 冻结上限 {cap_real} 条 —— "
                       f"新增了真题答案（即使总数 {n_tracked} 未超 {cap} 也必须拦）",
                 n_tracked, untracked)
+    # 铁实锤独立卡口（三个卡口里最硬的一个，见上方 n_known 处注释）
+    if n_known is not None:
+        cap_known = baseline.get("known_answer_hits")
+        if cap_known is not None and n_known > cap_known:
+            return (True, f"铁实锤真题答案 {n_known} 条 > 冻结上限 {cap_known} 条 —— "
+                          f"这些串的 sha256 命中题库真值，是真答案而非夹具",
+                    n_tracked, untracked)
     if n_tracked > cap:
         return (True, f"已入库文件明文 flag {n_tracked} 条 > 冻结上限 {cap} 条 —— "
                       f"有人在历史文件里新加了答案", n_tracked, untracked)
@@ -569,7 +704,9 @@ def _build_head_tree(root: str, paths: list[str], workdir: str) -> tuple[list[st
 
 def freeze_flag_baseline(root: str, snapshot: str | None = None,
                          from_head: bool = False,
-                         paths: list[str] | None = None) -> int:
+                         paths: list[str] | None = None,
+                         allow_raise: bool = False,
+                         raise_reason: str = "") -> int:
     """固化明文 flag 上限。
 
     三种口径，按可信度从高到低：
@@ -664,6 +801,13 @@ def freeze_flag_baseline(root: str, snapshot: str | None = None,
     real_files: dict[str, int] = {}
     for h in real_hits:
         real_files[h["file"]] = real_files.get(h["file"], 0) + 1
+    # 铁实锤：sha256 命中题库真值的那几条。口径固定为 use_local=False ——
+    # 只计**已提交** benchmark JSON 里的 flag_sha256，不含 gitignore 的本地真值文件。
+    # 理由：CI 上不存在本地真值文件，若按本地口径记上限（28），CI 只能数到 24，
+    # 两个数不同源就永远无法互校；而按提交口径记，本机与 CI 得到同一个数。
+    truth, _tstat = harvest_truth_hashes(root, use_local=False)
+    known_hits = [h for h in tracked_hits
+                  if h.get("brand") != "placeholder" and h.get("sha256", "") in truth]
     data = {
         "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增："
                 "超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
@@ -672,6 +816,7 @@ def freeze_flag_baseline(root: str, snapshot: str | None = None,
         "tracked_hits": len(tracked_hits),
         "real_brand_hits": len(real_hits),
         "real_brand_files": real_files,
+        "known_answer_hits": len(known_hits),
         "untracked_copies": untracked_copies,
         "per_file": per_file,
         # 口径来源必须随基线一起落盘：否则下一个人看到 2519 会以为是工作树实测值，
@@ -680,9 +825,38 @@ def freeze_flag_baseline(root: str, snapshot: str | None = None,
     }
     # 保住人工写下的 `_target` / `_correction_*` 等元数据：每次冻结都重算会把
     # 「为什么是这个数、要降到多少」抹掉，那正是下一次误判的起点。
-    for k, v in (load_flag_baseline() or {}).items():
+    prev = load_flag_baseline() or {}
+    for k, v in prev.items():
         if k.startswith("_") and k not in data:
             data[k] = v
+    # 🔴 防腐守卫：**默认拒绝上调**。
+    # 重冻的本意是「清掉几条就往下调」；若允许随手调高，那「冻结上限」就成了洗白
+    # 通道 —— 往仓里加 100 条 flag，再重冻一次，历史责任就从账面上消失了。
+    # 所以涨了必须**显式承认**并留下理由，默认一律拒写。
+    raises = []
+    for key, label in (("tracked_hits", "明文 flag 总数"),
+                       ("real_brand_hits", "真赛事品牌"),
+                       ("known_answer_hits", "铁实锤真题答案")):
+        old = prev.get(key)
+        new = data.get(key)
+        if isinstance(old, int) and isinstance(new, int) and new > old:
+            raises.append(f"{label} {old} → {new}（+{new - old}）")
+    if raises and not allow_raise:
+        print("❌ 拒绝固化：本次测量值**高于**现有上限 —— 冻结上限只许降不许升。")
+        for r in raises:
+            print(f"   · {r}")
+        print("")
+        print("   这可能不是错误（确实新增了必要的夹具/题库），但上调必须显式承认，")
+        print("   否则门禁的「上限」就变成了可随时刷新的装饰品。两条正路：")
+        print("   ① 首选：把新增明文清掉或改成 *_sha256，让测量值不涨；")
+        print("   ② 确需上调：加 `--allow-raise --reason \"理由\"`，理由会写进基线。")
+        return 1
+    if raises:
+        data["_frozen_basis"] = (data["_frozen_basis"]
+                                 + f" ⚠️ 本次经 --allow-raise 上调：{raise_reason or '(未给理由)'}")
+        print("⚠️  已按 --allow-raise 上调上限：")
+        for r in raises:
+            print(f"   · {r}")
     FLAG_BASELINE.write_text(json.dumps(data, ensure_ascii=False, indent=1),
                              encoding="utf-8")
     print(f"✅ 已固化明文 flag 上限 {len(tracked_hits)} 条（{len(per_file)} 个文件）→ {FLAG_BASELINE}")
@@ -841,9 +1015,16 @@ def main():
                     if nxt.startswith("--"):
                         break
                     paths.append(nxt)
+        reason = ""
+        if "--reason" in sys.argv:
+            idx = sys.argv.index("--reason")
+            if idx + 1 < len(sys.argv):
+                reason = sys.argv[idx + 1]
         return freeze_flag_baseline(root, snapshot=snap,
                                     from_head="--from-head" in sys.argv,
-                                    paths=paths)
+                                    paths=paths,
+                                    allow_raise="--allow-raise" in sys.argv,
+                                    raise_reason=reason)
     if "--skip-flag-scan" in sys.argv:
         tracked_set, flag_hits, flag_untracked = set(), [], []
         flag_block, flag_note = False, "已用 --skip-flag-scan 跳过"
@@ -852,10 +1033,13 @@ def main():
         tracked_set = _git_tracked(root)
         flag_hits, flag_untracked = scan_plaintext_flags(root, tracked_set)
         flag_base = load_flag_baseline()
+        # 真值集只按**已提交** benchmark 收集（use_local=False），与冻结口径同源；
+        # 读不到真值集时传 None，策略函数会明说「卡口跳过」而不是静默放行。
+        flag_truth, _flag_tstat = harvest_truth_hashes(root, use_local=False)
         # 只看**已入库**文件：未跟踪副本不进 PUBLIC 仓，不构成入库泄露，
         # 但一旦 git add 就会 —— 所以它们单列告警，不计入冻结上限。
         flag_block, flag_note, _n, flag_untracked = evaluate_flag_policy(
-            flag_hits, tracked_set, flag_base)
+            flag_hits, tracked_set, flag_base, truth=flag_truth)
     scanned, findings = scan_dir(root)
 
     real = [f for f in findings

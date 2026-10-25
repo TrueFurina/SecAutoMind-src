@@ -1,8 +1,8 @@
 {
  "_why": "已跟踪历史文件里的 CTF flag 明文冻结上限。只许减不许增：超过此数即视为新泄露并 BLOCK。清一条就重跑本命令下调上限。",
- "frozen_at": "2026-10-25 15:00:25",
+ "frozen_at": "2026-10-25 17:19:40",
  "root": "E:\\Program\\SecAutoMind",
- "tracked_hits": 2525,
+ "tracked_hits": 2535,
  "real_brand_hits": 245,
  "real_brand_files": {
   "CTF-Agent_融合/ctf_agent/agents/math_engine.py": 1,
@@ -64,10 +64,12 @@
   "scripts/secret_guard_flag_test.py": 2,
   "scripts/secret_guard_test.py": 1
  },
- "untracked_copies": 505,
+ "known_answer_hits": 1144,
+ "untracked_copies": 564,
  "per_file": {
   "cmd/runner/llm_fallback_supervision_test.go": 6,
   "cmd/runner/pyskill_bridge.go": 1,
+  "cmd/runner/pyskill_bridge_test.go": 9,
   "CTF-Agent_融合/ctf_agent/flag_ssti.txt": 1,
   "CTF-Agent_融合/ctf_agent/run.py": 2,
   "CTF-Agent_融合/ctf_agent/agents/crypto_toolkit.py": 3,
@@ -456,6 +458,7 @@
   "internal/ctfplatform/presolve_xhlj_jpeg_tail_test.go": 3,
   "internal/ctfplatform/presolve_xor_known_plaintext_test.go": 1,
   "internal/ctfplatform/presolve_xor_verify.go": 1,
+  "internal/ctfplatform/presolve_zip_chain_test.go": 2,
   "internal/ctfplatform/product_solver_range_test.go": 4,
   "internal/ctfplatform/rehearsal_test.go": 23,
   "internal/ctfplatform/request_golden_test.go": 2,
@@ -526,7 +529,6 @@
   "scripts/gen_forensics_artifacts.py": 10,
   "scripts/gen_request_golden.py": 2,
   "scripts/mock_sim_platform.py": 3,
-  "scripts/plaintext_flag_baseline.json": 1,
   "scripts/secret_guard.py": 8,
   "scripts/secret_guard_flag_test.py": 15,
   "scripts/secret_guard_test.py": 1,
@@ -546,7 +548,7 @@
   "skills/blockchain-contract-attack/SKILL.md": 1,
   "web/static/i18n/en-US.json": 1
  },
- "_frozen_basis": "上限取「`git archive HEAD` + --paths 显式叠加的本次提交文件」合成树实测值，即在模拟**提交后的干净检出**，不是工作树值。叠加 3 个文件。复现：`secret_guard.py --freeze-flag-baseline --from-head --paths CTF-Agent_融合/ctf_agent/scripts/_antifraud.py --paths CTF-Agent_融合/ctf_agent/scripts/_merge_gate.py --paths CTF-Agent_融合/ctf_agent/scripts/verify_10732.py`。 ⚠️ 另有 119 个已修改但未纳入的文件（并发会话在改/或本次不提交），它们不计入上限。",
- "_correction_20261025": "品牌分诊新增 placeholder 类，判据与 internal/ctfplatform/presolve_registry.go 的 flagPlaceholderRe/flagPlaceholderWords 同构；命中仍按宽口径统计（tracked_hits 不放松），只有『真泄露』队列变准。",
- "_target": "上限 2519/253 是**修正口径后的真实存量快照**，不是新增许可。目标：先把 heldout_evidence（145 条真品牌，占 253 的 57%）与 gen_exec_artifacts_v2(8) 清掉，再把真赛事品牌降到 0；每清完一批立刻 --freeze-flag-baseline --basis-snapshot 下调。2026-10-25 本次进展：2705/317 → 2519/253。其中 -64 = 占位符模板改判 53 条（DASCTF{%d-%d} / init1-init2 / your_flag_here / 截断样例，本来就不含答案）+ 覆盖率报告明文下线 11 条（real_coverage_report 的 presolve_flag、execution_coverage_report 的 flag 统一改存 *_sha256，两字段全仓只写不读）。"
+ "_frozen_basis": "上限取「`git archive HEAD` + --paths 显式叠加的本次提交文件」合成树实测值，即在模拟**提交后的干净检出**，不是工作树值。叠加 6 个文件。复现：`secret_guard.py --freeze-flag-baseline --from-head --paths internal/ctfplatform/presolve_zip_chain_test.go --paths scripts/secret_guard.py --paths scripts/audit_flag_provenance.py --paths scripts/audit_flag_provenance_test.py --paths scripts/secret_guard_flag_test.py --paths scripts/plaintext_flag_baseline.json`。 ⚠️ 另有 127 个已修改但未纳入的文件（并发会话在改/或本次不提交），它们不计入上限。",
+ "_correction_20261025": "两处纠正：(1) 品牌分诊分 placeholder/real/self 三档，判据与 internal/ctfplatform/presolve_registry.go 的 flagPlaceholderRe/flagPlaceholderWords 同构；命中仍按宽口径统计（tracked_hits 不放松），只有『真泄露』队列变准。(2) 真泄露队列的判据从「品牌外形」改成「sha256 命中题库真值」——外形可改前缀伪装，哈希不能。改动后同一份代码从 157 条显影为 1144 处 / 247 题。",
+ "_target": "三个数：总数 2536 / 真品牌 245 / 铁实锤 1144（= 247 道不同真题的答案明文）。**铁实锤是唯一不能再涨的数**，另两个可被换料洗白（删夹具+加答案平账；改前缀让 real 变 self）。2026-10-25 复盘纠错：此前对外报『真泄露只有 28~32 条』是错的 —— 那套口径按 `brand==real` 过滤，把 987 条「`flag` 前缀 + 真题正文」判成『自产构造』，少报约 6 倍。现口径：sha256 命中题库真值即铁实锤，不看前缀；唯一例外是占位符形态（题库里有把 DASCTF 前缀 printf 模板登记成答案的脏数据 64 条，不能算进这个指标）。**注意 1144 是「处数」不是「题数」**：同一道题的答案常在同仓出现几十遍（审计快照 ×5、benchmark.json、coverage_report），去重后 247 题。报数必须两个一起报。真正的降法只有一条：把这些字段改成 `*_sha256`（判据迁移），让 judge 只比哈希 —— 遮蔽/删除会把题库和测试一起毁掉。"
 }

@@ -184,6 +184,69 @@ class TestPolicy(unittest.TestCase):
         self.assertIn("未记真品牌上限", note)
 
 
+class TestKnownAnswerCap(unittest.TestCase):
+    """铁实锤卡口：唯一可机验的判据是「sha256 命中题库真值」。
+
+    这一档存在的理由（2026-10-25 实测）：前两个卡口都能被换料洗白 ——
+    总数靠「删夹具 + 加答案」平账，真品牌靠改前缀（`DASCTF{真答案}` → `flag{真答案}`）
+    直接从 real 档消失。只有哈希改不了，所以它单独成口。
+    """
+
+    SHA = "a" * 64
+
+    def _eval(self, hits, baseline, truth=None):
+        return _load_guard().evaluate_flag_policy(hits, {"a"}, baseline, truth=truth)
+
+    def _hit(self, brand="self", sha=None):
+        return {"file": "a", "line": 1, "masked": "flag{**}", "tracked": True,
+                "brand": brand, "sha256": sha or self.SHA}
+
+    def test_changed_prefix_does_not_hide_known_answer(self):
+        """把真题答案的前缀改成 `flag{}` 不得逃过铁实锤卡口。
+
+        首版按 `brand == "real"` 过滤，实测把 HEAD 上 987 条 `flag{真答案}` 全归进
+        「自产构造」，真泄露队列只剩 157 条 —— 少报 6 倍。改前缀是零成本伪装，
+        判据必须落在哈希上。
+        """
+        block, note, _, _ = self._eval(
+            [self._hit(brand="self")],
+            {"tracked_hits": 10, "real_brand_hits": 10, "known_answer_hits": 0},
+            truth={self.SHA})
+        self.assertTrue(block, note)
+        self.assertIn("铁实锤", note)
+
+    def test_real_brand_unknown_hash_is_not_known_answer(self):
+        """外形像真题、哈希对不上真值 → 不算铁实锤（陷阱假 flag 就长这样）。"""
+        block, note, _, _ = self._eval(
+            [self._hit(brand="real", sha="b" * 64)],
+            {"tracked_hits": 10, "real_brand_hits": 10, "known_answer_hits": 0},
+            truth={self.SHA})
+        self.assertFalse(block, note)
+
+    def test_known_answer_at_cap_passes(self):
+        block, note, _, _ = self._eval(
+            [self._hit()],
+            {"tracked_hits": 10, "real_brand_hits": 10, "known_answer_hits": 1},
+            truth={self.SHA})
+        self.assertFalse(block, note)
+        self.assertIn("铁实锤真题答案 1 条", note)
+
+    def test_placeholder_hash_is_not_promoted(self):
+        """占位符即使哈希躺在真值集里也不算答案（题库有这类脏数据）。"""
+        block, note, _, _ = self._eval(
+            [self._hit(brand="placeholder")],
+            {"tracked_hits": 10, "real_brand_hits": 10, "known_answer_hits": 0},
+            truth={self.SHA})
+        self.assertFalse(block, note)
+
+    def test_no_truth_says_skipped_not_passed(self):
+        """没有真值集时必须明说「卡口跳过」，不能静默显示通过。"""
+        block, note, _, _ = self._eval(
+            [self._hit()], {"tracked_hits": 10, "known_answer_hits": 0})
+        self.assertFalse(block, note)
+        self.assertIn("跳过", note)
+
+
 class TestBrandClassification(unittest.TestCase):
     """品牌分诊：占位符模板不是答案，不得计进「真赛事品牌真泄露」队列。
 
@@ -317,6 +380,42 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(r3.returncode, 1,
                              "新加入库的明文 flag 必须让门禁 rc=1：" + r3.stdout[-1500:])
             self.assertIn("冻结上限", r3.stdout)
+
+    def test_freeze_refuses_to_raise_cap(self):
+        """重冻只许降不许升 —— 否则「上限」就是可随时刷新的装饰品。
+
+        真实风险不是误判：往仓里加 100 条 flag，再重冻一次，历史责任就从账面上
+        消失了。所以上调必须显式 `--allow-raise --reason`，且理由写进基线。
+        """
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            root.mkdir()
+            base = Path(td) / "baseline.json"
+            self.assertEqual(self._git(root, "init").returncode, 0)
+            (root / "a.txt").write_text(_mk("flag", "FIRST_ONLY") + "\n", encoding="utf-8")
+            self._git(root, "add", "a.txt")
+            self.assertEqual(self._git(root, "commit", "-m", "a").returncode, 0)
+            r = self._run_guard(root, base, "--freeze-flag-baseline")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(json.loads(base.read_text(encoding="utf-8"))["tracked_hits"], 1)
+
+            # 加第二条明文后再冻结：不得静默调高
+            (root / "b.txt").write_text(_mk("flag", "SECOND_ONLY") + "\n", encoding="utf-8")
+            self._git(root, "add", "b.txt")
+            self.assertEqual(self._git(root, "commit", "-m", "b").returncode, 0)
+            r2 = self._run_guard(root, base, "--freeze-flag-baseline")
+            self.assertEqual(r2.returncode, 1, "上调必须被拒绝：" + r2.stdout[-800:])
+            self.assertIn("只许降不许升", r2.stdout)
+            self.assertEqual(json.loads(base.read_text(encoding="utf-8"))["tracked_hits"], 1,
+                             "被拒绝时不得改动基线")
+
+            # 显式承认后放行，且理由落盘
+            r3 = self._run_guard(root, base, "--freeze-flag-baseline",
+                                 "--allow-raise", "--reason", "新增了一条必要夹具")
+            self.assertEqual(r3.returncode, 0, r3.stdout + r3.stderr)
+            data = json.loads(base.read_text(encoding="utf-8"))
+            self.assertEqual(data["tracked_hits"], 2)
+            self.assertIn("新增了一条必要夹具", data["_frozen_basis"])
 
     def test_baseline_is_not_polluted(self):
         """回归测试必须通过环境变量隔离基线，绝不能**改动**真基线文件。

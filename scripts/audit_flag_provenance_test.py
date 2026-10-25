@@ -43,7 +43,7 @@ class TestHarvest(unittest.TestCase):
     def test_picks_up_flag_sha256(self):
         with tempfile.TemporaryDirectory() as td:
             self._mk_tree(td, {"problems": {"1": {"flag_sha256": SHA_A}}})
-            truth, stats = A.harvest_truth(td, use_local=False)
+            truth, stats = sg.harvest_truth_hashes(td, use_local=False)
             self.assertEqual(truth, {SHA_A})
             self.assertEqual(stats["benchmark_files"], 1)
 
@@ -55,14 +55,14 @@ class TestHarvest(unittest.TestCase):
                 "flag": _mk("DASCTF", "abc"),
                 "note_sha256": "Z" * 64,  # 大写 Z 非 16 进制
             }}})
-            truth, _ = A.harvest_truth(td, use_local=False)
+            truth, _ = sg.harvest_truth_hashes(td, use_local=False)
             self.assertEqual(truth, set())
 
     def test_local_truth_optional(self):
         with tempfile.TemporaryDirectory() as td:
             self._mk_tree(td, {"p": {"flag_sha256": SHA_A}}, local={"x": {"sha256": SHA_B}})
-            t_on, st_on = A.harvest_truth(td, use_local=True)
-            t_off, st_off = A.harvest_truth(td, use_local=False)
+            t_on, st_on = sg.harvest_truth_hashes(td, use_local=True)
+            t_off, st_off = sg.harvest_truth_hashes(td, use_local=False)
             self.assertEqual(t_on, {SHA_A, SHA_B})
             self.assertEqual(t_off, {SHA_A})
             self.assertTrue(st_on["local_file"])
@@ -71,7 +71,7 @@ class TestHarvest(unittest.TestCase):
     def test_uppercase_hash_is_normalized(self):
         with tempfile.TemporaryDirectory() as td:
             self._mk_tree(td, {"p": {"flag_sha256": SHA_A.upper()}})
-            truth, _ = A.harvest_truth(td, use_local=False)
+            truth, _ = sg.harvest_truth_hashes(td, use_local=False)
             self.assertEqual(truth, {SHA_A})
 
 
@@ -80,11 +80,11 @@ class TestClassify(unittest.TestCase):
         raw = _mk("DASCTF", "selftest_real_body")
         import hashlib
         sha = hashlib.sha256(raw.encode()).hexdigest()
-        kind, got = A.classify_hit(raw, {sha})
+        kind, got = sg.classify_provenance(raw, {sha})
         self.assertEqual((kind, got), ("known_answer", sha))
 
     def test_unknown_brand_when_hash_absent(self):
-        kind, _ = A.classify_hit(_mk("DASCTF", "selftest_real_body"), set())
+        kind, _ = sg.classify_provenance(_mk("DASCTF", "selftest_real_body"), set())
         self.assertEqual(kind, "unknown_brand")
 
     def test_placeholder_wins_over_brand(self):
@@ -92,16 +92,16 @@ class TestClassify(unittest.TestCase):
         raw = _mk("DASCTF", "init1-init2")
         import hashlib
         sha = hashlib.sha256(raw.encode()).hexdigest()
-        kind, _ = A.classify_hit(raw, {sha})
+        kind, _ = sg.classify_provenance(raw, {sha})
         self.assertEqual(kind, "placeholder")
 
     def test_self_bucket(self):
-        kind, _ = A.classify_hit(_mk("flag", "selftest_body"), set())
+        kind, _ = sg.classify_provenance(_mk("flag", "selftest_body"), set())
         self.assertEqual(kind, "self")
 
     def test_low_information_is_placeholder(self):
         """与 Go 引擎同判据：`{aaaa}` 这类单字符种类串不是答案。"""
-        self.assertEqual(A.classify_hit(_mk("DASCTF", "aaaaaaaa"), set())[0], "placeholder")
+        self.assertEqual(sg.classify_provenance(_mk("DASCTF", "aaaaaaaa"), set())[0], "placeholder")
 
 
 class TestAuditConsistency(unittest.TestCase):
@@ -121,13 +121,23 @@ class TestAuditConsistency(unittest.TestCase):
                          f"审计 {audited} 条 vs 门禁 {len(self.guard_hits)} 条 —— "
                          f"有一边漏扫/多扫")
 
-    def test_real_brand_split_is_complete(self):
-        """真品牌命中必须被完整拆成 known_answer + unknown_brand，不许丢。"""
-        known = self.rep["counts"].get("known_answer", 0)
-        unknown = self.rep["counts"].get("unknown_brand", 0)
-        n_real = len([h for h in self.guard_hits if h.get("brand") == "real"])
-        self.assertEqual(known + unknown, n_real,
-                         f"known({known})+unknown({unknown}) != 门禁真品牌({n_real})")
+    def test_known_answer_not_limited_by_brand(self):
+        """铁实锤必须按**哈希**统计，不许按品牌过滤。
+
+        这是本仓实测最严重的一次漏报：首版只认 `brand == "real"`，把 987 条
+        `flag{真答案}`（通用前缀 + 真题正文）归进「自产构造」，对外报的真泄露数
+        少了 6 倍。下面用一条独立算式与审计分档对账，口径一改就红。
+        """
+        truth, _ = sg.harvest_truth_hashes(A.REPO_ROOT, use_local=True)
+        direct = {h["sha256"] for h in self.guard_hits
+                  if h.get("brand") != "placeholder" and h["sha256"] in truth}
+        audited = {r["sha256"] for r in self.rep["buckets"].get("known_answer", [])}
+        self.assertEqual(direct - audited, set(),
+                         f"有 {len(direct - audited)} 个命中真值的串没进铁实锤档")
+        self.assertEqual(audited - direct, set(),
+                         f"铁实锤档里混进 {len(audited - direct)} 个不命中真值的串")
+        self.assertEqual(self.rep["distinct_answers"], len(audited),
+                         "distinct_answers 与铁实锤档的去重数不一致（报数会失真）")
 
 
 class TestFailClosed(unittest.TestCase):

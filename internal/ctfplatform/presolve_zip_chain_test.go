@@ -36,7 +36,11 @@ func buildNestedZipChain(t *testing.T, flag string, layers int) []byte {
 		}
 	}
 	// 从最内层往外包：最内层 zip 含 flag.txt（陷阱 + 真 flag）
-	inner := "DASCTF{ni_cai?}\n" + flag + "\n"
+	// 陷阱行用**占位形态**（`...`）而非 10663 原始的「DASCTF 前缀 + ni_cai?」那句：
+	// 对朴素正则的诱饵效果不变，但不会被明文 flag 门禁计入「真赛事品牌」队列
+	// —— 一条假答案永久占着真泄露队列，比没有更糟。
+	// （本条注释原样写下那个串，反而自己制造了一次假命中——门禁实测抓到的。）
+	inner := "DASCTF{...}\n" + flag + "\n"
 	var cur []byte
 	for i := 0; i < len(segs); i++ {
 		var buf bytes.Buffer

@@ -47,120 +47,33 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 import secret_guard as sg  # noqa: E402
 
-HEX64 = re.compile(r"^[0-9a-f]{64}$")
-# 题库里表示「答案哈希」的键名（含各 benchmark 的历史命名变体）
-SHA_KEY_HINTS = ("flag_sha256", "answer_sha256", "expected_sha256", "sha256")
-
-
-def _iter_sha_values(doc):
-    """深度遍历任意 JSON 结构，产出所有像 sha256 的字符串值。"""
-    stack = [doc]
-    while stack:
-        cur = stack.pop()
-        if isinstance(cur, dict):
-            for k, v in cur.items():
-                if isinstance(v, str) and HEX64.match(v.lower()):
-                    stack_keys = k.lower()
-                    if any(h in stack_keys for h in SHA_KEY_HINTS):
-                        yield v.lower()
-                elif isinstance(v, (dict, list)):
-                    stack.append(v)
-        elif isinstance(cur, list):
-            stack.extend(x for x in cur if isinstance(x, (dict, list)))
-
-
-def harvest_truth(repo_root: str = REPO_ROOT, use_local: bool = True) -> tuple[set, dict]:
-    """收集题库真值 sha256 集。返回 (集合, 统计)。"""
-    truth: set[str] = set()
-    stats = {"benchmark_files": 0, "local_file": False, "local_values": 0}
-    data_dir = os.path.join(repo_root, "data")
-    local_path = os.path.join(data_dir, "flag_truth.local.json")
-    for dp, dn, fn in os.walk(data_dir):
-        dn[:] = [d for d in dn if d not in sg.SKIP_DIRS]
-        for f in fn:
-            if not f.endswith(".json"):
-                continue
-            path = os.path.join(dp, f)
-            # 本地真值文件**永远**从常规扫描里排除，只在 use_local=True 时显式加入。
-            # 否则 `use_local=False`（模拟 CI 环境）会偷偷把它算进来 —— 那这个开关
-            # 就只是装饰，报出来的「CI 口径」是假的。实测被这一条抓过。
-            if os.path.abspath(path) == os.path.abspath(local_path):
-                continue
-            try:
-                if os.path.getsize(path) > 8 * 1024 * 1024:
-                    continue
-                doc = json.load(open(path, encoding="utf-8"))
-            except Exception:
-                continue
-            stats["benchmark_files"] += 1
-            truth.update(_iter_sha_values(doc))
-    if use_local:
-        if os.path.isfile(local_path):
-            try:
-                doc = json.load(open(local_path, encoding="utf-8"))
-                vals = set(_iter_sha_values(doc))
-                stats["local_file"] = True
-                stats["local_values"] = len(vals)
-                truth.update(vals)
-            except Exception:
-                pass
-    return truth, stats
-
-
-def classify_hit(raw: str, truth: set[str]) -> tuple[str, str]:
-    """返回 (档位, sha256)。档位含 placeholder/self 时 sha256 仍给出，便于人工核对。"""
-    sha = hashlib.sha256(raw.encode()).hexdigest()
-    brand = sg.classify_brand(raw)
-    if brand == "placeholder":
-        return "placeholder", sha
-    if brand == "self":
-        return "self", sha
-    return ("known_answer" if sha in truth else "unknown_brand"), sha
-
-
-def _iter_tracked_flag_hits(repo_root: str, tracked: set[str]):
-    """重扫一遍并保留 raw（secret_guard 的 hits 只存打码值，算不了哈希）。"""
-    for dp, dn, fn in os.walk(repo_root):
-        dn[:] = [d for d in dn if d not in sg.SKIP_DIRS]
-        for f in fn:
-            ext = os.path.splitext(f)[1].lower()
-            if ext in sg.SKIP_FILE_SUFFIX:
-                continue
-            if ext and ext not in sg.TEXT_EXT and f not in (".env", "Dockerfile"):
-                continue
-            path = os.path.join(dp, f)
-            try:
-                if os.path.getsize(path) > sg.MAX_FILE_BYTES:
-                    continue
-                text = open(path, encoding="utf-8", errors="ignore").read()
-            except Exception:
-                continue
-            rel = os.path.relpath(path, repo_root).replace("\\", "/")
-            if rel not in tracked:
-                continue
-            for m in sg.FLAG_CAND_RE.finditer(text):
-                raw = m.group(0)
-                if sg.FLAG_PLACEHOLDER_RE.search(raw):
-                    continue
-                if not sg._flag_is_printable(raw):
-                    continue
-                yield rel, text.count("\n", 0, m.start()) + 1, raw
+# 真值收集与分档**只实现一次**，在本模块的下游 secret_guard 里。这里全部复用：
+# 两处各写一份 = 必然漂移（本仓在 Go/Python 占位词表上已经因此栽过一次）。
 
 
 def audit(repo_root: str = REPO_ROOT, use_local: bool = True) -> dict:
-    truth, tstats = harvest_truth(repo_root, use_local)
+    truth, tstats = sg.harvest_truth_hashes(repo_root, use_local=use_local)
     tracked = sg._git_tracked(repo_root)
     if tracked is None:
         raise RuntimeError("该目录不在 git 仓库中，无法区分入库/未入库")
+    # 复用门禁那一次扫描：hits 里已带 brand 与 sha256，不必自己再走一遍文件树。
+    # 自己重扫 = 两套 IO 口径（跳过规则、编码、大小上限）迟早对不上。
+    hits, _untracked = sg.scan_plaintext_flags(repo_root, tracked)
     buckets: dict[str, list[dict]] = collections.defaultdict(list)
-    for rel, line, raw in _iter_tracked_flag_hits(repo_root, tracked):
-        kind, sha = classify_hit(raw, truth)
-        buckets[kind].append({"file": rel, "line": line, "sha256": sha,
-                              "masked": sg.mask(raw)})
+    for h in hits:
+        if not h["tracked"]:
+            continue
+        kind = sg.provenance_of(h["brand"], h["sha256"], truth)
+        buckets[kind].append({"file": h["file"], "line": h["line"],
+                              "sha256": h["sha256"], "masked": h["masked"]})
     return {
         "truth_hashes": len(truth),
         "truth_stats": tstats,
         "counts": {k: len(v) for k, v in buckets.items()},
+        # 同一道题的答案常在同一仓里出现几十遍（题库 + 生成器 + 报告 + 夹具），
+        # 只报「处数」会把 247 道题报成 1144 条，读者无法判断到底泄了多少题。
+        # 两个数必须一起报：处数说明治理工作量，不同答案数说明泄露面。
+        "distinct_answers": len({r["sha256"] for r in buckets.get("known_answer", [])}),
         "buckets": {k: v for k, v in buckets.items()},
     }
 
@@ -193,9 +106,16 @@ def main(argv=None) -> int:
              ("placeholder", "占位符模板（非答案）"),
              ("self", "通用前缀自产构造")]
     for key, desc in order:
-        print(f"  {c.get(key, 0):>5}  {desc}")
+        if key == "known_answer" and c.get(key):
+            print(f"  {c.get(key):>5}  {desc}"
+                  f"  ← {rep['distinct_answers']} 道不同题（同一答案常重复出现）")
+        else:
+            print(f"  {c.get(key, 0):>5}  {desc}")
     print("\n⚠️ 口径：known_answer 是**下界**（只覆盖已登记 sha256 的题库），"
           "unknown_brand 也不等于「都不是答案」。两个数一起看，别单看一个。")
+    print("⚠️ 口径：判据是「哈希命中真值」，**不按品牌过滤** —— "
+          "`flag{真答案}` 与 `DASCTF{真答案}` 同罪；只有占位符形态除外"
+          "（题库里有把 DASCTF 前缀的 printf 模板登记成答案的脏数据）。")
     for key, desc in order[:2]:
         rows = rep["buckets"].get(key, [])
         if not rows:
