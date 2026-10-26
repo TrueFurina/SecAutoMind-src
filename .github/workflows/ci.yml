@@ -942,3 +942,22 @@ jobs:
         run: python scripts/sync_ctf_agent_skills.py --check
       - name: Engine watchdog selftest - kill child then auto-restart under 10s
         run: python scripts/engine_watchdog.py --selftest
+
+  arena-regression-gate:
+    # 待接线产物落地（PR #72 收口后的 CI 接线）：把 ctf_ci_regression 的「逐实例退化分类」粒度
+    # 接进流水线，与既有 merge_gate.py（解题数只升不降 + sha256 校验，管总量）互补 —— 本 job 管单题能力倒退。
+    # 基线策略：基线提交进仓库（.ci/arena_baseline.json，本 PR 随 arena_manifest 55 题一并提交），
+    # 因此 CI 仅需 contents:read 即可运行，无需写权限，也无需跨运行 artifact 传递。
+    # check 会本地重跑 55 实例并与基线逐题比对：任一题从 SOLVED 退化为 UNSOLVED/错解 →
+    #   regressed > gate(0) → exit 3 → 红。
+    # 契约：合法扩/缩真题切片（改 arena_manifest.json / arena_solvers.py）时，须在同一 PR
+    #   重跑 `python scripts/ctf_ci_regression.py record --manifest scripts/arena_manifest.json
+    #   --baseline .ci/arena_baseline.json` 更新基线，否则 check 会因基线漂移而红。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Arena 55-question regression check (vs committed baseline)
+        run: python scripts/ctf_ci_regression.py check --manifest scripts/arena_manifest.json --baseline .ci/arena_baseline.json --gate 0
