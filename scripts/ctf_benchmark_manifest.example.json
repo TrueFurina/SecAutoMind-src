@@ -1,0 +1,14 @@
+[
+  {
+    "name": "local_solved_demo",
+    "mode": "local",
+    "cmd": "{{PY}} -c \"import sys; sys.stdout.write(open('flag', encoding='utf-8').read())\"",
+    "flag": "DASCTF{demo_solved_2026}"
+  },
+  {
+    "name": "local_unsolved_demo",
+    "mode": "local",
+    "cmd": "{{PY}} -c \"print('nope')\"",
+    "flag": "DASCTF{demo_unsolved_2026}"
+  }
+]
