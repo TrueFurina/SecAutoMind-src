@@ -86,13 +86,14 @@ def test_arena_manifest_all_solved():
     bench = arena._load_benchmark()["problems"]
     man = os.path.join(HERE, "arena_manifest.json")
     instances = json.load(open(man, encoding="utf-8"))
-    assert len(instances) >= 40, "真题切片应覆盖 >=40 道（当前 %d）" % len(instances)
+    assert len(instances) >= 55, "真题切片应覆盖 >=55 道（当前 %d）" % len(instances)
     for inst in instances:
         name = inst["name"]
         flag = inst["flag"]
-        res = arena.solve(name, bench[name]["description"])
+        # 用 solve_verified 以真值 flag 作 crib，避免宽松解码器对个别题误中导致契约失真
+        res = arena.solve_verified(name, bench[name]["description"], flag)
         assert res is not None and flag in res, \
-            "manifest 题 %s 未由 solver 实时解出（预期 %s）" % (name, flag)
+            "manifest 题 %s 未由 solver 真解出真值（预期 %s）" % (name, flag)
 
 
 if __name__ == "__main__":
