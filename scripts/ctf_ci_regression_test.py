@@ -65,8 +65,23 @@ def test_regression_gate_red():
     _run_in_tmp(_go)
 
 
+def test_materialize_cwd_token():
+    # 写一个含 {{CWD}} 的临时清单，验证被替换为 manifest 所在目录的绝对路径
+    tmp = tempfile.mkdtemp(prefix="cwd_token_")
+    man = os.path.join(tmp, "m.json")
+    with open(man, "w", encoding="utf-8") as fh:
+        json.dump([{"name": "x", "cwd": "{{CWD}}", "cmd": "{{PY}} s.py", "flag": "f"}], fh)
+    out = m._materialize_manifest(man)
+    data = json.load(open(out, encoding="utf-8"))
+    inst = data[0]
+    assert m.CWD_TOKEN not in json.dumps(data)
+    assert os.path.isabs(inst["cwd"])
+    assert inst["cwd"] == tmp  # 解析为 manifest 所在目录绝对路径，solver 可用相对路径
+
+
 if __name__ == "__main__":
-    for fn in (test_materialize_valid_json, test_record_then_check_stable, test_regression_gate_red):
+    for fn in (test_materialize_valid_json, test_record_then_check_stable,
+               test_regression_gate_red, test_materialize_cwd_token):
         fn()
         print("PASS  %s" % fn.__name__)
-    print("=== 3 passed ===")
+    print("=== 4 passed ===")
