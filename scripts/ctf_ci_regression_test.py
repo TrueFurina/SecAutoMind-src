@@ -79,9 +79,26 @@ def test_materialize_cwd_token():
     assert inst["cwd"] == tmp  # 解析为 manifest 所在目录绝对路径，solver 可用相对路径
 
 
+def test_arena_manifest_all_solved():
+    # 回归因锁：arena_manifest.json 中每题的预期 flag 都必须由 arena_solvers 实时解出，
+    # 固化「manifest <-> solver」契约，未来改坏任一道立刻失败。
+    import arena_solvers as arena
+    bench = arena._load_benchmark()["problems"]
+    man = os.path.join(HERE, "arena_manifest.json")
+    instances = json.load(open(man, encoding="utf-8"))
+    assert len(instances) >= 40, "真题切片应覆盖 >=40 道（当前 %d）" % len(instances)
+    for inst in instances:
+        name = inst["name"]
+        flag = inst["flag"]
+        res = arena.solve(name, bench[name]["description"])
+        assert res is not None and flag in res, \
+            "manifest 题 %s 未由 solver 实时解出（预期 %s）" % (name, flag)
+
+
 if __name__ == "__main__":
     for fn in (test_materialize_valid_json, test_record_then_check_stable,
-               test_regression_gate_red, test_materialize_cwd_token):
+               test_regression_gate_red, test_materialize_cwd_token,
+               test_arena_manifest_all_solved):
         fn()
         print("PASS  %s" % fn.__name__)
-    print("=== 4 passed ===")
+    print("=== 5 passed ===")

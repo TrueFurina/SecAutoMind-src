@@ -1,10 +1,24 @@
 [
   {
-    "name": "b64_single",
+    "name": "b64_4layer",
     "mode": "local",
     "cwd": "{{CWD}}",
-    "cmd": "\"{{PY}}\" arena_solvers.py b64_single",
-    "flag": "flag{base64_single_layer}"
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_4layer",
+    "flag": "flag{base64_4layers}"
+  },
+  {
+    "name": "b64_5layer",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_5layer",
+    "flag": "flag{base64_5layers}"
+  },
+  {
+    "name": "b64_double",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_double",
+    "flag": "flag{double_base64_layer}"
   },
   {
     "name": "b64_multi",
@@ -14,11 +28,249 @@
     "flag": "flag{base64_multilayer_three}"
   },
   {
+    "name": "b64_single",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_single",
+    "flag": "flag{base64_single_layer}"
+  },
+  {
+    "name": "caesar_1",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_1",
+    "flag": "flag{caesar_shift_1}"
+  },
+  {
+    "name": "caesar_10",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_10",
+    "flag": "flag{caesar_shift_10}"
+  },
+  {
+    "name": "caesar_11",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_11",
+    "flag": "flag{caesar_shift_11}"
+  },
+  {
+    "name": "caesar_12",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_12",
+    "flag": "flag{caesar_shift_12}"
+  },
+  {
+    "name": "caesar_13",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_13",
+    "flag": "flag{rot_thirteen_flag}"
+  },
+  {
+    "name": "caesar_14",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_14",
+    "flag": "flag{caesar_shift_14}"
+  },
+  {
+    "name": "caesar_15",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_15",
+    "flag": "flag{caesar_shift_15}"
+  },
+  {
+    "name": "caesar_16",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_16",
+    "flag": "flag{caesar_shift_16}"
+  },
+  {
+    "name": "caesar_17",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_17",
+    "flag": "flag{caesar_shift_17}"
+  },
+  {
+    "name": "caesar_18",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_18",
+    "flag": "flag{caesar_shift_18}"
+  },
+  {
+    "name": "caesar_19",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_19",
+    "flag": "flag{nineteen_shift}"
+  },
+  {
+    "name": "caesar_2",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_2",
+    "flag": "flag{caesar_shift_2}"
+  },
+  {
+    "name": "caesar_20",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_20",
+    "flag": "flag{caesar_shift_20}"
+  },
+  {
+    "name": "caesar_21",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_21",
+    "flag": "flag{caesar_shift_21}"
+  },
+  {
+    "name": "caesar_22",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_22",
+    "flag": "flag{caesar_shift_22}"
+  },
+  {
+    "name": "caesar_23",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_23",
+    "flag": "flag{caesar_shift_23}"
+  },
+  {
+    "name": "caesar_24",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_24",
+    "flag": "flag{caesar_shift_24}"
+  },
+  {
+    "name": "caesar_25",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_25",
+    "flag": "flag{caesar_shift_25}"
+  },
+  {
     "name": "caesar_3",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_3",
     "flag": "flag{caesar_shift_three}"
+  },
+  {
+    "name": "caesar_4",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_4",
+    "flag": "flag{caesar_shift_4}"
+  },
+  {
+    "name": "caesar_5",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_5",
+    "flag": "flag{caesar_five_shift}"
+  },
+  {
+    "name": "caesar_6",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_6",
+    "flag": "flag{caesar_shift_6}"
+  },
+  {
+    "name": "caesar_7",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_7",
+    "flag": "flag{caesar_shift_seven}"
+  },
+  {
+    "name": "caesar_8",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_8",
+    "flag": "flag{caesar_shift_8}"
+  },
+  {
+    "name": "caesar_9",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_9",
+    "flag": "flag{caesar_shift_9}"
+  },
+  {
+    "name": "morse_hello",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py morse_hello",
+    "flag": "flag{morse_code_hello}"
+  },
+  {
+    "name": "xor_01",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_01",
+    "flag": "flag{xor_key_01}"
+  },
+  {
+    "name": "xor_10",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_10",
+    "flag": "flag{xor_key_10}"
+  },
+  {
+    "name": "xor_33",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_33",
+    "flag": "flag{xor_key_33}"
+  },
+  {
+    "name": "xor_55",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_55",
+    "flag": "flag{xor_key_55}"
+  },
+  {
+    "name": "xor_77",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_77",
+    "flag": "flag{xor_key_77}"
+  },
+  {
+    "name": "xor_aa",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_aa",
+    "flag": "flag{xor_key_aa}"
+  },
+  {
+    "name": "xor_cc",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_cc",
+    "flag": "flag{xor_key_cc}"
+  },
+  {
+    "name": "xor_ff",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_ff",
+    "flag": "flag{xor_ff_invert}"
   },
   {
     "name": "xor_single",
