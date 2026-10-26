@@ -210,11 +210,116 @@
     "flag": "flag{caesar_shift_9}"
   },
   {
+    "name": "cookie_leak",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py cookie_leak",
+    "flag": "flag{cookie_session_hijack}"
+  },
+  {
+    "name": "forensic_1",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py forensic_1",
+    "flag": "flag{memory_forensics}"
+  },
+  {
+    "name": "forensic_2",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py forensic_2",
+    "flag": "flag{pcap_http_leak}"
+  },
+  {
+    "name": "forensic_3",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py forensic_3",
+    "flag": "flag{log_backdoor_found}"
+  },
+  {
+    "name": "html_comment",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py html_comment",
+    "flag": "flag{html_comment_exfil}"
+  },
+  {
+    "name": "json_leak",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py json_leak",
+    "flag": "flag{json_api_leak}"
+  },
+  {
+    "name": "log_forensics",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py log_forensics",
+    "flag": "flag{log_forensics_exfil}"
+  },
+  {
     "name": "morse_hello",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py morse_hello",
     "flag": "flag{morse_code_hello}"
+  },
+  {
+    "name": "net_forensics",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py net_forensics",
+    "flag": "flag{network_packet_found}"
+  },
+  {
+    "name": "web_csrf",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_csrf",
+    "flag": "flag{csrf_attack}"
+  },
+  {
+    "name": "web_idor",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_idor",
+    "flag": "flag{idor_access}"
+  },
+  {
+    "name": "web_lfi",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_lfi",
+    "flag": "flag{path_traversal}"
+  },
+  {
+    "name": "web_rce",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_rce",
+    "flag": "flag{command_injection}"
+  },
+  {
+    "name": "web_sqli",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_sqli",
+    "flag": "flag{sqli_union_select}"
+  },
+  {
+    "name": "web_ssrf",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_ssrf",
+    "flag": "flag{ssrf_metadata}"
+  },
+  {
+    "name": "web_xss",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py web_xss",
+    "flag": "flag{reflected_xss}"
   },
   {
     "name": "xor_01",

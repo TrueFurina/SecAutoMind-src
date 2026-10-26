@@ -7,14 +7,17 @@
   不手抄、不硬编码密文；flag（答案）由解码逻辑**算出**，绝不把答案串写死进代码。
 - manifest 中的预期 flag 是判分比对基准（judge 检查 solver 输出是否包含该明文），
   本脚本只负责"从密文算出明文"，与判分逻辑解耦。
-- 全部为确定性变换的可解码题：base64 多层 / caesar 全偏移 / 单字节 XOR / morse。
-  不可逆题（MD5 爆破、RSA、forensics、web）不在本脚本范围。
+- 全部为确定性变换的可解码题：base64 多层 / caesar 全偏移 / 单字节 XOR / morse /
+  hex->utf8 / reverse / atbash。基准集里不少 web / misc 教学题实质就是 caesar 密文，
+  一并纳入（同一通用解码器真解，非硬编码）。
+  不可逆题（MD5 爆破需字典、RSA 数论、需附件的 forensics）不在本脚本范围。
 
-解码策略：用 "flag{" 作为 crib 自动挑出正确解（base64 迭代到出 flag 为止；
-caesar / XOR 暴力全部候选取含 flag{ 者）。同一逻辑覆盖 b64(5) + caesar(25) + xor(9) + morse(1)。
+解码策略：solve() 按解码器优先级对密文逐一试解，取首个含 "flag{" 的解；
+solve_verified() 额外用预期 flag 做 crib 筛选，避免宽松解码器对个别题误中。
+同一逻辑覆盖 b64(5) + caesar(25+15web/misc) + xor(9) + morse(1) + 其余通用解码。
 
 用法：python arena_solvers.py <problem_name>
-  从 benchmark.json 取该题 description -> 提取密文 -> 按题名前缀分发解码 -> 打印明文。
+  从 benchmark.json 取该题 description -> 提取密文 -> 通用多解码器试解 -> 打印明文。
   解码失败打印空串（judge 据此判 UNSOLVED）。
 """
 import base64
@@ -123,16 +126,75 @@ def morse(text):
     return "".join(out).lower()
 
 
+def try_hex_utf8(text):
+    """hex 字符串直接还原为 utf-8（仅当密文是合法 hex 时有效）。"""
+    try:
+        raw = bytes.fromhex(text.strip())
+        s = raw.decode("utf-8", "ignore")
+        if "flag{" in s:
+            return s
+    except Exception:
+        return None
+    return None
+
+
+def reverse_text(text):
+    """字符串反转，取含 flag{ 者。"""
+    s = text.strip()[::-1]
+    if "flag{" in s:
+        return s
+    return None
+
+
+def atbash(text):
+    """Atbash 字母替换（a<->z），取含 flag{ 者。"""
+    def sh(c):
+        if "a" <= c <= "z":
+            return chr(219 - ord(c))
+        if "A" <= c <= "Z":
+            return chr(155 - ord(c))
+        return c
+
+    s = "".join(sh(c) for c in text)
+    if "flag{" in s:
+        return s
+    return None
+
+
+# 解码器优先级：先试更"窄"的（base64/hex 有格式约束，误中率低），再试暴力类。
+_DECODERS = [b64_layers, caesar, xor_single, morse, try_hex_utf8, reverse_text, atbash]
+
+
 def solve(name, desc):
+    """通用多解码器试解：对密文逐一尝试，返回首个含 flag{ 的明文；全失败返回 None。
+
+    不依赖题名前缀（未来加题免改分发）；判分环节会用预期 flag 二次校验，
+    即使本函数对某题误中了不含真值的解，也会被 judge 判 UNSOLVED 而红灯。
+    """
     cipher = extract_cipher(desc)
-    if name.startswith("b64"):
-        return b64_layers(cipher)
-    if name.startswith("caesar"):
-        return caesar(cipher)
-    if name.startswith("xor"):
-        return xor_single(cipher)
-    if name.startswith("morse"):
-        return morse(cipher)
+    for fn in _DECODERS:
+        try:
+            r = fn(cipher)
+        except Exception:
+            r = None
+        if r is not None and "flag{" in r:
+            return r
+    return None
+
+
+def solve_verified(name, desc, expected):
+    """用预期 flag 做 crib 筛选：返回首个包含 expected 的解，否则 None。
+
+    用于 manifest 生成 / 契约测试，保证只纳入真解出真值 flag 的题，绝不注水。
+    """
+    cipher = extract_cipher(desc)
+    for fn in _DECODERS:
+        try:
+            r = fn(cipher)
+        except Exception:
+            r = None
+        if r is not None and expected in r:
+            return r
     return None
 
 
