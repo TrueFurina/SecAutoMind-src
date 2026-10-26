@@ -22,7 +22,10 @@ type fakePlatform struct {
 	accessed   []string
 	downloaded []string
 	submitted  int
-	accessURL  string
+	// submittedFlags 记录实际提交的候选（P1-4 真值仲裁需要断言"提交了什么"，
+	// 只数次数无法区分"拦住了错的"和"提交了错的"）。
+	submittedFlags []string
+	accessURL      string
 }
 
 func (f *fakePlatform) ListChallenges(ctx context.Context) ([]Challenge, error) { return f.list, nil }
@@ -46,6 +49,7 @@ func (f *fakePlatform) DownloadAttachment(ctx context.Context, id string) ([]str
 }
 func (f *fakePlatform) SubmitFlag(ctx context.Context, id, flag string) (*SubmitResult, error) {
 	f.submitted++
+	f.submittedFlags = append(f.submittedFlags, flag)
 	return &SubmitResult{Accepted: true, Correct: true}, nil
 }
 func (f *fakePlatform) ResetInstance(ctx context.Context, id string) error   { return nil }

@@ -99,7 +99,19 @@ class BenchmarkResult:
         self.duration_ms = duration_ms
         self.retries = retries
         # 2026-08-24 诚实化：解出路径（presolve=静态分析器零 LLM / main_agent_llm=真推理）
-        self.solved_by = (output or {}).get("solved_by", "unknown")
+        # 2026-10-25 修正（立尺归因首审移交，两处缺陷）：
+        #   ① `solved_by` 语义是「谁解出的」，未解出不该有归因。原实现默认 "unknown"，
+        #      使 solved=False 的记录也带 solved_by —— 按该字段聚合的脚本会把「尝试」
+        #      当「解出」（与 mock 冒充战绩同类结构）。
+        #   ② 原实现让两条失败路径填出不同值：wallclock_timeout（output 有值）→
+        #      "main_agent_llm"；wallclock_killed（output=None）→ "unknown"。
+        #      同题同配置两种值，说明异常分支没走归因赋值。
+        #   改为：真解出才取归因，否则统一 "unresolved"（保持字符串类型，兼容 JSON 消费）。
+        self.solved_by = (
+            ((output or {}).get("solved_by") or "unknown") if self.solved else "unresolved"
+        )
+        # C 诊断线（2026-10-25）：extract_fail 时保留候选值供后验分析
+        self.rejected_candidates = (output or {}).get("rejected_candidates") or []
 
     def to_dict(self) -> dict:
         return {
@@ -113,6 +125,7 @@ class BenchmarkResult:
             "error": self.error,
             "duration_ms": self.duration_ms,
             "retries": self.retries,
+            "rejected_candidates": self.rejected_candidates,
         }
 
 

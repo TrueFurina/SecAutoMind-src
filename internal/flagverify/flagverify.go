@@ -95,6 +95,36 @@ func Truth(candidate, truthSHA256 string) Verdict {
 	return Mismatch
 }
 
+// Arbitrate 对一批候选做三态仲裁，返回 (可提交候选, 被确定性判错的候选)。
+//
+// P1-4「确定性验证后置」（求解能力深化计划 L158，治失败模式⑤：把中间量当答案）。
+// 语义纪律（与 Truth 一致，绝不退化成 bool）：
+//   - 无真值 / 真值格式非法 → 全部落 Unknown，**原样返回**（真实比赛拿不到答案，
+//     此时本函数是零行为，不构成任何回归；判对判错都交给平台）；
+//   - 有真值且有命中 → 只返回命中项（确定性命中是最强证据，再提交其他候选
+//     只是浪费提交次数，扣分制下还是负收益）；
+//   - 有真值且不命中 → 进 dropped（确定性错误，比"没有工具证据"更强，直接拦下）。
+func Arbitrate(candidates []string, truthSHA256 string) (keep, dropped []string) {
+	if strings.TrimSpace(truthSHA256) == "" {
+		return candidates, nil
+	}
+	var matched, unknown []string
+	for _, c := range candidates {
+		switch Truth(c, truthSHA256) {
+		case Match:
+			matched = append(matched, c)
+		case Mismatch:
+			dropped = append(dropped, c)
+		default:
+			unknown = append(unknown, c)
+		}
+	}
+	if len(matched) > 0 {
+		return matched, dropped
+	}
+	return unknown, dropped
+}
+
 // Problem 是真值源一致性检查的输入单元。
 type Problem struct {
 	ID         string // 题目 id
