@@ -1,8 +1,8 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-26T10:40:58+08:00",
+  "generated_at": "2026-10-26T15:31:01+08:00",
   "caliber": {
-    "head": "0a44d49",
+    "head": "6b28aca",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
@@ -209,7 +209,10 @@
     },
     "delivery_package": {
       "path": "dist/SecAutoMind-v1.7.28-share.tar.gz",
-      "present": false
+      "present": true,
+      "size_bytes": 179878336,
+      "md5": "b0e4a67f2d2bc92bcd4d31175a5a082d",
+      "sha256": "52d51b1d62c906c55a3a81e94266e3ba9e219d1f163131c8f073490f88e97fec"
     }
   },
   "build": {

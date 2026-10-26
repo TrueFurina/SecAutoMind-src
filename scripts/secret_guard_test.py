@@ -155,6 +155,46 @@ def check_fingerprint_defense():
     return failures
 
 
+def check_tracked_root_override():
+    """SECRET_GUARD_TRACKED_ROOT：只改「跟踪状态」的来源，不放松任何判据。
+
+    背景（2026-10-26 实锤）：交付包的 staging 不是 git 仓库 → `_git_tracked()` 返回 None
+    → 走「非 git 目录，有任何明文 flag 就 fail-closed」分支 → **交付包自 10-25 起恒打不出来**。
+    修法是允许调用方指明来源仓库；本测试钉死三条：
+      ① 指向真仓库 → 返回非空跟踪集合（否则等于没修，包还是打不出来）；
+      ② 不设该变量 → 空目录仍返回 None（原有 fail-closed 语义一字不改）；
+      ③ 指向不存在路径 → 仍返回 None（不许因为设了个变量就放行）。
+    """
+    failures = []
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    empty = tempfile.mkdtemp(prefix="sg_trk_")
+    old = os.environ.get(secret_guard.TRACKED_ROOT_ENV)
+
+    def run(label, env_val, want_none):
+        if env_val is None:
+            os.environ.pop(secret_guard.TRACKED_ROOT_ENV, None)
+        else:
+            os.environ[secret_guard.TRACKED_ROOT_ENV] = env_val
+        got = secret_guard._git_tracked(empty)
+        ok = (got is None) if want_none else (bool(got))
+        print("  %s %s" % ("PASS" if ok else "FAIL", label))
+        if not ok:
+            failures.append("%s（返回 %s）" % (label, "None" if got is None else "%d 条" % len(got)))
+
+    try:
+        run("① 指向真仓库 → 取到跟踪集合", repo, False)
+        run("② 不设变量 → 空目录仍 fail-closed", None, True)
+        run("③ 指向不存在路径 → 仍 fail-closed", os.path.join(empty, "no_such_repo"), True)
+    finally:
+        if old is None:
+            os.environ.pop(secret_guard.TRACKED_ROOT_ENV, None)
+        else:
+            os.environ[secret_guard.TRACKED_ROOT_ENV] = old
+        import shutil
+        shutil.rmtree(empty, ignore_errors=True)
+    return failures
+
+
 def main():
     failures = []
 
@@ -178,8 +218,11 @@ def main():
         if not ok:
             failures.append("误报为真实凭证: %s -> %s" % (label, secret_guard.mask(real[0][1])))
 
-    print("\n[3/3] 最强防线：指纹反查可用 + 缺失时 fail-closed")
+    print("\n[3/4] 最强防线：指纹反查可用 + 缺失时 fail-closed")
     failures.extend(check_fingerprint_defense())
+
+    print("\n[4/4] 跟踪状态来源覆盖（SECRET_GUARD_TRACKED_ROOT，不放松判据）")
+    failures.extend(check_tracked_root_override())
 
     print("\n" + "=" * 62)
     if failures:

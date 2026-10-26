@@ -119,7 +119,19 @@ EXCLUDE_FILE_PATTERNS = [
 EXCLUDE_FILE_EXCEPTIONS = {".env.example"}
 
 # ── 排除：路径子串（PPT 下划线中间产物等）────────────────────────────
-EXCLUDE_PATH_SUBSTR = ("SecAutoMind_PPT/_", ".workbuddy/", "/.git/")
+EXCLUDE_PATH_SUBSTR = (
+    "SecAutoMind_PPT/_", ".workbuddy/", "/.git/",
+    # 2026-10-26 USER 拍板：交付面**不含**这两棵子树（评委不需要其源码）。
+    # 起因：它们随 10-26 的合并首次进包，随即被 secret_guard 拦下 ——
+    # `CTF-Agent_融合/`（1036 文件，西湖论剑融合迁移）与 `cmd/runner/`（5 文件）
+    # 内带 **1791 条明文 CTF flag**（多为测试夹具 XPCX{x…}、也有题库附件），
+    # 而 staging 不是 git 仓库、无法区分新旧 flag → 门禁按最坏情况 fail-closed。
+    # 两条路里选了「排除」而不是「立 flag 基线」：后者会把 1791 条旧 flag 固化成基线，
+    # 且融合树属**内部资产**（源仓只读归档，本仓只需其能力而非源码随包分发）。
+    # 副作用：包体从 170 MB 回到 ~120 MB；`internal/runnerl3/`（真实运行时）**不受影响**，
+    # 因为这里按 `cmd/runner/` 全路径匹配，不是按目录名 "runner" 匹配。
+    "cmd/runner/", "CTF-Agent_融合/",
+)
 
 # ── 排除：整棵目录（目录名前缀命中即剪掉；判定标准是「不属于交付语义」）──────
 # 与 EXCLUDE_DIRS 分开，因为这里每一条都需要**个案理由**，不是通用缓存目录。
@@ -429,8 +441,16 @@ def verify(package, staging):
 
     # 红线 3：对真实交付内容跑密钥门禁
     if os.path.exists(SECRET_GUARD):
+        # staging 不是 git 仓库，但它是**提交树的子集**。不告诉门禁这一点，
+        # 它会走「非 git 目录 → 有任何明文 flag 就 fail-closed」的分支，
+        # 于是只要包里含任何 flag 形态文本（本仓有 data/ctf_benchmark 机验基准集、
+        # internal/ 下大量测试夹具）就永远打不出包（2026-10-26 实锤：
+        # 自 10-25 引入 flag 卡口后交付包再没打出来过，只是没人重打）。
+        # 用 SECRET_GUARD_TRACKED_ROOT 指明来源仓库，让它按 tracked_hits /
+        # real_brand_hits / known_answer_hits 三个上限判定 —— 判据一条没放松。
         r = subprocess.run([sys.executable, SECRET_GUARD, "--dir", staging],
-                           capture_output=True, text=True, encoding="utf-8", errors="ignore")
+                           capture_output=True, text=True, encoding="utf-8", errors="ignore",
+                           env={**os.environ, "SECRET_GUARD_TRACKED_ROOT": ROOT})
         if r.returncode == 0:
             notes.append("secret_guard -> PASS（rc=0）")
         else:
