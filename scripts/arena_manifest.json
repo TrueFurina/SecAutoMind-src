@@ -1,0 +1,30 @@
+[
+  {
+    "name": "b64_single",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_single",
+    "flag": "flag{base64_single_layer}"
+  },
+  {
+    "name": "b64_multi",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py b64_multi",
+    "flag": "flag{base64_multilayer_three}"
+  },
+  {
+    "name": "caesar_3",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py caesar_3",
+    "flag": "flag{caesar_shift_three}"
+  },
+  {
+    "name": "xor_single",
+    "mode": "local",
+    "cwd": "{{CWD}}",
+    "cmd": "\"{{PY}}\" arena_solvers.py xor_single",
+    "flag": "flag{xor_single_byte}"
+  }
+]

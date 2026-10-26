@@ -18,8 +18,10 @@
     二者互补：merge_gate 管总量不回退，本脚本管单题能力倒退。接哪道闸由 CI 所有者决定。
 
 manifest 约定：
-  实例 list（详见 ctf_arena_batch.py 头部）。本封装支持 {{PY}} 令牌——
-  会在运行时替换为当前解释器绝对路径，使示例清单跨平台可跑。
+  实例 list（详见 ctf_arena_batch.py 头部）。本封装支持两个令牌——
+    - {{PY}} ：运行时替换为当前解释器绝对路径，跨平台可跑（不硬编码解释器）。
+    - {{CWD}}：运行时替换为 manifest 所在目录绝对路径，solver 可用相对路径、
+              清单与 solver 同目录即跨平台（不写死绝对路径）。
 
 用法：
   python3 ctf_ci_regression.py record --manifest M.json --baseline baseline.json
@@ -31,13 +33,13 @@ ci.yml 接线片段（释放后启用）：
   - name: record regression baseline
     if: github.ref == 'refs/heads/main'
     run: python3 scripts/ctf_ci_regression.py record \
-         --manifest scripts/ctf_benchmark_manifest.json \
+         --manifest scripts/arena_manifest.json \
          --baseline .ci/arena_baseline.json
   # PR：与基线比对，退化即红
   - name: regression check
     if: github.event_name == 'pull_request'
     run: python3 scripts/ctf_ci_regression.py check \
-         --manifest scripts/ctf_benchmark_manifest.json \
+         --manifest scripts/arena_manifest.json \
          --baseline .ci/arena_baseline.json --gate 0
 """
 from __future__ import annotations
@@ -57,13 +59,16 @@ PY = sys.executable
 # 0=全绿/退化在闸门内；1=运行错误；2=有题 UNSOLVED；3=退化超闸门（最高优先级）。
 
 MANIFEST_TOKEN = "{{PY}}"
+CWD_TOKEN = "{{CWD}}"
 
 
 def _materialize_manifest(manifest_path: str) -> str:
-    """读 manifest，把 {{PY}} 替换为当前解释器绝对路径，写临时文件后返回路径。
+    """读 manifest，把令牌替换为运行时真实值，写临时文件后返回路径。
 
-    这样示例清单既能在 Linux CI（python3 on PATH）也能在本机专用 venv 跑，
-    不必在清单里硬编码解释器。
+    支持两种令牌：
+      - {{PY}} ：替换为当前解释器绝对路径，使清单跨平台可跑（不硬编码解释器）。
+      - {{CWD}}：替换为 manifest 所在目录绝对路径，使 solver 用相对路径、
+                 清单与 solver 同目录即可跨平台，不必写死绝对路径。
 
     实现要点：先 json.load 原清单，再对字符串值做令牌替换，最后 json.dump 写回——
     这样 Windows 反斜杠路径（C:\\Users\\...）会被 json.dump 正确转义，
@@ -72,9 +77,12 @@ def _materialize_manifest(manifest_path: str) -> str:
     with open(manifest_path, encoding="utf-8") as fh:
         data = json.load(fh)
 
+    manifest_dir = os.path.dirname(os.path.abspath(manifest_path))
+
     def _subst(obj):
         if isinstance(obj, str):
-            return obj.replace(MANIFEST_TOKEN, PY)
+            s = obj.replace(MANIFEST_TOKEN, PY).replace(CWD_TOKEN, manifest_dir)
+            return s
         if isinstance(obj, list):
             return [_subst(x) for x in obj]
         if isinstance(obj, dict):
