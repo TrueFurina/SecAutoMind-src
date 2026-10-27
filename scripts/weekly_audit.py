@@ -17,6 +17,7 @@
   7 钩子激活位    .git/hooks/pre-commit 存在且含 secret_guard 调用（防被清空）
   8 记忆完整性    MEMORY.md 行数≥200 + 锚存在 + 双路径检测（2026-10-25 删除事故防线）
   9 报告位卫生    顶层 benchmark_report.json 不得被 mock 残留占据（mock 冒充战绩温床）
+  10 附件答案形态 _attachments 中 WP/答案形态文件名必须登记排除（B 线找回纪律）
 
 用法：
   python scripts/weekly_audit.py           # 人读报告
@@ -235,6 +236,42 @@ def check_report_hygiene():
     return "PASS", "顶层 mode=%s" % mode
 
 
+# 第 10 项背景：B 线找回附件含 writeup 形态风险（Re-EasyCM-WP.md 预审实锚）。
+# answer_key 形态（WP/答案文档）混进求解输入=古德哈特管线（crossbench 先例：
+# 含答案口径与剔除口径必须分离且登记）。
+WP_SHAPE_RE_COMPILED = None
+
+
+def check_attachment_hygiene():
+    import re
+    base = os.path.join("CTF-Agent_融合", "ctf_agent", "data", "questions_real",
+                        "_attachments")
+    if not os.path.isdir(base):
+        return "PASS", "附件目录不存在（B 线未动工）"
+    wp_shape = re.compile(r"(?i)(writeup|wp|solution|答案|write-up)[._-]|-WP\.", )
+    flagged, total = [], 0
+    manifest = os.path.join(base, "_hygiene_manifest.json")
+    exempt = set()
+    if os.path.isfile(manifest):
+        try:
+            exempt = {e.get("name") for e in json.load(open(manifest, encoding="utf-8"))
+                      if isinstance(e, dict)}
+        except Exception:
+            pass
+    for r, _, fs in os.walk(base):
+        for f in fs:
+            total += 1
+            if f in exempt:
+                continue
+            if wp_shape.search(f):
+                flagged.append(f)
+    if flagged:
+        return "WARN", ("附件目录检出 %d 个 WP/答案形态文件名未登记排除: %s —— "
+                        "登记进 _hygiene_manifest.json（含定性+排除理由）或重命名"
+                        % (len(flagged), "; ".join(flagged[:3])))
+    return "PASS", "%d 个附件，WP 形态零未登记" % total
+
+
 CHECKS = [
     ("红测试核验", check_red_tests),
     ("白名单腐化", check_allowlist),
@@ -243,6 +280,7 @@ CHECKS = [
     ("钩子激活位", check_hook_live),
     ("记忆完整性", check_memory_integrity),
     ("报告位卫生", check_report_hygiene),
+    ("附件答案形态卫生", check_attachment_hygiene),
 ]
 
 
