@@ -242,6 +242,13 @@ def check_report_hygiene():
 WP_SHAPE_RE_COMPILED = None
 
 
+def exempt_entries(manifest):
+    try:
+        return [e for e in json.load(open(manifest, encoding="utf-8")) if isinstance(e, dict)]
+    except Exception:
+        return []
+
+
 def check_attachment_hygiene():
     import re
     base = os.path.join("CTF-Agent_融合", "ctf_agent", "data", "questions_real",
@@ -269,6 +276,16 @@ def check_attachment_hygiene():
         return "WARN", ("附件目录检出 %d 个 WP/答案形态文件名未登记排除: %s —— "
                         "登记进 _hygiene_manifest.json（含定性+排除理由）或重命名"
                         % (len(flagged), "; ".join(flagged[:3])))
+    # 登记了≠过关：decision 为「撤回豁免/answer_key 待移出」的条目持续 WARN，
+    # 直到文件真正移出求解输入路径（立尺 2026-10-25 自我豁免遮蔽真值事故的修正：
+    # 豁免登记必须附 sha256 对锚结果；对锚命中真值=answer_key，豁免无效）。
+    pending = []
+    for e in exempt_entries(manifest):
+        if e.get("decision", "").startswith("撤回豁免") or "answer_key" in e.get("classification", ""):
+            pending.append(e.get("name", "?"))
+    if pending:
+        return "WARN", ("answer_key 形态待移出求解输入: %s —— 命中该附件的 benchmark "
+                        "按含答案口径单列" % "; ".join(pending[:3]))
     return "PASS", "%d 个附件，WP 形态零未登记" % total
 
 
