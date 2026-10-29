@@ -97,7 +97,11 @@ func TestGuardStrictCap(t *testing.T) {
 // TestGuardTryAcquire 名额满后非阻塞获取失败。
 func TestGuardTryAcquire(t *testing.T) {
 	g := NewLLMGuard(2)
-	if !g.TryAcquire() || !g.TryAcquire() {
+	// 两次调用是有意的（占满 limit=2）；用变量接住而不是写两遍同样的表达式，
+	// 否则 staticcheck SA4000 会当成复制粘贴错误，且 || 的短路会让"第二次是否被调用"
+	// 取决于第一次的结果，测试意图变模糊。
+	first, second := g.TryAcquire(), g.TryAcquire()
+	if !first || !second {
 		t.Fatal("first two TryAcquire should succeed")
 	}
 	if g.TryAcquire() {
