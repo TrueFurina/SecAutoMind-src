@@ -263,6 +263,9 @@ def check_attachment_hygiene():
         return "PASS", "附件目录不存在（B 线未动工）"
     wp_shape = re.compile(r"(?i)(writeup|wp|solution|答案|write-up)[._-]|-WP\.", )
     flagged, total = [], 0
+    # 只读契约（E 线 2026-10-25 边界瑕疵自首后固化）：manifest 物理落位 B 域
+    # （_attachments/ 独占），归属待观澜裁决——裁决前 E 只读不写（登记动作
+    # 归 B 线，E 在周审报告里转述）。
     manifest = os.path.join(base, "_hygiene_manifest.json")
     exempt = set()
     if os.path.isfile(manifest):
