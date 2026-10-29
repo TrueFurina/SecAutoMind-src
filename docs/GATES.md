@@ -6,7 +6,7 @@
 > 每行的"守什么"取自该 job 上方的注释首句；**没有注释的 job 会显示为待补**——
 > 那本身就是缺陷：一个说不出自己守什么的门禁，无法判断它是否失效。
 
-共 **28** 个 job（其中 **25** 个带自测/变异验证）。
+共 **32** 个 job（其中 **29** 个带自测/变异验证）。
 
 | job | 守什么 | 步骤数 | 变异/自测 |
 |---|---|---|---|
@@ -17,13 +17,13 @@
 | `freeze-gate` | 决赛冻结纪律闸门（规划总纲 §4.3）：决赛前 14 天起拒绝"架构改动"的 PR | 5 | 有 |
 | `binary-gate` | 交付二进制来源门禁（2026-10-18）：发出去的 exe 必须由当前 HEAD 构建 | 3 | 有 |
 | `finals-rehearsal` | 决赛整链路演练（规划总纲 §2.1 的 e2e 要求，去掉"必须用官方平台"那部分） | 7 | 有 |
-| `cross-bench-subset` | A→B 同卷立尺 · 有数据子集（12/88 题附件仍在）：从 test job 拆出的独立门禁 | 1 | **无** |
-| `secret-gate` | 密钥门禁：防止真实凭证被提交进仓库 | 4 | 有 |
+| `cross-bench-subset` | A→B 同卷立尺 · 有数据子集（12/88 题附件仍在）：从 test job 拆出的独立门禁 | 2 | **无** |
+| `secret-gate` | 密钥门禁：防止真实凭证被提交进仓库 | 8 | 有 |
 | `supply-chain-gate` | 材料口径门禁：docs/ PPT/ 官网 里的关键数字必须与 count_stats.py 真值一致 | 2 | 有 |
 | `truth-source-gate` | 历史教训：材料数字漂移出现过三次，全靠人肉发现（工具数 90→91、求解器数 169→170 等） | 4 | 有 |
 | `quant-gate` | 验收第 8 条：对外量化陈述 100% 可指回 —— 真跑命令复现，而非口头声明 | 6 | 有 |
 | `caliber-gate` | 材料口径总闸（17 步）：材料数字 / 文档事实 / 范围豁免准入 / 工具与配方契约 / 错误投影 / 产物数字 / PPT 产物路径，逐个与单一真值源比对 | 17 | 有 |
-| `cross-bench-manifest-gate` | cross-bench 产物清单一致性门禁（2026-10-16 实锤三条漂移后新增） | 2 | 有 |
+| `cross-bench-manifest-gate` | cross-bench 产物清单一致性门禁（2026-10-16 实锤三条漂移后新增） | 4 | 有 |
 | `web-parity-gate` | 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**， 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者 | 2 | 有 |
 | `css-shadow-gate` | CSS 影子块门禁（2026-10-19 新增） | 2 | 有 |
 | `web-js-tests` | 前端运行时测试：`internal/app/web/static/js/*.test.cjs` 曾长期是**孤儿测试**—— ci.yml 全文没有 node --test，全靠人手跑，于是两条断言在实现重构后**静默腐… | 1 | **无** |
@@ -35,9 +35,13 @@
 | `external-payload-gate` | 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着 payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析； 同目录… | 2 | 有 |
 | `plaintext-answer-gate` | 自产基准反注水：题干里不得直接写出答案 | 2 | 有 |
 | `benchmark-validity-gate` | 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%） | 2 | 有 |
+| `flag-eval-gate` | flag 评测口径门禁（2026-10-28 建立） | 3 | 有 |
+| `session-gate` | 并发会话登记表门禁（2026-10-28 建立） | 2 | 有 |
 | `benchmark-parity-gate` | 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」 这句**写在对外汇总里的宣称**真正接上线 | 2 | 有 |
 | `suite-parity-gate` | 跨集 parity 门禁（台账驱动）—— 把【2】～【22】的「Python == Go」宣称按台账逐集接线 | 4 | 有 |
 | `external-bench` | 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口 | 3 | 有 |
+| `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 9 | 有 |
+| `answer-leak-gate` | 题库答案泄漏门禁（2026-10-28） 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案； 门禁本体早已写好（scripts/check_ben… | 2 | 有 |
 
 ## 已知盲区（人工维护，不由 ci.yml 派生）
 

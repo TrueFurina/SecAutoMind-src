@@ -618,6 +618,15 @@ jobs:
         run: python scripts/check_cross_bench_manifest_test.py
       - name: Cross-bench manifest consistency (artifacts vs .gitignore vs generator)
         run: python scripts/check_cross_bench_manifest.py
+      # 能力分母门禁（2026-10-25）：honesty 段自报的「12 题有附件」从未对过磁盘，
+      # 导致所有「命中 X/88」「命中 6/12」的分母都没有机验来源。本门禁区分四档：
+      #   FULL(在盘) / LOCAL_ONLY(git 排除但本地留) / DATA_ABSENT_EXCLUDED(排除解释得通)
+      #   / DATA_ABSENT_LOST(既未排除也不存在 = 静默丢文件 → 必须红)。
+      # CI 检出天然缺 git 排除文件，故 CI 侧分母 8、设计性缺失 4（不误报）。
+      - name: Capability denominator gate self-test (11 cases, mutation)
+        run: python scripts/bench_capability_denominator.py --self-test
+      - name: Capability denominator gate (self-report vs disk, data-loss fail-closed)
+        run: python scripts/bench_capability_denominator.py
 
   # 前端资源副本一致性门禁：根 web/ 与 internal/app/web/ 是**两份物理副本**，
   # 而 go:embed（internal/app/app_webfs.go，路径相对包目录）嵌入的是后者。
@@ -829,6 +838,47 @@ jobs:
       - name: Benchmark validity gate regression + mutation check (prove the gate can fail)
         run: python scripts/audit_benchmark_validity_test.py
 
+  # flag 评测口径门禁（2026-10-28 建立）。
+  # 为什么需要：基准 72 个 flag 全是小写 flag{，而 LLM 常输出大写 FLAG{...}；仓库里 10 个
+  # 评测脚本有 9 个用小写-only 正则提取候选且直接拿原文算 sha256 —— 模型答对也被判未命中
+  # （morse_hello 实锤：输出 FLAG{MORSE_CODE_HELLO} 被判 False）。这是**静默错误**：不报错，
+  # 只让覆盖率数字安静偏低。S1–S4 报的数字可能因此被系统性低估。
+  # 统一口径：scripts/experiments/flag_util.py::flag_sha256_hit
+  #   （大小写不敏感提取 + 前缀归一 + 变体比对 + target 为空 fail-closed）
+  # 存量违规走显式 allowlist 挂账（scripts/flag_eval_allowlist.json，含原因与责任人），
+  # 挂账 ≠ 通过：门禁会打印挂账条数，发布节点前必须清零。
+  flag-eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unified flag evaluation口径 (no lowercase-only regex, no raw-sha compare)
+        run: python scripts/check_flag_eval_regex.py
+      - name: flag_util self-test (7 cases incl. old-regex漏判反证)
+        run: python scripts/experiments/flag_util.py
+      - name: Gate regression + mutation check (prove the gate can fail)
+        run: python scripts/check_flag_eval_regex.py --self-test
+
+  # 并发会话登记表门禁（2026-10-28 建立）。
+  # 守的是运行态纪律：S1–S5 并行会话会互相踩（真实事故：S5 07:12 起的实例 07:15 被别的
+  # 会话杀掉；config.yaml 被并发改留下 .bak；本机隧道端口被占）。
+  # 工具本身必须自证有效（7 项变异：同端口/同切片/超并发池必须被拒、僵尸必须可回收、
+  # 登记表缺失必须显式降级）。CI 环境无并发登记表 → `check` 打印 DEGRADED 并跳过，
+  # 属**显式降级**（AGENTS.md 第四条③），不是静默 PASS。
+  session-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Registry consistency (degrades explicitly when absent on CI)
+        run: python scripts/session_registry.py check
+      - name: Registry gate regression + mutation check (prove it can reject)
+        run: python scripts/session_registry.py --self-test
+
   # 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」
   # 这句**写在对外汇总里的宣称**真正接上线。
   # 为什么需要：run_all_benchmarks.py 的汇总里【1】～【8】各打印一句「Python == Go」的
@@ -942,3 +992,30 @@ jobs:
         run: python scripts/sync_ctf_agent_skills.py --check
       - name: Engine watchdog selftest - kill child then auto-restart under 10s
         run: python scripts/engine_watchdog.py --selftest
+      # ── 题库真值/附件判据的门禁（2026-10-26 补：此前写好却**未接 CI** = 等于没锁）──
+      # 三者都是"判据作用域写窄了"导致的假绿/假红，实测事故见各测试文件头 docstring：
+      #   ① check_question_truth: 附件算不出真值 ≠ 真值错（可能是答案在缺失文件里）
+      #   ② _audit_corpus_integrity: is_file() 把目录形态附件误判为缺失
+      #   ③ check_corpus_health: 基线 total=0 的池消失被当成回归（"曾有 0 题"自相矛盾）
+      - name: Corpus truth self-test - partial attachments must NOT be judged as truth conflict
+        run: python scripts/check_question_truth_test.py
+      - name: Attachment resolver self-test - directory-form attachment must NOT count as missing
+        run: python "CTF-Agent_融合/ctf_agent/scripts/_audit_corpus_integrity_test.py"
+      - name: Corpus health self-test - empty-pool disappearance must NOT be a regression
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_corpus_health_test.py"
+
+  # 题库答案泄漏门禁（2026-10-28）
+  # 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案；
+  # 门禁本体早已写好（scripts/check_benchmark_plaintext_answer.py）却**没接 CI** = 等于没锁。
+  # 自测里带变异用例：往题面塞答案必须报红、flag 是已知输入不得误伤。
+  answer-leak-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gate self-test - statement-embedded answer must be flagged
+        run: python scripts/check_benchmark_plaintext_answer_test.py
+      - name: Benchmark statements must not embed answers
+        run: python scripts/check_benchmark_plaintext_answer.py --check
