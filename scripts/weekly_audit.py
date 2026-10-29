@@ -28,6 +28,12 @@
 """
 from __future__ import annotations
 
+# GBK 控制台兜底（2026-10-29 五门禁同日假红教训，4b0a11f）：本脚本及其子进程
+# 输出含 emoji/中文，GBK 下 print 直接 UnicodeEncodeError 假红——CI ubuntu 不受影响，
+# 本地红 CI 绿先想这条。
+import os as _os
+_os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
 import argparse
 import datetime
 import glob
