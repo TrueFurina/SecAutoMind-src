@@ -861,6 +861,30 @@ jobs:
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
 
+  # flag 提取跨语言单一真值源契约（2026-10-30 建立）。
+  # 防 10-29 冤案：Go internal/runnerl3/llm_solver.go::flagCandRe 与
+  # Python scripts/experiments/flag_util.py::FLAG_RE 是两份各自硬编码的拷贝。
+  # 旧 Go 实现只认 flag{ 字面前缀，模型已输出 picoCTF{...} 正解却判「没找到 flag 格式」
+  # → 候选 0 → 记 MISS。本门禁用同一份 golden 同时锁死两侧：Python --check 重算 golden、
+  # Go go test 断言一致，任一侧单独改动都红。--selftest 与 Go mutation 用例证明门禁能变红。
+  # 与 flag-rule-parity（占位符判据）职责不同：那把锁「占位符识别」，这把锁「候选提取」。
+  flag-extract-contract-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python truth-source contract (recompute golden; drift => BLOCK)
+        run: |
+          python scripts/check_flag_extract_contract.py --check
+          python scripts/check_flag_extract_contract.py --selftest
+      - name: Go candidate-extraction contract + mutation check
+        run: go test -count=1 -v -run 'TestFlagExtractContract' ./internal/runnerl3/ -timeout 300s
+
   # 并发会话登记表门禁（2026-10-28 建立）。
   # 守的是运行态纪律：S1–S5 并行会话会互相踩（真实事故：S5 07:12 起的实例 07:15 被别的
   # 会话杀掉；config.yaml 被并发改留下 .bak；本机隧道端口被占）。

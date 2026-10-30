@@ -1,0 +1,188 @@
+{
+  "_comment": "flag 提取跨语言契约。由 scripts/check_flag_extract_contract.py 依据真值源 flag_util.FLAG_RE 生成，禁止手改。",
+  "_normalization": "左右抽取 → 每个匹配 strip → 按首次出现去重；两侧必须逐项相等。",
+  "_truth_source": "scripts/experiments/flag_util.py::FLAG_RE [A-Za-z][A-Za-z0-9_]{0,14}\\{[^{}\\n]{1,200}\\}",
+  "source_regex": "[A-Za-z][A-Za-z0-9_]{0,14}\\{[^{}\\n]{1,200}\\}",
+  "cases": [
+    {
+      "name": "flag_standard",
+      "input": "答案是 flag{abc_123}，请提交",
+      "expected": [
+        "flag{abc_123}"
+      ]
+    },
+    {
+      "name": "picoCTF_事故原题",
+      "input": "解出 picoCTF{caesar_d3cr9pt3d_f0212758}\n\nCONFIDENCE: 1.0",
+      "expected": [
+        "picoCTF{caesar_d3cr9pt3d_f0212758}"
+      ]
+    },
+    {
+      "name": "sdctf_含特殊字符",
+      "input": "sdctf{Case64_ar!}",
+      "expected": [
+        "sdctf{Case64_ar!}"
+      ]
+    },
+    {
+      "name": "CBCV_前缀",
+      "input": "CBCV{dGhpcyBpcyBiYXNlNjQ=}",
+      "expected": [
+        "CBCV{dGhpcyBpcyBiYXNlNjQ=}"
+      ]
+    },
+    {
+      "name": "wctf_前缀",
+      "input": "wctf{xor_known_plaintext}",
+      "expected": [
+        "wctf{xor_known_plaintext}"
+      ]
+    },
+    {
+      "name": "grodno_前缀",
+      "input": "grodno{Gr0dn0_CTF_2021}",
+      "expected": [
+        "grodno{Gr0dn0_CTF_2021}"
+      ]
+    },
+    {
+      "name": "DASCTF_前缀",
+      "input": "DASCTF{c0rr3ct_answ3r}",
+      "expected": [
+        "DASCTF{c0rr3ct_answ3r}"
+      ]
+    },
+    {
+      "name": "BZHCTF_前缀",
+      "input": "BZHCTF{prefix_rewritten}",
+      "expected": [
+        "BZHCTF{prefix_rewritten}"
+      ]
+    },
+    {
+      "name": "upper_FLAG",
+      "input": "FLAG{UPPER}",
+      "expected": [
+        "FLAG{UPPER}"
+      ]
+    },
+    {
+      "name": "mixed_Flag",
+      "input": "Flag{MiXeD_CaSe}",
+      "expected": [
+        "Flag{MiXeD_CaSe}"
+      ]
+    },
+    {
+      "name": "flag_引导词",
+      "input": "flag: flag{led}",
+      "expected": [
+        "flag{led}"
+      ]
+    },
+    {
+      "name": "多候选去重",
+      "input": "flag{a}\nflag{a}\nflag{b}",
+      "expected": [
+        "flag{a}",
+        "flag{b}"
+      ]
+    },
+    {
+      "name": "多前缀混排",
+      "input": "picoCTF{first} 和 sdctf{second} 还有 flag{third}",
+      "expected": [
+        "picoCTF{first}",
+        "sdctf{second}",
+        "flag{third}"
+      ]
+    },
+    {
+      "name": "无花括号文本",
+      "input": "CONFIDENCE: 1.0 没有 flag 也没有答案",
+      "expected": []
+    },
+    {
+      "name": "未闭合不算候选",
+      "input": "flag{unclosed 后面没了",
+      "expected": []
+    },
+    {
+      "name": "空内容不算候选",
+      "input": "flag{}",
+      "expected": []
+    },
+    {
+      "name": "内容含换行不跨界",
+      "input": "flag{line1\nline2}",
+      "expected": []
+    },
+    {
+      "name": "嵌套花括号",
+      "input": "flag{a{b}",
+      "expected": [
+        "a{b}"
+      ]
+    },
+    {
+      "name": "内容含空格",
+      "input": "flag{has space inside}",
+      "expected": [
+        "flag{has space inside}"
+      ]
+    },
+    {
+      "name": "前缀最长15字符",
+      "input": "ABCDEFGHIJKLMNO{p15}",
+      "expected": [
+        "ABCDEFGHIJKLMNO{p15}"
+      ]
+    },
+    {
+      "name": "前缀16字符触发回退",
+      "input": "ABCDEFGHIJKLMNOP{p16}",
+      "expected": [
+        "BCDEFGHIJKLMNOP{p16}"
+      ]
+    },
+    {
+      "name": "下划线数字前缀",
+      "input": "X_123{underscore_digit}",
+      "expected": [
+        "X_123{underscore_digit}"
+      ]
+    },
+    {
+      "name": "单字母前缀",
+      "input": "x{single}",
+      "expected": [
+        "x{single}"
+      ]
+    },
+    {
+      "name": "数字开头不算前缀",
+      "input": "123flag{no_digit_start}",
+      "expected": [
+        "flag{no_digit_start}"
+      ]
+    },
+    {
+      "name": "超200字符内容",
+      "input": "flag{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}",
+      "expected": []
+    },
+    {
+      "name": "末尾无闭合",
+      "input": "flag{no_close",
+      "expected": []
+    },
+    {
+      "name": "中文叙述夹候选",
+      "input": "经过计算，最终 flag{cn_中文_内容_123} 就是这个",
+      "expected": [
+        "flag{cn_中文_内容_123}"
+      ]
+    }
+  ]
+}
