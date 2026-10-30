@@ -515,7 +515,13 @@ def scan_plaintext_flags(root: str, tracked: set[str] | None = None):
                     text = fh.read()
             except Exception:
                 continue
-            rel = os.path.relpath(path, root).replace("\\", "/")
+            try:
+                rel = os.path.relpath(path, root).replace("\\", "/")
+            except (OSError, ValueError):
+                # Windows 保留设备名（nul/con/aux/prn…）无法 relpath，原先会让整个门禁崩掉。
+                # 不许一个无法解析的路径阻断整条提交链，但也**不静默**——打到 stderr 留痕。
+                print("[skip] 无法解析的路径（Windows 保留名？）：%s" % path, file=sys.stderr)
+                continue
             for m in FLAG_CAND_RE.finditer(text):
                 raw = m.group(0)
                 if FLAG_PLACEHOLDER_RE.search(raw):
@@ -890,11 +896,13 @@ def scan_dir(root, fps=None):
                     continue
                 with open(path, "r", encoding="utf-8", errors="ignore") as fh:
                     lines = fh.read().splitlines()
+                # relpath 必须在同一个 try 内：Windows 保留设备名（nul/con/aux…）
+                # 会抛 ValueError，原先写在循环里会让整个门禁崩溃。
+                rel = os.path.relpath(path, root).replace("\\", "/")
             except Exception:
                 continue
             scanned += 1
             for lineno, line in enumerate(lines, 1):
-                rel = os.path.relpath(path, root).replace("\\", "/")
                 # ① 真 key 指纹反查（最高优先级）：只要出现本项目在用的凭证片段就报警，
                 #    与正则形态无关，**不受** placeholder / SELF_EXEMPT / SUSPECT_PATH 影响。
                 fp = fingerprint_hit(line, fps)

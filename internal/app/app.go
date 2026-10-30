@@ -492,6 +492,25 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 				pc.FirstBloodInterval = time.Duration(n) * time.Second
 			}
 		}
+		// 排行榜快照（2026-10-28 接线，吞并路线图 P0-3 终报一环）：停轮打终报快照，
+		// 可选周期快照。默认关（新接线纪律）；间隔倒挂由 poller 侧按关闭处理并告警。
+		pc.ScoreboardSnapshot = strings.EqualFold(os.Getenv("CTF_SCOREBOARD_SNAPSHOT"), "true")
+		if v := strings.TrimSpace(os.Getenv("CTF_SCOREBOARD_INTERVAL")); v != "" {
+			if n, e := strconv.Atoi(v); e == nil && n > 0 {
+				pc.ScoreboardInterval = time.Duration(n) * time.Second
+			}
+		}
+		// 排行榜快照落盘（2026-10-31）：只打 zap 日志的话**赛后查不到分数走势**，
+		// 下次复盘又只能靠回忆。开关跟随 ScoreboardSnapshot（不开快照就没有可落的数据）；
+		// 路径可用 CTF_SCOREBOARD_LOG 覆盖，默认 logs/scoreboard.jsonl（已 gitignore）。
+		// fail-open：写不进去只影响观测，绝不影响解题主路径。
+		if pc.ScoreboardSnapshot {
+			sbPath := strings.TrimSpace(os.Getenv("CTF_SCOREBOARD_LOG"))
+			if sbPath == "" {
+				sbPath = ctfplatform.DefaultScoreboardLedgerPath
+			}
+			ctfplatform.EnableScoreboardLedger(sbPath)
+		}
 		pc.SubmitAfterSolve = strings.EqualFold(os.Getenv("CTF_AUTOSOLVE_SUBMIT"), "true")
 		// 🔴 决赛关键链（09-17 补的生产缺口）：对 HasInstance 的题自动「起靶机 → 取地址 →
 		//    并入题目描述」。此前 CreateInstance/GetAccess 从未被生产代码调用，需要靶机的题

@@ -62,6 +62,14 @@ type PollerConfig struct {
 	//    FirstBloodInterval < PollInterval（否则语义倒挂，按关闭处理并在启动日志告警）。
 	FirstBloodWindow   time.Duration `json:"first_blood_window"`
 	FirstBloodInterval time.Duration `json:"first_blood_interval"`
+	// ScoreboardSnapshot / ScoreboardInterval 排行榜快照（2026-10-28 接线，评估与裁决见
+	// docs/evidence/平台接口接线审计与评估_20261028.md）：补路线图 P0-3
+	// 「race 首血→稳定轮询→终报」的终报一环 —— GetOverview 此前从未被生产调用。
+	// ScoreboardSnapshot=true：停轮（ctx 结束）时 best-effort 打一次排行榜终报快照；
+	// ScoreboardInterval>0 时额外周期快照（用于赛时观测排名走势），0 = 只在收尾打。
+	// 🔴 默认 false（第八条纪律：新接线配置开关默认关；开启走 CTF_SCOREBOARD_SNAPSHOT=true）。
+	ScoreboardSnapshot bool          `json:"scoreboard_snapshot"`
+	ScoreboardInterval time.Duration `json:"scoreboard_interval"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -125,6 +133,13 @@ func ValidatePollerConfig(cfg PollerConfig) (PollerConfig, []string, error) {
 			cfg.FirstBloodWindow, cfg.FirstBloodInterval, cfg.PollInterval))
 		cfg.FirstBloodWindow = 0
 		cfg.FirstBloodInterval = 0
+	}
+	// 排行榜周期快照：Interval>0 但 < PollInterval = 语义倒挂（快照比拉题还勤，
+	// 只会给平台加无谓压力），按关闭处理并告警；终报快照不受影响（收尾只打一次）。
+	if cfg.ScoreboardInterval > 0 && cfg.ScoreboardInterval < cfg.PollInterval {
+		warns = append(warns, fmt.Sprintf("排行榜周期快照间隔非法（需 0 或 ≥poll_interval），已按关闭处理：interval=%v poll_interval=%v",
+			cfg.ScoreboardInterval, cfg.PollInterval))
+		cfg.ScoreboardInterval = 0
 	}
 
 	if len(fatal) > 0 {
@@ -260,8 +275,22 @@ func (p *Poller) RunForever(ctx context.Context) error {
 		zap.Duration("interval", p.config.PollInterval),
 		zap.Bool("submit_after_solve", p.config.SubmitAfterSolve),
 		zap.Bool("first_blood_scan", firstBloodActive(p.config)),
-		zap.Duration("first_blood_window", p.config.FirstBloodWindow))
+		zap.Duration("first_blood_window", p.config.FirstBloodWindow),
+		zap.Bool("scoreboard_snapshot", p.config.ScoreboardSnapshot),
+		zap.Duration("scoreboard_interval", p.config.ScoreboardInterval))
 	startedAt := time.Now()
+
+	// 排行榜终报（P0-3 收尾一环）：停轮时打最后一次快照。defer 挂在所有退出路径
+	// （ctx.Done / sleepCtx 错误 / WAF 休眠中断）上；父 ctx 已取消，故用脱离的
+	// 独立超时上下文 —— 10s 内打不出来就放弃（best-effort，不阻塞进程退出）。
+	if p.config.ScoreboardSnapshot {
+		defer func() {
+			sbCtx, sbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer sbCancel()
+			p.snapshotScoreboard(sbCtx, "final")
+		}()
+	}
+	lastScoreboardAt := startedAt
 
 	// 启动轻量获取比赛信息（规则/时间窗），best-effort：失败仅告警，不阻塞解题主路径。
 	{
@@ -314,10 +343,37 @@ func (p *Poller) RunForever(ctx context.Context) error {
 				wait = time.Duration(s) * time.Second
 			}
 		}
+
+		// 排行榜周期快照（可选）：间隔到期打一次，供赛时观测排名走势。
+		// 用本轮流询 ctx（随停轮取消，无泄漏）；间隔倒挂已在 ValidatePollerConfig 关掉。
+		if p.config.ScoreboardSnapshot && p.config.ScoreboardInterval > 0 &&
+			time.Since(lastScoreboardAt) >= p.config.ScoreboardInterval {
+			p.snapshotScoreboard(ctx, "periodic")
+			lastScoreboardAt = time.Now()
+		}
+
 		if err := p.sleepCtx(ctx, wait); err != nil {
 			return err
 		}
 	}
+}
+
+// snapshotScoreboard best-effort 拉取排行榜快照并打日志（GetOverview 的生产接线，
+// 终报/周期两用）。失败只告警 —— 排行榜是观测项，任何失败都不许影响解题主路径。
+func (p *Poller) snapshotScoreboard(ctx context.Context, kind string) {
+	ov, err := p.platform.GetOverview(ctx)
+	if err != nil {
+		p.logger.Warn("获取排行榜失败（非致命，不影响解题）",
+			zap.String("kind", kind), zap.Error(err))
+		return
+	}
+	if ov == nil {
+		return
+	}
+	// 落盘（2026-10-31）：只打日志的话赛后查不到分数走势，下次复盘又只能靠回忆。
+	// fail-open：路径未启用时是 no-op，写失败也绝不向上抛。
+	AppendScoreboard(kind, ov)
+	p.logger.Info("排行榜快照", zap.String("kind", kind), zap.Any("overview", ov))
 }
 
 // sleepCtx 在 ctx 取消前休眠 d（尊重生命周期，便于优雅退出）。
