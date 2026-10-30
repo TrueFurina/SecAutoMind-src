@@ -109,6 +109,14 @@ export CTF_AUTO_RELEASE_ENV="${CTF_AUTO_RELEASE_ENV:-true}"
 export CTF_ROBOT_AUTO_PREPARE="${CTF_ROBOT_AUTO_PREPARE:-true}"
 export CTF_POLL_INTERVAL="${CTF_POLL_INTERVAL:-20}"
 
+# 🔴 排行榜心跳（2026-10-31 补，源于 10-24 羊城杯 0 分复盘）
+# 那场整场比赛我们**看不到自己在不在得分**：`ScoreboardSnapshot` 到 10-28 才接、
+# 且按"新接线默认关"纪律默认 false → 赛中没有任何分数信号，只能靠人肉感觉。
+# 上膛时显式打开：停轮打终报 + 每 5 分钟打一次周期快照（300s ≥ PollInterval 20s，合法）。
+# 不改代码默认值（第八条纪律：新接线默认关），只在**赛时上膛**这一层打开。
+export CTF_SCOREBOARD_SNAPSHOT="${CTF_SCOREBOARD_SNAPSHOT:-true}"
+export CTF_SCOREBOARD_INTERVAL="${CTF_SCOREBOARD_INTERVAL:-300}"
+
 print_list() {
   echo "# —— 平台凭证（脚本不会替你填，也绝不落盘）——"
   echo "# 当前平台：${PLATFORM_LABEL}"
@@ -124,6 +132,8 @@ print_list() {
   echo "export CTF_AUTO_FETCH_DETAIL=${CTF_AUTO_FETCH_DETAIL}"
   echo "export CTF_AUTO_RELEASE_ENV=${CTF_AUTO_RELEASE_ENV}"
   echo "export CTF_ROBOT_AUTO_PREPARE=${CTF_ROBOT_AUTO_PREPARE}"
+  echo "export CTF_SCOREBOARD_SNAPSHOT=${CTF_SCOREBOARD_SNAPSHOT}"
+  echo "export CTF_SCOREBOARD_INTERVAL=${CTF_SCOREBOARD_INTERVAL}"
 }
 
 if [ "${1:-}" = "--print" ]; then
@@ -151,11 +161,20 @@ for v in CTF_POLL_ENABLED CTF_AUTOSOLVE_SUBMIT CTF_AUTO_BUILD_ENV \
   printf "  %-28s %s\n" "$v" "${!v}"
 done
 printf "  %-28s %s\n" "CTF_POLL_INTERVAL" "${CTF_POLL_INTERVAL}"
+printf "  %-28s %s\n" "CTF_SCOREBOARD_SNAPSHOT" "${CTF_SCOREBOARD_SNAPSHOT}"
+printf "  %-28s %s\n" "CTF_SCOREBOARD_INTERVAL" "${CTF_SCOREBOARD_INTERVAL}"
 
 if [ "$SOURCED" -eq 0 ]; then
   echo
   echo "  ! 本次是独立运行（bash 直接调用），开关只在本进程内生效。"
   echo "    要让开关进入当前 shell，请改用：source scripts/finals_arm.sh"
+fi
+
+# ── --table：只打确认表就返回，跳过门禁校验（快路径，供回归测试与赛前快速自检）──
+# 为什么需要：完整上膛要跑 5 道门禁，单次 ~38s；回归测试要连跑多次确认表断言，
+# 全套会到 260s+（CI 里就是 4 分钟）。--table 只做「打印 + 返回」，同一批断言 1s 内跑完。
+if [ "${1:-}" = "--table" ]; then
+  if [ "$SOURCED" -eq 1 ]; then return 0; else exit 0; fi
 fi
 
 # ── 门禁校验（NO-GO 是正常结论，要如实显示而不是让脚本崩掉）──────────────────

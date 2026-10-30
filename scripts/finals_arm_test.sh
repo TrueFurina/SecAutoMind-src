@@ -89,7 +89,7 @@ fi
 # 2026-10-24 事故：本脚本原先只认 DASCTF_*，而当晚正式赛跑在 CTF²（CTF2_*）。
 # DASCTF 作为备用地址一直设着 → 脚本报「✅ 官方地址 / 已设置」的**假绿**，
 # 真正要用的 CTF² 凭证一个都没校验。
-out5="$(CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="ctf2_$(printf 'a%.0s' $(seq 1 60))"         bash "$ARM" 2>&1)"
+out5="$(CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="ctf2_$(printf 'a%.0s' $(seq 1 60))"         bash "$ARM" --table 2>&1)"
 if printf '%s' "$out5" | grep -q 'CTF² 竞技场' \
    && printf '%s' "$out5" | grep -q 'CTF2_BASE_URL' \
    && printf '%s' "$out5" | grep -q 'CTF2_AGENT_TOKEN'; then
@@ -99,7 +99,7 @@ else
 fi
 
 # ── T6：无 CTF² 凭据时回退 DASCTF（不能把 CTF² 当唯一路径）─────────────────────
-out6="$(env -u CTF2_BASE_URL -u CTF2_AGENT_TOKEN bash "$ARM" 2>&1)"
+out6="$(env -u CTF2_BASE_URL -u CTF2_AGENT_TOKEN bash "$ARM" --table 2>&1)"
 if printf '%s' "$out6" | grep -q 'DASCTF' \
    && printf '%s' "$out6" | grep -q 'DASCTF_BASE_URL'; then
   ok "T6 无 CTF² 凭据 → 回退 DASCTF 并校验 DASCTF_BASE_URL"
@@ -109,7 +109,7 @@ fi
 
 # ── T7：令牌形态 —— 前缀不对必须告警（只判前缀，不回显值）──────────────────────
 out7="$(CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="wrongprefix_abc" \
-        bash "$ARM" 2>&1)"
+        bash "$ARM" --table 2>&1)"
 if printf '%s' "$out7" | grep -q '不以 ctf2_ 开头'; then
   ok "T7 令牌前缀不符 → 明确告警（不静默放行）"
 else
@@ -127,7 +127,7 @@ fi
 out8="$(CTF_PLATFORM=dasctf \
         CTF2_BASE_URL="https://ctf2.dasctf.com" CTF2_AGENT_TOKEN="ctf2_$(printf 'a%.0s' $(seq 1 60))" \
         DASCTF_BASE_URL="https://ycb-bk.dasctf.com" CTF_AGENT_PLATFORM_TOKEN="ak_$(printf 'b%.0s' $(seq 1 38))" \
-        bash "$ARM" 2>&1)"
+        bash "$ARM" --table 2>&1)"
 if printf '%s' "$out8" | grep -q 'DASCTF（dasctf）' \
    && printf '%s' "$out8" | grep -q 'ycb-bk.dasctf.com'; then
   ok "T8 CTF_PLATFORM=dasctf 覆盖生效（有 CTF² 凭据也不被抢走）"
@@ -144,16 +144,45 @@ else
   ok "T9 ycb-bk 地址不误报 pro 提示"
 fi
 out9="$(CTF_PLATFORM=dasctf DASCTF_BASE_URL="https://pro.dasctf.com" \
-        CTF_AGENT_PLATFORM_TOKEN="ak_$(printf 'b%.0s' $(seq 1 38))" bash "$ARM" 2>&1)"
+        CTF_AGENT_PLATFORM_TOKEN="ak_$(printf 'b%.0s' $(seq 1 38))" bash "$ARM" --table 2>&1)"
 if printf '%s' "$out9" | grep -q '羊城杯入口是 ycb-bk'; then
   ok "T9b pro 地址给出「羊城杯入口是 ycb-bk」提示"
 else
   bad "T9b pro 地址未提示羊城杯入口差异（会打错平台）"
 fi
 
+# ── T10：排行榜心跳（2026-10-24 羊城杯 0 分的直接补丁）────────────────────────
+# 那场整场比赛看不到"在不在得分"：ScoreboardSnapshot 默认 false、且当时还没接线。
+# 上膛必须显式打开，否则整场没有任何分数信号。
+out10="$(bash "$ARM" --print 2>&1)"
+if printf '%s' "$out10" | grep -qE 'CTF_SCOREBOARD_SNAPSHOT=true' \
+   && printf '%s' "$out10" | grep -qE 'CTF_SCOREBOARD_INTERVAL=[0-9]+'; then
+  ok "T10 上膛默认打开排行榜心跳（snapshot=true + 有间隔）"
+else
+  bad "T10 上膛没打开排行榜心跳：$(printf '%s' "$out10" | grep -E 'SCOREBOARD' | tr '\n' ' ')"
+fi
+
+# 间隔必须 >= PollInterval，否则 Go 侧会判定语义倒挂并静默降级为"只在收尾打一次"
+# （poller.go:139 —— ScoreboardInterval < PollInterval 时置 0 并告警）。
+poll="$(printf '%s' "$out10" | grep -oE 'CTF_POLL_INTERVAL=[0-9]+' | grep -oE '[0-9]+' | head -1)"
+scb="$(printf '%s' "$out10" | grep -oE 'CTF_SCOREBOARD_INTERVAL=[0-9]+' | grep -oE '[0-9]+' | head -1)"
+if [ -n "$poll" ] && [ -n "$scb" ] && [ "$scb" -ge "$poll" ]; then
+  ok "T10b 心跳间隔($scb s) >= 轮询间隔($poll s)，不会被 Go 侧降级"
+else
+  bad "T10b 心跳间隔($scb) < 轮询间隔($poll)，Go 侧会静默降级为只在收尾打一次"
+fi
+
+# 反向：用户显式关掉时必须尊重（不能强行覆盖成 true）
+out10c="$(CTF_SCOREBOARD_SNAPSHOT=false bash "$ARM" --print 2>&1)"
+if printf '%s' "$out10c" | grep -qE 'CTF_SCOREBOARD_SNAPSHOT=false'; then
+  ok "T10c 显式 CTF_SCOREBOARD_SNAPSHOT=false 被尊重（不强行覆盖）"
+else
+  bad "T10c 显式关闭被覆盖成 true（违反「已存在的值不覆盖」约定）"
+fi
+
 echo "----------------------------------------------------------------------"
 if [ "$fail" -eq 0 ]; then
-  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异 + 平台派发/覆盖 7 项）"
+  echo "结论：PASS —— $(printf '%d' "$pass") 项全过（含 1 项因果自变异 + 平台派发/覆盖 7 项 + 排行榜心跳 3 项）"
   exit 0
 fi
 echo "结论：FAIL —— $fail 项未过"
