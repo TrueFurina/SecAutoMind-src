@@ -62,6 +62,11 @@ jobs:
         run: python scripts/check_golden_freeze_test.py
       - name: Cross-language golden freeze check (blocks hand-edited golden)
         run: python scripts/check_golden_freeze.py
+      # 开赛分诊表（scripts/race_triage.py）：2026-10-24 羊城杯 0 分的直接补丁之一——
+      # 那场 16 题靠人工填板子，开赛后 80 分钟才第一次解题。此脚本按「已解出次数」升序
+      # 排（0 队优先），把「该先打哪题」变成机械结论。自测含变异验证（反序必须变红）。
+      - name: Race triage self-test (0-solved must rank first; reversed sort must fail)
+        run: python scripts/race_triage_test.py
       # CTF 密码攻击模板库（scripts/ctf_sage/，计划 P0-2）：每个模板用合成参数造题→解题→断言，
       # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy、
       # t1 根提取主路径 _roots_numpy 依赖 numpy（缺 numpy 时退化 _roots_float，只对
