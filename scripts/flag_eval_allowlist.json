@@ -1,0 +1,7 @@
+{
+  "_doc": "flag 评测口径门禁的存量挂账清单。**2026-10-28 已清零**：13 个脚本全部迁移到统一口径 flag_util.flag_sha256_hit，entries 为空。本文件保留作机制载体——若将来不得不再挂账，每条必须带 expires/renewals/owner，且由脚本强制：1) 过期即升为违规 BLOCK；2) renewals 上限 2 次；3) owner『待认领』超 3 天变红；4) 缺字段 fail-closed。",
+  "_default_expires": null,
+  "_renewals_max": 2,
+  "_unclaimed_grace_days": 3,
+  "entries": []
+}
