@@ -67,6 +67,12 @@ jobs:
       # 排（0 队优先），把「该先打哪题」变成机械结论。自测含变异验证（反序必须变红）。
       - name: Race triage self-test (0-solved must rank first; reversed sort must fail)
         run: python scripts/race_triage_test.py
+      # 提交通道探针（scripts/race_submit_probe.py）：2026-10-24 最致命的一条——
+      # 解出 GraphNexus 后才发现没有提交通道，分还是 0。探针体固定为 `{}`，
+      # 两个平台都不可能真的提交（CTF² 需 confirmation=true，DASCTF 需 exerciseId+flag）。
+      # 自测含：2xx 必须判「异常」而非「通道通」、401 按状态码兜住、端到端假服务器。
+      - name: Race submit-probe self-test (2xx must NOT count as channel-ok)
+        run: python scripts/race_submit_probe_test.py
       # CTF 密码攻击模板库（scripts/ctf_sage/，计划 P0-2）：每个模板用合成参数造题→解题→断言，
       # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy、
       # t1 根提取主路径 _roots_numpy 依赖 numpy（缺 numpy 时退化 _roots_float，只对
