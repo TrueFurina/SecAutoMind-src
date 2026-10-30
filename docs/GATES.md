@@ -6,11 +6,11 @@
 > 每行的"守什么"取自该 job 上方的注释首句；**没有注释的 job 会显示为待补**——
 > 那本身就是缺陷：一个说不出自己守什么的门禁，无法判断它是否失效。
 
-共 **32** 个 job（其中 **29** 个带自测/变异验证）。
+共 **34** 个 job（其中 **29** 个带自测/变异验证）。
 
 | job | 守什么 | 步骤数 | 变异/自测 |
 |---|---|---|---|
-| `test` | 主干测试门禁：go vet + `go test -race` 全量 + 构建，并前置 golden 冻结校验、 加密模板自测、HITL 边界检查 —— 它是唯一跑真实 Go 测试套件的 job， 其余 job 只跑各自… | 12 | 有 |
+| `test` | 主干测试门禁：go vet + `go test -race` 全量 + 构建，并前置 golden 冻结校验、 加密模板自测、HITL 边界检查 —— 它是唯一跑真实 Go 测试套件的 job， 其余 job 只跑各自… | 15 | 有 |
 | `staticcheck-gate` | Go 全系静态检查门禁（2026-10-21 新增，通道见 E:\Program\实验服务器与全局配置.md §九） | 7 | 有 |
 | `capability-gate` | 能力回归门禁：不依赖外部数据文件/在线靶场，纯 Go 内存级验证 | 2 | **无** |
 | `evidence-gate` | 证据 / 口径一致性门禁：双语言机验证据包 + 单一真值源健康度 | 8 | 有 |
@@ -36,12 +36,14 @@
 | `plaintext-answer-gate` | 自产基准反注水：题干里不得直接写出答案 | 2 | 有 |
 | `benchmark-validity-gate` | 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%） | 2 | 有 |
 | `flag-eval-gate` | flag 评测口径门禁（2026-10-28 建立） | 3 | 有 |
+| `flag-extract-contract-gate` | flag 提取跨语言单一真值源契约（2026-10-30 建立） | 2 | **无** |
 | `session-gate` | 并发会话登记表门禁（2026-10-28 建立） | 2 | 有 |
 | `benchmark-parity-gate` | 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」 这句**写在对外汇总里的宣称**真正接上线 | 2 | 有 |
 | `suite-parity-gate` | 跨集 parity 门禁（台账驱动）—— 把【2】～【22】的「Python == Go」宣称按台账逐集接线 | 4 | 有 |
 | `external-bench` | 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口 | 3 | 有 |
 | `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 9 | 有 |
 | `answer-leak-gate` | 题库答案泄漏门禁（2026-10-28） 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案； 门禁本体早已写好（scripts/check_ben… | 2 | 有 |
+| `artifact-inject-gate` | 附件注入守卫：工件白名单模式只放开「相对文件名的 open()」，越界读取(绝对路径/..穿越/答案路径/列目录)必须被拦 | 1 | **无** |
 
 ## 已知盲区（人工维护，不由 ci.yml 派生）
 

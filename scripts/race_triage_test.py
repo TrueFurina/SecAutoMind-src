@@ -131,6 +131,54 @@ if [c["id"] for c in mut] != ["B", "D", "C", "A"]:
 else:
     bad("T9 变异未生效", "T4 可能是恒绿的")
 
+# ── T12 靶机探活：关闭端口必须判死 ─────────────────────────────────────────
+# 2026-10-31 演练暴露：题目 JSON 里 12061 标着 status=running，实际 HTTP 000 早死。
+# 只看 JSON 会把人往死靶机上送。
+if R.probe_target("127.0.0.1:1", timeout=0.5) is False:
+    ok("T12 关闭端口探活 → False")
+else:
+    bad("T12 关闭端口被判活")
+
+# ── T13 靶机探活：活着的端口必须判活（真起一个本地监听）────────────────────
+import socket  # noqa: E402
+import threading  # noqa: E402
+
+_srv = socket.socket()
+_srv.bind(("127.0.0.1", 0))
+_srv.listen(1)
+_live_port = _srv.getsockname()[1]
+threading.Thread(target=lambda: _srv.accept(), daemon=True).start()
+try:
+    if R.probe_target("127.0.0.1:%d" % _live_port, timeout=1.0) is True:
+        ok("T13 活跃端口探活 → True")
+    else:
+        bad("T13 活跃端口被判死")
+finally:
+    _srv.close()
+
+# ── T14 死靶机在同解出数时排到活靶机之后 ───────────────────────────────────
+dead = mk("dead", 0, target=True)
+dead["target_alive"] = False
+live = mk("live", 0, target=True)
+live["target_alive"] = True
+order = [c["id"] for c in R.rank([dead, live], "unsolved")]
+if order == ["live", "dead"]:
+    ok("T14 死靶机排到活靶机之后（不把人往死靶机上送）")
+else:
+    bad("T14 死靶机未被降权", str(order))
+
+# ── T15 建议列必须明说「靶机死」 ───────────────────────────────────────────
+if "靶机死" in R.advice(dead):
+    ok("T15 建议列标明「靶机死·需重建」")
+else:
+    bad("T15 死靶机仍显示为可打", R.advice(dead))
+
+# ── T16 汇总统计死靶机数 ───────────────────────────────────────────────────
+if R.summary([dead, live, mk("static", 3)])["dead_target"] == 1:
+    ok("T16 汇总统计靶机已死数量")
+else:
+    bad("T16 汇总未统计死靶机")
+
 print("-" * 60)
 if failed == 0:
     print(f"结论：PASS —— {passed} 项全过（含 1 项变异验证）")

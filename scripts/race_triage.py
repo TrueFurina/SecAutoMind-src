@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import socket
 import sys
 from typing import Any, Iterable
 
@@ -117,6 +118,37 @@ def attachment_name(ch: dict) -> str:
     return ""
 
 
+def probe_target(addr: str, timeout: float = 1.5) -> bool:
+    """TCP 探活单个 `host:port`。返回 True=能连上。
+
+    ⚠️ **不用 HTTP 探测**：端口在监听但进程卡住时 HTTP 会超时，会被误判成"死"；
+    而"连不上"才是真的打不了。TCP connect 是最小判据。
+    """
+    if not addr or ":" not in addr:
+        return False
+    host, _, port = addr.rpartition(":")
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True
+    except (OSError, ValueError):
+        return False
+
+
+def check_targets(challenges: list[dict], timeout: float = 1.5) -> list[dict]:
+    """给每道有直连地址的题补 `target_alive`。无地址的题保持 None（不是"死"，是"没有"）。
+
+    为什么需要（2026-10-31 演练暴露）：题目 JSON 里的 `status: running` 会过期——
+    羊城杯 12061 的靶机标着 running，实际 HTTP 000 早就死了。
+    只看 JSON 会把人往死靶机上送，白烧时间。
+    """
+    for c in challenges:
+        if not c.get("addrs"):
+            c["target_alive"] = None
+            continue
+        c["target_alive"] = any(probe_target(a, timeout) for a in c["addrs"])
+    return challenges
+
+
 def _unwrap(raw: Any) -> Iterable[dict]:
     """把三种输入形态统一成「挑战字典」的可迭代序列。"""
     if isinstance(raw, list):
@@ -161,6 +193,7 @@ def normalize(raw: Any) -> list[dict]:
             "solved_count": solved,
             "has_target": has_direct_target(ch),
             "addrs": target_addrs(ch),
+            "target_alive": None,   # 未探测；--check-targets 后才填 True/False
             "attachment": attachment_name(ch),
             "solved_by_me": bool(ch.get("hasSolved") or ch.get("is_solved")),
         })
@@ -176,10 +209,12 @@ def _sort_key(mode: str):
             c["solved_count"] if c["solved_count"] is not None else 10**9,
             -(c["score"] or 0.0),
         )
-    # unsolved（默认）：已解出次数升序；同次数时有直连靶机优先、分值高的优先
+    # unsolved（默认）：已解出次数升序；同次数时活靶机优先、有直连靶机优先、分值高的优先。
+    # 「死靶机」排到后面：探测到连不上就别再把它标成优先（2026-10-31 演练暴露的缺口）。
     return lambda c: (
         c["solved_count"] is None,
         c["solved_count"] if c["solved_count"] is not None else 10**9,
+        c.get("target_alive") is False,
         not c["has_target"],
         -(c["score"] or 0.0),
     )
@@ -194,6 +229,8 @@ def advice(c: dict) -> str:
     n = c["solved_count"]
     if c["solved_by_me"]:
         return "已交"
+    if c.get("target_alive") is False:
+        return "⚠️ 靶机死·需重建"
     if n is None:
         return "解出数未知"
     if n == 0:
@@ -210,8 +247,9 @@ def summary(challenges: list[dict]) -> dict:
     zero = sum(1 for c in challenges if c["solved_count"] == 0)
     direct = sum(1 for c in challenges if c["has_target"])
     unknown = sum(1 for c in challenges if c["solved_count"] is None)
+    dead = sum(1 for c in challenges if c.get("target_alive") is False)
     return {"total": total, "zero_solved": zero, "direct_target": direct,
-            "unknown_solved": unknown}
+            "unknown_solved": unknown, "dead_target": dead}
 
 
 def render_markdown(challenges: list[dict], mode: str = "unsolved") -> str:
@@ -223,6 +261,7 @@ def render_markdown(challenges: list[dict], mode: str = "unsolved") -> str:
         + ("（已解出次数升序，0 队优先）" if mode == "unsolved" else "（静态优先，容器题排后）"),
         f"> 共 **{s['total']}** 题｜0 队解出 **{s['zero_solved']}** 题｜"
         f"有直连靶机 **{s['direct_target']}** 题"
+        + (f"｜靶机已死 **{s['dead_target']}** 题" if s.get("dead_target") else "")
         + (f"｜解出数未知 **{s['unknown_solved']}** 题" if s["unknown_solved"] else ""),
         "> 有直连靶机的题**不需要平台令牌就能打**；没地址的题必须先建环境。",
         "",
@@ -233,6 +272,10 @@ def render_markdown(challenges: list[dict], mode: str = "unsolved") -> str:
         score = f"{c['score']:.2f}" if c["score"] is not None else "—"
         solved = "?" if c["solved_count"] is None else str(c["solved_count"])
         addr = c["addrs"][0] if c["addrs"] else "—"
+        if c.get("target_alive") is True:
+            addr += " ✅"
+        elif c.get("target_alive") is False:
+            addr += " ❌死"
         att = c["attachment"] or "—"
         lines.append(
             f"| {i} | {c['id']} | {c['title'][:24]} | {c['category'] or '—'} | "
@@ -262,6 +305,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sort", choices=("unsolved", "static"), default="unsolved")
     ap.add_argument("--out", help="把 Markdown 写到该路径（不写则只打印终端版）")
     ap.add_argument("--json", action="store_true", help="输出机器可读 JSON")
+    ap.add_argument("--check-targets", action="store_true",
+                    help="TCP 探活每个直连靶机（JSON 里的 status 会过期，实测才算数）")
     args = ap.parse_args(argv)
 
     try:
@@ -270,7 +315,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[FAIL] 读取 {args.from_json} 失败：{exc}", file=sys.stderr)
         return 2
 
-    chs = rank(normalize(raw), args.sort)
+    chs = normalize(raw)
+    if args.check_targets:
+        check_targets(chs)
+    chs = rank(chs, args.sort)
     if not chs:
         print("[FAIL] 没解析出任何题目——检查输入格式（支持 YCB 字典 / CTF² items / 裸列表）",
               file=sys.stderr)
