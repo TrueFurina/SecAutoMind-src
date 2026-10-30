@@ -15,7 +15,7 @@
   6 归因分桶      最新结果记录的 solved_by 分布（presolve/python_skill/llm；
                     无记录=WARN 不 FAIL——LLM 层尚未跑批时正常）
   7 钩子激活位    .git/hooks/pre-commit 存在且含 secret_guard 调用（防被清空）
-  8 记忆完整性    MEMORY.md 行数≥200 + 锚存在 + 双路径检测（2026-10-25 删除事故防线）
+  8 记忆完整性    MEMORY.md(≤3000字符注入预算+锚) + MEMORY_DETAIL.md(≥180行深度) + 双路径检测（2026-10-31 双文件架构：summary 守预算、detail 守完整）
   9 报告位卫生    顶层 benchmark_report.json 不得被 mock 残留占据（mock 冒充战绩温床）
   10 附件答案形态 _attachments 中 WP/答案形态文件名必须登记排除（B 线找回纪律）
 
@@ -202,25 +202,42 @@ def check_hook_live():
     return "PASS", "激活位在且含门禁调用"
 
 
-# 第 8 项背景：2026-10-25 MEMORY.md（352 行）被删，靠回收站救回（破晓处置）。
-# 机检化：行数硬下限 + 标题锚存在 + 双路径并存检测（.workbuddy/ 旧版残留）。
+# 第 8 项背景：2026-10-25 MEMORY.md（352 行）被删，靠回收站救回（破晓处置）；
+# 2026-10-31 又发现硬撑 200 行→3万字符，每次注入都在中段被截断丢后半段（反效果）。
+# 双文件架构：MEMORY.md=注入用精简摘要（守 3000 字符预算，防截断）；MEMORY_DETAIL.md
+# =完整承重细节（守行数下限，防 10-25 式误删）。机检：预算上限+深度下限+双锚+双路径。
 MEMORY_FILE = os.path.join(".workbuddy-ai", "memory", "MEMORY.md")
-MEMORY_MIN_LINES = 200  # 现值 352；跌破即疑遭删/截断（回收站先查，禁急重构）
+MEMORY_DETAIL_FILE = os.path.join(".workbuddy-ai", "memory", "MEMORY_DETAIL.md")
+MEMORY_INJECTION_BUDGET = 3000   # 注入硬上限；超则被截断，agent 只见前半段
+MEMORY_DETAIL_MIN_LINES = 180    # 完整细节应≥此；当前 DETAIL=194，跌破疑遭删/截断
 
 
 def check_memory_integrity():
     p = os.path.join(ROOT, MEMORY_FILE)
     if not os.path.isfile(p):
         return "FAIL", "MEMORY.md 缺失——先查回收站恢复（2026-10-25 事故先例），禁急重构"
-    n = sum(1 for _ in open(p, encoding="utf-8", errors="ignore"))
-    if n < MEMORY_MIN_LINES:
-        return "FAIL", "MEMORY.md 仅 %d 行（<%d）——疑删/截断，查回收站" % (n, MEMORY_MIN_LINES)
-    head = open(p, encoding="utf-8", errors="ignore").read(400)
-    if "KPI" not in head and "真值" not in head:
+    text = open(p, encoding="utf-8", errors="ignore").read()
+    # 注入预算：超 3000 字符会在注入时被截断，下一个 agent 只见前半段（2026-10-31 发现）
+    if len(text) > MEMORY_INJECTION_BUDGET:
+        return "FAIL", "MEMORY.md %d 字符（>%d 注入上限）——会被截断丢后半段，请精简或移入 DETAIL" % (len(text), MEMORY_INJECTION_BUDGET)
+    if "KPI" not in text[:400] and "真值" not in text[:400]:
         return "WARN", "MEMORY.md 头部缺 KPI/真值锚——内容疑被替换（人工复核）"
+
+    # 完整承重细节在 DETAIL：检查存在性与深度（防 2026-10-25 式误删）
+    dp = os.path.join(ROOT, MEMORY_DETAIL_FILE)
+    if not os.path.isfile(dp):
+        return "WARN", "MEMORY.md %d 字符在位；但 MEMORY_DETAIL.md 缺失——完整承重细节应存于此" % len(text)
+    dn = sum(1 for _ in open(dp, encoding="utf-8", errors="ignore"))
+    if dn < MEMORY_DETAIL_MIN_LINES:
+        return "WARN", "MEMORY_DETAIL.md 仅 %d 行（<%d）——疑删/截断，查回收站" % (dn, MEMORY_DETAIL_MIN_LINES)
+    dhead = open(dp, encoding="utf-8", errors="ignore").read(400)
+    if "KPI" not in dhead and "真值" not in dhead:
+        return "WARN", "MEMORY_DETAIL.md 头部缺 KPI/真值锚——内容疑被替换（人工复核）"
+
+    # 双路径并存检测（旧 .workbuddy/memory 残留）
     if os.path.isdir(os.path.join(ROOT, ".workbuddy", "memory")):
-        return "WARN", "%d 行在位；但 .workbuddy/memory/ 旧路径并存（配置漂移，建议合并清理）" % n
-    return "PASS", "%d 行在位" % n
+        return "WARN", "双文件在位（MEMORY %d 字符 / DETAIL %d 行）；但 .workbuddy/memory/ 旧路径并存（配置漂移，建议合并清理）" % (len(text), dn)
+    return "PASS", "MEMORY.md %d 字符（≤%d）+ DETAIL %d 行双文件在位" % (len(text), MEMORY_INJECTION_BUDGET, dn)
 
 
 # 第 9 项背景：2026-10-25 顶层 benchmark_report.json 被 mock 残留占据，真实报告在
