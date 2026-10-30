@@ -73,6 +73,11 @@ jobs:
       # 自测含：2xx 必须判「异常」而非「通道通」、401 按状态码兜住、端到端假服务器。
       - name: Race submit-probe self-test (2xx must NOT count as channel-ok)
         run: python scripts/race_submit_probe_test.py
+      # 止损线（scripts/race_stoploss.py）：2026-10-24 那场我在一道题上做了 863 次
+      # 无法验证的比对，没人拦。规则：同题同类失败 2 次 → 换题；单题累计 5 次 → 换题。
+      # 关键是它**返回非 0 阻断**，不是只打印警告（本项目纪律：警告≠门禁）。
+      - name: Race stop-loss self-test (2nd same-class failure must block)
+        run: python scripts/race_stoploss_test.py
       # CTF 密码攻击模板库（scripts/ctf_sage/，计划 P0-2）：每个模板用合成参数造题→解题→断言，
       # 参数不满足前提时必须报 not_applicable 而非瞎跑。t4 Boneh-Durfee 依赖 sympy、
       # t1 根提取主路径 _roots_numpy 依赖 numpy（缺 numpy 时退化 _roots_float，只对
@@ -1054,3 +1059,16 @@ jobs:
         run: python scripts/check_benchmark_plaintext_answer_test.py
       - name: Benchmark statements must not embed answers
         run: python scripts/check_benchmark_plaintext_answer.py --check
+
+  # 附件注入守卫：工件白名单模式只放开「相对文件名的 open()」，越界读取(绝对路径/..穿越/答案路径/列目录)必须被拦。
+  # 变异验证锁住该边界 —— 若守卫被放宽到能读答案文件，此 gate 必红。
+  artifact-inject-gate:
+    name: Artifact inject guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Artifact injection guard (incl. mutation checks)
+        run: python scripts/test_artifact_inject.py
