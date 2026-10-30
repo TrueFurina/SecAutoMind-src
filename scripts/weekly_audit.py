@@ -15,7 +15,7 @@
   6 归因分桶      最新结果记录的 solved_by 分布（presolve/python_skill/llm；
                     无记录=WARN 不 FAIL——LLM 层尚未跑批时正常）
   7 钩子激活位    .git/hooks/pre-commit 存在且含 secret_guard 调用（防被清空）
-  8 记忆完整性    MEMORY.md(≤3000字符注入预算+锚) + MEMORY_DETAIL.md(≥180行深度) + 双路径检测（2026-10-31 双文件架构：summary 守预算、detail 守完整）
+  8 记忆完整性    MEMORY.md(≤3000字符注入预算+锚) + MEMORY_DETAIL.md(≥180行深度) + 双路径检测（junction 指向 canonical 视为已统一、真实目录才算漂移）
   9 报告位卫生    顶层 benchmark_report.json 不得被 mock 残留占据（mock 冒充战绩温床）
   10 附件答案形态 _attachments 中 WP/答案形态文件名必须登记排除（B 线找回纪律）
 
@@ -234,9 +234,20 @@ def check_memory_integrity():
     if "KPI" not in dhead and "真值" not in dhead:
         return "WARN", "MEMORY_DETAIL.md 头部缺 KPI/真值锚——内容疑被替换（人工复核）"
 
-    # 双路径并存检测（旧 .workbuddy/memory 残留）
-    if os.path.isdir(os.path.join(ROOT, ".workbuddy", "memory")):
-        return "WARN", "双文件在位（MEMORY %d 字符 / DETAIL %d 行）；但 .workbuddy/memory/ 旧路径并存（配置漂移，建议合并清理）" % (len(text), dn)
+    # 双路径检测：旧 .workbuddy/memory 若为 junction/symlink 指向 canonical 视为已统一(PASS)，
+    # 仍是真实目录、或指向非 canonical 才算配置漂移(WARN)。用 realpath 比较做跨版本可靠的链接判定
+    # （Windows 下 os.path.islink 对 junction 不一定返回 True）。
+    legacy = os.path.join(ROOT, ".workbuddy", "memory")
+    if os.path.isdir(legacy):
+        is_link = os.path.islink(legacy) or os.path.realpath(legacy) != os.path.normpath(legacy)
+        if is_link:
+            target = os.path.realpath(legacy)
+            canon = os.path.realpath(os.path.join(ROOT, ".workbuddy-ai", "memory"))
+            if os.path.normcase(target) == os.path.normcase(canon):
+                return "PASS", "MEMORY.md %d 字符（≤%d）+ DETAIL %d 行；旧路径 .workbuddy/memory 已 junction 到 canonical（已统一）" % (
+                    len(text), MEMORY_INJECTION_BUDGET, dn)
+            return "WARN", "双文件在位（MEMORY %d / DETAIL %d 行）；.workbuddy/memory 指向非 canonical（%s），配置漂移" % (len(text), dn, target)
+        return "WARN", "双文件在位（MEMORY %d 字符 / DETAIL %d 行）；.workbuddy/memory/ 旧路径仍是真实目录（配置漂移，建议合并清理）" % (len(text), dn)
     return "PASS", "MEMORY.md %d 字符（≤%d）+ DETAIL %d 行双文件在位" % (len(text), MEMORY_INJECTION_BUDGET, dn)
 
 
