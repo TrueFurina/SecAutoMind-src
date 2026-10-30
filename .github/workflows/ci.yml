@@ -50,6 +50,15 @@ jobs:
           else
             sudo apt-get update && sudo apt-get install -y gcc
           fi
+      # 🔴 必须放在最前面：CI 引用的文件若不在库里，后面每个 `run:` 都会以
+      # "can't open file" 失败，报错看起来像环境问题，极易被忽略。
+      # 2026-10-31 实锤：本工作流曾有 9 个 `run:` 指向未入库的脚本，且
+      # `internal/ctfplatform/live_targets.go` 未入库导致 `go vet` 报 undefined。
+      # 本地永远绿（文件就在磁盘上），只有干净检出会红 —— 所以必须有这道门。
+      - name: CI-referenced files must be tracked (clean checkout has only tracked files)
+        run: |
+          python scripts/check_ci_files_tracked_test.py
+          python scripts/check_ci_files_tracked.py
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
       # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
       # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。
