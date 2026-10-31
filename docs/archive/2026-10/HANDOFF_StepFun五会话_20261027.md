@@ -262,7 +262,7 @@ python scripts/stepfun_batch_server.py --category web --slice 1-10     # 自定�
 | 五会话协调台账 | `data/ctf_benchmark/stepfun_sessions/SESSIONS.md` |
 | 闸门实现 | `internal/agentfinalizer/decision.go:140`、`:237-260` |
 | 建队契约 | `internal/handler/agent.go:1909-1919` |
-| 作战手册（含多处已校正口径） | `STEPFUN_CONCURRENT_PLAYBOOK.md` |
+| 作战手册（含多处已校正口径） | `docs/archive/2026-10/STEPFUN_CONCURRENT_PLAYBOOK.md` |
 | 今日项目记忆 | `.workbuddy/memory/2026-10-27.md` |
 
 ---

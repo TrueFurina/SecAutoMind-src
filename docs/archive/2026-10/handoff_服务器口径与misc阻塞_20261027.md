@@ -33,7 +33,7 @@
 | `AGENTS.md` | **第零条 · 服务器口径**（自动注入新会话，违反即作废效力） | ✅ 已升格为编号条款（259 行） |
 | `docs/QUICKSTART_NEXT_AGENT.md` | 新 agent 接手先看什么；已加 §0 服务器口径 + 修正记忆路径 | ✅ 已改 |
 | `.workbuddy/memory/MEMORY.md` | 现行长期记忆：服务器规格/前置/坑/评测纪律 | ✅ 已建（31 行） |
-| `STEPFUN_CONCURRENT_PLAYBOOK.md` | S1–S5 作战手册；红线 7/8/9 含服务器口径 | ✅ 已改（205 行） |
+| `docs/archive/2026-10/STEPFUN_CONCURRENT_PLAYBOOK.md` | S1–S5 作战手册；红线 7/8/9 含服务器口径 | ✅ 已改（205 行） |
 | `docs/templates/交接卡模板.md` | §6 已内置服务器口径固定字段（本卡据此填） | ✅ 已改 |
 | `docs/服务器实机验证_Runbook_20261020.md` | 服务器部署流程 | 未改（引用） |
 | `scripts/experiments/sam_client.py` | 共用解题客户端 | 未改（引用） |
@@ -62,7 +62,7 @@
 ## 7. 验收标准（可测）
 
 - [x] `AGENTS.md` 第零条含 `172.16.222.99` 且带「违反即作废」效力（已实测：259 行，关键词命中）
-- [x] `docs/QUICKSTART_NEXT_AGENT.md` / `.workbuddy/memory/MEMORY.md` / `STEPFUN_CONCURRENT_PLAYBOOK.md` / 交接卡模板 §6 均含服务器口径
+- [x] `docs/QUICKSTART_NEXT_AGENT.md` / `.workbuddy/memory/MEMORY.md` / `docs/archive/2026-10/STEPFUN_CONCURRENT_PLAYBOOK.md` / 交接卡模板 §6 均含服务器口径
 - [ ] 服务器上 misc 6 题按 `flag_sha256` 校验跑通（依赖服务器前置就绪，待用户授权搬运 key）
 - [ ] 反向验证：新开 agent 会话，不口头提示即能说出「解题在 172.16.222.99」
 
@@ -78,5 +78,5 @@
 
 - **生成者 / 时间**：S5（misc 1–6 会话） / 2026-10-27 07:38
 - **上一份交接**：`docs/evidence/2026-10-26_交接卡_本会话成果与阻塞.md`
-- **相关文档**：`docs/服务器实机验证_Runbook_20261020.md`、`STEPFUN_CONCURRENT_PLAYBOOK.md`、`.workbuddy/memory/MEMORY.md`
+- **相关文档**：`docs/服务器实机验证_Runbook_20261020.md`、`docs/archive/2026-10/STEPFUN_CONCURRENT_PLAYBOOK.md`、`.workbuddy/memory/MEMORY.md`
 - **未验证 / 仍未知**：服务器当前是否有 SecAutoMind 残留实例、key 搬运后 StepFun 在服务器网络是否可达（本机实测 `api.stepfun.com` 可达但 401 无凭证）
