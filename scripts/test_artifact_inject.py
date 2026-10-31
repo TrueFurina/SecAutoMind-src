@@ -58,7 +58,6 @@ def main() -> int:
     bad_cases = [
         ('print(open("/home/user/SecAutoMind/data/answers/ycb2026_truth.json").read())', "读答案文件"),
         ('print(open("/etc/passwd").read())', "绝对路径 /etc"),
-        ('print(open("../../artifacts/x.bin","rb").read())', ".. 路径穿越"),
         ('print(os.listdir("."))', "列目录"),
         ('print(os.walk(".").__next__())', "遍历目录"),
         ('import urllib.request; urllib.request.urlopen("http://x")', "出网"),
@@ -69,6 +68,14 @@ def main() -> int:
     for code, label in bad_cases:
         allowed, reasons = orch._audit_code(code, artifact_mode=True)
         check("拦截-" + label, not allowed, "竟被放行！reasons=%s" % reasons)
+
+    print("=== [2b] \"..\" 穿越改为运行时拦截（正则层放行以不误伤字节串/注释，hook 精确拒）===")
+    trav = 'print(open("../../artifacts/x.bin","rb").read())'
+    allowed, reasons = orch._audit_code(trav, artifact_mode=True)
+    check("正则层放行 .. (避免误伤)", allowed, "正则层竟拦: %s" % reasons)
+    ok_with_dots = ('d=b"a..b"\nprint(open("README.md", encoding="utf-8").read() if d else "")')
+    a2, _ = orch._audit_code(ok_with_dots, artifact_mode=True)
+    check("字节串含 .. 不误伤", a2, "含 .. 字面量的代码被正则误拦")
 
     print("=== [3] 向后兼容：不传 --artifact-dir 时行为完全不变（仍禁一切文件读取）===")
     for code, label in [('print(open("VVMM.exe","rb").read())', "默认模式仍禁 open"),
@@ -99,6 +106,12 @@ def main() -> int:
             out2 = orch.run_python_tool('print(open("/etc/passwd").read())',
                                         timeout=30, cwd=cwd, artifact_mode=True)
             check("绝对路径仍被拦(BLOCKED)", "BLOCKED" in out2, "out=%r" % out2[:120])
+            out3 = orch.run_python_tool('print(open("../../x.bin","rb").read())',
+                                        timeout=30, cwd=cwd, artifact_mode=True)
+            check(".. 穿越被运行时 hook 拦(BLOCKED)", "BLOCKED" in out3, "out=%r" % out3[:120])
+            out4 = orch.run_python_tool('x=b"a..b"\nprint(open("README.md", encoding="utf-8").read())',
+                                        timeout=30, cwd=cwd, artifact_mode=True)
+            check("字节串含 .. 不影响正常读取", "MARKER_INLINE_OK" in out4, "out=%r" % out4[:120])
 
         print("=== [6] build_prompt：注入清单与限制说明 ===")
         p = orch.build_prompt({"id": "t", "description": "dd"}, info)
@@ -107,6 +120,31 @@ def main() -> int:
         check("prompt 含内联全文", "MARKER_INLINE_OK" in p, "缺内联")
         p0 = orch.build_prompt({"id": "t", "description": "dd"}, None)
         check("不传 info 时 prompt 无附件段", "本题附件" not in p0, "不该出现附件段")
+
+        print("=== [7] 工具输出截断：头尾保留 + 中间省略 ===")
+        big = orch.run_python_tool(
+            'print("HEAD_MARK" + "x"*5000 + "TAIL_MARK")', timeout=30)
+        check("头部保留", "HEAD_MARK" in big, "头被截掉")
+        check("尾部保留(报错/结论在此)", "TAIL_MARK" in big, "尾被截掉")
+        check("含省略标记", "中间省略" in big, "无省略标记")
+        check("总长受控", len(big) < 2100, "len=%d" % len(big))
+
+        print("=== [8] LLM 硬截止：降级不抛弃已积累推理（run4 事故）===")
+        _orig = orch._post_json
+
+        def _boom(*a, **kw):
+            raise orch._HardDeadline("simulated slow-drip 180s")
+
+        orch._post_json = _boom
+        try:
+            txt, used = orch.call_llm_agentic(
+                {"api_base": "http://stub"}, "k", "m", "p", 180,
+                max_iter=5, wall_budget=60)
+            check("不抛异常(整题不崩)", True)
+            check("降级文本留痕", "llm_hard_deadline" in txt, "txt=%r" % txt[:200])
+            check("连续超时收口", "连续超时" in txt, "txt=%r" % txt[:200])
+        finally:
+            orch._post_json = _orig
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         if 'cwd' in dir() and cwd and os.path.isdir(cwd):

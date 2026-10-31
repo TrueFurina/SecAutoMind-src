@@ -74,7 +74,8 @@ def verify_flag(search_text, expected_sha):
             for v in candidate_variants(c, allow_prefix_rewrite=True):
                 if hashlib.sha256(v.encode("utf-8")).hexdigest().lower() == norm:
                     return v, True, "prefix"
-    return (cands[0] if cands else ""), False, ""
+    # 未命中时回落到「模型最终答案」(cands[-1]) 而非首个正则命中(可能是工具 stdout 的二进制垃圾)
+    return (cands[-1] if cands else ""), False, ""
 
 # provider 配置：key 一律从环境变量 / HKCU\Environment 读取，绝不硬编码。
 PROVIDERS = {
@@ -269,6 +270,35 @@ def _backoff(http_err, attempt):
     return random.uniform(0, cap)
 
 
+class _HardDeadline(TimeoutError):
+    """单次 HTTP 请求超出总时长硬上限（慢速滴流守卫）。不可重试。"""
+
+
+def _urlopen_deadline(req, timeout):
+    """urlopen 的 timeout 是 per-socket-op 级：服务端慢速滴流字节时永不触发
+    （实测单请求挂死 23 分钟、0 CPU、ESTAB 连接不释放）。用一次性线程执行
+    请求，主线程 join(timeout) 到点即弃，保证每次尝试有总时长硬上限。
+    残余线程为 daemon，不阻塞进程退出。"""
+    result = {}
+
+    def _run():
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                result["resp"] = json.loads(resp.read().decode("utf-8"))
+        except BaseException as e:  # noqa: BLE001 - 原样透传给主线程
+            result["err"] = e
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise _HardDeadline(
+            "http request exceeded hard deadline %.0fs (slow-drip guard)" % timeout)
+    if "err" in result:
+        raise result["err"]
+    return result["resp"]
+
+
 def call_llm(cfg, api_key, model, prompt, timeout):
     base = resolve_base_url(cfg)
     url = base.rstrip("/") + "/chat/completions"
@@ -285,8 +315,9 @@ def call_llm(cfg, api_key, model, prompt, timeout):
     max_attempt = 5
     while True:
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+            return _urlopen_deadline(req, timeout)
+        except _HardDeadline:
+            raise  # 连接挂死非瞬态故障，重试只会再挂满一个 timeout
         except urllib.error.HTTPError as e:
             if attempt >= max_attempt:
                 raise
@@ -307,8 +338,9 @@ def _post_json(url, payload, api_key, timeout):
     max_attempt = 5
     while True:
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+            return _urlopen_deadline(req, timeout)
+        except _HardDeadline:
+            raise  # 连接挂死非瞬态故障，重试只会再挂满一个 timeout
         except urllib.error.HTTPError as e:
             if attempt >= max_attempt:
                 raise
@@ -370,11 +402,27 @@ _ARTIFACT_MODE_PATTERNS = [
     (re.compile(r"""['"]/[\w.\-]+/"""), "abs-path"),
     (re.compile(r"""['"]/(?:home|etc|root|usr|var|tmp|proc|opt|mnt|Users|Windows)"""), "abs-path"),
     (re.compile(r"""['"]\w:[/\\]"""), "abs-path"),
-    # ".." 穿越：必须同时覆盖 "../x"（后面还有路径）与 ".." 结尾两种形态
-    # （只写后者会漏掉 open("../../artifacts/x.bin") —— 实测被变异测试抓到）
-    (re.compile(r"\.\.[/\\]"), "path-traversal"),
-    (re.compile(r"""['"][^'"\n]*\.\.['"]"""), "path-traversal"),
+    # ".." 穿越不在工件模式用正则拦 —— 全文正则分不清「真实路径」与「字节串/注释里的 ..」，
+    # 实测把 agent 正确的 PNG 解析代码（内含 '..' 字节模式）也拦了，直接导致解题失败
+    # （morse_wired_run 2 次 path-traversal 误拦）。改由 _ARTIFACT_RUNTIME_GUARD 运行时精确拦截。
 ]
+
+# 运行时守卫（工件模式）：sys.addaudithook 拦 open 事件 —— 绝对路径或含 ".." 路径组件一律
+# exit(42)，相对文件名放行。比正则精确：字节串/注释/切片里的 ".." 不会误伤。
+_ARTIFACT_RUNTIME_GUARD = (
+    "import sys as _s, os as _o\n"
+    "def _wb_guard(ev, ar):\n"
+    "    if ev == 'open':\n"
+    "        p = ar[0]\n"
+    "        if isinstance(p, bytes):\n"
+    "            p = p.decode('utf-8', 'replace')\n"
+    "        p = str(p)\n"
+    "        if _o.path.isabs(p) or '..' in p.replace('\\\\', '/').split('/'):\n"
+    "            print('(SANDBOX-BLOCKED: open path escapes workdir; use relative filename only)', "
+    "file=_s.stderr)\n"
+    "            _s.exit(42)\n"
+    "_s.addaudithook(_wb_guard)\n"
+)
 
 # 工件注入：哪些后缀算「小文本文件」可全文内联；单文件与总量上限（防 prompt 爆炸）
 _ARTIFACT_TEXT_EXT = {".md", ".txt", ".json", ".csv", ".log", ".yaml", ".yml", ".xml",
@@ -417,16 +465,26 @@ def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False)
     # 强制子进程以 UTF-8 输出：否则 Windows 控制台下中文会被 cp936 编码，父进程按 utf-8 解码直接崩
     # （实测 UnicodeDecodeError -> 工具输出变 "(no output)"，模型拿到空结果）。errors=replace 再兜一层。
     env["PYTHONIOENCODING"] = "utf-8"
+    # 工件模式：注入运行时 audit hook（精确拦 open 越界；正则层已不再拦 ".."）
+    exec_code = (_ARTIFACT_RUNTIME_GUARD + code) if artifact_mode else code
     try:
         proc = subprocess.run(
-            [exe, "-I", "-c", code],
+            [exe, "-I", "-c", exec_code],
             capture_output=True, text=True, timeout=timeout, cwd=cwd,
             encoding="utf-8", errors="replace", env=env,
         )
+        if proc.returncode == 42:
+            return ("(SANDBOX-BLOCKED: 代码试图用绝对路径或 '..' 打开工作目录外的文件；"
+                    "只允许用相对文件名打开本题附件。)")
         out = (proc.stdout or "") + (proc.stderr or "")
         if not out.strip():
             out = "(no output)"
-        return out[:4000]
+        # 头尾保留 + 中间省略：长 hex dump 会撑大上下文拖慢下一轮 LLM，
+        # 但报错/traceback 在尾部，答案常在头部，故不能简单截前 N 字符。
+        if len(out) > 1900:
+            out = (out[:1200] + "\n...[中间省略 %d 字符]...\n" % (len(out) - 1800)
+                   + out[-600:])
+        return out
     except subprocess.TimeoutExpired:
         return "(timeout: 代码执行超过 %ds)" % timeout
     except Exception as e:
@@ -461,6 +519,7 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
     all_text = []
     attempt = 0
     tool_used = False
+    hard_streak = 0
     while attempt < max_iter:
         if time.time() - _t_start > wall_budget:
             all_text.append("(wall_budget exceeded: 单题超过 %ds，提前收口)" % wall_budget)
@@ -471,7 +530,23 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
         payload = {"model": model, "messages": messages, "temperature": 0.2,
                    "tools": [PYTHON_TOOL], "tool_choice": "auto", "stream": False}
         payload.update(_token_kwarg(cfg))
-        body = _post_json(url, payload, api_key, per_timeout)
+        try:
+            body = _post_json(url, payload, api_key, per_timeout)
+        except _HardDeadline as e:
+            # 服务端长尾（推理模型偶发 >timeout 才回）：降级为文本继续，
+            # 不抛弃前面已积累的工具输出/推理（run4 实锤：整题 error 导致 raw 全丢）。
+            # 连续 2 次才收口——单次长尾可能只是抖动。
+            all_text.append("(llm_hard_deadline: %s)" % e)
+            attempt += 1
+            hard_streak += 1
+            if hard_streak >= 2:
+                all_text.append("(服务端连续超时，提前收口)")
+                break
+            continue
+        except Exception as e:
+            all_text.append("(llm_error: %s)" % str(e)[:200])
+            break
+        hard_streak = 0
         try:
             msg = body["choices"][0]["message"]
         except Exception:
@@ -508,7 +583,7 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
 
 
 def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, artifact_dir=None,
-              max_iter=6):
+              max_iter=6, wall_budget=420):
     pid, problem = item
     category = (problem.get("category") or "").lower()
     mbc = cfg.get("models_by_category") or {}
@@ -524,7 +599,8 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
         try:
             search_text, tool_used = call_llm_agentic(
                 cfg, api_key, model, prompt, timeout, audit=audit,
-                artifact_cwd=artifact_cwd, artifact_mode=bool(artifact_cwd), max_iter=max_iter)
+                artifact_cwd=artifact_cwd, artifact_mode=bool(artifact_cwd), max_iter=max_iter,
+                wall_budget=wall_budget)
             got, solved, mode = verify_flag(search_text, expected_sha)
             blocked = sum(1 for a in audit if not a["allowed"])
             return {
@@ -593,6 +669,9 @@ def main():
                     help="单题工具调用轮数上限(默认 6)。对应 Go llmbench 的 MAX_ROUNDS 概念，"
                          "用于测「抬高轮数的边际收益」(如 --max-iter 24)。"
                          "受 wall_budget 单题墙钟预算双重约束")
+    ap.add_argument("--wall-budget", type=int, default=420,
+                    help="单题墙钟预算秒(默认 420)。推理模型每轮可达 25s+，高轮数工件题需相应调大"
+                         "(如 --wall-budget 900)，否则 budget 先于轮数耗尽、被提前收口")
     ap.add_argument("--slice", default="xfyun-55", help="占位切片名（写入结果元数据）")
     args = ap.parse_args()
 
@@ -613,7 +692,7 @@ def main():
     results = []
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         futs = {ex.submit(solve_one, cfg, api_key, it, args.timeout, args.model, agentic,
-                          args.artifact_dir, args.max_iter): it for it in items}
+                          args.artifact_dir, args.max_iter, args.wall_budget): it for it in items}
         done = 0
         for fut in as_completed(futs):
             r = fut.result(); results.append(r); done += 1
@@ -644,6 +723,7 @@ def main():
         "artifact_dir": args.artifact_dir,
         "artifact_mode": bool(args.artifact_dir),
         "max_iter": args.max_iter,
+        "wall_budget": args.wall_budget,
         "total": len(results),
         "solved": solved,
         "coverage": round(solved / len(results), 4) if results else 0,
