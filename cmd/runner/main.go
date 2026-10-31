@@ -111,6 +111,18 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
+	// ── 0. 终审网关合规 fail-closed 校验（2026-10-28 接线）──────────
+	// XH-202609 第一环节硬约束：终审模型调用必须经主办方 AI 安全网关。
+	// 此前该约束只有文档宣称 + 人工自检脚本，运行时零强制（failover 默认开且
+	// 免费通道为公网直连，主通道抖动即自动违规——评估见
+	// docs/evidence/网关合规接线缺口_LLM链_20261028.md）。
+	// CTF_GATEWAY_REQUIRED 未设/非 true 时零行为变化（日常直连不受影响）。
+	if err := runnerl3.CheckGatewayCompliance(); err != nil {
+		logger.Error("网关合规校验失败，拒绝启动（终审硬约束，宁可不跑不可违规）",
+			zap.Error(err))
+		os.Exit(1)
+	}
+
 	logger.Info("SecAutoMind Runner 启动",
 		zap.String("ctf2_token", mask(os.Getenv("CTF2_AGENT_TOKEN"))),
 		zap.String("competition_id", os.Getenv("CTF2_COMPETITION_ID")),
@@ -234,6 +246,9 @@ func main() {
 	// 首血扫描（2026-10-24 吞并 P0-3 接线）：窗口内短间隔抢新题，默认 0=关闭（秒，同族 env 惯例）
 	pc.FirstBloodWindow = envDurationMs("CTF_FIRST_BLOOD_WINDOW", pc.FirstBloodWindow)
 	pc.FirstBloodInterval = envDurationMs("CTF_FIRST_BLOOD_INTERVAL", pc.FirstBloodInterval)
+	// 排行榜快照（2026-10-28 接线，P0-3 终报一环）：停轮打终报快照，默认关
+	pc.ScoreboardSnapshot = envBool("CTF_SCOREBOARD_SNAPSHOT", false)
+	pc.ScoreboardInterval = envDurationMs("CTF_SCOREBOARD_INTERVAL", 0)
 	pc.SubmitAfterSolve = envBool("CTF_AUTOSOLVE_SUBMIT", true) // 赛时默认自动提交
 	pc.AutoBuildEnv = envBool("CTF_AUTO_BUILD_ENV", true)
 	pc.AutoFetchAttachment = envBool("CTF_AUTO_FETCH_ATTACHMENT", false)
@@ -255,7 +270,8 @@ func main() {
 		zap.Bool("submit_after_solve", pc.SubmitAfterSolve),
 		zap.Bool("auto_build_env", pc.AutoBuildEnv),
 		zap.Bool("auto_fetch_detail", pc.AutoFetchDetail),
-		zap.Bool("auto_release_env", pc.AutoReleaseEnv))
+		zap.Bool("auto_release_env", pc.AutoReleaseEnv),
+		zap.Bool("scoreboard_snapshot", pc.ScoreboardSnapshot))
 
 	// ── 4.5 监督消费率账本（听风 2026-10-25）──────────────
 	// 验收口径：agent_roles #3「监督机制消费率有统计落盘」。

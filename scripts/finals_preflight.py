@@ -25,6 +25,12 @@ import sys
 import json
 import subprocess
 
+# Windows GBK 控制台会把 "CTF²" 等字符打成 UnicodeEncodeError → 假红（2026-10-28 实锤）
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PY = sys.executable
 
@@ -370,6 +376,16 @@ def main():
         else:
             blocking_fail.append("冠军证据包过期（CI evidence-package-gate 会 BLOCK）—— "
                                  "跑 `python scripts/build_championship_evidence.py` 重生成")
+
+    # ⑧ 终审网关合规（2026-10-28 接线）：XH-202609 第一环节硬约束。
+    #    走 Go 侧单一真值源（runnerl3.CheckGatewayCompliance，经专用测试入口按**当前
+    #    环境**实校验，本脚本不复刻第二份口径）。CTF_GATEWAY_REQUIRED 未开 → SKIP=绿
+    #    （日常/预审不受影响）；开了且违规 → 阻塞（一旦声明终审形态，配置错误不分阶段）。
+    rc, out = run("%s test -count=1 -run TestGatewayComplianceCurrentEnv ./internal/runnerl3/" % GO, timeout=300)
+    ok = add("gateway_compliance", rc, out)
+    if not ok:
+        blocking_fail.append("终审网关合规校验未过（模型调用链存在直连旁路——"
+                             "见 docs/evidence/网关合规接线缺口_LLM链_20261028.md）")
 
     # ⑤ 可选：整包 go test
     if full:

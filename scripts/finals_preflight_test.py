@@ -19,6 +19,11 @@ import os
 import sys
 import importlib.util
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGET = os.path.join(ROOT, "scripts", "finals_preflight.py")
 
@@ -192,6 +197,19 @@ def main():
     check("差异性：40403 与 40001 的判定必须不同",
           pf.classify_auth_response(200, '{"code":"40403"}')[0]
           != pf.classify_auth_response(200, '{"code":"40001"}')[0], True)
+
+    # ── ⑧ 网关合规接线存在性（2026-10-28）─────────────────────────────
+    # 检查逻辑的因果验证在 Go 侧（internal/runnerl3/gateway_guard_test.go，7 用例），
+    # 这里只锁「预检真的接了这条检查且失败会阻塞」—— 防"写了校验没接进预检"
+    # 的哑门禁形态（AGENTS.md 第四条：失效的门禁比没有门禁更危险）。
+    with open(TARGET, encoding="utf-8") as fh:
+        pf_src = fh.read()
+    check("网关合规检查项已接入预检",
+          "TestGatewayComplianceCurrentEnv" in pf_src, True)
+    check("网关合规检查项已登记名册",
+          '"gateway_compliance"' in pf_src, True)
+    check("网关合规失败定级为阻塞（非警告）",
+          "终审网关合规校验未过" in pf_src, True)
 
     # ── 打印 ────────────────────────────────────────────────────────────
     for name, ok, got, want in CASES:
