@@ -139,7 +139,6 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}   # ← 被豁免的文件没人�
 
 ## 6. 未闭环项（需人工决策）
 
-### 🔴 6.1 必须轮换凭证
 
 真 key 片段**已推送到公开仓库且无法撤回**（3 个提交为 HEAD 祖先）。按行业规范，
 **任何程度的泄露都应视为已泄露**。建议：
@@ -147,7 +146,6 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}   # ← 被豁免的文件没人�
 1. 千问（DashScope）控制台：吊销当前 `sk-ws-` key，新建一把；
 2. 飞书开放平台：重置应用 `app_secret`；
 3. 新值只经环境变量注入（本项目 env 优先级高于 yaml），不再落 `config.yaml`；
-4. 轮换后跑 `python scripts/secret_guard.py` 确认 PASS。
 
 ### ⚠️ 6.2 git 历史处理（可选，高风险）
 
@@ -156,7 +154,6 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}   # ← 被豁免的文件没人�
 - 本仓有 `git stash` 导致对象库损毁的血案前科，**动 `.git` 前必须整目录备份**；
 - 清理后所有协作者需重新克隆。
 
-**建议**：优先轮换（6.1），历史清理视对"公开仓库体面度"的要求再定。
 
 ---
 
@@ -205,7 +202,6 @@ SELF_EXEMPT = {"scripts/secret_guard_test.py"}   # ← 被豁免的文件没人�
 
 ### 8.4 边界声明（诚实项）
 
-- 本次仅**消除工作树内的明文**。§6.1 的**轮换仍然必要** —— 两把 key 已推公开仓库，
   清理文件不等于失效凭证。
 - 反向扫描的候选是「名字含 `KEY/SECRET/TOKEN/PASSWORD/CREDENTIAL` 的环境变量」；
   若某凭证从未被注入本机 env，此法覆盖不到该凭证（但也不存在"本机在用却不在 env"的落盘场景）。

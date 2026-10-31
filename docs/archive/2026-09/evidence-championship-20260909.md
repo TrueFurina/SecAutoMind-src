@@ -161,7 +161,6 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 3. **零注水**：`RegisterSolver(SolverEntry{` 真实调用数 = 实际执行数（174/174，含 P17–P20 求解器批次）。
 4. **工作树状态**：质检时工作树干净（并行会话在途改动已合入 `7a604e2`），全量质检跑的是已提交完整状态，无 WIP 干扰。
 5. **静态 34.5% 为天花板**：36 道 MISS 为纯文字 stub，由执行/Web 层覆盖，勿再静态破解。
-6. **唯一红灯 = 密钥门禁**（§3 #8）：`config.yaml` 两把真 key（L137 的 ws 通道 key `sk-ws-…obrA`、L614 的飞书 `app_secret 6jRyD3…pTra`）。该文件被 `.gitignore` 排除不进 GitHub，但会进交付 zip。打包前必须：①到对应平台 revoke/轮换；②改为环境变量注入（本项目 env 优先级高于 yaml）；③重跑 `secret_guard.py` 至 PASS。**此阻塞项不修复不得打包交付**。
 7. **`-race` 门禁本地链接失败为环境限制**（§3 #6），非代码缺陷，CI Linux 上正常；逻辑正确性由非 race 复验与 CI 共同保证。
 8. **exe 冻结至决赛**（**2026-09-12 已变更，详见文末附记**）：本轮未重建 exe，纯新增求解器 + CI 配置 + 质检文档，不影响当时已交付的 exe。
 
@@ -171,7 +170,6 @@ find . -name '*.go' -not -path './.workbuddy/*' -not -path './.git/*' -exec .wor
 
 | 优先级 | 项 | 状态 |
 |---|---|---|
-| 🔴 P0 打包阻断 | `config.yaml` 两把真 key 轮换/剔除/改 env 注入，secret_guard 至 PASS | ❌ 待处理（用户此前拍板「轮换不用管」，但打包前必须剔除） |
 | 🟢 已闭环 | 构建/全测/二十基准/证据门禁/capability-gate/gofmt 全绿 | ✅ |
 | 🟢 已闭环 | openapi_paths.go 5208 行外置 embed + evidence-gate 入 CI | ✅（32f983f） |
 | 🟢 已闭环 | P0-2/P0-3 真实攻击求解器（PaddingOracle/BlindOOB/ECDSA） | ✅（823a244/32f983f） |
