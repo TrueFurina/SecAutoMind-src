@@ -146,6 +146,47 @@ def check_closing_list(root):
 # 从不退役。加这个上限，是让"新增一份顶层文档"变成一次显式决策（要么退役旧的，
 # 要么把新文档放进子目录），而不是顺手写一个。
 TOP_LEVEL_CAP = 44
+# ── C5 顶层白名单（2026-10-31 收紧）────────────────────────────────────
+# 旧判据是「顶层 ≤ 44 份」——只在**撞线时**才红。实测后果：并行会话往顶层丢文件，
+# 一次性把顶层推到 45 份触发红，然后要有人中途停下来清理（2026-10-31 实况）。
+# 现改为**白名单**：顶层只允许这 32 份，多出任何一份立刻红。
+# 收益：把「顶层膨胀」从「事后撞线」变成「当场拦住」，且**不需要搬迁任何存量文档**
+# （32 份存量共被引用 332 次，搬迁成本极高且易断链）。
+# 维护：确需新增顶层文档时，同时把名字加进本名单 —— 等于强制一次显式评审。
+TOP_LEVEL_ALLOWLIST = {
+    "2027决赛作战规划.md",
+    "AGENT_ROUTES.md",
+    "GATES.md",
+    "Go静态检查基线-2026-10-21.md",
+    "HITL_human档招募方案.md",
+    "IM机器人演示与部署验收清单.md",
+    "INDEX.md",
+    "LessonsLearned.md",
+    "MCP工具分级注册方案-2026-10-19.md",
+    "Octop_取精去糟与反哺清单_20261018.md",
+    "QUICKSTART_NEXT_AGENT.md",
+    "README.md",
+    "URGENT_提交格式_裸内容.md",
+    "cross_bench_report.md",
+    "dual_repo_coherence.md",
+    "external_bench_report.md",
+    "hitl_failure_boundary.md",
+    "merge_xhlj_roadmap_20261023.md",
+    "quant_effect.md",
+    "static_benchmark_gap_analysis_20261023.md",
+    "产品优化规划.md",
+    "决赛对标分析_SecAutoMind_vs_西湖论剑.md",
+    "口径修复清单.md",
+    "工具契约与输出边界-2026-10-20.md",
+    "收尾清单.md",
+    "服务器实机验证_Runbook_20261020.md",
+    "真实靶场_LAMPSecurity_CTF4_可用性验证_20261021.md",
+    "真题数据补齐方案_20261021.md",
+    "腾讯轻量云部署指南.md",
+    "规划-移植与优化总纲.md",
+    "还能做什么_能力菜单与提示词_20261024.md",
+    "非flag靶场证据探测_设计与训练记录_20261021.md",
+}
 
 
 def check_top_level_cap(root):
@@ -157,6 +198,13 @@ def check_top_level_cap(root):
     if n > TOP_LEVEL_CAP:
         return ["C5 docs/ 顶层 %d 份 > 上限 %d：新文档请放子目录"
                 "（docs/specs|docs/archive|docs/templates），或先退役一份旧文档" % (n, TOP_LEVEL_CAP)]
+    extra = sorted(f for f in os.listdir(docs_dir)
+                   if f.endswith(".md") and os.path.isfile(os.path.join(docs_dir, f))
+                   and f not in TOP_LEVEL_ALLOWLIST)
+    if extra:
+        return ["C5 docs/ 顶层出现白名单外的新文档 %d 份：%s —— 请放到 docs/specs|docs/archive|"
+                "docs/templates；确属顶层文档则同时加进 TOP_LEVEL_ALLOWLIST（强制一次评审）"
+                % (len(extra), ", ".join(extra))]
     return []
 
 
@@ -272,6 +320,12 @@ def self_test():
         with open(os.path.join(b, ROUTES_DOC), "a", encoding="utf-8") as fh:
             fh.write("\n交付包排除面必须覆盖 `.workbuddy-ai/`（曾把账号口令发给评委）\n")
 
+    def m_new_top_doc(b):
+        # 2026-10-31：C5 从「计数 ≤44」收紧为「白名单」。
+        # 白名单外的新顶层文档必须**当场**变红，而不是等撞到 44 份。
+        with open(os.path.join(b, "docs", "随手新文档.md"), "w", encoding="utf-8") as fh:
+            fh.write("# 新文档\n")
+
     case("基线应通过", m_baseline, False)
     case("AGENTS 超 300 行应红", m_agents_long, True)
     case("路由表假路径应红", m_fake_path, True)
@@ -280,6 +334,7 @@ def self_test():
     case("INDEX 指向幽灵文档应红", m_index_ghost, True)
     case("收尾清单缺项应红", m_closing_short, True)
     case("改门禁未更新地图应红", m_gates_stale, True)
+    case("顶层白名单外新文档应红", m_new_top_doc, True)
 
     ok = True
     for name, expect_fail, got_fail, errs in cases:
