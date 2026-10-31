@@ -6,10 +6,20 @@
 
 ---
 
-## 0. 阅读顺序（按此顺序，别跳）
+## 0. 服务器口径（先记住这条，再往下读）
+
+> 🔴 **本项目说「服务器」，一律指 `172.16.222.99`**（主机名 `ubantu`；`ssh user@172.16.222.99` 用 `~/.ssh/id_ed25519` 免密）。
+> **跑实验、解题都在这台服务器上；本机只做编排与日志。**
+> 在本机 `127.0.0.1:18086` 起 SecAutoMind 实例跑题 = **不合规**。这是用户反复强调的铁律（最早见 `.workbuddy-ai/memory/MEMORY.md:584`），**新 agent 无需再向用户确认**。
+> 部署流程 `docs/服务器实机验证_Runbook_20261020.md`；上机前置与坑见 `.workbuddy/memory/MEMORY.md`。
+
+---
+
+## 0.1 阅读顺序（按此顺序，别跳）
 
 1. `AGENTS.md` —— 九条协作宪章，尤其第一条「诚实高于一切」。**违反即本次工作作废**。
-2. `.workbuddy-ai/memory/MEMORY.md` —— 长期记忆（冻结日期、两套口径、CI 坑）。
+2. `.workbuddy/memory/MEMORY.md` —— **现行**长期记忆（服务器口径、上机前置、解题评测纪律、本机高频坑）。
+   （`.workbuddy-ai/memory/` 是**历史归档**，2026-10-26 后停更，仅作溯源；新内容一律写 `.workbuddy/memory/`。）
 3. `docs/archive/2026-10/HANDOFF_2026-10-18.md` —— 全量交接：改了哪些文件、验证门禁、决策执行记录（§4 / §10 / §11）。
 4. `docs/Octop_取精去糟与反哺清单_20261018.md` §7.4 —— 上游 PR/Issue 状态。
 
@@ -208,3 +218,19 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 故日常全量用 `go list ./internal/... | grep -v ctfplatform` 分流（37 包 RC=0）；要跑整包须给足超时（`-timeout 900s`，300s 会不够）并 `env -u DEEPSEEK_API_KEY`（跳过 LLM 评测）；单独跑 LLM 评测用 `LLM_EVAL_LIMIT=3 go test -run TestLLMAutoSolve ./internal/ctfplatform/`。
 
 **🔴 冻结期想在"纯 LF 干净检出"上跑全部门禁**（含 autocrlf 敏感的 `check_golden_freeze.py` / `check_final_artifacts_freeze.py`）：用 §5 的 `bash scripts/clean_checkout_gate_sim.sh`，别再手动 `git worktree`——worktree 的 `core.autocrlf` 仍可能导出 CRLF，而脚本用 `git -c core.autocrlf=false archive HEAD` 保证纯 LF，让"本地 == CI"。
+
+---
+
+## 附录 A（2026-10-27 07:45 追加）：StepFun 五会话跑批的统一入口
+
+> 本附录只加指针，不改上文任何内容。跑 CTF 基准（S1–S5 切片）时先读这两处：
+
+1. **唯一入口**：`scripts/stepfun_batch_server.py`
+   - `--doctor` 只读体检；`--session S3` 跑切片；`--queue-id` 续跑；`--retry-gate` 处理闸门偶发。
+   - 内建**服务器守卫**：Windows 上打 `127.0.0.1:18086` 直接 `REFUSED`（退出码 3），符合 §0 服务器口径。
+   - 取代此前 5 个自建脚本（其中两个是"本地直连 StepFun"的旁路，已标废弃）。
+2. **交接文档**：`docs/archive/2026-10/HANDOFF_StepFun五会话_20261027.md`
+   - 含：真实环境（实例/隧道/凭据位置）、队列 API 契约、**八个已实锤的坑**、五会话真值表、待办与验收标准、接手 5 分钟自证清单。
+   - 读它的理由：这些坑会让覆盖率数字**静默失真**（例：结果尾部有 `flag{...}` 模板，取"最后一个候选"会把 12/13 误报成 8/13）。
+
+**别做的事**：不要在本机 `18086` 起实例跑题（§0 铁律）；不要读 `benchmark.json` 的明文 `flag` 做校验（72 题全带明文，用了等于自己批自己卷子）；不要 `git add -A`。
