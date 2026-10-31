@@ -43,8 +43,9 @@
 | `docs/腾讯轻量云部署指南.md` | 当前权威 | 部署指南 |
 | `docs/服务器实机验证_Runbook_20261020.md` | 当前权威 | 服务器全量验证 runbook |
 | `docs/key-rotation-runbook_20261013.md` | 当前权威 | 密钥轮换 runbook |
-| `docs/handoff_ycb_20261024.md` | 当前权威 | 最新交接卡（羊城杯初赛） |
-| `docs/handoff_1024_final_20261024.md` | 当前权威 | 1024 收尾交接（并行会话产出，未在本表作者会话内复核内容） |
+| `docs/handoff_20261031_orchestrator_robustness.md` | 当前权威 | **最新交接卡**：工件管道（含目录附件）、LLM 请求硬截止、并发默认 1、morse 单题纯 LLM 解出、外部池 8 题 0/8 的真实归因 |
+| `docs/handoff_ycb_20261024.md` | 历史快照 | 已被 `handoff_20261031_orchestrator_robustness.md` 取代（羊城杯初赛阶段，数字勿直接引用） |
+| `docs/handoff_1024_final_20261024.md` | 历史快照 | 已被 `handoff_20261031_orchestrator_robustness.md` 取代（1024 收尾交接，并行会话产出） |
 | `docs/plans/1024快闪赛复盘与规划_20261024.md` | 当前权威 | 快闪赛复盘 + 规划（含归因勘误：无手打，唯一口径=平台 9/9） |
 | `docs/specs/赛事调度纪律.md` | 当前权威 | 一场一引擎 / 判活三合一 / 容器归属 / 止损参数（快闪赛事故沉淀） |
 | `docs/runbooks/ctf_agent_ops_手册.md` | 当前权威 | ctf-agent 启动命令 / env / 日志约定 / 故障排查 |
