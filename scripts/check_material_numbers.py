@@ -283,6 +283,21 @@ TOOL_EXEMPT = {
 # 规范文档自身（它要列举禁用清单来说明规则，列举 ≠ 使用）
 EXEMPT_FILES = ["AGENTS.md"]
 
+# ── 用户令冻结的路径：只登记、不判红（2026-10-31）──────────────────────────
+# 用户 2026-10-31 明令「PPT 永久冻结」：`.pptx` + 这 3 个生成器一律不得再改
+# （见 `SecAutoMind_PPT/FROZEN_DO_NOT_TOUCH.md`）。而生成器里写死的数字会随代码增长
+# 与活真值脱钩 —— 这是**冻结快照 vs 活真值**的预期差异，不是漂移，不能靠"刷数字"消除
+# （刷了就违反冻结令，且会让生成器与已冻结产物进一步脱钩）。
+# 故这里把它们从判定面移除，但**在输出里显式报出被豁免的文件数与路径**，
+# 不做静默跳过（静默跳过正是本项目反复吃过的亏：门禁看起来绿，实际什么都没查）。
+# ⚠️ 只豁免这 3 个生成器。`SecAutoMind_PPT/` 下的 .md 脚本**不在**冻结范围，
+# 仍按活真值校验（用户令原文只列了 .pptx 与 make_*.py）。
+FROZEN_MATERIALS = {
+    "SecAutoMind_PPT/make_champion_ppt.py",
+    "SecAutoMind_PPT/make_final_ppt.py",
+    "SecAutoMind_PPT/make_template_ppt.py",
+}
+
 SKIP_DIR_PARTS = {".git", ".workbuddy", "node_modules", "logs", "data", "installer"}
 
 # 明细显示上限。设太小的后果已实测：报 112 处却只显示 25 条，
@@ -478,11 +493,16 @@ def main():
     # 「本检出无法核验」的锚点（真值为 null）：只作显式登记，不计违规 —— 见下面体积锚点处注释
     unverifiable = []
     exempted = 0
+    frozen_skipped = []   # 用户令冻结、本次未校验的文件（见 FROZEN_MATERIALS）
     scanned = 0   # 2026-10-14 补：扫描覆盖数（见下方 fail-closed 判据）
 
     for path in iter_files():
         scanned += 1
         rpath = rel(path)
+        if rpath in FROZEN_MATERIALS:
+            # 冻结文件：只登记、不判红（见 FROZEN_MATERIALS 注释）
+            frozen_skipped.append(rpath)
+            continue
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as fh:
                 lines = fh.readlines()
@@ -592,6 +612,12 @@ def main():
             print("        %s" % txt)
     else:
         print("  [PASS] 材料数字与真值一致")
+
+    if frozen_skipped:
+        print("  [冻结] %d 个文件按用户令豁免校验（PPT 永久冻结，数字停在冻结基线）："
+              % len(frozen_skipped))
+        for f in sorted(frozen_skipped):
+            print("        %s" % f)
 
     verdict = "FAIL" if (banned_hits or anchor_hits) else "PASS"
     ledger_issues = check_ledger(verdict)

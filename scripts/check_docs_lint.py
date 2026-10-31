@@ -12,6 +12,9 @@
 3. **引用不存在的脚本**：文档/`go.mod` 注释里写 `scripts/xxx.sh` / `scripts/xxx.py`，
    而该文件从未存在（实测 `scripts/check-docs.py`、`scripts/bootstrap-go.sh` 两例）——
    读者照做必然失败。
+   > 2026-10-25 修正假阳性：旧实现只从 `scripts/` 起截，把
+   > `CTF-Agent_融合/ctf_agent/scripts/_kpi_canonical.py`（真实存在）误判为
+   > `scripts/_kpi_canonical.py` 不存在。现改为向左扩展到完整路径起点。
 4. **英文文档缺中文对应**：`docs/en-US/` 下每篇 `.md` 都应有一份同名 `docs/zh-CN/` 文档
    （中文为源、英文是子集；实测英文全部有中文对应，反向不成立故只单向校验）。
 
@@ -60,6 +63,23 @@ SCRIPT_EXT = (".py", ".sh", ".go", ".js", ".json", ".yaml", ".yml", ".nsi", ".ps
 FENCE_RE = re.compile(r"^([ \t]{0,3})(`{3,}|~{3,})(.*)$")
 LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^)>\s]+)>?[^)]*\)")
 SCRIPT_REF_RE = re.compile(r"scripts/[A-Za-z0-9_./\-]+(?:\.[A-Za-z0-9]+)")
+
+# 路径向左扩展的停止字符：空白、反引号、引号、括号、表格竖线、中文标点
+_PATH_STOP = set(" \t\r\n`\"'()[]{}<>|，、。；：*")
+
+
+def _expand_path_token(text: str, start: int, end: int) -> str:
+    """把 `scripts/...` 匹配向左扩展到完整路径的起点。
+
+    2026-10-25 实锤假阳性：文档写
+    `CTF-Agent_融合/ctf_agent/scripts/_kpi_canonical.py`（文件真实存在），
+    旧实现只从 `scripts/` 起截，得到 `scripts/_kpi_canonical.py`，再拼到仓库根
+    → 必然不存在 → 假红 4 处，把 CI 卡住。向左扩到路径起点即可正确解析。
+    """
+    i = start
+    while i > 0 and text[i - 1] not in _PATH_STOP:
+        i -= 1
+    return text[i:end]
 
 
 def _load_material_gate():
@@ -166,14 +186,28 @@ def check_links(text, filedir):
     return problems
 
 
+def _is_absolute_ref(token):
+    """token 是否为**仓库外**的绝对路径（家目录 / 根路径 / 盘符）。
+
+    2026-10-31 实锤：交接文档里写服务器上的路径 `~/SecAutoMind/scripts/session_registry.py`
+    与 `~/sam_s1/scripts/stepfun_s2_server_batch.py`，本门禁把它们当"仓库相对路径"去
+    `os.path.exists(root/token)` → 必然不存在 → 7 处误报。
+    这类路径属于**部署目标机**，仓库既无权也不该校验；只校验仓库内相对路径。
+    """
+    t = token.replace("\\", "/")
+    return t.startswith("~") or t.startswith("/") or (len(t) > 1 and t[1] == ":")
+
+
 def check_script_refs(text, root):
-    """scripts/ 引用必须真实存在。"""
+    """scripts/ 引用必须真实存在（只校验仓库内相对路径）。"""
     problems = []
     for m in SCRIPT_REF_RE.finditer(text):
-        token = m.group(0)
+        token = _expand_path_token(text, m.start(), m.end())
         if not token.lower().endswith(SCRIPT_EXT):
             continue
         token = token.rstrip(".,);:、。")
+        if _is_absolute_ref(token):
+            continue
         if not os.path.exists(os.path.join(root, token)):
             line_no = text[:m.start()].count("\n") + 1
             problems.append((line_no, f"引用了不存在的脚本：`{token}`"))

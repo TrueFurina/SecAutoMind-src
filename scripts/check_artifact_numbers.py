@@ -90,6 +90,18 @@ SKIP_DIR_PARTS = {
 # 放在这里而不是各调用点：清单只此一份，避免「打包脚本 vs 裸跑门禁」两处漂移。
 ALWAYS_EXCLUDE = ["演示模板版.pptx"]
 
+# ── 用户令冻结的产物（2026-10-31）：判定面剔除、但显式留痕 ──────────────────
+# 依据 `SecAutoMind_PPT/FROZEN_DO_NOT_TOUCH.md`（用户令：PPT 永久冻结）。
+# 冻结产物不得重生成 → 其可见文本永远停在冻结基线，与活真值不一致属预期差异。
+# 只剔除**判定**，不动文件；输出里会列出被豁免的产物名，便于人核对。
+FROZEN_ARTIFACT_GLOBS = ("SecAutoMind_PPT/*.pptx",)
+
+
+def is_frozen_artifact(rel):
+    rel = (rel or "").replace("\\", "/")
+    return any(fnmatch.fnmatch(rel, g) or fnmatch.fnmatch(os.path.basename(rel), os.path.basename(g))
+               for g in FROZEN_ARTIFACT_GLOBS)
+
 # OOXML 命名空间
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -505,6 +517,16 @@ def main():
     print("  锚定 HEAD: %s" % truth.get("head"))
     hits, files, problems = scan(root, truth, excludes)
 
+    # ── 用户令冻结的产物：只登记、不判红（2026-10-31）──────────────────────
+    # 用户明令「PPT 永久冻结」（`SecAutoMind_PPT/FROZEN_DO_NOT_TOUCH.md`），
+    # 产物不得重生成。于是其可见文本必然停在**冻结基线**（144,993 行），
+    # 与活真值（146,571 行）不一致 —— 这是预期差异，不是漂移。
+    # 若不剔除，本门禁恒红，而它又是 `make_delivery_package.py` 的红线之一
+    # → **交付包再也打不出来**。故剔除对冻结产物的判定，并显式报出（不静默）。
+    frozen_hits = [h for h in hits if is_frozen_artifact(h[0])]
+    if frozen_hits:
+        hits = [h for h in hits if not is_frozen_artifact(h[0])]
+
     # 生成器 → 产物的路径链路（只在扫仓库根时做：打包暂存目录里没有生成器脚本）
     gen_bad = []
     if os.path.abspath(root) == os.path.abspath(cmn.ROOT):
@@ -514,6 +536,12 @@ def main():
         print("  · %-72s %d 个文本单元" % (rel, n))
     if not files:
         print("  [WARN] 未发现任何产物 —— 若预期有产物，说明扫描根/排除规则写错了。")
+
+    if frozen_hits:
+        print("  [冻结] %d 处数字差异已豁免（PPT 永久冻结，产物停在冻结基线）："
+              % len(frozen_hits))
+        for rel in sorted({h[0] for h in frozen_hits}):
+            print("        %s" % rel)
 
     if hits:
         print("-" * 74)
@@ -544,6 +572,16 @@ def main():
             print("  结论：FAIL —— 生成器 OUT 不在可交付链路内（仓库内 + 冻结清单 + 实物存在）。")
         else:
             print("  结论：FAIL —— 产物口径漂移或无法核验，禁止打包/提交。")
+        # 2026-10-31：区分「环境缺依赖」与「产物真漂移」（AGENTS 1.3）。
+        # 本机默认 python 没装 pypdf 时，所有 PDF 都进 problems → rc=1，
+        # 看起来和"产物数字不对"一模一样，极易被误判成门禁失败（实际是环境）。
+        # 仍然 fail-closed（rc=1 不变），但把话说明白，并给出可执行修法。
+        missing_lib = [r for r in problems if "缺少解析库" in r[1]]
+        if missing_lib and len(missing_lib) == len(problems) and not hits and not gen_bad:
+            print("  ⚠️  以上 %d 项全部是**本机缺解析库**（环境问题，非产物漂移）：" % len(missing_lib))
+            print("      装依赖后重跑：pip install pypdf python-pptx")
+            print("      或用仓库 venv：C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe")
+            print("      注：CI 不受影响 —— 它只跑 --generators-only（纯 AST）与 stdlib 夹具自测。")
         if hits and not problems and not gen_bad:
             print("  修复：改生成脚本里的数字 → 重新生成产物 → 复跑本门禁。")
         return 1

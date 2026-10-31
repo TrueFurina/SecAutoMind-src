@@ -350,15 +350,36 @@ def main():
         failures.append("「26/26」的两种语义没区分开（裸=%s / 带单位=%s）——"
                         "BANNED 裸比率会误伤基准集达标这一真值" % (rc_bare, rc_unit))
 
+    # ---- 24. 冻结豁免：冻结文件里的漂移不判红（用户令 PPT 永冻）----
+    print("\n[24/25] 冻结豁免：PPT 生成器里的旧数字**不得**判红（用户令：PPT 永冻）")
+    rc_frozen, _ = run_gate(
+        {"SecAutoMind_PPT/make_champion_ppt.py": "非测试代码行数 134,618 行\n"},
+        scan_dirs=("SecAutoMind_PPT",))
+    ok = (rc_frozen == 0)
+    print("  %s 返回 %s（期望 0）" % ("PASS" if ok else "FAIL", rc_frozen))
+    if not ok:
+        failures.append("冻结文件仍被判红（rc=%s）——FROZEN_MATERIALS 豁免失效，"
+                        "冻结期 CI 会恒红" % rc_frozen)
+
+    # ---- 25. 变异验证：同一处漂移换到普通文档必须判红（证明豁免有边界，不是一刀切放行）----
+    print("\n[25/25] 变异验证：同一处漂移换到普通文档**必须**判红（豁免不得扩大化）")
+    rc_normal, _ = run_gate({"docs/scale.md": "非测试代码行数 134,618 行\n"})
+    ok = (rc_normal == 1)
+    print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc_normal))
+    if not ok:
+        failures.append("普通文档的漂移没被判红（rc=%s）——冻结豁免被写成了全局放行，"
+                        "门禁等于失效" % rc_normal)
+
     print("\n" + "=" * 66)
     if failures:
         print("FAIL —— %d 项不达标：" % len(failures))
         for f in failures:
             print("  - " + f)
         return 1
-    print("PASS —— check_material_numbers 门禁 23/23 用例通过"
+    print("PASS —— check_material_numbers 门禁 25/25 用例通过"
           "（零覆盖 fail-closed + 恒红防护 + 豁免机制未退化 + 清单过期双向钉死 + "
-          "体积/cgo 断言双向钉 + 预解组件/N-N 测试包双向钉 + 比例语义防误伤 + 26/26 双语义）。")
+          "体积/cgo 断言双向钉 + 预解组件/N-N 测试包双向钉 + 比例语义防误伤 + 26/26 双语义 + "
+          "PPT 冻结豁免与其边界变异）。")
     return 0
 
 

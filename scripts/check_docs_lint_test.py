@@ -16,6 +16,8 @@
     T8 历史档豁免：带 CALIBER-SNAPSHOT 的文档引用失踪脚本      → exit 0（引用不查历史档）
     T9 fail-closed：--root 指向不存在目录                      → exit 2（绝不当"通过"）
     T10 真实仓库当前状态（回归基线，防夹具与真库脱节）         → exit 0
+    T11 嵌套路径 `sub/proj/scripts/x.py`（真实存在）不假红     → exit 0
+    T12 变异：嵌套路径引用缺失                                 → exit 1
 
 用法：
     python scripts/check_docs_lint_test.py
@@ -163,6 +165,28 @@ def main():
     finally:
         shutil.rmtree(r, ignore_errors=True)
 
+    # T11 嵌套路径引用（子项目下的 scripts/）不得假红 → 0
+    r = _mkroot()
+    try:
+        _compliant(r)
+        _write(r, "sub/proj/scripts/kpi.py", "print(1)\n")
+        _write(r, "docs/c.md", "# C\n\n见 `sub/proj/scripts/kpi.py`。\n")
+        rc, out = _run(r)
+        check("T11 嵌套路径 scripts 引用存在 → exit 0", rc == 0, f"rc={rc} {out[-160:]}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
+
+    # T12 变异：嵌套路径引用不存在 → 1（扩展后仍必须抓得住真缺失）
+    r = _mkroot()
+    try:
+        _compliant(r)
+        _write(r, "docs/c.md", "# C\n\n见 `sub/proj/scripts/ghost.py`。\n")
+        rc, out = _run(r)
+        check("T12 变异：嵌套路径引用缺失 → exit 1 且点名",
+              rc == 1 and "ghost.py" in out, f"rc={rc}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
+
     # T9 fail-closed：root 不存在 → 2
     rc, _ = _run(os.path.join(tempfile.gettempdir(), "docslint_definitely_missing_xyz"))
     check("T9 root 不存在 → exit 2（fail-closed）", rc == 2, f"rc={rc}")
@@ -170,6 +194,23 @@ def main():
     # T10 真实仓库回归基线 → 0
     rc, out = _run(ROOT)
     check("T10 真实仓库当前 → exit 0", rc == 0, f"rc={rc} {out[-200:]}")
+
+    # T13/T14 仓库外绝对路径（2026-10-31）：家目录/盘符不校验，仓库内缺失仍要红
+    r = _mkroot()
+    try:
+        _compliant(r)
+        _write(r, "docs/remote.md",
+               "# 远端\n\n跑 `~/SecAutoMind/scripts/session_registry.py` 与 "
+               "`D:/x/scripts/foo.py`。\n")
+        rc, out = _run(r)
+        check("T13 家目录/盘符路径不误报 → exit 0", rc == 0, f"rc={rc} {out[-160:]}")
+
+        _write(r, "docs/remote2.md", "# 仓库内\n\n跑 `scripts/really_missing_xyz.py`。\n")
+        rc, out = _run(r)
+        check("T14 变异：仓库内相对路径缺失仍 → exit 1",
+              rc == 1 and "really_missing_xyz.py" in out, f"rc={rc}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
 
     # 汇总
     print("=" * 70)

@@ -153,6 +153,11 @@ def collect(truth):
     fixable, manual = [], []
     for path in cmn.iter_files():
         rpath = cmn.rel(path)
+        # 用户令冻结的文件一律不写盘（2026-10-31）：门禁那边已豁免判定，
+        # 修复器若照旧改写，等于绕过冻结令去动 PPT 生成器 —— 用户明令禁止。
+        # 与门禁共用同一份常量，避免"两套冻结名单"漂移。
+        if rpath in cmn.FROZEN_MATERIALS:
+            continue
         try:
             # newline="" —— 换行符原样读入，写回时原样输出，不做任何转换
             with open(path, "r", encoding="utf-8", errors="ignore", newline="") as fh:
