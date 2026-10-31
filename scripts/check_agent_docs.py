@@ -76,6 +76,12 @@ def _extract_paths(text):
     return out
 
 
+# 工具态目录：被 .gitignore 覆盖、干净检出里永远不存在。
+# 路由表提到它们是**教训句**（如「交付包排除面必须覆盖 .workbuddy-ai/」），
+# 不是「仓库里应该有这个目录」。详见 check_routes_paths 内注释。
+TOOL_STATE_DIRS = {".workbuddy", ".workbuddy-ai", ".box-agent", ".atomcode", ".git", "node_modules"}
+
+
 def check_routes_paths(root):
     p = os.path.join(root, ROUTES_DOC)
     if not os.path.isfile(p):
@@ -86,6 +92,12 @@ def check_routes_paths(root):
         if tok in seen:
             continue
         seen.add(tok)
+        # 工具态目录（2026-10-26 修，2026-10-31 被并行会话覆盖后重打）：
+        # 路由表里 `.workbuddy-ai/` 是**教训句**（"交付包排除面必须覆盖它"），
+        # 而该目录被 .gitignore 覆盖、干净检出永远不存在 → 判"引用了不存在的路径"是误报。
+        # 只跳过这几类，普通路径仍照常校验（下方有变异自测钉住）。
+        if tok.rstrip("/") in TOOL_STATE_DIRS:
+            continue
         if not os.path.exists(os.path.join(root, tok.rstrip("/"))):
             bad.append(tok)
     return ["C2 路由表引用了不存在的路径: %s" % b for b in bad]
@@ -253,9 +265,17 @@ def self_test():
                      "    runs-on: ubuntu-latest\n    steps:\n"
                      "      - name: n\n        run: python scripts/n.py\n")
 
+    def m_tool_state_dir(b):
+        # 2026-10-31 回归：路由表提到 gitignored 的工具态目录**不得**判红。
+        # 真事故：CI 在干净检出上恒红，报 "C2 路由表引用了不存在的路径: .workbuddy-ai/"，
+        # 而那句话是教训（"交付包排除面必须覆盖 .workbuddy-ai/"），目录本身永远不入仓。
+        with open(os.path.join(b, ROUTES_DOC), "a", encoding="utf-8") as fh:
+            fh.write("\n交付包排除面必须覆盖 `.workbuddy-ai/`（曾把账号口令发给评委）\n")
+
     case("基线应通过", m_baseline, False)
     case("AGENTS 超 300 行应红", m_agents_long, True)
     case("路由表假路径应红", m_fake_path, True)
+    case("路由表工具态目录应绿（不误报）", m_tool_state_dir, False)
     case("INDEX 漏登文档应红", m_index_missing, True)
     case("INDEX 指向幽灵文档应红", m_index_ghost, True)
     case("收尾清单缺项应红", m_closing_short, True)
