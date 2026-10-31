@@ -23,7 +23,7 @@
 //   RUNNER_LLM_API_KEY      API key（必需，缺则跳过）
 //   RUNNER_LLM_BASE_URL     默认 https://api.deepseek.com/v1
 //   RUNNER_LLM_MODEL        默认 deepseek-reasoner
-//   RUNNER_LLM_TIMEOUT_SEC  默认 60
+//   RUNNER_LLM_TIMEOUT_SEC  默认 300（**整题**总预算，不是单次请求超时，见下方事故说明）
 //   RUNNER_LLM_MAX_TOKENS   默认 2048
 //   RUNNER_LLM_MAX_TOOL_CALLS 默认 12（每题工具调用上限）
 //   RUNNER_LLM_MAX_ROUNDS   默认 12（LLM 对话轮数上限 = 监督步数预算）
@@ -197,7 +197,18 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		return nil, nil
 	}
 
-	timeout := time.Duration(envInt("RUNNER_LLM_TIMEOUT_SEC", 60)) * time.Second
+	// 🔴 这是**整题**总预算，不是单次请求超时 —— ctx 建在 round 循环之外，
+	// 到点后后续每一轮都会 context deadline exceeded → Solve 直接 return nil,nil → 记 MISS。
+	//
+	// 默认值 60 → 300 的实测依据（2026-10-29 服务器真机，step-5-preview / TokenHub）：
+	//   - 设 120s 时，YCB 两题**精确停在 120.0s**（round 3/4 起即 deadline），
+	//     real_benchmark 里 buuctf_upload_basic 同样精确 120.0s；
+	//   - 放开到 600s 后，12 题全部**自然结束**，耗时 7~63s —— 说明 60s 连一轮
+	//     带工具的长链推理都装不下，是纯人为截断，不是模型慢。
+	//   ⇒ 旧默认 60s 会把「正在解」的题系统地判成「没解出」，直接压真实解题数。
+	// 300s 的取值：覆盖实测绝大多数题的自然耗时（<70s），又不至于让单题无限挂住；
+	// 需要更长链条的题仍可用环境变量显式抬高（如 ycb12085_vvmm 用 900/1800）。
+	timeout := time.Duration(envInt("RUNNER_LLM_TIMEOUT_SEC", defaultWholeSolveTimeoutSec)) * time.Second
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -278,6 +289,19 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 
 				// 执行工具
 				result := f.executeTool(callCtx, tc, ch, facts, sess)
+
+				// 可观测性（2026-10-29）：工具执行全过程必须留痕。
+				// 踩坑背景：练习场 smoke 报 0/5，日志里只有「nflags=0」，完全看不出
+				// 模型调了哪些工具、工具为什么失败、模型在想什么，只能盲改。
+				// 评测链路的每一步都要能事后复盘，否则「排障」就退化成「猜」。
+				f.logger.Debug("工具执行",
+					zap.String("challenge", ch.Title),
+					zap.Int("round", round),
+					zap.String("tool", tc.Function.Name),
+					zap.String("args", truncate(tc.Function.Arguments, 300)),
+					zap.Bool("is_error", isToolError(result)),
+					zap.String("result", truncate(result, 600)))
+
 				roundObs.WriteString(result)
 				roundObs.WriteString("\n")
 				if !isToolError(result) {
@@ -285,6 +309,14 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				}
 				callsThisRound++
 				msgs = append(msgs, schema.ToolMessage(result, tc.ID))
+			}
+			// 助手本轮的推理文本（有工具调用时容易被忽略，但是判断
+			// 「模型在干嘛」的唯一直接证据，必须留痕）。
+			if c := strings.TrimSpace(resp.Content); c != "" {
+				f.logger.Debug("LLM 推理文本",
+					zap.String("challenge", ch.Title),
+					zap.Int("round", round),
+					zap.String("content", truncate(c, 400)))
 			}
 
 			if toolCallCount > f.maxToolCalls {
@@ -828,25 +860,42 @@ func (f *LLMFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
 }
 
 // extractFlagCandidates 从文本里提取所有 flag{...} 格式的候选。
+// defaultWholeSolveTimeoutSec 是 RUNNER_LLM_TIMEOUT_SEC 的默认值 —— **整题**总预算。
+// 取值依据见 Solve 内的注释（2026-10-29 服务器真机实测）。
+// 🔴 这个数不是"顺手填的"：把它改回 60 会把正在解题的题系统性地判成 MISS。
+const defaultWholeSolveTimeoutSec = 300
+
+// flagCandRe 与 scripts/experiments/flag_util.py::FLAG_RE **同口径**（2026-10-29 对齐）。
+//
+// 为什么必须换成正则，不能再做 `strings.Index(lower, "flag{")` 字面量查找：
+//   前缀 `flag{}` 只是**一种**约定，不是全部。2026-10-29 服务器真机冒烟实锤：
+//   pico2024_interencdec 题，step-5-preview 已输出正确解
+//   `picoCTF{caesar_d3cr9pt3d_f0212758}`，旧实现因为找不到字面量 `flag{`
+//   判为「LLM 输出里没找到 flag 格式」→ **候选 0 → 不提交 → 记 MISS**。
+//   真实题库里 picoCTF{} / sdctf{} / CBCV{} / wctf{} / grodno{} / DASCTF{} /
+//   BZHCTF{} 等前缀普遍存在，旧实现对它们**逐道系统性判死**。
+//   这是「答案对了但系统判没解」的冤案，直接压低真实解题数 —— 属五宗罪「伪造分数」的反面同源。
+//
+// 形态约束（与 Python 侧逐字一致，勿各自演化）：
+//   - 前缀：字母开头，后跟 0~14 个字母/数字/下划线（覆盖 picoCTF 这类长前缀）；
+//   - 内容：`{` `}` 之间 1~200 个非括号非换行字符；
+//   - 必须有闭合 `}`，避免把半截文本当候选。
+//
+// 放宽后的假阳性由**下游 sha256 判分**兜住（判分只认 flag_sha256），
+// 不会把噪声算成命中；而漏召回是**不可逆丢分**，故宁宽勿窄。
+var flagCandRe = regexp.MustCompile(`[A-Za-z][A-Za-z0-9_]{0,14}\{[^{}\n]{1,200}\}`)
+
 func extractFlagCandidates(text string) []string {
 	var flags []string
 	seen := make(map[string]bool)
 
-	for _, line := range strings.Split(text, "\n") {
-		line = strings.TrimSpace(line)
-		lower := strings.ToLower(line)
-		if idx := strings.Index(lower, "flag{"); idx >= 0 {
-			end := strings.Index(line[idx:], "}")
-			if end > 0 {
-				f := strings.TrimSpace(line[idx : idx+end+1])
-				f = strings.TrimPrefix(f, "flag: ")
-				f = strings.TrimPrefix(f, "FLAG: ")
-				if !seen[f] {
-					seen[f] = true
-					flags = append(flags, f)
-				}
-			}
+	for _, raw := range flagCandRe.FindAllString(text, -1) {
+		f := strings.TrimSpace(raw)
+		if f == "" || seen[f] {
+			continue
 		}
+		seen[f] = true
+		flags = append(flags, f)
 	}
 
 	return flags
