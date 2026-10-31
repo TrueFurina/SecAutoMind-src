@@ -36,6 +36,7 @@ import time
 import random
 import subprocess
 import tempfile
+import shutil
 import threading
 import urllib.request
 import urllib.error
@@ -209,24 +210,37 @@ def build_prompt(problem, artifact_info=None):
     return prompt
 
 
-def prepare_artifacts(artifact_dir, pid, zip_name):
-    """把题目工件 zip 解压到 per-题临时目录，返回 (cwd, info)；不适用返回 (None, None)。
+def prepare_artifacts(artifact_dir, pid, zip_name=None):
+    """把题目工件落到 per-题临时目录，返回 (cwd, info)；不适用返回 (None, None)。
+
+    两种来源（外部池 external_bench 的附件是**目录形态、无 zip 字段**，
+    旧的「只认 zip」实现会让 40/40 道 KPI 题全部拿不到附件）：
+      ① artifact_dir/<zip_name>  zip 文件 → 解压
+      ② artifact_dir/<pid>/      目录     → 整树复制
 
     info = {"files": [{name,size}...], "inline": 小文本文件全文拼接}
     小文本文件（<= _ARTIFACT_INLINE_PER_FILE）才全文内联，总量受 _ARTIFACT_INLINE_TOTAL 限制，
     避免把 11MB 日志之类的大文件塞爆 prompt —— 大文件只给清单，由模型用 run_python 自行读取。
     """
-    if not artifact_dir or not zip_name:
-        return None, None
-    zp = os.path.join(artifact_dir, str(zip_name))
-    if not os.path.isfile(zp):
+    if not artifact_dir:
         return None, None
     safe = re.sub(r"[^0-9A-Za-z_-]", "_", str(pid))[:40] or "p"
+    zp = os.path.join(artifact_dir, str(zip_name)) if zip_name else None
+    src_dir = os.path.join(artifact_dir, str(pid))
+    cwd = None
     try:
-        cwd = tempfile.mkdtemp(prefix="art_%s_" % safe)
-        with zipfile.ZipFile(zp) as z:
-            z.extractall(cwd)
+        if zp and os.path.isfile(zp):
+            cwd = tempfile.mkdtemp(prefix="art_%s_" % safe)
+            with zipfile.ZipFile(zp) as z:
+                z.extractall(cwd)
+        elif os.path.isdir(src_dir):
+            cwd = tempfile.mkdtemp(prefix="art_%s_" % safe)
+            shutil.copytree(src_dir, cwd, dirs_exist_ok=True)
+        else:
+            return None, None
     except Exception:
+        if cwd and os.path.isdir(cwd):
+            shutil.rmtree(cwd, ignore_errors=True)
         return None, None
     files = []
     inline_parts = []
@@ -655,7 +669,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", default="tokenrhythm", choices=list(PROVIDERS.keys()))
     ap.add_argument("--limit", type=int, default=0, help="只跑前 N 题（0=全部）")
-    ap.add_argument("--concurrency", type=int, default=5)
+    ap.add_argument("--concurrency", type=int, default=1,
+                    help="并发题数(默认 1=串行)。⚠️ 2026-10-31 实测：xfyun spark-x2.6 并发 5 时"
+                         "8 题中 3 题「首次调用即 180s 硬截止」、0 轮工具调用就收口；同题串行(并发 1)"
+                         "正常跑 23 轮。账号级并发会触发服务端排队长尾，跑批务必保持低并发(≤2)")
     ap.add_argument("--timeout", type=int, default=180, help="单题单次请求超时秒")
     ap.add_argument("--benchmark", default=BENCHMARK)
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "stepfun_orchestrator_result.json"))
@@ -688,6 +705,9 @@ def main():
         items = [it for it in items if it[0] in want]
     print(f"[orchestrator] provider={args.provider} model={cfg['default_model']} "
           f"题目数={len(items)} 并发={concurrency} 硬上限={cap} agentic={agentic}", file=sys.stderr)
+    if concurrency >= 3:
+        print("[warn] 并发=%d >=3：xfyun 实测会触发服务端排队长尾（首次调用即 180s 硬截止、"
+              "0 轮工具调用就收口）。跑批建议 --concurrency 1~2。" % concurrency, file=sys.stderr)
 
     results = []
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
