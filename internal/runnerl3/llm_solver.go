@@ -44,6 +44,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +74,23 @@ type SkillRunner interface {
 // 回落到既有 flag 契约——现有 fake 与生产行为零变化。
 type RichSkillRunner interface {
 	RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool)
+}
+
+// SkillCatalogProvider 由 bridge 可选实现：把**真实** skill 清单交给 LLM。
+//
+// 存在原因（2026-11-01 P0 实锤，crypto 6 题 A/B 真机对比得出）：
+// execute_python 的 Desc 里原有一张手写的 skill 名清单，与 bridge 的实际
+// skillCatalog 早已脱节 —— 列出的 16 个名字里 15 个不存在
+// （factor_integer / rsa_wiener_attack / rsa_hastad_attack / xor_bruteforce /
+//  angr_decompile / angr_symbolic / ghidra_analyze / objdump_disasm /
+//  pwn_checksec / pwn_ret2libc / pwn_ret2win / pwn_canary_bruteforce /
+//  zip_crack / image_steg / pcap_analyze），只有 pwn_ret2dlresolve 是真的。
+// 模型据描述调 factor_integer ⇒ import 失败 ⇒ 实测 6 题里 execute_python 只被
+// 调用 1 次且用的就是那个幻觉名，79 个真 skill 全程零使用。
+//
+// 结论：清单必须从 catalog 现取（单一真值源），禁止在 Desc 里手写。
+type SkillCatalogProvider interface {
+	SkillCatalog() map[string][]string
 }
 
 // LLMFallback 是 Layer 3（真 token 成本）的求解器。
@@ -458,11 +476,7 @@ func (f *LLMFallback) buildToolDefs() []*schema.ToolInfo {
 			Name: "execute_python",
 			Desc: strings.TrimSpace(`
 执行 Python 解题 skill（angr/pwntools 真跑）。当题目属于 reverse/pwn/crypto/misc 且需要动态执行二进制或利用 Python 生态工具时调用。
-skill_name 可选值（按题目类别选）：
-- reverse: angr_decompile, angr_symbolic, ghidra_analyze, objdump_disasm
-- pwn: pwn_checksec, pwn_ret2libc, pwn_ret2win, pwn_ret2dlresolve, pwn_canary_bruteforce
-- crypto: factor_integer, rsa_wiener_attack, rsa_hastad_attack, xor_bruteforce
-- misc: zip_crack, image_steg, pcap_analyze
+`+skillCatalogDesc(f.pyBridge)+`
 - crypto 数学模板（ctf_sage_*，纯 Python 自包含，P0-1 接入；数学参数必须经 params 传入，
   返回值含中间量如小根/私钥/明文，由你决定后续怎么用）：
   ctf_sage_t1_coppersmith  → params: {"modulus":N,"poly":[a0..ad],"X":可选,"beta":"1"|"0.5","candidates":可选}
@@ -540,6 +554,45 @@ skill_name 可选值（按题目类别选）：
 // P0-3：①先过 schema 强校验（工具名/必填/未知参数），非法调用不执行、直接回错误；
 // ②成功后把工具返回里的环境事实（如附件真实落盘路径）记进 factLedger ——
 // 事实源只认工具返回，模型复述不算。
+// skillCatalogDesc 把 bridge 的**真实** skill 清单渲染成 execute_python 的 Desc 段。
+//
+// 绝不回退到硬编码名（2026-11-01 P0：旧 Desc 手写 16 个名字，15 个不存在，
+// 模型照单调 factor_integer，79 个真 skill 全程零使用）。bridge 未实现
+// SkillCatalogProvider 时给一句保守提示，让模型知道不能瞎猜。
+func skillCatalogDesc(b SkillRunner) string {
+	p, ok := b.(SkillCatalogProvider)
+	if !ok {
+		return "（本通道未提供 skill 清单：不要编造 skill 名，拿不准就用 python_session 自己写代码）\n"
+	}
+	cat := p.SkillCatalog()
+	if len(cat) == 0 {
+		return "（当前无可用 skill：直接用 python_session 自己写代码）\n"
+	}
+	// 固定顺序渲染，保证 Desc 逐字节稳定（顺序抖动会让上游 prompt 缓存全部失效）。
+	order := []string{"crypto", "reverse", "pwn", "misc", "web"}
+	seen := make(map[string]bool, len(order))
+	var sb strings.Builder
+	sb.WriteString("skill_name 可选值（**只能从这里挑；未列出的名字一律不存在，不要编造**）：\n")
+	for _, c := range order {
+		if len(cat[c]) == 0 {
+			continue
+		}
+		seen[c] = true
+		sb.WriteString("- " + c + ": " + strings.Join(cat[c], ", ") + "\n")
+	}
+	rest := make([]string, 0, len(cat))
+	for c := range cat {
+		if !seen[c] {
+			rest = append(rest, c)
+		}
+	}
+	sort.Strings(rest)
+	for _, c := range rest {
+		sb.WriteString("- " + c + ": " + strings.Join(cat[c], ", ") + "\n")
+	}
+	return sb.String()
+}
+
 func (f *LLMFallback) executeTool(ctx context.Context, tc schema.ToolCall, ch *ctfplatform.Challenge, facts *factLedger, sess *pySessionMgr) string {
 	// 解析参数 JSON
 	var args map[string]any

@@ -49,8 +49,9 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
-	"secautomind-ai/internal/runnerl3"
 	"secautomind-ai/internal/procenv"
+	"secautomind-ai/internal/pyskill"
+	"secautomind-ai/internal/runnerl3"
 )
 
 type artifact struct {
@@ -269,6 +270,9 @@ func main() {
 	workBase := flag.String("work-base", "/tmp/llmbench_work", "每题工作目录的父目录")
 	limit := flag.Int("limit", 0, "只跑前 N 题（按 id 排序），0=全跑")
 	idsRaw := flag.String("ids", "", "只跑这些 id（逗号分隔），优先于 --limit")
+	withSkills := flag.Bool("with-skills", false,
+		"接入 internal/pyskill 真实桥接（execute_python 可用 = 生产 runner 形态）；"+
+			"默认关 = 纯 LLM 下界口径。两种口径不可混算，报告里会写明")
 	flag.Parse()
 
 	// 所有路径型参数**先转绝对路径**再进跑批：prepareWorkdir 会 chdir 进每题
@@ -328,8 +332,25 @@ func main() {
 	if lerr != nil {
 		logger = zap.NewNop()
 	}
-	// pyBridge 传 nil → execute_python 自动降级，仅 read_attachment / python_session 可用。
-	fb := runnerl3.NewLLMFallback(context.Background(), logger, nil)
+	// pyBridge 默认传 nil → execute_python 自动降级，仅 read_attachment / python_session 可用。
+	// --with-skills 打开后才接入真实桥接，此时才等于生产 runner 形态（86 skill 可被 LLM 调用）。
+	// 口径红线：两种形态必须分开记账，否则"带 skill 的提升"会被误读成模型变强。
+	var (
+		bridge runnerl3.SkillRunner
+		engine = "llm"
+	)
+	if *withSkills {
+		pr := pyskill.New(context.Background(), logger)
+		if pr.SkillsDir() == "" {
+			fmt.Fprintln(os.Stderr, "[WARN] --with-skills 已开启，但未找到 skills 目录（可用 CTF_SKILLS_DIR 指定）→ "+
+				"execute_python 虽然可调，但实际没有任何 skill 可跑；本报告**不能**当作「带 skill 形态」使用")
+		} else {
+			fmt.Fprintf(os.Stderr, "[INFO] skill 桥接已接入：dir=%s catalog=%d\n", pr.SkillsDir(), pr.CatalogSize())
+		}
+		bridge = pr
+		engine = "llm+skills"
+	}
+	fb := runnerl3.NewLLMFallback(context.Background(), logger, bridge)
 	if !fb.Enabled {
 		fmt.Fprintln(os.Stderr, "[ERR] LLM fallback 装配失败（RUNNER_LLM_API_KEY 缺失或通道不可用）→ 拒绝跑批，"+
 			"避免产出一份看起来像「跑了 0 命中」、实际根本没跑的报告")
@@ -342,7 +363,7 @@ func main() {
 		Solver:      "llm",
 		Model:       model,
 		BaseURL:     os.Getenv("RUNNER_LLM_BASE_URL"),
-		Note:        "离线题集 × runnerl3.LLMFallback（Layer 3 真 token），判分只认 flag_sha256。未解出照常计入分母，绝不剔除。",
+		Note:        "离线题集 × runnerl3.LLMFallback（Layer 3 真 token），判分只认 flag_sha256。未解出照常计入分母，绝不剔除。engine=" + engine,
 		Total:       len(ids),
 	}
 
@@ -369,7 +390,7 @@ func main() {
 			HasAttachment: hasAtt,
 		})
 		secs := time.Since(t0).Seconds()
-		r := row{ID: id, Category: p.Category, Sub: p.Sub, Engine: "llm:" + model,
+		r := row{ID: id, Category: p.Category, Sub: p.Sub, Engine: engine + ":" + model,
 			Candidates: len(flags), Seconds: secs, HasAttachment: hasAtt}
 		if err != nil {
 			r.Err = err.Error()

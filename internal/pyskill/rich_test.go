@@ -9,7 +9,7 @@
 //   D. extra 优先级高于 description 正则提取值（数学参数不许被猜的值覆盖）。
 //
 // 环境缺 python 时 SKIP（CI 无常驻 python；本机/服务器都有）。
-package main
+package pyskill
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"secautomind-ai/internal/ctfplatform"
 )
 
-// resolveTestPython 复刻 newPySkillRunner 的解析序；找不到返回 ""（调用方 SKIP）。
+// resolveTestPython 复刻 New 的解析序；找不到返回 ""（调用方 SKIP）。
 func resolveTestPython() string {
 	for _, c := range []string{"python3", "python", `C:\Users\Lenovo\.workbuddy\binaries\python\envs\default\Scripts\python.exe`} {
 		if _, err := exec.LookPath(c); err == nil {
@@ -50,13 +50,13 @@ func repoSkillsDir(t *testing.T) string {
 	return dir
 }
 
-func newRichTestRunner(t *testing.T) *pySkillRunner {
+func newRichTestRunner(t *testing.T) *Runner {
 	t.Helper()
 	py := resolveTestPython()
 	if py == "" {
 		t.Skip("无可用 python（python3/python/workbuddy venv 均不在）")
 	}
-	return &pySkillRunner{
+	return &Runner{
 		pythonPath: py,
 		skillsDir:  repoSkillsDir(t),
 		timeout:    60 * time.Second,

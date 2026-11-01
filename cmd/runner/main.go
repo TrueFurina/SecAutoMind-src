@@ -43,8 +43,9 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
-	"secautomind-ai/internal/runnerl3"
 	"secautomind-ai/internal/procenv"
+	"secautomind-ai/internal/pyskill"
+	"secautomind-ai/internal/runnerl3"
 )
 
 var (
@@ -147,7 +148,7 @@ func main() {
 	presolver := ctfplatform.NewPresolver(logger)
 
 	// ── 2.5 Python skill bridge（西湖论剑真跑 skill）─────
-	pyBridge := newPySkillRunner(context.Background(), logger)
+	pyBridge := pyskill.New(context.Background(), logger)
 
 	// ── 2.6 LLM fallback Layer 3（Eino ChatModel + 工具绑定）──
 	// 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
@@ -187,8 +188,8 @@ func main() {
 		// ── Layer 2: Python skill bridge ─────────────────────
 		// 放开类别闸门（2026-10-25）：除 reverse/pwn/crypto/misc 外，
 		// web/zip/java/morse 等 skill 已接入 skillCatalog，直接尝试即可；
-		// tryCategory 对 catalog 中不存在的类别会优雅返回 false，不会误伤。
-		if flags, ok := pyBridge.tryCategory(ctx, ch.Category, ch); ok {
+		// TryCategory 对 catalog 中不存在的类别会优雅返回 false，不会误伤。
+		if flags, ok := pyBridge.TryCategory(ctx, ch.Category, ch); ok {
 			ch.SolvedBy = "python_skill"
 			logger.Info("Layer 2 Python skill 命中",
 				zap.String("challenge", ch.Title),

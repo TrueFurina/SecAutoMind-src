@@ -1,4 +1,4 @@
-package main
+package pyskill
 
 // skill 桥接层的代码注入防护（2026-11-01）。
 //
@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func newInjectionTestRunner(t *testing.T) *pySkillRunner {
+func newInjectionTestRunner(t *testing.T) *Runner {
 	t.Helper()
 	py := ""
 	for _, c := range []string{"python3", "python"} {
@@ -47,7 +47,7 @@ func newInjectionTestRunner(t *testing.T) *pySkillRunner {
 		t.Fatalf("写对照 skill 失败：%v", err)
 	}
 
-	return &pySkillRunner{
+	return &Runner{
 		pythonPath: py,
 		skillsDir:  dir,
 		timeout:    20 * time.Second,

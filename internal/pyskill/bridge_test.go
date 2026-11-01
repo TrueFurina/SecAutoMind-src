@@ -1,4 +1,4 @@
-package main
+package pyskill
 
 import (
 	"path/filepath"

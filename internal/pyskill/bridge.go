@@ -1,4 +1,12 @@
-// pyskill_bridge.go —— Go 进程通过 subprocess 调 Python skill 的统一桥接。
+// Package pyskill 是 Go 进程通过 subprocess 调 Python skill 的统一桥接。
+//
+// 【2026-11-01 迁包】本文件原居于 cmd/runner（package main），导致
+// cmd/llmbench / cmd/evalharness 无法复用 —— 这两个跑批入口 pyBridge 恒为 nil，
+// 所有"LLM 解题率"数字都只是**无 skill 的纯 LLM 下界**，而生产 runner 的 86 skill
+// 通路从未在真机被测过。迁到 internal/pyskill 后两个跑批入口可显式接入
+// （llmbench --with-skills），使"带 skill 的生产形态"第一次可被量化。
+// 符号改名：Runner→Runner、New→New、TryCategory→TryCategory，
+// 其余实现逐字未动（含 2026-11-01 的 skill 名标识符守卫与 procenv 白名单）。
 //
 // 为什么存在：
 //   SecAutoMind runner 是纯 Go 二进制，但 reverse/pwn 真跑需要 angr/pwntools 等
@@ -22,7 +30,7 @@
 // LLM fallback 留到赛后——直接 einoopenai.NewChatModel().Generate()，
 // 只绑最小工具集（execute + read_file），不起 agent/db 全链路。
 
-package main
+package pyskill
 
 import (
 	"context"
@@ -43,8 +51,8 @@ import (
 	"secautomind-ai/internal/procenv"
 )
 
-// pySkillRunner 通过 subprocess 调 Python skill。
-type pySkillRunner struct {
+// Runner 通过 subprocess 调 Python skill。
+type Runner struct {
 	pythonPath   string            // Python 解释器路径
 	skillsDir    string            // skills/ 目录绝对路径
 	timeout      time.Duration     // 单次执行超时
@@ -55,8 +63,8 @@ type pySkillRunner struct {
 	skillCatalog map[string][]string // category → skill filename 列表（全量 79 skill）
 }
 
-// newPySkillRunner 初始化 bridge。启动时检查一次关键依赖，避免每次调用都 pip show。
-func newPySkillRunner(ctx context.Context, logger *zap.Logger) *pySkillRunner {
+// New 初始化 bridge。启动时检查一次关键依赖，避免每次调用都 pip show。
+func New(ctx context.Context, logger *zap.Logger) *Runner {
 	// pythonPath: env 覆盖优先，默认用 workbuddy 那条绝对路径（本环境 python 不在 PATH）
 	pyPath := osGetenv("CTF_PYTHON_PATH")
 	if pyPath == "" {
@@ -73,13 +81,13 @@ func newPySkillRunner(ctx context.Context, logger *zap.Logger) *pySkillRunner {
 		}
 	}
 
-	r := &pySkillRunner{
+	r := &Runner{
 		pythonPath: pyPath,
 		timeout:    30 * time.Second,
 		logger:     logger,
 		skillCatalog: map[string][]string{
 			// 扩到全量 79 skill（2026-10-25 gap 分析：之前硬编码只有 10 个，Runner L2 实际只跑这 10 个）
-			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 tryCategory 里做
+			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 TryCategory 里做
 			// 前缀 → Runner Category 映射见 candidateSkillDirs 注释 + gap 分析记录
 			"crypto": {
 				"base64_multilayer", "caesar_bruteforce", "crypto_complex_mult_group",
@@ -146,7 +154,31 @@ func newPySkillRunner(ctx context.Context, logger *zap.Logger) *pySkillRunner {
 	return r
 }
 
-// osGetenv 包装，避免直接 import os（go vet 要求只在 main import os）
+// SkillsDir 返回实际解析到的 skills 目录；**空串表示没找到**，此时 L2 会静默跳过。
+// 调用方（尤其跑批入口）必须对它做显式告警 —— 2026-11-01 的"附件从未落盘
+// 40/40 被静默阉割"就是同型事故：能力没接上却不报错，报告看起来像"模型不会做"。
+func (r *Runner) SkillsDir() string { return r.skillsDir }
+
+// CatalogSize 返回可路由 skill 总数（category 展开后）。
+func (r *Runner) CatalogSize() int { return totalSkills(r.skillCatalog) }
+
+// SkillCatalog 返回 skill 路由表的**副本**，供 L3 渲染 execute_python 的工具描述。
+//
+// 存在原因（2026-11-01 P0 实锤）：工具描述里原有一张手写 skill 名清单，与
+// skillCatalog 早已脱节 —— 列出的 16 个名字 15 个不存在（factor_integer /
+// rsa_wiener_attack / angr_decompile / pwn_checksec …），真实 79 个反而一个没写。
+// 模型忠实地照描述去调 factor_integer，必然 import 失败 ⇒ skill 通路形同虚设。
+// 单一真值源：清单只能从本方法现取，禁止再手写。
+// 返回副本，避免调用方改动内部路由表。
+func (r *Runner) SkillCatalog() map[string][]string {
+	out := make(map[string][]string, len(r.skillCatalog))
+	for k, v := range r.skillCatalog {
+		out[k] = append([]string(nil), v...)
+	}
+	return out
+}
+
+// osGetenv 包装：保留原 main 包内的调用形态（迁包后仍用它统一 TrimSpace 语义）
 func osGetenv(key string) string {
 	v, _ := os.LookupEnv(key)
 	return strings.TrimSpace(v)
@@ -166,7 +198,7 @@ func totalSkills(cat map[string][]string) int {
 }
 
 // checkDep pip show <name> 退出码 0 = 已装
-func (r *pySkillRunner) checkDep(ctx context.Context, name string) bool {
+func (r *Runner) checkDep(ctx context.Context, name string) bool {
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx2, r.pythonPath, "-c",
@@ -180,9 +212,9 @@ func (r *pySkillRunner) checkDep(ctx context.Context, name string) bool {
 	return strings.Contains(string(out), "OK")
 }
 
-// tryCategory 对指定 category 依次跑"真跑"skill，第一个返回 solved=True 且有 flag 的就用。
+// TryCategory 对指定 category 依次跑"真跑"skill，第一个返回 solved=True 且有 flag 的就用。
 // 返回值：(flag candidates, 是否找到)
-func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ctfplatform.Challenge) ([]string, bool) {
+func (r *Runner) TryCategory(ctx context.Context, category string, ch *ctfplatform.Challenge) ([]string, bool) {
 	skills, ok := r.skillCatalog[category]
 	if !ok || len(skills) == 0 {
 		return nil, false
@@ -230,7 +262,7 @@ func (r *pySkillRunner) tryCategory(ctx context.Context, category string, ch *ct
 // 但 skill 通常需要 text/path/key。现在：
 //   ① 从 description regex 提取 text（密文）和 key（密钥）
 //   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
-func (r *pySkillRunner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
+func (r *Runner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
 	params := r.buildSkillParams(ctx, ch)
 
 	// 从 description 提取 text（密文）——匹配 "密文: xxx" / "cipher: xxx" / "text=xxx" 等常见格式
@@ -301,7 +333,7 @@ func (r *pySkillRunner) RunSkill(ctx context.Context, skillName string, ch *ctfp
 // 但 skill 通常需要 text/path/key。现在：
 //   ① 从 description regex 提取 text（密文）和 key（密钥）
 //   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
-func (r *pySkillRunner) buildSkillParams(ctx context.Context, ch *ctfplatform.Challenge) map[string]interface{} {
+func (r *Runner) buildSkillParams(ctx context.Context, ch *ctfplatform.Challenge) map[string]interface{} {
 	params := map[string]interface{}{
 		"name":        ch.Title,
 		"category":    ch.Category,
@@ -338,7 +370,7 @@ func (r *pySkillRunner) buildSkillParams(ctx context.Context, ch *ctfplatform.Ch
 // execSkillSubprocess 的源码模板（`import %s as s`），非法字符即代码注入。
 var skillNameIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-func (r *pySkillRunner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}) (string, bool) {
+func (r *Runner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}) (string, bool) {
 	// 纵深防御（2026-11-01）：上层 internal/runnerl3 已经校验过 skill_name，
 	// 但这里是**真正拼源码**的地方 —— 谁调用都得在同一处被拦住（L2 编排、
 	// 未来新增调用方都不会漏）。非法名一律不执行，返回失败而非报错文本，
@@ -414,7 +446,7 @@ except Exception as _e:
 //     并入 skill params，优先级高于 description 正则提取值——数学模板要精确参数，不要猜；
 //  ② 返回完整结果文本而非只提取 flag——数学模板的产出是中间量（小根/私钥/明文），
 //     flag 契约会把它们丢掉；LLM 需要看到原始结果才能决定下一步（如解密得 flag）。
-func (r *pySkillRunner) RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool) {
+func (r *Runner) RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool) {
 	params := r.buildSkillParams(ctx, ch)
 	for k, v := range extra {
 		params[k] = v
@@ -453,7 +485,7 @@ func extractSkillKey(desc string) string {
 
 // downloadAttachment 从 URL 下载附件到系统临时目录，返回文件路径。
 // 超时 30s，最大 50MB（与 Runner LLM read_attachment 工具一致）
-func (r *pySkillRunner) downloadAttachment(ctx context.Context, url string) (string, error) {
+func (r *Runner) downloadAttachment(ctx context.Context, url string) (string, error) {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -502,7 +534,7 @@ func (r *pySkillRunner) downloadAttachment(ctx context.Context, url string) (str
 //   ③ 它是「西湖论剑尚未彻底并入」在运行链上的**唯一残留**——删掉之后，
 //      "把 E:\Program\西湖论剑 整个删掉、本项目功能不受影响"才成为可验证的事实。
 //
-// 不变量由 pyskill_bridge_test.go::TestCandidateSkillDirsAreRepoLocal 锁住：
+// 不变量由 bridge_test.go::TestCandidateSkillDirsAreRepoLocal 锁住：
 // **候选目录一律不得含仓库外绝对路径**。
 func findSkillsDir() string {
 	for _, dir := range candidateSkillDirs() {
