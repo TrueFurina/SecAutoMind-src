@@ -293,6 +293,9 @@ FLAG_BASELINE = Path(
     or (Path(__file__).resolve().parent / "plaintext_flag_baseline.json"))
 
 
+TRACKED_ROOT_ENV = "SECRET_GUARD_TRACKED_ROOT"
+
+
 def _git_tracked(root: str) -> set[str] | None:
     """返回仓库内已跟踪文件集合；非 git 目录返回 None（调用方必须 fail-closed）。
 
@@ -300,9 +303,20 @@ def _git_tracked(root: str) -> set[str] | None:
     `"CTF-Agent_\\350\\236\\215..."` 这种带引号的八进制串，与 os.walk 给出的
     真实路径永远对不上 —— 结果整目录（本仓 153 个 skill）被误判成"未入库副本"，
     既漏掉真泄露，又让"未入库 2016 条"这个数字虚高。
+
+    `SECRET_GUARD_TRACKED_ROOT`（2026-10-26 补）：
+      交付包的 staging 是**提交树的子集**，但它自己不是 git 仓库 → 走「非 git 目录」
+      分支，而那条分支的规则是「有任何明文 flag 就 fail-closed，不看基线」。
+      后果：自 10-25 引入 flag 卡口起，交付包**再也打不出来**（`make_delivery_package`
+      的红线 3 恒红），只是没人重打过，所以一直没暴露。
+      现允许调用方用该环境变量指明「这份内容来自哪个仓库」，按该仓库的跟踪状态判定，
+      走正常的 tracked_hits / real_brand_hits / known_answer_hits 三个上限。
+      安全性：**只替换「跟踪状态」的来源，不放松任何判据**；三个上限照旧生效，
+      且未提供该变量时行为完全不变（仍 fail-closed）。
     """
+    src = (os.environ.get(TRACKED_ROOT_ENV) or "").strip() or root
     try:
-        r = subprocess.run(["git", "-C", root, "-c", "core.quotepath=false", "ls-files", "-z"],
+        r = subprocess.run(["git", "-C", src, "-c", "core.quotepath=false", "ls-files", "-z"],
                            capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=120)
         if r.returncode != 0:

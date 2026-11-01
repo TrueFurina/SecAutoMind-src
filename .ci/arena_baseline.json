@@ -1,0 +1,391 @@
+{
+  "results": [
+    {
+      "name": "b64_4layer",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 0.23,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_b64_4layer.log"
+    },
+    {
+      "name": "b64_5layer",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 0.42,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_b64_5layer.log"
+    },
+    {
+      "name": "b64_double",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 0.59,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_b64_double.log"
+    },
+    {
+      "name": "b64_multi",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 0.77,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_b64_multi.log"
+    },
+    {
+      "name": "b64_single",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 0.93,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_b64_single.log"
+    },
+    {
+      "name": "caesar_1",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.09,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_1.log"
+    },
+    {
+      "name": "caesar_10",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.25,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_10.log"
+    },
+    {
+      "name": "caesar_11",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.41,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_11.log"
+    },
+    {
+      "name": "caesar_12",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.58,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_12.log"
+    },
+    {
+      "name": "caesar_13",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.75,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_13.log"
+    },
+    {
+      "name": "caesar_14",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 1.91,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_14.log"
+    },
+    {
+      "name": "caesar_15",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.07,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_15.log"
+    },
+    {
+      "name": "caesar_16",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.25,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_16.log"
+    },
+    {
+      "name": "caesar_17",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.43,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_17.log"
+    },
+    {
+      "name": "caesar_18",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.6,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_18.log"
+    },
+    {
+      "name": "caesar_19",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.78,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_19.log"
+    },
+    {
+      "name": "caesar_2",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 2.96,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_2.log"
+    },
+    {
+      "name": "caesar_20",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 3.12,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_20.log"
+    },
+    {
+      "name": "caesar_21",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 3.31,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_21.log"
+    },
+    {
+      "name": "caesar_22",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 3.52,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_22.log"
+    },
+    {
+      "name": "caesar_23",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 3.69,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_23.log"
+    },
+    {
+      "name": "caesar_24",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 3.85,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_24.log"
+    },
+    {
+      "name": "caesar_25",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 4.05,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_25.log"
+    },
+    {
+      "name": "caesar_3",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 4.24,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_3.log"
+    },
+    {
+      "name": "caesar_4",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 4.44,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_4.log"
+    },
+    {
+      "name": "caesar_5",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 4.64,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_5.log"
+    },
+    {
+      "name": "caesar_6",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 4.82,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_6.log"
+    },
+    {
+      "name": "caesar_7",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.02,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_7.log"
+    },
+    {
+      "name": "caesar_8",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.21,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_8.log"
+    },
+    {
+      "name": "caesar_9",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.41,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_caesar_9.log"
+    },
+    {
+      "name": "cookie_leak",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.6,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_cookie_leak.log"
+    },
+    {
+      "name": "forensic_1",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.77,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_forensic_1.log"
+    },
+    {
+      "name": "forensic_2",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 5.94,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_forensic_2.log"
+    },
+    {
+      "name": "forensic_3",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 6.12,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_forensic_3.log"
+    },
+    {
+      "name": "html_comment",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 6.31,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_html_comment.log"
+    },
+    {
+      "name": "json_leak",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 6.48,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_json_leak.log"
+    },
+    {
+      "name": "log_forensics",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 6.67,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_log_forensics.log"
+    },
+    {
+      "name": "morse_hello",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 6.86,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_morse_hello.log"
+    },
+    {
+      "name": "net_forensics",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 7.09,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_net_forensics.log"
+    },
+    {
+      "name": "web_csrf",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 7.29,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_csrf.log"
+    },
+    {
+      "name": "web_idor",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 7.47,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_idor.log"
+    },
+    {
+      "name": "web_lfi",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 7.67,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_lfi.log"
+    },
+    {
+      "name": "web_rce",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 7.86,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_rce.log"
+    },
+    {
+      "name": "web_sqli",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 8.05,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_sqli.log"
+    },
+    {
+      "name": "web_ssrf",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 8.23,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_ssrf.log"
+    },
+    {
+      "name": "web_xss",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 8.41,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_web_xss.log"
+    },
+    {
+      "name": "xor_01",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 8.63,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_01.log"
+    },
+    {
+      "name": "xor_10",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 8.84,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_10.log"
+    },
+    {
+      "name": "xor_33",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.02,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_33.log"
+    },
+    {
+      "name": "xor_55",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.22,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_55.log"
+    },
+    {
+      "name": "xor_77",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.4,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_77.log"
+    },
+    {
+      "name": "xor_aa",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.59,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_aa.log"
+    },
+    {
+      "name": "xor_cc",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.79,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_cc.log"
+    },
+    {
+      "name": "xor_ff",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 9.97,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_ff.log"
+    },
+    {
+      "name": "xor_single",
+      "verdict": "SOLVED",
+      "rc": 0,
+      "elapsed": 10.18,
+      "log": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\arena_xor_single.log"
+    }
+  ],
+  "total": 55,
+  "solved": 55
+}

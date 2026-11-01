@@ -39,6 +39,11 @@ ROUTES_DOC = "docs/AGENT_ROUTES.md"
 INDEX_DOC = "docs/INDEX.md"
 CLOSING_DOC = "docs/收尾清单.md"
 
+# 工具/agent 状态目录：被 .gitignore 覆盖，干净检出里永远不存在。
+# 路由表提到它们属正当（如"交付包排除面必须覆盖 .workbuddy-ai/"这条教训），
+# 不能按"引用了不存在的路径"判红（2026-10-26 修：此前 CI 因此恒红）。
+TOOL_STATE_DIRS = {".workbuddy", ".workbuddy-ai", ".box-agent", ".git", "node_modules"}
+
 # 反引号里"像路径"的 token：不含通配符/占位符/空格
 PATH_TOKEN = re.compile(r"^[A-Za-z0-9_./\-\u4e00-\u9fff]+$")
 PATH_EXT = (".go", ".py", ".js", ".css", ".yaml", ".yml", ".md", ".sh",
@@ -92,11 +97,11 @@ def check_routes_paths(root):
         if tok in seen:
             continue
         seen.add(tok)
-        # 工具态目录（2026-10-26 修，2026-10-31 被并行会话覆盖后重打）：
-        # 路由表里 `.workbuddy-ai/` 是**教训句**（"交付包排除面必须覆盖它"），
-        # 而该目录被 .gitignore 覆盖、干净检出永远不存在 → 判"引用了不存在的路径"是误报。
-        # 只跳过这几类，普通路径仍照常校验（下方有变异自测钉住）。
-        if tok.rstrip("/") in TOOL_STATE_DIRS:
+        # 工具态目录（被 .gitignore 覆盖）**永远不存在于干净检出**，但路由表里
+        # 提到它们是正当的（例如"交付包排除面必须覆盖 .workbuddy-ai/"这条教训）。
+        # 2026-10-26：此前把它们当"引用了不存在的路径"，导致 CI 在干净检出上恒红。
+        # 用 split("/")[0] 同时覆盖嵌套路径（如 .workbuddy-ai/memory）。
+        if tok.rstrip("/").split("/")[0] in TOOL_STATE_DIRS:
             continue
         if not os.path.exists(os.path.join(root, tok.rstrip("/"))):
             bad.append(tok)
