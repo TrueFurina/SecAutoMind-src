@@ -5,7 +5,8 @@
 // 所有"LLM 解题率"数字都只是**无 skill 的纯 LLM 下界**，而生产 runner 的 86 skill
 // 通路从未在真机被测过。迁到 internal/pyskill 后两个跑批入口可显式接入
 // （llmbench --with-skills），使"带 skill 的生产形态"第一次可被量化。
-// 符号改名：Runner→Runner、New→New、TryCategory→TryCategory，
+// 符号改名：New→New、tryCategory→tryCategory（导出名改为 TryCategoryBudget /
+// TryCategoryLocal，无限预算的 TryCategory 已于 2026-11-01 删除），
 // 其余实现逐字未动（含 2026-11-01 的 skill 名标识符守卫与 procenv 白名单）。
 //
 // 为什么存在：
@@ -98,7 +99,7 @@ func New(ctx context.Context, logger *zap.Logger) *Runner {
 		logger:      logger,
 		skillCatalog: map[string][]string{
 			// 扩到全量 79 skill（2026-10-25 gap 分析：之前硬编码只有 10 个，Runner L2 实际只跑这 10 个）
-			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 TryCategory 里做
+			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 tryCategory 里做
 			// 前缀 → Runner Category 映射见 candidateSkillDirs 注释 + gap 分析记录
 			"crypto": {
 				"base64_multilayer", "caesar_bruteforce", "crypto_complex_mult_group",
@@ -436,20 +437,34 @@ func (r *Runner) checkDep(ctx context.Context, name string) bool {
 	return strings.Contains(string(out), "OK")
 }
 
-// TryCategory 对指定 category 依次跑"真跑"skill，第一个返回 solved=True 且有 flag 的就用。
-// 返回值：(flag candidates, 是否找到)
-func (r *Runner) TryCategory(ctx context.Context, category string, ch *ctfplatform.Challenge) ([]string, bool) {
-	return r.tryCategory(ctx, category, ch, nil, 0)
+// TryCategoryBudget 对指定 category 依次跑"真跑"skill，
+// 第一个返回 solved=True 且有 flag 的就用；budget 内没命中就放弃。
+//
+// 存在原因（2026-11-01 实测）：crypto 类挂 28 个 skill、单 skill 最多 6 个
+// (文件×分派) 变体、每次子进程上限 30s ⇒ 无限预算下最坏可到 56 分钟/题。
+// 原生产路径走的正是无限预算版本（本轮直接删掉，不留"忘了传预算"的口子），
+// 等于赛时把单题时间预算整个吃光——属于"跑批里看不出、赛时致命"的类型。
+func (r *Runner) TryCategoryBudget(ctx context.Context, category string, ch *ctfplatform.Challenge, budget time.Duration) ([]string, bool) {
+	return r.tryCategory(ctx, category, ch, nil, budget)
 }
 
-// TryCategoryLocal 与 TryCategory 同语义，但把**本地附件路径**注入 params["path"]。
+// L2BudgetFromEnv 读 CTF_L2_BUDGET（如 "180s"），缺失/非法/<=0 用 def。
+// 生产入口与跑批入口共用同一个真值源，避免"两边预算各写一份"再漂移。
+func L2BudgetFromEnv(def time.Duration) time.Duration {
+	if d := durFromEnv("CTF_L2_BUDGET", 0); d > 0 {
+		return d
+	}
+	return def
+}
+
+// TryCategoryLocal 与 TryCategoryBudget 同语义，但额外把**本地附件路径**注入 params["path"]。
 //
 // 存在原因（2026-11-01）：L2 原来只认 ch.AttachmentURLs（平台给的下载 URL），
 // 离线跑批的附件是本地文件、没有 URL ⇒ L2 永远拿不到 path ⇒ 所有"吃文件"的
 // skill 在跑批里一律等于没接上（与 40/40 附件静默阉割同型）。
 //
-// budget>0 时限制**整类**总耗时：crypto 有 28 个 skill、单个 30s，最坏 14 分钟/题。
-// 赛时不可接受，跑批入口必须给预算；<=0 表示不限（保持生产旧行为）。
+// budget>0 时限制**整类**总耗时；<=0 表示不限（跑批里留作显式诊断口子，
+// 生产路径不得使用——cmd/runner 走 TryCategoryBudget + CTF_L2_BUDGET）。
 func (r *Runner) TryCategoryLocal(ctx context.Context, category string, ch *ctfplatform.Challenge, localFiles []string, budget time.Duration) ([]string, bool) {
 	return r.tryCategory(ctx, category, ch, localFiles, budget)
 }

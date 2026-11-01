@@ -319,7 +319,7 @@ func main() {
 		"Layer 3 之前先跑 Layer 2 确定性 skill 路由（按 category 顺序试 skill，**零 token**），"+
 			"命中记 layer=l2。理由（2026-11-01 真机实测）：模型拿到正确清单+参数契约后仍然"+
 			"不用 skill（23s 就放弃、只调 python_session），不能只靠模型自觉")
-	l2Budget := flag.Duration("l2-budget", 300*time.Second,
+	l2Budget := flag.Duration("l2-budget", pyskill.L2BudgetFromEnv(300*time.Second),
 		"--with-l2 的**整类**时间预算；0=不限。"+
 			"crypto 有 28 个 skill、单个 30s，不限会拖到 14 分钟/题，赛时不可接受")
 	flag.Parse()

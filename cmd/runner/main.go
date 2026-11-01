@@ -149,6 +149,10 @@ func main() {
 
 	// ── 2.5 Python skill bridge（西湖论剑真跑 skill）─────
 	pyBridge := pyskill.New(context.Background(), logger)
+	// L2 整类时间预算：无限预算下 crypto 最坏 56 分钟/题（28 skill × 6 变体 × 30s）。
+	pyskillL2Budget := pyskill.L2BudgetFromEnv(180 * time.Second)
+	logger.Info("L2 时间预算", zap.Duration("budget", pyskillL2Budget),
+		zap.String("env", "CTF_L2_BUDGET"))
 
 	// ── 2.6 LLM fallback Layer 3（Eino ChatModel + 工具绑定）──
 	// 依赖门控：RUNNER_LLM_FALLBACK=true 且有 API key 才启用
@@ -188,8 +192,10 @@ func main() {
 		// ── Layer 2: Python skill bridge ─────────────────────
 		// 放开类别闸门（2026-10-25）：除 reverse/pwn/crypto/misc 外，
 		// web/zip/java/morse 等 skill 已接入 skillCatalog，直接尝试即可；
-		// TryCategory 对 catalog 中不存在的类别会优雅返回 false，不会误伤。
-		if flags, ok := pyBridge.TryCategory(ctx, ch.Category, ch); ok {
+		// TryCategoryBudget 对 catalog 中不存在的类别会优雅返回 false，不会误伤。
+		// 必须带预算：crypto 类 28 个 skill × 最多 6 变体 × 30s 最坏 56 分钟/题，
+		// 无限预算版本在生产路径等于赛时自杀。预算走 CTF_L2_BUDGET（默认 180s）。
+		if flags, ok := pyBridge.TryCategoryBudget(ctx, ch.Category, ch, pyskillL2Budget); ok {
 			ch.SolvedBy = "python_skill"
 			logger.Info("Layer 2 Python skill 命中",
 				zap.String("challenge", ch.Title),
