@@ -43,3 +43,21 @@
 本反馈由归因分桶例行扫描自动产出（13 轮 × benchmark_report 的 error 字段
 聚合）。A 线需要逐轮 goal_log 深挖时，可指定 mm_* 目录，E 提供 task_id
 对账表。
+
+
+## 补记（2026-11-02 立尺 · 服务器可用性确认）
+
+并行会话已在 **172.16.222.99 服务器**上完成 L2 确定性路由实测
+（crypto 26 题普查 2/26=7.7%，mhk2 零 token 解出 sha256 逐位一致）——
+**"需 Linux 环境"的阻断条件已解除**：
+
+1. **flecksofgold（cybench 池）**：服务器运行 `./flecks` + REST 查询的
+   兑现路径现在可执行（此前被 docker-desktop musl 阻断）。
+2. **外部池 misc 14 题 + rev 未普查**：crypto 26 已测（2/26），misc/rev
+   的 L2 路由覆盖率是下一块可测空白——filestore/segfault-labyrinth 等
+   交互题仍需服务实例，但纯静态类可上服务器。
+3. **周审第 4 项资产监控**：服务器 `/tmp/l2cov`、`/tmp/fv2` 为隔离副本，
+   外部依赖检查范围不需扩展（仍在仓内）。
+
+立尺裁定：外部输入清单更新——"环境"项已兑现，剩余触发为 A 决策 / B 定性 /
+观澜裁决 / 官方 writeup（appnote 解包器序列）。
