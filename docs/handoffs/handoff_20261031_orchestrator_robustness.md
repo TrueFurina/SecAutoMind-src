@@ -66,7 +66,7 @@ export PYTHONIOENCODING=utf-8        # 必须，否则门禁 emoji 输出 GBK �
 | `scripts/session_registry.py` | 跑批占位登记（claim/release，活跃 ≤5） | 否 |
 | `.workbuddy/memory/2026-10-31.md` | 本会话全部结论与数字 | **是**（已追加） |
 | `.workbuddy/memory/MEMORY.md` | 长期记忆（KPI 口径、赛时纪律） | **是**（追加并发铁律） |
-| `docs/handoff_20261031_orchestrator_robustness.md` | 本卡 | **是**（新增） |
+| `docs/handoffs/handoff_20261031_orchestrator_robustness.md` | 本卡 | **是**（新增） |
 
 ## 5. 已知陷阱（具体事故形态）
 
@@ -107,7 +107,7 @@ export PYTHONIOENCODING=utf-8        # 必须，否则门禁 emoji 输出 GBK �
 
 | # | 假设 | 若被推翻的影响 |
 |---|---|---|
-| A1 | 决赛仍按 `config` 的 2027-03-01 准备（公告写 2026-11-07，冲突未终裁） | 所有"赛前窗口"判断与排期作废，需立刻切到抢分模式 |
+| A1 | ✅ 已终裁：决赛 **2027-03-01**（用户 2026-11-02 确认），公告 11-07 口径作废 | 无需切换抢分模式，按 2027-02-15 冻结窗正常排期 |
 | A2 | `public_morse_image` **不计入** KPI 分母（不在 `AUTHORIZED_KPI_SOLVES` 14 道，也不在外部池 40 道） | 若实际应计入，KPI 分子+1，需重算能力率 |
 | A3 | 外部池 40 题里 14 道"附件只有服务端脚本"的题**注定失败**（沙箱禁网） | 若后续开放网络或本地起服务端，这 14 道的分母口径需重定义 |
 | A4 | 8 题 0/8 是"模型真实能力水位"，不是管道问题（依据：5 题用满 24 轮仍在打转） | 若查出管道仍有缺陷，则 0/8 不成立，需重跑 |
@@ -115,7 +115,7 @@ export PYTHONIOENCODING=utf-8        # 必须，否则门禁 emoji 输出 GBK �
 ## 9. 上下文元数据
 
 - **生成者 / 时间**：WorkBuddy agent / 2026-10-31 12:40 (GMT+8)
-- **上一份交接**：`docs/handoff_1024_final_20261024.md`、`docs/handoff_ycb_20261024.md`（均已被本卡取代）
+- **上一份交接**：`docs/handoffs/handoff_1024_final_20261024.md`、`docs/handoffs/handoff_ycb_20261024.md`（均已被本卡取代）
 - **相关文档**（`docs/INDEX.md` 条目）：`docs/AGENT_ROUTES.md`、`docs/QUICKSTART_NEXT_AGENT.md`、
   `docs/收尾清单.md`、`docs/服务器实机验证_Runbook_20261020.md`
 - **未验证 / 仍未知**：

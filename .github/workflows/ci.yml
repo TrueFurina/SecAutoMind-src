@@ -12,7 +12,12 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # 2026-11-02 补：只认 main 时，实际开发分支 `docs/race-day-card` 的 555 个提交
+    # 一次 CI 都没跑过（最后一次成功是 10-24，10-29 那次 failure 后彻底停摆）。
+    # 代价是 Actions 分钟数上升，但「没有 CI」比「多花额度」贵得多。
+    branches: [main, docs/race-day-card]
+  # 手动触发：需要在不 push 的情况下验证某个 HEAD（额度紧张时用它代替连推）。
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -1081,3 +1086,73 @@ jobs:
           python-version: "3.12"
       - name: Artifact injection guard (incl. mutation checks)
         run: python scripts/test_artifact_inject.py
+
+  # CTF-Agent 全量 pytest 门禁（2026-10-31 接入）。
+  # 背景：pytest.ini 早已定义正式口径 `-m "not slow and not local"`，scripts/_ci_local.sh
+  # 也实现了它，但**从未接进 CI** —— 2212 个用例长期靠人记得跑（属于「写好却没接线」，
+  # AGENTS.md 第四条点名的失败模式）。
+  # 接之前实测该口径下有 14 条必然红，根因全部是同一个：`CTF-Agent_融合/` 是**迁移副本**，
+  # README.md 被改写为 33 行迁移说明、data/ 整目录被 .gitignore 排除，这些用例的前提在副本里
+  # 不存在。直接接 = 一道永久红的门禁，而永久红门禁的结局是被整段注释掉。
+  # 故采用「精确 deselect + 记账表 + 清单自测」：14 条逐条写根因，上限 20，
+  # 悬空节点/超限/无因/口径漂移四种腐化各有一条变异用例守着（证明门禁真能变红）。
+  ctf-agent-pytest-gate:
+    name: CTF-Agent pytest (2212 cases, deselect ledger)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install system tools (tesseract OCR)
+        # 🔴 2026-10-31：`tests/test_jpeg_png_ocr.py::test_tesseract_locatable` 是**硬断言**
+        # （assertIsNotNone，不 skip），而 ubuntu-latest 默认不带 tesseract →
+        # 本 job 若不装，会稳定红一条，且与代码质量无关。
+        # 这与服务器实测一致：服务器未装 tesseract 时该用例必红。
+        # 装 OCR 引擎本体 + 英文语言包（skill 的 tessdata 探测要求 eng.traineddata）。
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
+      - name: Install test dependencies
+        # 🔴 2026-10-31 修正（服务器交叉验证实锤）：首版清单只装了 7 个包，
+        # 实测在干净 venv 里 collect 阶段就有 6 个 ModuleNotFoundError
+        # （PIL / fastapi / httpx / Crypto / Crypto）与若干 async 用例报
+        # "async def functions are not natively supported"——即**这个 job 一上线就会红**。
+        # 现按全仓 import 实扫结果补全（scripts/_scan_third_party_imports.py），
+        # 并显式区分「必需」与「可选」：可选缺失只降级不失败，故不装也不影响门禁，
+        # 但 pytest-asyncio 是**必需**（56 个 async 用例全靠它）。
+        # 版本取下界而非锁死：与 pyproject 声明一致，避免 CI 与本地装出两套版本。
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pytest>=8.0" "pytest-timeout>=2.2" "pytest-asyncio>=0.23" \
+                      "pycryptodome>=3.20" "cryptography>=42" "pillow>=10.0" \
+                      "numpy>=2.0" "sympy>=1.13" "gmpy2>=2.1" "httpx>=0.27" \
+                      "fastapi>=0.110" "uvicorn>=0.29" "pydantic>=2.0" "pyyaml>=6.0" \
+                      "scapy>=2.5" "brotli>=1.1" "zstandard>=0.22"
+      - name: Verify the installed set really satisfies collection
+        # 装完立刻自检：任一 import 缺失就让本 job 在前面失败，而不是等到 2000 个用例
+        # 里散落成一堆 ModuleNotFoundError（那样既慢又难读懂）。
+        working-directory: CTF-Agent_融合/ctf_agent
+        run: |
+          python -c "
+          import importlib.util, sys
+          need = ['pytest','pytest_asyncio','Crypto','cryptography','PIL','numpy',
+                  'sympy','gmpy2','httpx','fastapi','pydantic','yaml','scapy',
+                  'brotli','zstandard']
+          missing = [m for m in need if importlib.util.find_spec(m) is None]
+          if missing:
+              print('❌ 依赖不完整，缺失:', missing)
+              sys.exit(1)
+          print('✅ 依赖齐全:', len(need), '个')
+          "
+      - name: Deselect ledger self-test (inflation / dangling / no-reason / marker drift)
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_pytest_deselect_test.py"
+      - name: Deselect ledger is accounted for
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_pytest_deselect.py"
+      - name: Full pytest under the documented gate expression
+        working-directory: CTF-Agent_融合/ctf_agent
+        # 用 deselect 记账表驱动 --deselect，避免在 workflow 里手写 14 条路径（两处必漂）。
+        run: |
+          DESELECT=$(python -c "import json;d=json.load(open('scripts/_ci_pytest_deselect.json',encoding='utf-8'));print(' '.join('--deselect '+e['node'] for e in d['entries']))")
+          PYTHONIOENCODING=utf-8 python -m pytest -q -m "not slow and not local" \
+            --timeout=180 -p no:cacheprovider $DESELECT
