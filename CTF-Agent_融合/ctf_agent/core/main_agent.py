@@ -554,6 +554,8 @@ class MainAgent:
         provider=None,      # LLM provider 名（baidu/mimo/...，供报告与流量吻合）
         per_question_wallclock: Optional[int] = None,  # 单题墙钟硬止损（秒，None→读 config）
         hard_wallclock: Optional[int] = None,          # HARD/VERY_HARD 分级墙钟（秒，None→读 config）
+        easy_wallclock: Optional[int] = None,          # EASY/VERY_EASY 分级墙钟（秒，None→读 config）
+        preload_attachments: Optional[bool] = None,    # 框架预读附件注入（None→读 config/默认关）
         step_timeout_s: Optional[float] = None,        # E2 每步超时（秒，None→env/默认60）
         llm_call_budget: Optional[int] = None,         # E2 每题 LLM 调用上限（None→env/默认12）
         few_shot: Optional[bool] = None,               # E6 few-shot 方向范例注入（None→env/默认关）
@@ -575,6 +577,11 @@ class MainAgent:
         self.skill_manager = skill_manager
         self.provider = provider
         self._last_skill_require = None  # 上一轮 skill_require（供 solve 循环加载）
+        # 2026-10-26 LLM 输出协议计量（只计数、不改行为）：
+        #   protocol_fail = 模型有返回但解析不出 JSON；empty_reply = 根本没返回内容。
+        # 用途：把「模型输出不合协议」从 tool_failure 桶里区分出来
+        # （实测 glm-4-flash 28.1% vs generalv3 1.2%，两者不可混谈）。
+        self._llm_parse_metrics = {"protocol_fail": 0, "empty_reply": 0}
         # 墙钟硬止损阈值：显式传入 > 环境变量 > config 默认 300
         if per_question_wallclock is not None:
             self.per_question_wallclock = per_question_wallclock
@@ -593,6 +600,27 @@ class MainAgent:
                 self.hard_wallclock = AppConfig.from_env().hard_wallclock
             except Exception:  # noqa: BLE001 - config 不可用时兜底默认
                 self.hard_wallclock = 480
+        # EASY 分级墙钟（2026-10-25 破晓补覆盖口）：默认仍 120s，仅提供 CTF_AGENT_EASY_WALLCLOCK。
+        # 原实现硬编码 120s 且无覆盖途径，reasoning 模型 124s 撞墙、--wallclock 不生效。
+        if easy_wallclock is not None:
+            self.easy_wallclock = easy_wallclock
+        else:
+            try:
+                from config import AppConfig
+                self.easy_wallclock = AppConfig.from_env().easy_wallclock
+            except Exception:  # noqa: BLE001 - config 不可用时兜底默认
+                self.easy_wallclock = 120
+        # 框架预读附件（2026-10-25 破晓 A 车道）：默认关，A/B 显式开。
+        # 实测 4 个模型里只有 1 个调过 file_analyze，其余直接写脚本 → 手里没证据 → 只能猜。
+        # 这里由框架直接读，不依赖模型行为（详见 _preload_attachment_evidence）。
+        if preload_attachments is not None:
+            self.preload_attachments = bool(preload_attachments)
+        else:
+            try:
+                from config import AppConfig
+                self.preload_attachments = AppConfig.from_env().preload_attachments
+            except Exception:  # noqa: BLE001 - config 不可用时兜底默认
+                self.preload_attachments = False
         # E2（2026-08-25 桶B攻坚）：每步超时 + 每题 LLM 调用预算（可 env 覆盖，与墙钟同风格）
         # step_timeout_s：单步 LLM+工具执行硬上限，防单步极慢拖死并发池（区别于每题墙钟）。
         # llm_call_budget：每题 LLM 调用硬上限，收敛"无限试错"——真题回归验收要求 ≤12。
@@ -633,6 +661,14 @@ class MainAgent:
         if getattr(ctx, "_last_chance_done", False) or getattr(ctx, "candidate_flag", None):
             return None
         ctx._last_chance_done = True
+        # 2026-10-26 口径修复：本兜底**不受** CTF_AGENT_INTERNAL_PRESOLVE 管辖，
+        # 导致「纯 LLM」跑批（--presolve-skip + INTERNAL_PRESOLVE=off）在放弃前
+        # 仍被确定性管线直出（实测 ext_gctf2022_cycling → CTF{Recycling_Is_Great}，
+        # 记为 solved_by=presolve）。量测 LLM 独立贡献时必须能整体关掉。
+        # 默认 on，保持既有基线行为不变。
+        if os.getenv("CTF_AGENT_LAST_CHANCE_PRESOLVE", "1").strip().lower() in (
+                "off", "0", "false", "no"):
+            return None
         try:
             from core.presolve import presolve
 
@@ -1440,13 +1476,13 @@ class MainAgent:
     def _wallclock_for(self, question) -> float:
         """分级墙钟（速度系统性优化：简单题更快止损，3h 吞吐提升）。
 
-        EASY/VERY_EASY 120s（简单题应秒级解决，抢一血窗口）、MEDIUM 300s、
-        HARD+ 480s（难题深推理窗口，P1-2 由 600s 下调，≤ specialcurve2 487s 灾难值；
+        EASY/VERY_EASY 120s（简单题应秒级解决，抢一血窗口；`CTF_AGENT_EASY_WALLCLOCK` 可覆盖）、
+        MEDIUM 300s、HARD+ 480s（难题深推理窗口，P1-2 由 600s 下调，≤ specialcurve2 487s 灾难值；
         CTF_AGENT_HARD_WALLCLOCK 可覆盖）、未知默认 per_question_wallclock（300s）。
         """
         diff = str(getattr(question, "difficulty", "")).upper()
         if diff in ("VERY_EASY", "EASY"):
-            return 120.0
+            return float(getattr(self, "easy_wallclock", 120) or 120)
         if diff in ("HARD", "VERY_HARD"):
             return float(getattr(self, "hard_wallclock", 480) or 480)
         return float(getattr(self, "per_question_wallclock", 300) or 300)
@@ -1594,9 +1630,118 @@ class MainAgent:
 
         return await llm_text(system, user, attempt, self.llm_client)
 
+    def _preload_attachment_evidence(self, ctx: AgentContext) -> None:
+        """框架预读附件全文，填入 ctx.attachment_evidence（2026-10-25 破晓 A 车道）。
+
+        为什么要框架读、而不是等模型调 file_analyze：
+          实测 4 个模型里只有 nemotron 调过一次 file_analyze；glm-4-flash 用 rea_probe
+          （二进制工具打 .js），qwen-397B / qwen-flash 直接写 script——而脚本里并没有读文件。
+          于是 attachment_evidence 恒空 → E3 注入无内容可投 → 模型只能凭空猜
+          → 被 sha256 反幻觉闸确定性拦下（实测猜 `flag{jmjKhpbdpbbgkbjqc}`，与真值不符）。
+
+        **E3 的假设是「附件已读但没进 prompt」，实测发现前提「已读」本身就不成立。**
+        本方法把前提补上：框架直接读文件填入 evidence，复用 E3 的注入通道。
+
+        只在 preload_attachments 开启时生效；已有 evidence（模型自己读过）时跳过——
+        尊重真实证据，不覆盖。
+        """
+        if not getattr(self, "preload_attachments", False):
+            return
+        if getattr(ctx, "attachment_evidence", None):
+            return  # 模型已自己读过，尊重真实证据
+
+        from pathlib import Path
+
+        atts = filter_answer_key_attachments(
+            ctx.question, list(getattr(ctx.question, "attachments", None) or [])
+        )
+        if not atts:
+            return
+
+        # 2026-10-26 修：附件基准目录多候选（此前只有"相对当前 cwd"一种）。
+        # 实证（本会话实测 93 道有附件题）：题库 JSON 里的附件路径是**相对 ctf_agent/**
+        # 的（如 `data/questions_real/_attachments/.../task.py`），
+        #   · cwd=ctf_agent/        → 15/33 可解析
+        #   · cwd=CTF-Agent_融合/   →  1/33
+        #   · cwd=仓库根            →  0/33
+        # 而 `scripts/benchmark_heldout.py::_resolve_attachment` 早就用
+        # `[Path(att), qpath.parent/att, ROOT/att]` 多候选解析。本方法却只写
+        # `Path(a).is_file()` —— 于是**预读是否生效取决于进程从哪个目录启动**，
+        # 从仓库根跑 A/B 会「开了预读但一个附件都读不到」且不报错，
+        # 直接得出"预读无效"的错误结论（最贵的假动作：看起来跑了，其实没跑）。
+        # 这里对齐既有口径：cwd 相对 → ctf_agent 根 → 仓库根。只加候选，不改读取逻辑。
+        _CTF_ROOT = Path(__file__).resolve().parent.parent      # ctf_agent/
+        _REPO_ROOT = _CTF_ROOT.parent                           # 仓库根
+
+        def _resolve(a) -> "Path | None":
+            s = str(a)
+            cands = [Path(s), _CTF_ROOT / s, _REPO_ROOT / s]
+            for c in cands:
+                try:
+                    if c.is_file():
+                        return c
+                except OSError:
+                    continue
+            return None
+
+        _MAX = 50_000  # 单附件上限：防超大文件撑爆 prompt（超限退化为元信息）
+        parts = []
+        _missing = []
+        for a in atts:
+            p = _resolve(a)
+            if p is None:
+                # 声明的附件在所有候选基准下都不存在（如 real_reverse_js 的 index.html）
+                # ——跳过不报错，不能让一个缺失附件废掉整个预读；但要留痕，
+                # 否则「预读开了却没读到东西」在日志里完全不可见。
+                _missing.append(str(a))
+                continue
+            size = p.stat().st_size
+            try:
+                raw = p.read_bytes()
+            except OSError:
+                _missing.append(str(a))
+                continue
+            # 二进制判定：前 8KB 含 NUL 即视为二进制。
+            # 🔴 不能用 `read_text(errors="replace")` 代替这个判断——实测它会把 ELF
+            # 头部 `\x7fELF\x02\x01...` "成功"解成带替换符的乱码文本，看着像读到了，
+            # 实际喂给模型的是垃圾（本模块单测抓到过这个 bug）。
+            is_binary = b"\x00" in raw[:8192]
+            if not is_binary and size <= _MAX:
+                parts.append(
+                    f"【附件 {p.name}（{size} 字节）】\n"
+                    + raw.decode("utf-8", errors="replace")
+                )
+            else:
+                kind = "二进制" if is_binary else "超大文本"
+                parts.append(
+                    f"【附件 {p.name}】{kind}（{size} 字节），头部 hex: {raw[:64].hex()}"
+                )
+
+        if parts:
+            ctx.attachment_evidence = parts
+            ctx.e3_enabled = True  # 预读的目的就是注入，复用 E3 通道而非另造一套
+            logger.info(
+                "[%s] 框架预读附件 %d 个，已填入 evidence 并开启注入%s",
+                getattr(ctx.question, "id", "?"), len(parts),
+                (f"（另有 {len(_missing)} 个声明附件在磁盘上找不到，已跳过："
+                 f"{', '.join(_missing[:3])}）" if _missing else ""),
+            )
+        elif _missing:
+            # 关键留痕：开了预读却一个都没读到，必须显式告警。
+            # 这正是「A/B 实验静默失真」的源头——不打印的话，报告里只会看到
+            # 「预读无效」，而真实原因是路径基准不对或附件缺失。
+            logger.warning(
+                "[%s] 框架预读已开启，但 %d 个声明附件全部无法读取，evidence 为空：%s",
+                getattr(ctx.question, "id", "?"), len(_missing),
+                ", ".join(_missing[:5]),
+            )
+
     def _build_plan_prompt(self, ctx: AgentContext, attempt: int) -> str:
         # 上帝模块拆分：提示词组装归 core/prompts（2026-08-20 锐评整改）
         from core.prompts import build_plan_prompt
+
+        # 2026-10-25 破晓 A 车道：框架预读附件（默认关，A/B 显式开）
+        self._preload_attachment_evidence(ctx)
 
         return build_plan_prompt(ctx, attempt)
 

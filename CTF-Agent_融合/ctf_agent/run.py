@@ -34,18 +34,28 @@ from core.intervention import InterventionCoordinator  # noqa: E402
 _intervention = InterventionCoordinator()
 
 
-def _align_wallclock_to_eval(eval_wallclock, per_q_default, hard_default):
+def _align_wallclock_to_eval(eval_wallclock, per_q_default, hard_default, easy_default=120):
     """P1 墙钟对齐：评测传入的硬墙钟 < Agent 内部默认墙钟时，把 Agent 内部墙钟收敛到
     评测墙钟以下（留 30s 余量覆盖单步 LLM 耗时），保证 Agent 优雅自止先于评测层
     ``asyncio.wait_for(..., timeout=eval_wallclock)`` 取消——否则 Agent 永远等不到自己
     收尾被外部杀（根因：config 默认 per_question_wallclock=300 > 评测 180，glm 三题
     即此因：180s 被 cancel，token 恒记 0）。
     评测墙钟 ≥ Agent 默认时原样保留（不收紧，避免误伤长窗口真跑）。
+
+    🔴 2026-10-26 补 EASY 分支（此前漏了一条臂）：
+    2026-10-25 破晓改动给 `_wallclock_for` 加了 `CTF_AGENT_EASY_WALLCLOCK` 覆盖口
+    （默认 120s），但本函数**只对齐 `per_q` 与 `hard` 两条臂**——评测墙钟 < 120s
+    （亲自赛调试/快速压测常见）时，EASY 分支仍会一直跑到外部 `wait_for` 被掐断，
+    token 同样恒记 0。返参从 2 元组扩到 3 元组（per_q, hard, easy），调用点同步；
+    `easy_default` 关键字参数带默认 120，保证旧调用（只传 3 个位置参）不炸。
+    ⚠️ 返回值长度变了，消费方 `tests/test_p1_wallclock_alignment.py` 的解包同步升级。
     """
     if not eval_wallclock or eval_wallclock <= 0:
-        return per_q_default, hard_default
+        return per_q_default, hard_default, easy_default
     _cap = max(30.0, float(eval_wallclock) - 30.0)
-    return (min(float(per_q_default), _cap), min(float(hard_default), _cap))
+    return (min(float(per_q_default), _cap),
+            min(float(hard_default), _cap),
+            min(float(easy_default), _cap))
 
 
 def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None,
@@ -109,9 +119,11 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
 
     # P1 墙钟对齐（2026-10-06）：评测传入墙钟下传 Agent，避免 Agent 内部墙钟(默认 300)
     # 永远 > 评测墙钟(如 180) 而被外部 asyncio.wait_for 取消、永记 0 token。
-    # 普通题与 HARD 题两条分支都收敛到评测墙钟以下（HARD 默认 480 同样会超 180）。
-    _agent_per_q_wc, _agent_hard_wc = _align_wallclock_to_eval(
-        wallclock, _cfg.per_question_wallclock, _cfg.hard_wallclock)
+    # 普通题与 HARD 题两条分支都收敛到评测墙钟以下（HARD 默认 480 同样会超 180）；
+    # 2026-10-26 补 EASY 分支（easy_wallclock 默认 120，短墙钟下同样会超限）。
+    _agent_per_q_wc, _agent_hard_wc, _agent_easy_wc = _align_wallclock_to_eval(
+        wallclock, _cfg.per_question_wallclock, _cfg.hard_wallclock,
+        easy_default=_cfg.easy_wallclock)
 
     # 生效配置快照（2026-08-22 锐评第五节整改）：真实 LLM 模式启动即打印
     # provider/端点/模型/key 状态——防 BASE_URL/模型残留打错端点（初赛灾难根因）。
@@ -244,6 +256,7 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
         token_usage_fn=_token_usage_fn,  # ← 预算反思 token 口径（2026-10-03）
         per_question_wallclock=_agent_per_q_wc,  # P1 墙钟对齐：≤ 评测墙钟
         hard_wallclock=_agent_hard_wc,           # P1 墙钟对齐：HARD 分支同样收敛
+        easy_wallclock=_agent_easy_wc,           # 2026-10-26 补：EASY 分支同样收敛
     )
     # 正确性判定：未显式传入时，本地题库评测默认与题库 flag 比对（防幻觉 flag 假阳性）；
     # 平台单解模式（validate_locally=False）无本地 ground truth，仅做格式校验
@@ -380,6 +393,14 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
                         f"{_err.get('detail') or ''}"
                     )
         except Exception:  # noqa: BLE001 - 回填失败绝不阻塞解题
+            pass
+        # 2026-10-26 观测：把主 Agent 的 LLM 输出协议计量挂到本题 output 上，
+        # 供 benchmark 汇总成 summary.llm_output_health。只增字段，不改判定。
+        try:
+            if isinstance(out, dict):
+                out["llm_parse_metrics"] = dict(
+                    getattr(agent, "_llm_parse_metrics", {}) or {})
+        except Exception:  # noqa: BLE001
             pass
         # ── P0 修复（2026-09-19 heldout 首测实证）：本题自身真值优先仲裁 ──
         # 旧逻辑只查 build_solver 启动时加载的 data/questions 混合集答案表；

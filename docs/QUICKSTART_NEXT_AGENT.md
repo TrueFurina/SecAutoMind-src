@@ -10,7 +10,7 @@
 
 > 🔴 **本项目说「服务器」，一律指 `172.16.222.99`**（主机名 `ubantu`；`ssh user@172.16.222.99` 用 `~/.ssh/id_ed25519` 免密）。
 > **跑实验、解题都在这台服务器上；本机只做编排与日志。**
-> 在本机 `127.0.0.1:18086` 起 SecAutoMind 实例跑题 = **不合规**。这是用户反复强调的铁律（最早见 `.workbuddy-ai/memory/MEMORY.md:584`），**新 agent 无需再向用户确认**。
+> 在本机 `127.0.0.1:18086` 起 SecAutoMind 实例跑题 = **不合规**。这是用户反复强调的铁律（见 `.workbuddy/memory/MEMORY_DETAIL.md` 赛时决策纪律节），**新 agent 无需再向用户确认**。
 > 部署流程 `docs/服务器实机验证_Runbook_20261020.md`；上机前置与坑见 `.workbuddy/memory/MEMORY.md`。
 
 ---
@@ -19,7 +19,7 @@
 
 1. `AGENTS.md` —— 九条协作宪章，尤其第一条「诚实高于一切」。**违反即本次工作作废**。
 2. `.workbuddy/memory/MEMORY.md` —— **现行**长期记忆（服务器口径、上机前置、解题评测纪律、本机高频坑）。
-   （`.workbuddy-ai/memory/` 是**历史归档**，2026-10-26 后停更，仅作溯源；新内容一律写 `.workbuddy/memory/`。）
+   （记忆已于 2026-10-31 合并为单一 canonical：`.workbuddy-ai/memory/` 已删除，全部内容在 `.workbuddy/memory/`；新内容一律写 `.workbuddy/memory/`。）
 3. `docs/archive/2026-10/HANDOFF_2026-10-18.md` —— 全量交接：改了哪些文件、验证门禁、决策执行记录（§4 / §10 / §11）。
 4. `docs/Octop_取精去糟与反哺清单_20261018.md` §7.4 —— 上游 PR/Issue 状态。
 

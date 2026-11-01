@@ -44,7 +44,7 @@
 | `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 9 | 有 |
 | `answer-leak-gate` | 题库答案泄漏门禁（2026-10-28） 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案； 门禁本体早已写好（scripts/check_ben… | 2 | 有 |
 | `artifact-inject-gate` | 附件注入守卫：工件白名单模式只放开「相对文件名的 open()」，越界读取(绝对路径/..穿越/答案路径/列目录)必须被拦 | 1 | **无** |
-| `ctf-agent-pytest-gate` | CTF-Agent 全量 pytest 门禁（2026-10-31 接入） | 5 | 有 |
+| `ctf-agent-pytest-gate` | CTF-Agent 全量 pytest 门禁（2026-10-31 接入） | 6 | 有 |
 
 ## 已知盲区（人工维护，不由 ci.yml 派生）
 

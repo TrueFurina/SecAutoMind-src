@@ -60,7 +60,13 @@ ATTACH = os.path.join(ROOT, "data", "questions_real_bench", "attachments")
 
 # 题面里 flag 形态串的**候选**提取（含大小写与常见前缀变体）。
 # 注意：这只是候选，是否真是答案由 answer_in_statement() 的 sha256 比对裁定。
-FLAG_PLAIN_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}")
+# ── 统一 flag 判定口径（2026-10-28 迁移）：大小写不敏感 + 前缀归一 ──
+# 基准 72 个 flag 全小写 flag{}，LLM 常输出大写 FLAG{}；旧口径会「答对判未命中」。
+import os as _fu_os, sys as _fu_sys
+_fu_sys.path.insert(0, _fu_os.path.join(
+    _fu_os.path.dirname(_fu_os.path.abspath(__file__)), 'experiments'))
+from flag_util import candidate_variants  # noqa: E402
+FLAG_PLAIN_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}", re.IGNORECASE)
 
 # 登记基线（2026-10-16 实测当前值）：语义是"不许再恶化"，不是"已经合格"。
 BASELINE_A = 4            # A 层题面即答案数
@@ -107,8 +113,9 @@ def answer_in_statement(meta: dict) -> bool:
         return False
     desc = meta.get("description") or ""
     for cand in FLAG_PLAIN_RE.findall(desc):
-        if hashlib.sha256(cand.encode("utf-8")).hexdigest() == want:
-            return True
+        for v in candidate_variants(cand):
+            if hashlib.sha256(v.encode("utf-8")).hexdigest() == want:
+                return True
     return False
 
 

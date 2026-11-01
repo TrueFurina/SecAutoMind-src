@@ -35,13 +35,28 @@ data/ 秘密扫描（ak_/sk_/password/密码模式）零命中。
 | `.workbuddy/`（2 文件） | 2.6K | 旧自动化 memory + tmp 扫描脚本，无消费点 |
 | `__pycache__/` `*.pyc` `.git/` | — | 编译缓存/版本库（删除序列见下） |
 
-## 三、删除序列（源仓 `E:\Program\西湖论剑`，未执行）
+## 三、删除序列（源仓 `E:\Program\西湖论剑`）
 
 1. ~~补迁缺口~~（本文件即完成记录）
-2. `Rename-Item` → `西湖论剑_已归档_待删`（可逆降级，任何遗漏硬引用立即暴露）
-3. 观察期 ≥2 周（覆盖 2026-10-24 CTF² 与后续赛事）
-4. 用户明确确认后物理删除；删除前列明受影响路径清单
+2. ~~切断运行层依赖~~ —— **2026-10-25 完成**：`cmd/runner/pyskill_bridge.go` 删掉源仓 fallback
+   （`E:\Program\西湖论剑\ctf_agent\skills`）。它原本就是**死候选**（归档副本排在前面且恒存在），
+   且注释与代码顺序曾相反。补 `pyskill_bridge_test.go` 4 项测试，含**变异验证**
+   （把路径加回去 → `TestCandidateSkillDirsAreRepoLocal` 立刻 FAIL）。
+3. ~~提取独占资产~~ —— **2026-10-25 完成**：`archive/pre-final-20260821` 分支（孤立历史，251 独有提交）
+   有 **21040 个文件**是 main 与本副本都没有的，已提取 `solutions/` 71 个（writeup + exploit）
+   与 `data/questions/` 52 个到 `SecAutoMind/docs/evidence/西湖论剑归档_20260821/`。
+4. ~~清理冗余备份~~ —— **2026-10-25 完成**：源仓 31GB → 6.7GB。删 18 个 `repo-inc-*.bundle`
+   （24GB，保留 1 个 full / 34 refs 已验证）+ 6 份重复 `data_snapshot`（先比对文件清单，
+   旧的是新的子集，0 个独占文件）。删后 `git fsck` RC=0、34 refs 未变。
+5. `Rename-Item` → `西湖论剑_已归档_待删`（**未执行**，等观察期）
+6. 观察期 ≥2 周（覆盖 2026-10-24 CTF² 与后续赛事）
+7. 用户明确确认后物理删除；删除前列明受影响路径清单
+
+> ⚠️ **当前唯一阻塞项**：源仓 `.git`（2.7GB）装着 archive 分支那 21040 个独占文件，
+> 其中 **`data/work_web/10716/`（19827 个文件，Joomla 完整靶场，压缩后 83MB）尚未提取**
+> —— 体积是仓库现有最大已跟踪文件（14MB）的 6 倍，故刻意留在源仓。
+> **删源仓之前必须先决定它的去留**；提取命令见 `docs/evidence/西湖论剑归档_20260821/README.md`。
 
 > git 历史说明：旧 full bundle（10-21，34 refs，verified）+ HEAD 工作树（已全量镜像入本副本）
 > 覆盖全部文件与至 10-21 的历史；13 笔提交（38833e2a..d76572f2）的元数据已逐字留档于
-> SecAutoMind `.workbuddy-ai/memory/2026-10-24.md`，未打新 bundle（无消费点，详见当日日志 16:10 条）。
+> SecAutoMind `.workbuddy/memory/archive/2026-10/2026-10-24.md`（原 `.workbuddy-ai/memory/` 已于 2026-10-31 合并），未打新 bundle（无消费点，详见当日日志 16:10 条）。

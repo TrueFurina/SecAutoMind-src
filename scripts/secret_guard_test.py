@@ -61,7 +61,10 @@ MUST_IGNORE = [
     ("下划线占位", "api_key: ${OPENAI_API_KEY}"),
     ("显式示例", "api_key: sk-EXAMPLE-KEY-REPLACE-ME"),
     ("AWS 官方示例值", "aws: AKIAIOSFODNN7EXAMPLE"),
-    ("CTF 真题 flag（形似凭证）", 'flag: "picoCTF{@sk_th3_1nt3rn_81e716ff}"'),
+    # ⚠️ 2026-10-28：原样本用的是某道真题的真 flag（形如凭证），而跑批 agent 与仓库同主机，
+    #    等于把答案写在门禁测试里。改用同形态的合成值：`@sk_` 前缀照样触发凭证正则，
+    #    整串仍被 FLAG_LIKE 识别为 CTF flag → 应当忽略，检出逻辑覆盖不变。
+    ("CTF 真题 flag 形态（形似凭证）", 'flag: "picoCTF{@sk_fixture_not_a_real_key_00}"'),
     ("中文占位提示", "api_key: 请填写你的密钥"),
     ("fake 标记测试值", "key: sk-fake-key-for-unit-test-only"),
     # 2026-09-13：app_secret 正则放宽到 8 字符后，纯数字与普通省略号不得误报

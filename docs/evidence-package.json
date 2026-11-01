@@ -1,25 +1,28 @@
 {
   "schema": "secautomind-championship-evidence/1",
-  "generated_at": "2026-10-24T10:46:28+08:00",
+  "generated_at": "2026-10-25T10:40:31+08:00",
   "caliber": {
-    "head": "c105991",
+    "head": "27bf406",
     "tools_yaml": 91,
     "builtin_tools": 52,
     "runtime_tools": 143,
+    "tools_declared": 90,
+    "tools_registered_non_tool": 1,
+    "tools_unregistered_non_tool": [],
     "agents_md": 18,
     "skills": 23,
     "roles_yaml": 13,
     "internal_dirs": 35,
-    "go_packages": 44,
+    "go_packages": null,
     "internal_packages": 38,
-    "test_packages": 38,
-    "go_files": 821,
-    "test_files": 344,
-    "non_test_lines": 134536,
-    "test_lines": 51771,
-    "total_lines": 186307,
-    "ctf_solvers": 189,
-    "ctf_real_solvers": 130,
+    "test_packages": 39,
+    "go_files": 860,
+    "test_files": 359,
+    "non_test_lines": 140892,
+    "test_lines": 53324,
+    "total_lines": 194216,
+    "ctf_solvers": 197,
+    "ctf_real_solvers": 138,
     "ctf_detectors": 59,
     "im_adapters": 7,
     "exe": {
@@ -215,5 +218,7 @@
   "build": {
     "note": "未采集（加 --with-build 采集本机构建/测试退出码）"
   },
-  "notes": []
+  "notes": [
+    "count_stats.go_packages 为 null（go list 不可用：多为 Go 模块缓存/环境变量缺失），该字段不参与比对"
+  ]
 }

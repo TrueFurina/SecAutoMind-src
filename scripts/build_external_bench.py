@@ -73,7 +73,9 @@ ATT_DIR = os.path.join(OUT_DIR, "_attachments")
 SAFE_ID_RE = re.compile(r"[^0-9A-Za-z._-]+")
 
 # 题面/附件里任何「前缀{内容}」形态的候选（用于 flag 明文遮蔽与附件答案扫描）。
-FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n]{4,80}\}")
+# 🔴 2026-10-31 对齐判分口径：旧式 {4,80} 会让「判分认得出、遮蔽器认不出」的
+# flag（内文 2~3 字符 / >80 字符）绕过遮蔽，等于"重跑一次 = 再泄一次"。
+FLAG_CAND_RE = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,14})\{[^{}\n]{1,200}\}")
 
 # 文件名形如 flag.* —— 与 build_cross_bench.py 同口径：场上有答案文件也是题型设计，
 # 但"剔除答案形态"口径必须跳过它，否则测的是"抄答案"而非解题。

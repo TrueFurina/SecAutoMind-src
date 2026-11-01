@@ -135,6 +135,15 @@ def build_plan_prompt(ctx, attempt: int) -> str:
     _q_atts = filter_answer_key_attachments(q, getattr(q, 'attachments', None) or [])
     if _q_atts:
         parts.append(f"附件: {', '.join(_q_atts)}")
+        # 2026-10-25 破晓实验 E3-2（假设 → 改动 → A/B）：
+        # 实测 `real_reverse_js`（附件 coso.js）的 what_i_did 是
+        # `recon:reason; exploit:tool:rea_probe; recon:reason`——模型**只看到路径字符串**，
+        # 就直接对 .js 文件调 rea_probe（PE/ELF 二进制探测），从不调 file_analyze 读全文。
+        # 后果：ctx.attachment_evidence 恒空 → E3 注入无内容可投（evidence_injected 恒 False）
+        # → 模型手里没有源码，只能凭空猜 → hallucination → 墙钟耗尽。
+        # 这里只加一句**动作指令**，不改任何预算/墙钟/工具实现，便于单变量 A/B。
+        parts.append("⚠️ 解题第一步必须调用 file_analyze 读取上述附件全文；"
+                     "不要凭文件名猜内容，不要对文本/脚本类附件用 rea_probe（二进制探测）。")
     # E3（2026-08-25 桶C攻坚）：file_analyze 全文强制注入 plan prompt。
     # 桶C=证据不进脑——附件已读但 prompt 仅含路径/截断摘要，模型空转。
     # 把累积的附件全文整段重投，不受 steps 窗口（近3步）挤出，且不做 1200 截断。

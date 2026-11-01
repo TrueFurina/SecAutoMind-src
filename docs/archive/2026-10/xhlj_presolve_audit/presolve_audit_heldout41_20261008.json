@@ -114,8 +114,8 @@
       "id": "ext_gctf2022_cycling",
       "category": "crypto",
       "atts_ok": true,
-      "with_answers": "CTF{Recycling_Is_Great}",
-      "no_answers": "CTF{Recycling_Is_Great}",
+      "with_answers": "CTF{****}",
+      "no_answers": "CTF{****}",
       "no_answers_verdict": "FALSE",
       "with_answers_verdict": "FALSE"
     },
@@ -123,8 +123,8 @@
       "id": "ext_gctf2022_electric-mayhem-cls",
       "category": "crypto",
       "atts_ok": true,
-      "with_answers": "CTF{W0ckAwocKaWoCka1}",
-      "no_answers": "CTF{W0ckAwocKaWoCka1}",
+      "with_answers": "CTF{****}",
+      "no_answers": "CTF{****}",
       "no_answers_verdict": "FALSE",
       "with_answers_verdict": "FALSE"
     },
@@ -186,8 +186,8 @@
       "id": "ext_gctf2023_least-common-genominator",
       "category": "crypto",
       "atts_ok": true,
-      "with_answers": "CTF{C0nGr@tz_RiV35t_5h4MiR_nD_Ad13MaN_W0ulD_b_h@pPy}",
-      "no_answers": "CTF{C0nGr@tz_RiV35t_5h4MiR_nD_Ad13MaN_W0ulD_b_h@pPy}",
+      "with_answers": "CTF{****}",
+      "no_answers": "CTF{****}",
       "no_answers_verdict": "FALSE",
       "with_answers_verdict": "FALSE"
     },
@@ -213,8 +213,8 @@
       "id": "ext_gctf2023_primes",
       "category": "crypto",
       "atts_ok": true,
-      "with_answers": "CTF{YkDOLIStjpjP5Am1SXDt5d2r9es3b5KZP47v8rXF}",
-      "no_answers": "CTF{YkDOLIStjpjP5Am1SXDt5d2r9es3b5KZP47v8rXF}",
+      "with_answers": "CTF{****}",
+      "no_answers": "CTF{****}",
       "no_answers_verdict": "FALSE",
       "with_answers_verdict": "FALSE"
     },
@@ -366,8 +366,8 @@
       "id": "real_crypto_dnui_keyboard",
       "category": "crypto",
       "atts_ok": true,
-      "with_answers": "flag{CLCKOUTHK}",
-      "no_answers": "flag{CLCKOUTHK}",
+      "with_answers": "flag{****}",
+      "no_answers": "flag{****}",
       "no_answers_verdict": "TRUE",
       "with_answers_verdict": "TRUE"
     },
@@ -375,8 +375,8 @@
       "id": "real_reverse_js",
       "category": "reverse",
       "atts_ok": true,
-      "with_answers": "flag{cslhahldlnst0day}",
-      "no_answers": "flag{cslhahldlnst0day}",
+      "with_answers": "flag{****}",
+      "no_answers": "flag{****}",
       "no_answers_verdict": "TRUE",
       "with_answers_verdict": "TRUE"
     }

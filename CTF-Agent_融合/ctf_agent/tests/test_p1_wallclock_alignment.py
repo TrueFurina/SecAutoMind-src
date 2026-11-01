@@ -16,51 +16,54 @@ from run import _align_wallclock_to_eval, build_solver
 
 def test_align_below_default_shrinks_both_branches():
     """评测 180 < 默认(300/480) → 两分支收敛到 150（180-30 余量）。"""
-    per_q, hard = _align_wallclock_to_eval(180, 300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(180, 300, 480, easy_default=120)
     assert per_q == 150.0, per_q
     assert hard == 150.0, hard
 
 
 def test_align_above_default_preserves_config():
     """评测 600 ≥ 默认(300/480) → 原样保留，不误伤长窗口真跑。"""
-    per_q, hard = _align_wallclock_to_eval(600, 300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(600, 300, 480, easy_default=120)
     assert per_q == 300.0
     assert hard == 480.0
+    assert easy == 120.0
 
 
 def test_align_equal_default_shrinks_by_margin():
     """评测 300 == 默认 per_q → 收敛到 270（留 30s 余量）。"""
-    per_q, hard = _align_wallclock_to_eval(300, 300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(300, 300, 480, easy_default=120)
     assert per_q == 270.0
     assert hard == 270.0
 
 
 def test_align_missing_eval_returns_default():
     """评测墙钟缺失(None) → 原样保留默认（其余调用方不受影响）。"""
-    per_q, hard = _align_wallclock_to_eval(None, 300, 480)
-    assert (per_q, hard) == (300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(None, 300, 480, easy_default=120)
+    assert (per_q, hard, easy) == (300, 480, 120)
 
 
 def test_align_zero_eval_returns_default():
     """评测墙钟=0（非法）→ 原样保留默认。"""
-    per_q, hard = _align_wallclock_to_eval(0, 300, 480)
-    assert (per_q, hard) == (300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(0, 300, 480, easy_default=120)
+    assert (per_q, hard, easy) == (300, 480, 120)
 
 
 def test_align_small_eval_floors_at_30():
     """评测 120 → 余量 max(30, 90)=90 → 两分支收敛到 90。"""
-    per_q, hard = _align_wallclock_to_eval(120, 300, 480)
+    per_q, hard, easy = _align_wallclock_to_eval(120, 300, 480, easy_default=120)
     assert per_q == 90.0
     assert hard == 90.0
+    assert easy == 90.0
 
 
 def test_align_never_exceeds_eval_cap():
     """对齐后两分支严格 ≤ 评测墙钟-30（留余量，保证 Agent 先于评测 wait_for 自止）。"""
     for eval_wc in (60, 100, 180, 240, 300, 600):
-        per_q, hard = _align_wallclock_to_eval(eval_wc, 300, 480)
+        per_q, hard, easy = _align_wallclock_to_eval(eval_wc, 300, 480, easy_default=120)
         cap = max(30.0, eval_wc - 30.0)
         assert per_q <= cap, (eval_wc, per_q, cap)
         assert hard <= cap, (eval_wc, hard, cap)
+        assert easy <= cap, (eval_wc, easy, cap)
 
 
 def test_build_solver_passes_aligned_wallclock_to_agent(monkeypatch):
@@ -81,6 +84,10 @@ def test_build_solver_passes_aligned_wallclock_to_agent(monkeypatch):
     build_solver(use_mock=False, wallclock=180)
     assert _captured.get("per_question_wallclock") == 150.0, _captured
     assert _captured.get("hard_wallclock") == 150.0, _captured
+    # 2026-10-26 新增：EASY 分支（默认 120）同样经 _align_wallclock_to_eval 传递。
+    # 断言注意：EASY 默认 120 < 收敛上限(评测180-30=150)，min 取 120 而不抬到 150——
+    # 对齐约束是「不超过上限」，不是「抬高到上限」。故断言为 ≤150，而非 ==150。
+    assert _captured.get("easy_wallclock") <= 150.0, _captured
 
 
 def test_build_solver_without_wallclock_keeps_config_default(monkeypatch):
@@ -98,4 +105,8 @@ def test_build_solver_without_wallclock_keeps_config_default(monkeypatch):
     build_solver(use_mock=False)  # 不传 wallclock
     assert _captured.get("per_question_wallclock") == 300, _captured
     assert _captured.get("hard_wallclock") == 480, _captured
+    # 2026-10-26 新增：未传评测墙钟时，EASY 分支同样保留 config 默认(120)。
+    assert _captured.get("easy_wallclock") == 120, _captured
+    # 口径校验：三档都不超过 config 默认（未传评测墙钟时 min 不收紧）。
+    assert _captured.get("easy_wallclock") <= 120, _captured
 

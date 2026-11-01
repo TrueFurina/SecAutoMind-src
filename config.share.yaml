@@ -170,6 +170,12 @@ ai:
 
       base_url: https://open.bigmodel.cn/api/paas/v4
       model: glm-4-flash
+    stepfun:
+      name: 阶跃星辰 Step Plan
+      provider: openai_compatible
+      api_key: ${STEPFUN_API_KEY}
+      base_url: https://api.stepfun.com/step_plan/v1
+      model: step-5-preview # 旗舰（100万上下文，支持视觉+推理）；备选 step-3.7-flash
   # ── AI 安全网关（安恒恒脑 · 终审强制）──────────────────────────────
   # 赛题 XH-202609 第一环节硬约束：终审所有 Agent 的模型调用必须经
   # 主办方指定 AI 安全网关接入。启用后所有通道的 base_url/api_key 在

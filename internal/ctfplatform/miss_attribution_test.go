@@ -201,7 +201,7 @@ func TestCrossBenchAttachmentInventoryMatchesDisk(t *testing.T) {
 // 为什么需要它：本文件既有三条断言全部针对 **MISS（分母侧）**，守护的是
 // 「35/35 MISS 是数据缺失而非能力缺口」。但**没有任何一条审过 HIT（分子侧）的
 // 真实性**。2026-10-15 复核发现：20 个命中里有 4 个是「题面即答案」——
-// description 直接写着 flag 明文（例：`<!-- secret: flag{html_comment_flag} -->`），
+// description 直接写着 flag 明文（例：`<!-- secret: flag{REDACTED_flag_in_html} -->`），
 // presolve 用 flag_scan 正则一扫即命中。sha256 校验确实通过，但这**不构成解题能力**：
 // 答案被抄在了题目上。
 //

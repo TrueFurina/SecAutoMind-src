@@ -14,16 +14,55 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import sys
 import time
+
+import yaml
 from pathlib import Path
 
 import click
 from rich.console import Console
 
 from backend.solver_base import FLAG_FOUND
+
+# 正在使用的靶机环境标记：scripts/env_guardian.py 靠它区分「在用」与「泄漏」。
+# 必须在 ensure_environment 之前写入（pull_challenge 内部会起环境），否则守护进程会误杀。
+_ACTIVE_ENV_FILE = Path(__file__).resolve().parent / "logs" / "active_env.json"
+
+
+def _set_active_env(challenge_id: str | None, name: str = "") -> None:
+    try:
+        _ACTIVE_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+        if challenge_id:
+            _ACTIVE_ENV_FILE.write_text(
+                json.dumps({"challenge_id": challenge_id, "name": name, "since": time.time()}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        elif _ACTIVE_ENV_FILE.exists():
+            _ACTIVE_ENV_FILE.unlink()
+    except Exception:
+        pass
+
+
+def _dump_metadata(ch_dir: Path, meta) -> None:
+    """把 ChallengeMeta 写回 metadata.yml（与 pull_challenge 一致的字段集合）。"""
+    data = {
+        "name": meta.name,
+        "category": meta.category,
+        "description": meta.description,
+        "value": meta.value,
+        "connection_info": meta.connection_info,
+        "tags": meta.tags,
+        "solves": meta.solves,
+    }
+    (ch_dir / "metadata.yml").write_text(
+        yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+
 
 console = Console()
 
@@ -40,6 +79,15 @@ def _setup_logging(verbose: bool = False) -> None:
     logging.basicConfig(level=level, handlers=[handler], force=True)
 
 
+def _todo_sort_key(s: dict) -> tuple:
+    """选题排序键：静态优先（无容器）→ 附件题（源码可审计）最前 → 解出数少的先（疑似更易）。
+
+    2026-10-24 快闪赛教训：Web 148 分题有源码+行号提示，本可静态 20 分钟到手，
+    却排在 swarm 队列里。附件源码题是确定性分析的主战场，必须最优先。
+    """
+    return (bool(s.get("has_container")), not s.get("has_attachments"), s.get("solves") or 0)
+
+
 @click.command()
 @click.option("--poll", default=5, type=int, help="轮询间隔（秒）")
 @click.option("--max-concurrent", default=4, type=int, help="并发解题数")
@@ -47,10 +95,13 @@ def _setup_logging(verbose: bool = False) -> None:
 @click.option("--challenges-dir", default="challenges", help="题目缓存目录")
 @click.option("--no-submit", is_flag=True, help="Dry run 不提交")
 @click.option("--once", is_flag=True, help="单轮后退出（调试用）")
-@click.option("--per-task-timeout", default=None, type=int, help="单题硬超时秒数（止损，默认 1500=25min，0=不限；可用 CTF2_PER_TASK_TIMEOUT 覆盖）")
+@click.option("--per-task-timeout", default=None, type=int, help="单题硬超时秒数（止损，默认 600=10min，0=不限；可用 CTF2_PER_TASK_TIMEOUT 覆盖）")
+@click.option("--container-timeout", default=None, type=int, help="靶机题单独超时秒数（默认 480=8min；靶机串行，卡住会堵死唯一环境槽；可用 CTF2_CONTAINER_TIMEOUT 覆盖）")
 @click.option("--board", default=None, type=str, help="作战板输出路径（默认 board_snapshot.md；可用 CTF2_BOARD_PATH 覆盖）")
 @click.option("-v", "--verbose", is_flag=True)
-def main(poll: int, max_concurrent: int, models: tuple[str, ...], challenges_dir: str, no_submit: bool, once: bool, verbose: bool, per_task_timeout: int | None, board: str | None) -> None:
+@click.option("--skip-memguard", is_flag=True, help="跳过起飞前内存韧性检查（显式承担 OOM 静默击杀风险）")
+@click.option("--force-claim", is_flag=True, help="强夺引擎租约（另一会话在跑时接管；对方下轮 poll 会感知并退出）")
+def main(poll: int, max_concurrent: int, models: tuple[str, ...], challenges_dir: str, no_submit: bool, once: bool, verbose: bool, per_task_timeout: int | None, container_timeout: int | None, board: str | None, skip_memguard: bool, force_claim: bool) -> None:
     _setup_logging(verbose)
 
     token = os.environ.get("CTF2_AGENT_TOKEN", "")
@@ -72,9 +123,28 @@ def main(poll: int, max_concurrent: int, models: tuple[str, ...], challenges_dir
     if not settings.azure_openai_api_key:
         settings.azure_openai_api_key = os.environ.get("OPENAI_NEXT_API_KEY", "")
 
+    # 内存韧性守卫（2026-10-24 两次静默 OOM 击杀的工程解；阈值 CTF2_MIN_FREE_MB/CTF2_LOW_FREE_MB 可覆盖）
+    from backend.memguard import assess_memory
+    allowed_models, mem_warnings = assess_memory(len(model_specs), skip=skip_memguard)
+    for w in mem_warnings:
+        console.print(f"[yellow]{w}[/yellow]")
+    if allowed_models == 0:
+        sys.exit(1)
+    if allowed_models < len(model_specs):
+        model_specs = model_specs[:allowed_models]
+
+    # 引擎独占租约（2026-10-24 快闪赛"多会话互踩容器"事故的工程解：一场一引擎）
+    from backend.runner_lease import acquire_lease
+    lease_ok, lease_msg = acquire_lease(force=force_claim)
+    console.print(f"[{'green' if lease_ok else 'red'}]{lease_msg}[/]")
+    if not lease_ok:
+        sys.exit(1)
+
     ctfd = CTF2Client(base_url=base_url, token=token)
     if per_task_timeout is None:
-        per_task_timeout = int(os.environ.get("CTF2_PER_TASK_TIMEOUT", "1500"))
+        per_task_timeout = int(os.environ.get("CTF2_PER_TASK_TIMEOUT", "600"))
+    if container_timeout is None:
+        container_timeout = int(os.environ.get("CTF2_CONTAINER_TIMEOUT", "480"))
     if board is None:
         board = os.environ.get("CTF2_BOARD_PATH", "board_snapshot.md")
 
@@ -82,9 +152,11 @@ def main(poll: int, max_concurrent: int, models: tuple[str, ...], challenges_dir
     console.print(f"  Base: {base_url}")
     console.print(f"  Models: {', '.join(model_specs)}")
     console.print(f"  Poll: {poll}s, Max concurrent: {max_concurrent}")
+    console.print(f"  单题超时: {per_task_timeout}s（0=不限）, 靶机题: {container_timeout}s")
     console.print()
 
-    asyncio.run(_loop(ctfd, settings, model_specs, challenges_root, max_concurrent, no_submit, poll, once, per_task_timeout, board))
+    asyncio.run(_loop(ctfd, settings, model_specs, challenges_root, max_concurrent, no_submit, poll, once,
+                      per_task_timeout, container_timeout, board))
 
 
 def _write_board(stubs: list[dict], board_path: str) -> None:
@@ -109,7 +181,7 @@ def _write_board(stubs: list[dict], board_path: str) -> None:
             )
         content = (
             f"# CTF² 作战板（runner 自动刷新 {now}）\n\n"
-            f"> 已解 {solved_n}/{len(stubs)}；排序：静态优先、容器题排后。\n"
+            f"> 已解 {solved_n}/{len(stubs)}；排序：静态优先（附件题最前）、容器题排后。\n"
             f"> 人力只需补「初步方向」列；失败退避/换题由 runner 自动执行。\n\n"
             f"| # | 题号 | 题名 | 类型 | 分值 | 靶机/附件 | 初步方向 | 状态 | flag |\n"
             f"|---|---|---|---|---|---|---|---|---|\n" + "\n".join(rows) + "\n"
@@ -144,6 +216,20 @@ def _mark_failed(failed: dict, name: str) -> None:
     console.print(f"[dim]退避: {name} 失败 {cnt} 次，{backoff // 60}min 后可重试[/dim]")
 
 
+def _effective_timeout(stub: dict, per_task_timeout: int, container_timeout: int) -> int:
+    """靶机题取两者的较小值。
+
+    靶机题在平台上串行（同时只允许 1 个环境），一道卡住就堵死整个容器队列，
+    所以它必须比静态题更早止损。`per_task_timeout=0` 表示静态题不限时，
+    但靶机题仍按 container_timeout 兜底。
+    """
+    if not stub.get("has_container"):
+        return per_task_timeout
+    if per_task_timeout and per_task_timeout > 0:
+        return min(per_task_timeout, container_timeout)
+    return container_timeout
+
+
 async def _loop(
     ctfd: CTF2Client,
     settings: Settings,
@@ -154,6 +240,7 @@ async def _loop(
     poll: int,
     once: bool,
     per_task_timeout: int,
+    container_timeout: int,
     board: str,
 ) -> None:
     from backend.agents.swarm import ChallengeSwarm
@@ -166,103 +253,151 @@ async def _loop(
         await cleanup_orphan_containers()
     except Exception:
         pass
+    _set_active_env(None)  # 清掉上次崩溃残留的标记，避免守护进程误判
 
     cost_tracker = CostTracker()
     running: dict[str, asyncio.Task] = {}
     solved: set[str] = set()
     failed: dict[str, list] = {}  # name -> [失败次数, 下次可重试 epoch]（换题决策：失败退避，3 次本场放弃）
     container_running = 0  # 平台限制 Agent 同时 1 个靶机环境
+    touched_envs: set[str] = set()  # 本场起过环境的 challenge_id，退出时统一交还
 
     try:
         while True:
-            try:
-                stubs = await ctfd.fetch_challenge_stubs()
-            except Exception as e:
-                console.print(f"[yellow]poll 失败: {e}[/yellow]")
-                await asyncio.sleep(5)
-                continue
-
-            # 已解题目
-            newly_solved = {s["name"] for s in stubs if s.get("is_solved")}
-            if newly_solved - solved:
-                for n in newly_solved - solved:
-                    console.print(f"[green]已解: {n}[/green]")
-            solved |= newly_solved
-
-            # 读题并行化（零成本版）：每次 poll 自动刷新全量作战板
-            _write_board(stubs, board)
-
-            # 待解：未解 & 未在跑 & 未失败退避中（换题决策：失败退避未到/已达放弃门槛的题不再选）
-            import time as _time
-
-            now = _time.time()
-            todo = [
-                s for s in stubs
-                if not s.get("is_solved") and s["name"] not in running and s["name"] not in solved
-                and not (s["name"] in failed and failed[s["name"]][1] > now)
-            ]
-            # 排序：静态优先（无容器）→ 容器题排后（平台限制同时 1 环境）
-            todo.sort(key=lambda s: (bool(s.get("has_container")), s.get("solves") or 0))
-
-            for stub in todo:
-                if len(running) >= max_concurrent:
-                    break
-                if stub.get("has_container") and container_running >= 1:
-                    continue  # 容器题串行：等上一个环境释放
-                name = stub["name"]
-                console.print(f"[cyan]开始: {name} ({stub.get('category','')}, {stub.get('value',0)}pts)[/cyan]")
-                if stub.get("has_container"):
-                    container_running += 1
-                task = asyncio.create_task(
-                    _solve_one(ctfd, settings, model_specs, challenges_root, cost_tracker, stub, no_submit, per_task_timeout),
-                    name=f"solve-{name}",
-                )
-                running[name] = task
-
-            # 回收完成的任务
-            done = [n for n, t in running.items() if t.done()]
-            for n in done:
-                t = running.pop(n)
-                try:
-                    r = await t
-                    if r and r.get("flag"):
-                        console.print(f"[bold green]FLAG: {n} → {r['flag']}[/bold green]")
-                    else:
-                        console.print(f"[red]未解: {n}[/red]")
-                        _mark_failed(failed, n)
-                except Exception as e:
-                    console.print(f"[red]{n} 异常: {e}[/red]")
-                    _mark_failed(failed, n)
-                finally:
-                    # 容器题完成后释放环境槽位
-                    if running.get(n) is None:
-                        stub_by_name = next((s for s in stubs if s["name"] == n), None)
-                        if stub_by_name and stub_by_name.get("has_container"):
-                            container_running = max(0, container_running - 1)
-
-            if not running:
-                console.print(f"[dim]空转一轮，{poll}s 后再查…[/dim]")
-            if once:
-                if running:
-                    console.print(f"[dim]--once：等待 {len(running)} 个任务完成…[/dim]")
-                    done_all = await asyncio.gather(*running.values(), return_exceptions=True)
-                    for n, r in zip(list(running.keys()), done_all):
-                        if isinstance(r, dict) and r.get("flag"):
-                            console.print(f"[bold green]FLAG: {n} → {r['flag']}[/bold green]")
-                        elif isinstance(r, Exception):
-                            console.print(f"[red]{n} 异常: {r}[/red]")
-                        else:
-                            console.print(f"[dim]{n} 完成（无 flag）[/dim]")
-                    running.clear()
-                console.print("[dim]--once：结束，退出[/dim]")
+            # 租约心跳 + 被强夺感知（2026-10-24 多会话互踩事故的工程解）
+            from backend.runner_lease import heartbeat as _lease_heartbeat
+            from backend.runner_lease import lease_still_ours as _lease_ours
+            _lease_heartbeat()
+            if not _lease_ours():
+                console.print("[red]引擎租约已被其他会话强夺——体面退出（在跑的 solver 由平台侧回收）[/red]")
                 break
-            await asyncio.sleep(poll)
+            try:
+                try:
+                    stubs = await ctfd.fetch_challenge_stubs()
+                except Exception as e:
+                    console.print(f"[yellow]poll 失败: {e}[/yellow]")
+                    await asyncio.sleep(5)
+                    continue
+
+                # 已解题目
+                newly_solved = {s["name"] for s in stubs if s.get("is_solved")}
+                if newly_solved - solved:
+                    for n in newly_solved - solved:
+                        console.print(f"[green]已解: {n}[/green]")
+                solved |= newly_solved
+
+                # 读题并行化（零成本版）：每次 poll 自动刷新全量作战板
+                _write_board(stubs, board)
+
+                # 待解：未解 & 未在跑 & 未失败退避中（换题决策：失败退避未到/已达放弃门槛的题不再选）
+                import time as _time
+
+                now = _time.time()
+                todo = [
+                    s for s in stubs
+                    if not s.get("is_solved") and s["name"] not in running and s["name"] not in solved
+                    and not (s["name"] in failed and failed[s["name"]][1] > now)
+                ]
+                # 排序：静态优先（无容器）→ 其中"有附件"（源码可审计）排最前 → 容器题排后
+                # （2026-10-24 快闪赛教训：Web 148 分题有源码+行号提示，本可静态 20 分钟到手，
+                #   却排在 swarm 队列里；附件源码题是确定性分析的主战场，必须最优先）
+                todo.sort(key=_todo_sort_key)
+
+                for stub in todo:
+                    if len(running) >= max_concurrent:
+                        break
+                    if stub.get("has_container") and container_running >= 1:
+                        continue  # 容器题串行：等上一个环境释放
+                    name = stub["name"]
+                    console.print(f"[cyan]开始: {name} ({stub.get('category','')}, {stub.get('value',0)}pts)[/cyan]")
+                    if stub.get("has_container"):
+                        container_running += 1
+                        touched_envs.add(stub["id"])
+                    task = asyncio.create_task(
+                        _solve_one(ctfd, settings, model_specs, challenges_root, cost_tracker, stub, no_submit,
+                                   _effective_timeout(stub, per_task_timeout, container_timeout)),
+                        name=f"solve-{name}",
+                    )
+                    running[name] = task
+
+                # 回收完成的任务
+                done = [n for n, t in running.items() if t.done()]
+                for n in done:
+                    t = running.pop(n)
+                    try:
+                        r = await t
+                        if r and r.get("flag"):
+                            console.print(f"[bold green]FLAG: {n} → {r['flag']}[/bold green]")
+                        elif r and r.get("status") == "target_unavailable":
+                            # 环境槽位争用导致地址拿不到：非能力失败，下个轮询周期自然重试
+                            console.print(f"[yellow]{n} 靶机地址获取失败（环境争用），下轮重试[/yellow]")
+                        else:
+                            console.print(f"[red]未解: {n}[/red]")
+                            _mark_failed(failed, n)
+                    except Exception as e:
+                        console.print(f"[red]{n} 异常: {e}[/red]")
+                        _mark_failed(failed, n)
+                    finally:
+                        # 容器题完成后释放环境槽位
+                        if running.get(n) is None:
+                            stub_by_name = next((s for s in stubs if s["name"] == n), None)
+                            if stub_by_name and stub_by_name.get("has_container"):
+                                container_running = max(0, container_running - 1)
+
+                if not running:
+                    console.print(f"[dim]空转一轮，{poll}s 后再查…[/dim]")
+                if once:
+                    if running:
+                        console.print(f"[dim]--once：等待 {len(running)} 个任务完成…[/dim]")
+                        done_all = await asyncio.gather(*running.values(), return_exceptions=True)
+                        for n, r in zip(list(running.keys()), done_all):
+                            if isinstance(r, dict) and r.get("flag"):
+                                console.print(f"[bold green]FLAG: {n} → {r['flag']}[/bold green]")
+                            elif isinstance(r, Exception):
+                                console.print(f"[red]{n} 异常: {r}[/red]")
+                            else:
+                                console.print(f"[dim]{n} 完成（无 flag）[/dim]")
+                        running.clear()
+                    console.print("[dim]--once：结束，退出[/dim]")
+                    break
+                await asyncio.sleep(poll)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                # 单轮异常绝不退出：沙箱被删、平台抖动、磁盘满都只丢一轮
+                console.print(f"[red]本轮异常（已兜住，继续跑）: {type(e).__name__}: {e}[/red]")
+                logging.getLogger(__name__).exception("loop tick failed")
+                await asyncio.sleep(max(poll, 5))
+
     except asyncio.CancelledError:
         console.print("[yellow]退出中…[/yellow]")
         for t in running.values():
             t.cancel()
         await asyncio.gather(*running.values(), return_exceptions=True)
     finally:
+        # 退出前把本场起过的靶机环境交还平台。
+        # 被 kill / 异常退出时 runner 不会自己释放，槽位会一直被占，
+        # 而平台每个 Agent 只给 1 个环境 → 之后所有容器题全 409（2026-10-24 实锤）。
+        for cid in list(touched_envs):
+            try:
+                await ctfd.close_environment(cid)
+            except Exception:
+                pass
+        _set_active_env(None)
+        # 释放引擎租约（正常/异常退出都释放；被 kill 杀则留给心跳过期自动接管）
+        try:
+            from backend.runner_lease import release_lease
+            release_lease()
+        except Exception:
+            pass
+        # 成本落盘（2026-10-24 快闪赛教训：只进内存=盲飞，runner 死后数据全丢；
+        # $300 网关额度必须可度量。路径可用 CTF2_COST_PATH 指定）
+        try:
+            cost_path = os.environ.get("CTF2_COST_PATH") or f"logs/cost_{time.strftime('%Y%m%d_%H%M%S')}.json"
+            written = cost_tracker.dump_json(cost_path)
+            logging.getLogger(__name__).info("%s → %s", cost_tracker.fmt_summary(), written)
+        except Exception as e:
+            logging.getLogger(__name__).warning("cost 落盘失败: %s", e)
         await ctfd.close()
 
 
@@ -280,28 +415,28 @@ async def _solve_one(
     from backend.prompts import ChallengeMeta
 
     try:
+        # 先登记「我正在用这个环境」，再拉题目（pull_challenge 内部会起环境）
+        if stub.get("has_container") and stub.get("id"):
+            _set_active_env(stub["id"], stub.get("name", ""))
+
         # 拉取题目（附件 + metadata）
         ch_dir = await ctfd.pull_challenge(stub, str(challenges_root))
         meta = ChallengeMeta.from_yaml(Path(ch_dir) / "metadata.yml")
 
-        # 容器题：connection_info 为空（环境槽位被占/未就绪）时重试拿地址并更新 metadata
+        # 容器题：阻塞获取靶机地址；拿不到则 fail-closed，绝不带空地址盲启 solver
         if stub.get("has_container") and not meta.connection_info and stub.get("id"):
-            import yaml as _yaml
-            for _ in range(4):
-                conn = await ctfd.ensure_environment(stub["id"])
-                if conn:
-                    meta.connection_info = conn
-                    (Path(ch_dir) / "metadata.yml").write_text(
-                        _yaml.dump(meta.to_dict() if hasattr(meta, "to_dict") else {
-                            "name": meta.name, "category": meta.category,
-                            "description": meta.description, "value": meta.value,
-                            "connection_info": meta.connection_info, "tags": meta.tags,
-                            "solves": meta.solves,
-                        }, allow_unicode=True, default_flow_style=False, sort_keys=False)
-                    )
-                    logging.getLogger(__name__).info("[%s] connection_info: %s", stub.get("name"), conn)
-                    break
-                await asyncio.sleep(10)
+            target = await ctfd.acquire_target(stub["id"], max_wait_s=180.0)
+            if target:
+                meta.connection_info = target
+                _dump_metadata(ch_dir, meta)
+                logging.getLogger(__name__).info("[%s] connection_info acquired: %s", stub.get("name"), target)
+            else:
+                logging.getLogger(__name__).error(
+                    "[%s] 无法获取靶机地址（环境槽位争用/超时），fail-closed 放弃本题，不盲启 solver",
+                    stub.get("name"),
+                )
+                _set_active_env(None)
+                return {"flag": None, "status": "target_unavailable"}
 
         swarm = ChallengeSwarm(
             challenge_dir=ch_dir,
@@ -334,6 +469,7 @@ async def _solve_one(
                 await ctfd.close_environment(stub["id"])
             except Exception:
                 pass
+            _set_active_env(None)
 
 
 if __name__ == "__main__":

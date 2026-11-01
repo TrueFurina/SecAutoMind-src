@@ -240,13 +240,25 @@ func reflectSupervisionCore(state SupervisionState, steps []SupervisionStep, con
 		return SupervisionDecision{DecisionSwitch,
 			"过半预算+低信心+连续>=4步无进展：建议换策略", metrics}
 	}
-	// ⑥ 全程零候选 + 消耗>=60% + 步数>=5 + (token 未知或也>=60%) → 早停
+	// ⑥ 全程零候选 + 消耗>=60% + 步数>=5 + (token 未知或也>=60%) + **近期零进展** → 早停
 	// （候选 flag 数是不可自欺硬信号；token 双口径门防步数口径先到时误降）
+	//
+	// 2026-10-29 实探修正（练习场 smoke）：原⑥**不看进展信号**，只要「零候选+60%轮数」就砍，
+	// 直接导致不可能有多解题被解出——任何需要多轮取证才能在最后一步冒出 flag 的题，
+	// 都会在该平台的 toolmere-exploration 阶段被精确掐死：
+	//   预算 8 轮 → 第 5 轮被砍；预算 12 轮 → 第 8 轮被砍（砍点恒=ceil(0.6×预算)）。
+	//  日志证据：misc/forensics/reverse 三题模型均已正确取到附件、跑通 zipfile/objdump/
+	//   DestList 解析并在收敛中，却全部被 ⑥ 砍掉 → 实测 0/5、0/3。
+	// 该 0 是**策略产物**，不是模型能力；不修就把「政策上限」当成「真实解题数」上报，
+	// 正是本项目最忌的自欺。
+	// 新增闸门：只有在**近期确实没有进展**（近 10 步无一产生有效观测/全是错误）时才收口；
+	// 仍有进展则交给①/② 与轮数硬上限。steps 为 nil 时（无证据）视为零进展，兼容旧语义。
 	if state.Candidates != nil && *state.Candidates <= 0 &&
 		ratio >= 0.6 && used >= 5 &&
-		(state.TokenRatio == nil || *state.TokenRatio >= 0.6) {
+		(state.TokenRatio == nil || *state.TokenRatio >= 0.6) &&
+		noProgressRecent {
 		return SupervisionDecision{DecisionAbandon,
-			"消耗>=60%且全程零候选 flag：无收敛信号，早停避免空烧（候选口径）", metrics}
+			"消耗>=60%且全程零候选 flag 且近期零进展：无收敛信号，早停避免空烧（候选口径）", metrics}
 	}
 	// ③ 预算充足 + 信心尚可 → 继续
 	if ratio < 0.5 && conf >= 0.5 {

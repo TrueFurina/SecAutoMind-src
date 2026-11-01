@@ -26,6 +26,7 @@ Go 求解器（157 注册 + 硬编码）全 miss 后，由 Go 侧 `presolve_pyth
 from __future__ import annotations
 
 import argparse
+import asyncio
 import importlib.util
 import inspect
 import json
@@ -120,7 +121,12 @@ def main() -> int:
         except Exception:
             continue
         if inspect.iscoroutine(res) or inspect.isawaitable(res):
-            continue  # 异步 skill 不在兜底路径调用
+            # 异步 skill：兜底路径统一用 asyncio.run 收敛（2026-10-25 修复：
+            # 旧逻辑静默丢弃协程 → async skill 全部空手且触发 never awaited）
+            try:
+                res = asyncio.run(res)
+            except Exception:
+                continue
         for cand in _collect_flags(res):
             if cand not in seen:
                 seen.add(cand)

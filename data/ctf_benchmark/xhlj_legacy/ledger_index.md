@@ -46,9 +46,16 @@
 ## 覆盖对照小结
 
 - ✅ 已覆盖 **6/14**：10733 / vnctf_flag / ezrsa / simplelegendre / exciting_inverse / filterrandom
-- ⚠️ 部分覆盖 **4/14**：xuanhun_signin / anwang_crypto1 / ezmult / qiangwang_classic（求解器原语存在，链路未验证）
+- 🧪 合成链验证 **4/14**（2026-10-24 P0-6 执行）：xuanhun_signin / anwang_crypto1 / ezmult / qiangwang_classic
+  —— **4/4 PASS**（`verify_chains_synthetic.py` / `chain_verify_20261024.json`）：skill 原语 + runner.py 桥
+  （Go presolve 实际兜底入口）双层验证通过；anwang 链经桥端到端命中合成 flag。
+  ⚠️ **原始附件已永久丢失**（源仓 2026-08-26 外部真题归档清理；93 题库仅 11 题附件齐全，
+  `category_regression.json` 可复核查证），原始端到端验证不可执行，按 KNOWN_DATA_LOSS 登记。
+  **合成通过 ≠ 原始题解出**，引用时必须注明口径。
 - ❌ 未覆盖 **4/14**：specialcurve2 / sheng / upx / vnctf_cm1（reverse 执行层与深度 crypto 为赛后 P1/P2 迁移对象）
 
 > 数据本体（题面 JSON、附件、verify 脚本、重建实例）均保留于西湖论剑冻结仓库原路径，
 > 赛前不复制字节、不动 SecAutoMind 基准 JSON（避免基线漂移影响 1024 快闪赛材料口径）。
 > 赛后 P0/P1 按 `merge_xhlj_roadmap_20261023.md` 逐链 Go 化并入真实基准。
+> **2026-10-24 勘误**：上句"附件保留于冻结仓库"仅对 11 题成立——82 题附件在源仓侧已丢失
+> （`_attachments` 目录 17 文件/0.6MB，与融合副本逐字节一致，迁移本身无损失）。

@@ -5,13 +5,11 @@
 为什么需要这份测试（2026-10-24 实锤）
 --------------------------------------
 交付包的排除表此前只写了 `.workbuddy/`，而 AI 协作会话的记忆目录叫 `.workbuddy-ai/`。
-`EXCLUDE_PATH_SUBSTR` 里的 `.workbuddy/` 是**带斜杠的子串**，匹配不到 `.workbuddy-ai/`；
-`EXCLUDE_DIRS` 里也没有它 → `--list-only` 预览显示 `.workbuddy-ai` 与 `deliverables`
-会被纳入交付包（2155 个文件）。
-
-而 `.workbuddy-ai/memory/2026-10-22.md` 里明文记着赛事门户的手机号与密码
+记忆现统一在 `.workbuddy/memory/`，已由 `EXCLUDE_PATH_SUBSTR` 的 `.workbuddy/`
+整棵排除；`EXCLUDE_DIRS` 仍保留 `.workbuddy-ai` 作防御性排除（历史路径，2026-10-31 已合并删除）。
+`.workbuddy/memory/archive/2026-10/2026-10-22.md` 等记忆 `.md` 里曾明文记着赛事门户的手机号与密码
 （为向用户解释「门户账号 ≠ Agent API 令牌」而写下的原值）。也就是说：
-**下一次重打包就会把会话记忆连同凭证一起发给评委**，而 secret_guard 只按密钥形态匹配，
+记忆目录必须整体排除，否则重打包会把会话记忆连同凭证一起发给评委，而 secret_guard 只按密钥形态匹配，
 不会把中文语境里的"密码：xxx"判成密钥。这类洞只有"排除面测试"能锁。
 
 覆盖用例

@@ -75,31 +75,8 @@ func (h *hitCounter) get(id string) int {
 	return h.m[id]
 }
 
-// ── 靶机 1：源码泄露（对应 pico2024_findme / pico2024_intro_to_web 同款）────────
-func targetSourceLeak(flag string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<html><head><title>Find me</title></head>
-<body>
-<h1>Congratulations! You reached the page.</h1>
-<p>Some hints are hidden in this file.</p>
-<!-- %s -->
-</body></html>`, flag)
-	}
-}
-
 func probeSourceLeak(ctx context.Context, base string) ([]string, error) {
 	return liveGetExtract(ctx, base+"/", liveFlagRe)
-}
-
-// ── 靶机 2：Cookie 里的 Base64 flag（对应 pico2024_cookie / pico2024_webdecode）──
-func targetCookieB64(flag string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		enc := base64.StdEncoding.EncodeToString([]byte(flag))
-		http.SetCookie(w, &http.Cookie{Name: "session", Value: enc, Path: "/"})
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		io.WriteString(w, "<html><body>Login successful. Your session cookie is set.</body></html>")
-	}
 }
 
 func probeCookieB64(ctx context.Context, base string) ([]string, error) {
@@ -128,27 +105,6 @@ func probeCookieB64(ctx context.Context, base string) ([]string, error) {
 	return nil, fmt.Errorf("cookie 中未解出 flag（cookie 数=%d）", len(resp.Cookies()))
 }
 
-// ── 靶机 3：SQL 注入登录绕过（对应 pico2024_irishname / buuctf_sqli_basic）──────
-func targetSQLiAuth(flag string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/login" {
-			http.NotFound(w, r)
-			return
-		}
-		_ = r.ParseForm()
-		user := r.FormValue("user")
-		// 真实漏洞形态：字符串直接比对，未参数化 → 恒真条件即可绕过
-		lowered := strings.ToLower(user)
-		if strings.Contains(lowered, "or") && strings.Contains(lowered, "1") {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprintf(w, "<html><body><p>Welcome back, %s</p><!-- %s --></body></html>", user, flag)
-			return
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-		io.WriteString(w, "invalid credentials")
-	}
-}
-
 func probeSQLiAuth(ctx context.Context, base string) ([]string, error) {
 	form := strings.NewReader("user=%27+OR+%271%27%3D%271&pass=x")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/login", form)
@@ -169,24 +125,6 @@ func probeSQLiAuth(ctx context.Context, base string) ([]string, error) {
 		return m, nil
 	}
 	return nil, fmt.Errorf("绕过登录后响应中仍无 flag")
-}
-
-// ── 靶机 4：本地文件包含（对应 buuctf_lfi_basic）──────────────────────────────
-func targetLFI(flag string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/index.php" {
-			http.NotFound(w, r)
-			return
-		}
-		page := r.URL.Query().Get("page")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if strings.Contains(page, "..") {
-			// 真实穿越成立时才吐内容
-			fmt.Fprintf(w, "<html><body><div class=content><!-- %s --></div></body></html>", flag)
-			return
-		}
-		io.WriteString(w, "<html><body><h1>Home</h1><a href=\"/index.php?page=about\">about</a></body></html>")
-	}
 }
 
 func probeLFI(ctx context.Context, base string) ([]string, error) {
@@ -342,86 +280,36 @@ func extractJSONString(body, key string) string {
 // newLiveCases 组装 10 种真实题型。
 // 题型与 55 道真题里 36 道未命中的 sub 分布一一对应（picoCTF 2024/2025、BUUCTF 同款原型）。
 func newLiveCases() []liveCase {
-	return []liveCase{
-		{
-			id: "2001", title: "WEB-01", flag: "flag{live_source_leak_ok}",
-			desc:      "平台已分配靶机。访问靶机首页并查看页面源码，flag 藏在源码注释里。",
-			handler:   targetSourceLeak("flag{live_source_leak_ok}"),
-			probe:     probeSourceLeak,
-		},
-		{
-			id: "2002", title: "WEB-02", flag: "flag{live_cookie_b64_ok}",
-			desc:      "平台已分配靶机。登录成功后会话信息存在 Cookie 里，Base64 编码后取出 flag。",
-			handler:   targetCookieB64("flag{live_cookie_b64_ok}"),
-			probe:     probeCookieB64,
-		},
-		{
-			id: "2003", title: "WEB-03", flag: "flag{live_sqli_auth_ok}",
-			desc:      "平台已分配靶机。/login 存在 SQL 注入，构造恒真条件绕过登录后拿到 flag。",
-			handler:   targetSQLiAuth("flag{live_sqli_auth_ok}"),
-			probe:     probeSQLiAuth,
-		},
-		{
-			id: "2004", title: "WEB-04", flag: "flag{live_lfi_ok}",
-			desc:      "平台已分配靶机。/index.php?page= 参数存在本地文件包含，读取 flag 文件。",
-			handler:   targetLFI("flag{live_lfi_ok}"),
-			probe:     probeLFI,
-		},
-		{
-			id: "2005", title: "WEB-05", flag: "flag{live_ssti_ok}",
-			desc:      "平台已分配靶机。/search 参数被当作模板源码渲染，尝试构造模板表达式读取服务端配置。",
-			handler:   targetSSTI("flag{live_ssti_ok}"),
-			probe:     probeSSTI,
-		},
-		{
-			id: "2006", title: "WEB-06", flag: "flag{live_jwt_weak_ok}",
-			desc:      "平台已分配靶机。/verify 校验 JWT，签名密钥过弱，可离线爆破后伪造管理员身份。",
-			handler:   targetJWTWeak("flag{live_jwt_weak_ok}"),
-			probe:     probeJWTWeak,
-		},
-		{
-			id: "2007", title: "WEB-07", flag: "flag{live_ssrf_ok}",
-			desc:      "平台已分配靶机。/fetch 可传入任意 URL，未做内网地址限制，尝试访问内网管理服务。",
-			handler:   targetSSRF("flag{live_ssrf_ok}"),
-			probe:     probeSSRF,
-		},
-		{
-			id: "2008", title: "WEB-08", flag: "flag{live_cmdinject_ok}",
-			desc:      "平台已分配靶机。/ping 会对主机名执行系统命令，尝试用分隔符注入第二条命令。",
-			handler:   targetCmdInject("flag{live_cmdinject_ok}"),
-			probe:     probeCmdInject,
-		},
-		{
-			id: "2009", title: "WEB-09", flag: "flag{live_upload_bypass_ok}",
-			desc:      "平台已分配靶机。/upload 只按扩展名校验，尝试上传 .php 文件绕过限制。",
-			handler:   targetUploadBypass("flag{live_upload_bypass_ok}"),
-			probe:     probeUploadBypass,
-		},
-		{
-			id: "2010", title: "WEB-10", flag: "flag{live_xxe_ok}",
-			desc:      "平台已分配靶机。/xml 会解析提交的 XML，尝试利用外部实体读取本地文件。",
-			handler:   targetXXE("flag{live_xxe_ok}"),
-			probe:     probeXXE,
-		},
-		{
-			id: "2011", title: "WEB-11", flag: "flag{live_xss_ok}",
-			desc:      "平台已分配靶机。/search 的 q 参数未转义直接回显，构造脚本注入并观察注入点上下文。",
-			handler:   targetXSS("flag{live_xss_ok}"),
-			probe:     probeXSS,
-		},
-		{
-			id: "2012", title: "WEB-12", flag: "flag{live_nosql_ok}",
-			desc:      "平台已分配靶机。/login 直接把提交的 JSON 当查询条件，用 MongoDB 操作符绕过认证。",
-			handler:   targetNoSQLBypass("flag{live_nosql_ok}"),
-			probe:     probeNoSQLBypass,
-		},
-		{
-			id: "2013", title: "WEB-13", flag: "flag{live_api_authz_ok}",
-			desc:      "平台已分配靶机。/api/v1/admin/keys 未做真正鉴权，尝试直接访问管理端点。",
-			handler:   targetAPIAuthz("flag{live_api_authz_ok}"),
-			probe:     probeAPIAuthz,
-		},
+	// 题面/flag 的单一真值源在 live_targets.go 的 NewLiveTargetSpecs()；
+	// 这里只补测试专用的探测器（probe = 代替 Agent 的"手"）。
+	probeByID := map[string]liveProbe{
+		"2001": probeSourceLeak,
+		"2002": probeCookieB64,
+		"2003": probeSQLiAuth,
+		"2004": probeLFI,
+		"2005": probeSSTI,
+		"2006": probeJWTWeak,
+		"2007": probeSSRF,
+		"2008": probeCmdInject,
+		"2009": probeUploadBypass,
+		"2010": probeXXE,
+		"2011": probeXSS,
+		"2012": probeNoSQLBypass,
+		"2013": probeAPIAuthz,
 	}
+	specs := NewLiveTargetSpecs()
+	out := make([]liveCase, 0, len(specs))
+	for _, s := range specs {
+		out = append(out, liveCase{
+			id:      s.ID,
+			title:   s.Title,
+			desc:    s.Desc,
+			flag:    s.Flag,
+			handler: s.Handler,
+			probe:   probeByID[s.ID],
+		})
+	}
+	return out
 }
 
 // runLiveOnce 起靶机 + 起平台 + 跑一轮 Poller，返回平台、记录与靶机访问计数。

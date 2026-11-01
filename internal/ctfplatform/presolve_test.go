@@ -81,52 +81,61 @@ func TestPresolve_NoHit(t *testing.T) {
 }
 
 // TestScanFlags_PreservesPrefix 品牌前缀必须完整保留（sha256 校验依赖完整 flag）。
+// 这里只验证「前缀没有被截断」，用合成值即可，不需要真题答案。
 func TestScanFlags_PreservesPrefix(t *testing.T) {
-	got := scanFlags("token: picoCTF{ME74D47A_HIDD3N_a6df8db8}")
-	if len(got) != 1 || got[0] != "picoCTF{ME74D47A_HIDD3N_a6df8db8}" {
+	const want = "picoCTF{PREFIX_PRESERVED_fixture}"
+	got := scanFlags("token: " + want)
+	if len(got) != 1 || got[0] != want {
 		t.Errorf("scanFlags 应完整保留 picoCTF 前缀, got %v", got)
 	}
 }
 
-// TestPresolve_RealQuestionChains 用 31 道真题基准集中因链式解码 MISS 的题回归。
+// TestPresolve_RealQuestionChains 用真题基准集中因链式解码 MISS 的题回归。
+//
+// 断言用 sha256 而非明文：2026-10-28 实锤，旧版把 5 道真题的明文 flag 直接写成 wantFlag，
+// 而跑批 agent 与测试文件同处一台主机 —— 模型 grep 一下就能抄答案（已实际发生）。
+// 题库判分本来也只认 flag_sha256（见 scripts/experiments/flag_util.py），
+// 测试沿用同一口径：断言哈希相等。哈希不可逆，抄不到答案。
+// 题面（密文）保留——它本来就是要喂给模型的题。
 func TestPresolve_RealQuestionChains(t *testing.T) {
 	cases := []struct {
 		name        string
 		description string
-		wantFlag    string
+		wantSHA256  string // 真题答案：只存哈希
+		wantFlag    string // 合成夹具：直接比对明文
 	}{
 		{
 			// picoCTF 2024 interencdec：b64 → b64 → caesar(19)（三层链式，已验证通过）
 			name:        "interencdec_b64_b64_caesar",
 			description: "YidkM0JxZGtwQlRYdHFhR3g2YUhsZmF6TnFlVGwzWVROclgyMHdNakV5TnpVNGZRPT0nCg==",
-			wantFlag:    "picoCTF{caesar_d3cr9pt3d_f0212758}",
+			wantSHA256:  "c02afc1d7e3c56d8bcba181d83a74b9fe15a42863e9d64c65a80b40a8ae1806d",
 		},
 		{
 			// picoCTF 2024 CanYouSee：单层 b64，验证前缀完整保留
 			name:        "canyousee_prefix",
 			description: "cGljb0NURntNRTc0RDQ3QV9ISUREM05fYTZkZjhkYjh9Cg==",
-			wantFlag:    "picoCTF{ME74D47A_HIDD3N_a6df8db8}",
+			wantSHA256:  "af7ca42db24fe2d65b886a67d70bd65bc192bf32bfcbcf5581ad7a0838c3901e",
 		},
 		{
 			// CyberConverge 2025 Layers：v6.1 重建后单层 b64（原始密文与 flag 不一致，已重建自洽）
 			name:        "layers_b64",
 			description: "Q0JDVntjUnk5VDBfTDR5M3I1XzRSRV9GdU5fMzEzNX0=",
-			wantFlag:    "CBCV{cRy9T0_L4y3r5_4RE_FuN_3135}",
+			wantSHA256:  "2db6c8ce9ec69dfad2b02fd53e92174969516cfbb9a6414c3c66c57f3de52144",
 		},
 		{
 			// base64_triple_real：v6.2 重建后三层 b64
 			name:        "triple_base64",
 			description: "V20xNGFGb3pkREJqYld4M1lrZFdabGx0Um5wYVZGa3dXREpTYkZreU9XdGFWMUk1",
-			wantFlag:    "flag{triple_base64_decoded}",
+			wantSHA256:  "501d16e3b2553f8a7591c8bf0f126d816f6b3cfb81f4c131303a8a023c5b9561",
 		},
 		{
 			// ehaxctf2025_morse：v6.2 重建后已知密钥维吉尼亚（kagi）；密文形似 flag，必须先解密再扫
 			name:        "vigenere_known_key",
 			description: "维吉尼亚解密(密钥kagi): OHGF{w0ry3_d1q3n3x3_0x3b4t10t}",
-			wantFlag:    "EHAX{m0rs3_v1g3n3r3_0p3r4t10n}",
+			wantSHA256:  "66049fb8b6a21a77e56b360fee797ac7dc34734a91f5f97f0cbee681d1a811ad",
 		},
 		{
-			// 单层 b64 + flag_scan（flag 直接在解码文本中）
+			// 单层 b64 + flag_scan（合成夹具：flag 直接在解码文本中）
 			name:        "b64_flag_scan",
 			description: "ZmxhZ3t0ZXN0X2Jhc2U2NF9mbGFnfQ==",
 			wantFlag:    "flag{test_base64_flag}",
@@ -138,17 +147,23 @@ func TestPresolve_RealQuestionChains(t *testing.T) {
 			ch := &Challenge{Description: c.description}
 			result := p.Presolve(context.Background(), ch, nil)
 			if !result.Solved {
-				t.Fatalf("presolve 应命中 %s", c.wantFlag)
+				t.Fatalf("presolve 应命中 %s", c.name)
 			}
 			found := false
 			for _, f := range result.Flags {
-				if f == c.wantFlag {
+				if c.wantSHA256 != "" {
+					if sha256Hex(f) == c.wantSHA256 {
+						found = true
+						break
+					}
+				} else if f == c.wantFlag {
 					found = true
 					break
 				}
 			}
 			if !found {
-				t.Errorf("flags 中无完整 flag %s: %v", c.wantFlag, result.Flags)
+				t.Errorf("flags 中无期望答案（sha256=%s want=%q）: %v",
+					c.wantSHA256, c.wantFlag, result.Flags)
 			}
 		})
 	}

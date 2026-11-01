@@ -129,17 +129,40 @@ func TestReflectRule6ZeroCandidatesTokenGate(t *testing.T) {
 	if d.Decision == DecisionAbandon {
 		t.Fatalf("token 仅 0.35 不应早停（步数口径先到误降复发）: %s", d.Reason)
 	}
-	// ⑥ 同场景 token>=60% → ABANDON
+	// ⑥ 同场景 token>=60% → ABANDON（注意：此处必须是「无进展」步才能触发 ⑥；
+	// 旧的语义不看进展，连有进展的求解过程也砍，见下方新用例）
 	d2 := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 8,
-		Candidates: fi(0), TokenRatio: fp(0.65)}, prog(8), fp(0.9))
+		Candidates: fi(0), TokenRatio: fp(0.65)}, stuck(8), fp(0.9))
 	if d2.Decision != DecisionAbandon {
-		t.Fatalf("token 0.65 加零候选应早停: got %s (%s)", d2.Decision, d2.Reason)
+		t.Fatalf("token 0.65 加零候选且近期零进展应早停: got %s (%s)", d2.Decision, d2.Reason)
 	}
 	// ⑥ token 未知（nil，向后兼容）→ 仅步数口径即可早停
 	d3 := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 8,
-		Candidates: fi(0)}, prog(8), fp(0.9))
+		Candidates: fi(0)}, stuck(8), fp(0.9))
 	if d3.Decision != DecisionAbandon {
-		t.Fatalf("token 未知+零候选应早停: got %s", d3.Decision)
+		t.Fatalf("token 未知+零候选应早停: got %s (%s)", d3.Decision, d3.Reason)
+	}
+}
+
+// TestReflectRule6DoesNotKillProgressingAgent 锁死 2026-10-29 的修正：
+// 「零候选 + 60% 预算」**不足以**成为早停理由，还必须有「近期零进展」实证。
+//
+// 背景（练习场 smoke 实测）：旧 ⑥ 让任何多解题都不可能被解出——砍点恒等于
+// ceil(0.6×预算)（8 轮→第 5 轮、12 轮→第 8 轮）。日志显示 misc/forensics/reverse
+// 三题模型已成功取到附件并用 zipfile/objdump/DestList 解析在收敛途中，仍被砍，
+// 产生 0/5、0/3。这个 0 是策略产物而非能力；把它当成绩上报就是自欺。
+func TestReflectRule6DoesNotKillProgressingAgent(t *testing.T) {
+	d := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 8,
+		Candidates: fi(0), TokenRatio: fp(0.65)}, prog(8), fp(0.9))
+	if d.Decision == DecisionAbandon {
+		t.Fatalf("仍有进展的求解过程不应被 ⑥ 早停: got %s (%s)", d.Decision, d.Reason)
+	}
+	// 同一状态，只把「有进展」换成「全错误无进展」→ 必须早停（防止改过头：
+	// 修正不能让真正的卡死也不收口）。
+	d2 := ReflectSupervision(SupervisionState{BudgetTotal: 12, BudgetUsed: 8,
+		Candidates: fi(0), TokenRatio: fp(0.65)}, stuck(8), fp(0.9))
+	if d2.Decision != DecisionAbandon {
+		t.Fatalf("卡死（近期零进展）仍应早停：修正不能过头。got %s (%s)", d2.Decision, d2.Reason)
 	}
 }
 

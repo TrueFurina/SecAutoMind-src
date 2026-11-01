@@ -58,18 +58,58 @@ from tools.adapters.flag_scan_adapter import FLAG_PATTERNS
 logger = logging.getLogger(__name__)
 
 # ── REA 定位（可用环境变量覆盖，便于换机器）─────────────────────────
-_DEFAULT_NODE = r"C:\Users\Lenovo\.workbuddy\binaries\node\versions\22.22.2-6\node.exe"
-_DEFAULT_MJS = r"C:\Users\Lenovo\WorkBuddy\2026-10-17-01-34-31\.rea-probe\node_modules\rea-agents\scripts\rea.mjs"
+# 🔴 2026-10-31 修（服务器交叉验证实锤）：此处原先硬编码本机绝对路径
+#   `C:\Users\Lenovo\.workbuddy\...\node.exe` 与 `C:\Users\Lenovo\WorkBuddy\...\rea.mjs`，
+# 在 Linux 服务器上 100% 失效 —— 实测报
+#   「REA 不可用：node 不存在: C:\Users\Lenovo\...\node.exe」，
+# 而且错误文案把 Windows 路径原样带给模型，属**跨平台缺陷 + 绝对路径泄露**。
+# 现改为：环境变量 > 按平台探测（PATH 上的 node / 常见安装位置）> 空串（不可用）。
+# 空串语义 = "没配"，调用方据此报 not_applicable，而不会伪造一个不存在的路径。
+def _detect_node() -> str:
+    """按平台探测 node 可执行文件；找不到返回空串（不伪造路径）。"""
+    import shutil
 
-_NODE = os.environ.get("REA_NODE", _DEFAULT_NODE)
-_REA_MJS = os.environ.get("REA_MJS", _DEFAULT_MJS)
+    exe = shutil.which("node")
+    if exe:
+        return exe
+    candidates = (
+        r"C:\Program Files\nodejs\node.exe",
+        "/usr/bin/node",
+        "/usr/local/bin/node",
+    )
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return ""
+
+
+def _detect_rea_mjs() -> str:
+    """探测 rea-agents 的 rea.mjs；找不到返回空串（由调用方降级）。"""
+    env = os.environ.get("REA_MJS")
+    if env:
+        return env
+    candidates = (
+        os.path.expanduser("~/.rea-probe/node_modules/rea-agents/scripts/rea.mjs"),
+        "/usr/local/lib/node_modules/rea-agents/scripts/rea.mjs",
+        os.path.expanduser("~/.npm-global/lib/node_modules/rea-agents/scripts/rea.mjs"),
+    )
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return ""
+
+
+_NODE = os.environ.get("REA_NODE") or _detect_node()
+_REA_MJS = _detect_rea_mjs()
 
 #: Ghidra 与 JDK 21 的默认位置（decompile 通道依赖）。
 #: 必须在这里注入 —— agent 进程自身不会带这两个环境变量，
 #: 而 REA 只认环境变量：GHIDRA_INSTALL_DIR 缺失则整套反编译不可用，
 #: JAVA_HOME 指向 JDK<21 则 Ghidra 12.x 直接拒绝启动（doctor 仍报 healthy）。
-_DEFAULT_GHIDRA = os.environ.get("REA_GHIDRA_DIR", r"E:\Program\ghidra_12.1.4_PUBLIC")
-_DEFAULT_JAVA = os.environ.get("REA_JAVA_HOME", r"E:\Program\jdk-21.0.12.1+1")
+#: 🔴 2026-10-31：默认值原为 `E:\Program\ghidra_...` / `E:\Program\jdk-...` 本机绝对路径，
+#: 换机器/换平台必失效。现改为「只认环境变量，未设则空」——不猜路径，让 doctor 如实报缺。
+_DEFAULT_GHIDRA = os.environ.get("REA_GHIDRA_DIR", "")
+_DEFAULT_JAVA = os.environ.get("REA_JAVA_HOME", "")
 
 #: 单次命令硬超时（秒）——REA 的 objdump 反汇编在 12.9MB 样本上约 40s
 _TIMEOUT = int(os.environ.get("REA_TIMEOUT", "240"))
@@ -82,7 +122,12 @@ _SNIFF_MAX = 256 * 1024 * 1024
 
 # ── 批量反编译（analyzeHeadless 单 JVM 生命周期）─────────────────────
 #: Ghidra 自带 headless 入口与后置脚本目录。
-_GHIDRA_HEADLESS = os.path.join(_DEFAULT_GHIDRA, "support", "analyzeHeadless.bat")
+#: 🔴 2026-10-31：原实现写死 `analyzeHeadless.bat`（Windows 专用），
+#: 在 Linux 上拼出的路径必然不存在。现按平台选 `.bat`/无后缀；
+#: _DEFAULT_GHIDRA 为空（未配 REA_GHIDRA_DIR）时得到相对路径，调用方会因
+#: os.path.isfile 为假而报 not_applicable —— 不会伪造可用性。
+_HEADLESS_NAME = "analyzeHeadless.bat" if os.name == "nt" else "analyzeHeadless"
+_GHIDRA_HEADLESS = os.path.join(_DEFAULT_GHIDRA, "support", _HEADLESS_NAME)
 #: 本仓库的 Ghidra 脚本目录（相对本文件 → tools/ghidra_scripts）。
 _GHIDRA_SCRIPTS = os.environ.get(
     "REA_GHIDRA_SCRIPTS",
@@ -1556,12 +1601,12 @@ class ReaProbeAdapter(ToolAdapter):
     def _run_sync(self, path: str, lane: str, selector: str = "",
                   max_funcs: int = 0, name_filter: str = "",
                   unpack: str = "auto") -> ToolOutput:
-        ok, why = _rea_available()
-        if not ok:
-            return ToolOutput(
-                text=f"[rea_probe] REA 不可用：{why}（not_applicable，勿当作'分析干净'）",
-                ok=False,
-            )
+        # 🔴 2026-10-31 调整校验顺序：**参数错误优先于环境可用性**。
+        # 原实现先查 _rea_available() 再验 lane，于是环境没配时，
+        # 一个明显写错的 lane（调用方 bug）会被掩盖成「REA 不可用」——
+        # 调用方据此以为"只是这台机器没装 REA"，而不是"我的参数写错了"。
+        # 两种错的性质完全不同：参数错要改代码，环境缺要装依赖。
+        # 让 lane 校验先行，错误归因才准确（这也是 test_unknown_lane_... 断言的语义）。
         if lane == "auto":
             lane = _sniff_lane(path)
         # 未知 lane 必须报错，不能静默回退（2026-10-20 实测：传 lane=nonsense 时
@@ -1571,6 +1616,12 @@ class ReaProbeAdapter(ToolAdapter):
             return ToolOutput(
                 text=f"[rea_probe] 未知 lane={lane!r}（不会静默回退到 pe）；"
                      f"合法值：{'|'.join(sorted(_KNOWN_LANES))}",
+                ok=False,
+            )
+        ok, why = _rea_available()
+        if not ok:
+            return ToolOutput(
+                text=f"[rea_probe] REA 不可用：{why}（not_applicable，勿当作'分析干净'）",
                 ok=False,
             )
         if lane == "unknown":

@@ -51,7 +51,9 @@ REPORT_DOC = os.path.join("docs", "external_bench_report.md")
 FREEZE = os.path.join(BENCH_DIR, "external_bench.freeze.json")
 AUTO_CHECK_RE = re.compile(r"<!--\s*AUTO-CHECK:\s*total=(\d+)\s+payload_complete=(\d+)\s*-->")
 
-FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n]{4,80}\}")
+# 🔴 2026-10-31 对齐判分口径：旧式 {4,80} 会让「判分认得出、遮蔽器认不出」的
+# flag（内文 2~3 字符 / >80 字符）绕过遮蔽与答案扫描。
+FLAG_CAND_RE = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,14})\{[^{}\n]{1,200}\}")
 HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
 

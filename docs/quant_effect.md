@@ -202,7 +202,7 @@ python scripts/check_quant_effect.py --full     # 全量 8 条（CI 用这档）
   已过时——复测两条路径**同为 20/55 = 36.4%**，34.5% 不再存在，原取舍前提消失。
 - **⚠️ 真正该修的是分子侧（2026-10-15 发现）**：20/55 的 20 个命中里有 **4 个是「题面即
   答案」**——`flag_in_html` / `flag_in_json_api` / `flag_in_cookie_set` / `flag_in_log_data`
-  四题的 `description` **直接写着 flag 明文**（例 `<!-- secret: flag{html_comment_flag} -->`），
+  四题的 `description` **直接写着 flag 明文**（例 `<!-- secret: flag{REDACTED_flag_in_html} -->`），
   `flag_scan` 正则一扫即命中，`sha256` 校验确实通过，**但不构成解题能力**：答案被抄在了题目上。
   这正是 `all_benchmarks_summary.json` 里 `flag_scan_only: 4` 的来源——早被统计出来，
   却从未从命中里剔除，也没有门禁守着（现已补，见下）。

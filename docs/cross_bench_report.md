@@ -315,7 +315,7 @@ web 题建本地靶场"，逐题核验后**该判断被证伪**——21 题 web 
 **HIT（分子侧）的真实性**。补审后发现另一侧也在注水：
 
 `flag_in_html` / `flag_in_json_api` / `flag_in_cookie_set` / `flag_in_log_data`
-四题的 `description` **直接写着 flag 明文**（例：`<!-- secret: flag{html_comment_flag} -->`），
+四题的 `description` **直接写着 flag 明文**（例：`<!-- secret: flag{REDACTED_flag_in_html} -->`），
 presolve 用 `flag_scan` 正则一扫即命中，`sha256` 校验确实通过——**但这不构成解题能力，
 答案被抄在了题目上**。这正是 `all_benchmarks_summary.json` 中 `flag_scan_only: 4` 的来源；
 该字段早被统计出来，却从未从命中里剔除，也没有门禁守着。
@@ -400,8 +400,8 @@ PROVENANCE.md §6 甚至把这条写成了设计（"路径与存在性以 `paylo
 | `real_benchmark.json`（真题 55） | 55 | 20 | **4** | 全部 `flag_scan` | 36.4% → **29.1%** |
 
 72 题集里 `flag_scan` 引擎恰好命中 15 题，**与题面即答案的 15 题完全重合**
-（`web_sqli` 题面：`POST /login.php user=admin flag{sqli_union_select} UNION SELECT ...`；
-`forensic_1` 题面：`volatility -f mem.raw pslist | grep suspicious ... 内容: flag{memory_forensics}`）。
+（`web_sqli` 题面：`POST /login.php user=admin flag{REDACTED_web_sqli} UNION SELECT ...`；
+`forensic_1` 题面：`volatility -f mem.raw pslist | grep suspicious ... 内容: flag{REDACTED_forensic_1}`）。
 **该引擎在这两个集上 100% 靠读题面得出答案**——这是病根，不是巧合。
 
 ### 判据必须机验：一次差点发生的误判

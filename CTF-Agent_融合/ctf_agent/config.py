@@ -156,6 +156,23 @@ class AppConfig:
     # 下调至 480s（≤ 灾难依据），保留 CTF_AGENT_HARD_WALLCLOCK 环境变量可覆盖。
     hard_wallclock: int = 480
 
+    # EASY/VERY_EASY 分级墙钟（2026-10-25 破晓补覆盖口）。
+    # 背景：`_wallclock_for` 里 EASY 分支原来**硬编码 120s、无任何覆盖途径**，
+    # 而 HARD 分支早有 CTF_AGENT_HARD_WALLCLOCK。实测 reasoning 模型
+    # （openrouter nemotron-3.5-lightning:free）单题 124s 撞死在这道 120s 墙上，
+    # --wallclock 300 完全不生效——因为该参数只喂 per_question_wallclock（默认分支）。
+    # 默认值保持 120s 不变（赛时"简单题秒级解决"的止损意图不变），
+    # 仅提供环境变量覆盖口，供本地实验/难度误标时重估。
+    easy_wallclock: int = 120
+
+    # 框架预读附件（2026-10-25 破晓，A 车道）。
+    # 为什么需要：实测 4 个模型里只有 1 个（nemotron）调过 file_analyze，其余直接写脚本 →
+    # 脚本里没读文件 → 手里没证据 → 只能凭空猜 → 被 sha256 反幻觉闸拦下。
+    # E3 的注入机制是好的（5 项单测全过），但它的前提「附件已读」在实际跑批中不成立。
+    # 这里由框架直接读附件注入，把前提补上——**不依赖模型行为**。
+    # 默认关（与 E3 同款）：保证基线 KPI 不被改动，A/B 实验显式开 CTF_AGENT_PRELOAD_ATTACHMENTS=1。
+    preload_attachments: bool = False
+
     # ── 沙盒 ─────────────────────────────────────────────
     sandbox_timeout: int = DEFAULT_SANDBOX_TIMEOUT
     sandbox_mode: str = "subprocess"         # subprocess（Docker 决赛前修复后切 docker）
@@ -230,6 +247,8 @@ class AppConfig:
             max_retries_hard=_int_env("CTF_AGENT_MAX_RETRIES_HARD", 3),
             per_question_wallclock=_int_env("CTF_AGENT_PER_Q_WALLCLOCK", 300),
             hard_wallclock=_int_env("CTF_AGENT_HARD_WALLCLOCK", 480),
+            easy_wallclock=_int_env("CTF_AGENT_EASY_WALLCLOCK", 120),
+            preload_attachments=os.getenv("CTF_AGENT_PRELOAD_ATTACHMENTS", "0") == "1",
             sandbox_timeout=_int_env("CTF_AGENT_SANDBOX_TIMEOUT", DEFAULT_SANDBOX_TIMEOUT),
             sandbox_mode=os.getenv("CTF_AGENT_SANDBOX_MODE", "subprocess"),
         )
@@ -434,6 +453,18 @@ _PROVIDER_MODEL_ALLOWLIST: dict[str, set] = {
     # deepseek-v4.1-flash-free（免费不限量），登记用途同 glm——防 env 覆盖被静默回退。
     # 默认档 deepseek-chat/reasoner 保留在册：切回官方端点时仍可用。
     "deepseek": {"deepseek-chat", "deepseek-reasoner", "deepseek-v4.1-flash-free"},
+    # 2026-10-25 破晓接入 OpenRouter 免费层：登记实测可用的 3 个 :free 模型，
+    # 防 env 覆盖被净化逻辑回退到默认（与 glm/deepseek 同款理由）。
+    # 未登记但存在的 :free 模型（gemma-4 / laguna / lfm-2.5 等）不支持 tools，agent 用不了。
+    "openrouter": {"nvidia/nemotron-3.5-lightning:free",
+                   "recursive/flint-v1.0:free",
+                   "xingchen-agi/xing4.0-29b-a4b:free"},
+    # 2026-10-25 破晓接入 ModelScope（2000 次/天）：登记实测可用的 3 个，
+    # 防 env 覆盖被净化回退默认。DeepSeek-V4-Pro / Step-5-Preview 虽在列表里但
+    # 报 "no provider supported"，不登记（登记了也用不了）。
+    "modelscope": {"Qwen/Qwen3.5-397B-A17B",
+                   "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+                   "Qwen/Qwen3.8-Flash-Next"},
 }
 
 
@@ -470,6 +501,26 @@ def _resolve_provider_defaults(provider: str) -> tuple[str, str, str, str]:
         "siliconflow": ("https://api.siliconflow.cn/v1/chat/completions", "Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-7B-Instruct"),
         "moonshot": ("https://api.moonshot.cn/v1/chat/completions", "kimi-k2.6", "kimi-k2.6", "kimi-k2.6"),
         "openai": ("https://api.openai.com/v1/chat/completions", "gpt-5.6-luna", "gpt-5.6-luna", "gpt-5.6-luna"),
+        # 2026-10-25 破晓接入：OpenRouter 免费层（国内直连，实测 3 个 :free 模型 200 OK）。
+        # 为什么走 openrouter：openai-next 网关 key 于 10-25 上午失效，其余 12 个 provider
+        # 401/402/403/429 全挂，只剩 glm-4-flash（小模型，不调 file_analyze）。
+        # 实测（17 个 :free 模型里）：nemotron-3.5-lightning / flint-v1.0 / xing4.0-29b 可用，
+        # 均为 reasoning 模型——**max_tokens 必须给足（≥1500），否则 token 全被 reasoning 吃掉、
+        # content 返回空串**（这是接入时踩的第一个坑）。
+        "openrouter": ("https://openrouter.ai/api/v1/chat/completions",
+                       "nvidia/nemotron-3.5-lightning:free",
+                       "nvidia/nemotron-3.5-lightning:free",
+                       "nvidia/nemotron-3.5-lightning:free"),
+        # 2026-10-25 破晓接入：ModelScope 推理 API（**2000 次/天**，是当前额度最大的免费源）。
+        # 为什么需要：openrouter 免费层只有 50 次/天，今天下午调试就用完了（429
+        # free-models-per-day）——对 34 道题的 heldout 池远远不够。
+        # 实测 37 个模型里 3 个可用：Qwen3.5-397B-A17B / DeepSeek-V4.1-Flash-1017 /
+        # Qwen3.8-Flash-Next；DeepSeek-V4-Pro 与 Step-5-Preview 报 "no provider supported"，
+        # GLM-5.2 报 quota 429。默认选 397B（当前可用里最强）。
+        "modelscope": ("https://api-inference.modelscope.cn/v1/chat/completions",
+                       "Qwen/Qwen3.5-397B-A17B",
+                       "Qwen/Qwen3.5-397B-A17B",
+                       "Qwen/Qwen3.5-397B-A17B"),
     }
     if provider in mapping:
         return mapping[provider]

@@ -73,12 +73,10 @@ CLEAN_CONFIG = os.path.join(ROOT, "config.share.yaml")
 # ── 排除：目录名（任一父级命中即整棵剪掉）────────────────────────────
 EXCLUDE_DIRS = {
     ".git", ".workbuddy", ".workbuddy-ai", ".atomcode", ".idea", ".vscode",
-    # `.workbuddy-ai/`（2026-10-24 补）：AI 协作会话的本地记忆目录，**不是**可交付内容。
-    # 实锤风险：`.workbuddy-ai/memory/2026-10-22.md` 里明文记着赛事门户的手机号与密码
-    # （为向用户解释「门户账号 ≠ Agent 令牌」而写下的原值）。此前只排除了 `.workbuddy/`，
-    # 而 `EXCLUDE_PATH_SUBSTR` 里的 `.workbuddy/` 子串匹配不到 `.workbuddy-ai/`
-    # → 下次重打包会把会话记忆连同凭证一起发给评委。
-    # 该目录同时是 git 未跟踪状态，本就不属于「仓库交付面」。
+    # `.workbuddy-ai/`（历史，2026-10-31 已合并进 `.workbuddy/memory/`）：AI 协作会话的本地记忆目录，**不是**可交付内容。
+    # 记忆现统一在 `.workbuddy/memory/`，已由 `.workbuddy/`（EXCLUDE_DIRS + EXCLUDE_PATH_SUBSTR）整棵排除。
+    # 实锤风险：记忆 `.md` 里曾明文记着赛事门户手机号与密码（解释「门户账号 ≠ Agent 令牌」写下的原值），
+    # 故记忆目录必须整体排除，绝不可随交付包发给评委。该目录 git 未跟踪，本就不属于「仓库交付面」。
     "data", "data_backup_boot", "data_backup_boot2",
     # `scans/`（2026-10-24 补）：staticcheck 等静态扫描的**临时产物**，`.gitignore`
     # 已注明「每次重跑都会变，入仓只会污染 diff」。它不属于交付面：

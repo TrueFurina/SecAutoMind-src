@@ -1,8 +1,8 @@
 {
   "total": 72,
-  "hit": 70,
-  "miss": 2,
-  "coverage_pct": 97.2,
+  "hit": 53,
+  "miss": 19,
+  "coverage_pct": 73.6,
   "results": [
     {
       "id": "b64_single",
@@ -10,7 +10,7 @@
       "sub": "base64",
       "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{base64_single_layer}",
+      "presolve_flag_sha256": "8117bd09fe35efa040a4dca729d6e3af95c7e7378538153267cd49d9bf297e55",
       "sha256_match": true,
       "expected_skill": "base64_multilayer"
     },
@@ -20,7 +20,7 @@
       "sub": "base64",
       "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{base64_multilayer_three}",
+      "presolve_flag_sha256": "1d283bb254ff75aa5ab325d841a214f7f2991c6bfcfb46912d02a6ad07eedcd6",
       "sha256_match": true,
       "expected_skill": "base64_multilayer"
     },
@@ -30,7 +30,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_three}",
+      "presolve_flag_sha256": "1e286a91bd9c46ef0eee1756228724f8503175f0cf2fab149253990e7340ac47",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -40,7 +40,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{rot_thirteen_flag}",
+      "presolve_flag_sha256": "e637ebd856a5f7c0ca1963f1829a748e1c3c2a2295d547424b5bc8a1d82d49a4",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -50,7 +50,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_seven}",
+      "presolve_flag_sha256": "e4897fb56d977173744c0284f3a0c0152ab16c43061e99642b0e9431d183a744",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -60,7 +60,7 @@
       "sub": "morse",
       "difficulty": "easy",
       "presolve_engine": null,
-      "presolve_flag": null,
+      "presolve_flag_sha256": "",
       "sha256_match": false,
       "expected_skill": "morse"
     },
@@ -70,7 +70,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_single_byte}",
+      "presolve_flag_sha256": "16d97c4c2eacd5efe753bc9b225cc25c230e7e38ff8571ed51819a707cc5c44f",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -79,9 +79,9 @@
       "category": "crypto",
       "sub": "hash",
       "difficulty": "easy",
-      "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{md5_hash_crack}",
-      "sha256_match": true,
+      "presolve_engine": null,
+      "presolve_flag_sha256": "",
+      "sha256_match": false,
       "expected_skill": "hash_crack"
     },
     {
@@ -90,7 +90,7 @@
       "sub": "rsa",
       "difficulty": "medium",
       "presolve_engine": null,
-      "presolve_flag": null,
+      "presolve_flag_sha256": "",
       "sha256_match": false,
       "expected_skill": "rsa_fermat"
     },
@@ -100,8 +100,8 @@
       "sub": "forensics",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{log_forensics_exfil}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "d9a507bacce551a03167a874ed8a5ab235b2d34282daf070b38802e188002df2",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -110,7 +110,7 @@
       "sub": "base64",
       "difficulty": "easy",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{double_base64_layer}",
+      "presolve_flag_sha256": "60f1e5ba47570ea5a9aea40184b6b48278ace76d3b4e275658d292c04eee4638",
       "sha256_match": true,
       "expected_skill": "base64_multilayer"
     },
@@ -120,7 +120,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_five_shift}",
+      "presolve_flag_sha256": "d7cc6bc5de6266200254cecd7d65b47d184e8a55dd34004fdd22de2b2dcaee81",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -130,7 +130,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{nineteen_shift}",
+      "presolve_flag_sha256": "bc04109a048a1715c010e60639c7dbb20612b2cab8b71afbfda8b8d76a23136c",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -140,7 +140,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_55}",
+      "presolve_flag_sha256": "716b8501ad7b2aa7b6ae5d03dfac0d2339893da29f395ae6f9283f7427bac454",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -150,7 +150,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_ff_invert}",
+      "presolve_flag_sha256": "6ecadf0744e9efcc71d5b3a35f3a50a3f3c17c17c820fa202902b37056d2b626",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -160,8 +160,8 @@
       "sub": "forensics",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{network_packet_found}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "a774f9bd3b5bc6ab533e524943b507a0c03467b2b130d46c03679b8da2c72342",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -170,8 +170,8 @@
       "sub": "source_audit",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{html_comment_exfil}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "7e2a6696dadcc44d2c5d65bc97fd6d91a099d911c49644f4e0027bdfb2599e80",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -180,8 +180,8 @@
       "sub": "api_security",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{json_api_leak}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "f4488c2019b0be34569cde61c6858e431b17b2205c99d6c13b6ba23afc6a810f",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -189,9 +189,9 @@
       "category": "crypto",
       "sub": "hash",
       "difficulty": "easy",
-      "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{ctf_challenge}",
-      "sha256_match": true,
+      "presolve_engine": null,
+      "presolve_flag_sha256": "",
+      "sha256_match": false,
       "expected_skill": "hash_crack"
     },
     {
@@ -200,8 +200,8 @@
       "sub": "web_security",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{cookie_session_hijack}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "8522540251b12540596863dac54bd4aac483cf42f4eb771d170816a4a14be959",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -210,7 +210,7 @@
       "sub": "base64",
       "difficulty": "medium",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{base64_4layers}",
+      "presolve_flag_sha256": "39a5fe53d52913566780782c36ff0891271bbc25f4a9aca1b0717d57b8798c31",
       "sha256_match": true,
       "expected_skill": "base64_multilayer"
     },
@@ -220,7 +220,7 @@
       "sub": "base64",
       "difficulty": "medium",
       "presolve_engine": "base64_multilayer",
-      "presolve_flag": "flag{base64_5layers}",
+      "presolve_flag_sha256": "86383c79e93278e51192923c170783fb8fbb6e03191ee1e15f6fb20c86d7e741",
       "sha256_match": true,
       "expected_skill": "base64_multilayer"
     },
@@ -230,7 +230,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_1}",
+      "presolve_flag_sha256": "6a2fc17427fd837e7a82248b63e874ff74649d00132e22093cb0c396e5c91256",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -240,7 +240,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_2}",
+      "presolve_flag_sha256": "4e4538627aeea1ef2d34dc3033fb671ecb405431f16f16afb8d9b1c4dd5b443d",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -250,7 +250,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_4}",
+      "presolve_flag_sha256": "af343de524b265681022733417633aec0a52792cf3ba3da0fe1c0d2b9ece72a1",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -260,7 +260,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_6}",
+      "presolve_flag_sha256": "b02bdb1edca9a68e7d2eca738b7f43e0ef3eaccd1bd872bfe6bda778e356ecc8",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -270,7 +270,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_8}",
+      "presolve_flag_sha256": "b41acafec383cf69fcac0cbfa393ecc38baf16968e199eab5e646188eda11470",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -280,7 +280,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_9}",
+      "presolve_flag_sha256": "9b326216f60a1602408bf1edacf190b0496bbeac47ccd5f1f3da96f3fce8d415",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -290,7 +290,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_10}",
+      "presolve_flag_sha256": "d02f2da0974d965a5124408656d9dd06b6f506a0c562b9f9c8a62b90089da968",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -300,7 +300,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_11}",
+      "presolve_flag_sha256": "5672c969d8ba9f96c08340d0347bf882191f75b375cd30c6be3f03bd14e4f722",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -310,7 +310,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_12}",
+      "presolve_flag_sha256": "49d768bad1adefbf3f330369d7468dc3733a972779e00122d4b6e7eb74a5ceb8",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -320,7 +320,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_14}",
+      "presolve_flag_sha256": "57e25c145896f39a32fd7015e772057965a2c7dc7431262814eb2efc83946415",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -330,7 +330,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_15}",
+      "presolve_flag_sha256": "0bb61e60cea43ab6923cfacee6d33c85b85ea26c09f0e5d2575c82a7b2555fde",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -340,7 +340,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_16}",
+      "presolve_flag_sha256": "7cba695bcb7ba3727ac083c6a6c19229781a5dda8f1e0ba546c7bd85be14b932",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -350,7 +350,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_17}",
+      "presolve_flag_sha256": "0d4caa3afefeec076ddf70b55ae47d724e4a0957e7a22d6e7c2dbb435e7cab6a",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -360,7 +360,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_18}",
+      "presolve_flag_sha256": "cf5f5ed619d7ca3707130f39645aa6ff1fd1ce526eef2dc08fc018b0f9d8736e",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -370,7 +370,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_20}",
+      "presolve_flag_sha256": "84fdda8cd77259f720d01c92bbf69c88c39d1aaef49eda14dbc8397a7f3f22f3",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -380,7 +380,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_21}",
+      "presolve_flag_sha256": "ab363e94f925f165eced9e77165caa87115285ff88c6f5dc05ba28a72b754df7",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -390,7 +390,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_22}",
+      "presolve_flag_sha256": "4470beabe79adadc644ed2499011319cc8357ee05128c22635a4c0dd046b401f",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -400,7 +400,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_23}",
+      "presolve_flag_sha256": "f74058bd71725a1dd7df1f6e36b41289bc955ae1c9011eedbabca84a3c99379a",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -410,7 +410,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_24}",
+      "presolve_flag_sha256": "20e6ea72e61bfbd5d2e95463ac336b0df9239ef2fc5e45be698bcadd3c8ef266",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -420,7 +420,7 @@
       "sub": "caesar",
       "difficulty": "easy",
       "presolve_engine": "caesar",
-      "presolve_flag": "flag{caesar_shift_25}",
+      "presolve_flag_sha256": "53c33ccda9ce3d194b9ec9d1758bb51eb7e2933233ddca431260a096888e06bc",
       "sha256_match": true,
       "expected_skill": "caesar"
     },
@@ -430,7 +430,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_01}",
+      "presolve_flag_sha256": "9d34171f73453a920d3d427c2136b27eef66527faa10aed53f4037a18c9d1f4a",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -440,7 +440,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_10}",
+      "presolve_flag_sha256": "d424ee5995a485379b9a240188978cf38eb83dcfdc92fb5941466d93a9e17571",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -450,7 +450,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_33}",
+      "presolve_flag_sha256": "14befc0c146319cd4ab38da861179bedb79df19627482e7daae1574d4ba4e333",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -460,7 +460,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_77}",
+      "presolve_flag_sha256": "457746327496c095346ec951a4cdfac6cfa3d70e35e9fc47d6180c529f278474",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -470,7 +470,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_aa}",
+      "presolve_flag_sha256": "9ed7916a3495c556cd12991a93fa863313f19cc6051b832f1ad08d6145496851",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -480,7 +480,7 @@
       "sub": "xor",
       "difficulty": "easy",
       "presolve_engine": "xor_single",
-      "presolve_flag": "flag{xor_key_cc}",
+      "presolve_flag_sha256": "8fa9bc54897033329ab180686aedd16cd62c150f48da144982cbfdcf12718b70",
       "sha256_match": true,
       "expected_skill": "xor_single"
     },
@@ -490,7 +490,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{letmein}",
+      "presolve_flag_sha256": "55ae9d77d1a5d8e366679930af78cd9723252fd018b9c6297b33c00961706659",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -500,7 +500,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{dragon}",
+      "presolve_flag_sha256": "2c28126965afa344911e6296115430a357afa961a6abbb2a73f7d30448feecb1",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -510,7 +510,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{master}",
+      "presolve_flag_sha256": "3e634102c93035f73d1c02c74e6ff4e9492e1f9bfecd6fe6c46437904064da3c",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -520,7 +520,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{monkey}",
+      "presolve_flag_sha256": "03bf87c69268fbac775597254d44d5ded3fc340c857c80571012cbe146039a85",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -530,7 +530,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{shadow}",
+      "presolve_flag_sha256": "bffd0411d8a6a2ae7a5c5705bc4b740c1e178c658346c293d622f0ee3d96f346",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -540,7 +540,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{superman}",
+      "presolve_flag_sha256": "92966bd9e158fe92636c1d84fb378b6d548b203f167974d43a946e0f31e6d805",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -550,7 +550,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{batman}",
+      "presolve_flag_sha256": "f46834adc9f6112964156e6e056b21ba5727c0fc57183ecb6c291a4402d4012c",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -560,7 +560,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{football}",
+      "presolve_flag_sha256": "09e4fa7abf15c198913b89bbd14c3930c956da38a8b0be4d569e46153b0f4574",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -570,7 +570,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{welcome}",
+      "presolve_flag_sha256": "f66e491a7a89cca08ed5ff195dfe907d51333b67f5cbaab943201aa07ba1f386",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -580,7 +580,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{abc123}",
+      "presolve_flag_sha256": "97adaba78ab9679f34f022e44d1e85eef52301550a589fc3069960d6eee1b768",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -590,7 +590,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{qwerty}",
+      "presolve_flag_sha256": "ba771b37927553a8a7e81776490cd1304e5970e3c7ca5f799eda3007fc529687",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -600,7 +600,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{654321}",
+      "presolve_flag_sha256": "e3a7622c6dbf5b3e2ce16d6f7d6a0a07de90e8877cae433918ed3de5f93925e1",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -610,7 +610,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{password1}",
+      "presolve_flag_sha256": "b9fd3f45f0c67c35e1076b0dd6013de8772dc874814400526acd843bcd5ac7d0",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -620,7 +620,7 @@
       "sub": "hash",
       "difficulty": "easy",
       "presolve_engine": "hash_crack",
-      "presolve_flag": "flag{iloveyou}",
+      "presolve_flag_sha256": "da2278196822742d236c4d89149ac750c8dfdc3f1bdb8f206db22f32b5a97453",
       "sha256_match": true,
       "expected_skill": "hash_crack"
     },
@@ -630,8 +630,8 @@
       "sub": "sqli",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{sqli_union_select}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "ac06c50648d7723514a0c6d076c43c34b4ed3d152743173ced1474d0edc0b89c",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -640,8 +640,8 @@
       "sub": "xss",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{reflected_xss}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "6899b7e615aa98c49461aa7d46dbf36679c5a6cdb467b47558beb163fed2fed8",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -650,8 +650,8 @@
       "sub": "lfi",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{path_traversal}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "93ddb134aae54a9872aa1477addb0fe78c71c38573f1a34fe10ea703b37b3139",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -660,8 +660,8 @@
       "sub": "rce",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{command_injection}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "8e4f277b8f2f776cd68c9db6a1bfc3cc165640d783945112d0272b4fc3040a90",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -670,8 +670,8 @@
       "sub": "idor",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{idor_access}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "7a8b104dcb651d1b0f8a2966133fa8383b311b6ece5ec48bc9121b8f62fb6325",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -680,8 +680,8 @@
       "sub": "csrf",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{csrf_attack}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "5d609a1799589b76ae59bcfcf4f6960463b344b02b7433fd2c10d6151e60b2b9",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -690,8 +690,8 @@
       "sub": "ssrf",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{ssrf_metadata}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "ac9cb674992300930c00d30ff23b067851b8548bf2295e5e68cdd9d77be58512",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -700,8 +700,8 @@
       "sub": "forensics",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{memory_forensics}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "5a0da63b524fd1c4bfaef91f0ef5eab593a3a823b736076a2e1ba2740761c7e2",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -710,8 +710,8 @@
       "sub": "forensics",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{pcap_http_leak}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "d23463dcfd72a59f7911693680373a9224d2500237d8fe8779e23dd57ee7f9b7",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     },
     {
@@ -720,8 +720,8 @@
       "sub": "forensics",
       "difficulty": "medium",
       "presolve_engine": "flag_scan",
-      "presolve_flag": "flag{log_backdoor_found}",
-      "sha256_match": true,
+      "presolve_flag_sha256": "b928a4a2802a9002b06eceb0e23fbceed0dab902765cf9a7a853a817d2616dd3",
+      "sha256_match": false,
       "expected_skill": "flag_scan"
     }
   ]

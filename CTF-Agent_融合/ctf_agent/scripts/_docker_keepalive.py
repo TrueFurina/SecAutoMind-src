@@ -58,14 +58,25 @@ class KeepAlive(threading.Thread):
         super().__init__(daemon=True)
         self.interval = interval
         self.docker_bin = docker_bin
-        self._stop = threading.Event()
+        # 🔴 2026-10-31 修：原实现命名为 `self._stop`，与 `threading.Thread._stop()`
+        # 方法**同名**，把它整个覆盖成了 Event 实例。
+        # 后果（仅在 Python ≤3.12 触发）：`Thread.join()` →
+        # `_wait_for_tstate_lock()` → `self._stop()` 抛
+        # `TypeError: 'Event' object is not callable`，于是 join 永久挂住/报错。
+        # 实测对照：
+        #   · 3.12.3（服务器）→ 本文件 6 条用例全红，正是该 TypeError；
+        #   · 3.13.14（本机）  → 12 条全绿，因为 3.13 移除了 `_wait_for_tstate_lock`，
+        #     不再内部调用 `self._stop()` —— 于是这个 bug 被**版本差异静默掩盖**。
+        # pyproject 声明 requires-python >=3.13，但服务器/CI 环境未必满足；
+        # 改名为 `_stop_evt` 后与基类彻底解耦，两个版本都正确。
+        self._stop_evt = threading.Event()
         self.pokes = 0
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop_evt.set()
 
     def run(self) -> None:
-        while not self._stop.wait(self.interval):
+        while not self._stop_evt.wait(self.interval):
             try:
                 subprocess.run(
                     [self.docker_bin, "version"],

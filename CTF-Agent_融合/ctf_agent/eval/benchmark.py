@@ -112,6 +112,8 @@ class BenchmarkResult:
         )
         # C 诊断线（2026-10-25）：extract_fail 时保留候选值供后验分析
         self.rejected_candidates = (output or {}).get("rejected_candidates") or []
+        # 2026-10-26：LLM 输出协议计量（由 run() 的 MainAgent 上报）
+        self.llm_parse_metrics = (output or {}).get("llm_parse_metrics") or {}
 
     def to_dict(self) -> dict:
         return {
@@ -126,6 +128,8 @@ class BenchmarkResult:
             "duration_ms": self.duration_ms,
             "retries": self.retries,
             "rejected_candidates": self.rejected_candidates,
+            # 2026-10-26：LLM 输出协议计量（protocol_fail / empty_reply），只增字段
+            "llm_parse_metrics": self.llm_parse_metrics,
         }
 
 
@@ -602,6 +606,22 @@ def _emit_report(args, mode: str, summary: dict, results, multi: Optional[dict])
             "summary": summary,
             "results": [r.to_dict() for r in results],
         }
+    # 2026-10-26 观测：把 LLM 输出协议计量挂到 summary 上（只增字段，不改既有键）。
+    # 用途：区分「模型输出不合协议」与「工具链故障」——今天实证前者占 tool_failure 的多数。
+    try:
+        if isinstance(payload.get("summary"), dict):
+            _pf = _er = 0
+            for _r in results:
+                _m = getattr(_r, "llm_parse_metrics", None) or {}
+                _pf += int(_m.get("protocol_fail", 0))
+                _er += int(_m.get("empty_reply", 0))
+            if _pf or _er:
+                payload["summary"]["llm_output_health"] = {
+                    "protocol_fail": _pf, "empty_reply": _er,
+                    "note": "protocol_fail=有返回但非JSON；empty_reply=无返回。二者都不是工具故障。",
+                }
+    except Exception:  # noqa: BLE001 - 观测字段失败绝不影响报告落盘
+        pass
     report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("=== CTF-Agent 题库评测报告 ===")

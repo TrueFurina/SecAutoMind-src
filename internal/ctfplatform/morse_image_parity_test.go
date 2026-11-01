@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-// morseExpectedText Python 侧实测解码结果（judge_morse_image.py 输出 flag{m0rs31m4g3t1m1ngch4rt}）。
+// morseExpectedText Python 侧实测解码结果（judge_morse_image.py 输出 flag{REDACTED_public_morse_image}）。
 // 注意 Go 侧复用的 morseTable 值本身是小写，故这里取小写形态。
 const morseExpectedText = "m0rs31m4g3t1m1ngch4rt"
 

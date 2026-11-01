@@ -87,7 +87,7 @@
 - 本机 python venv：`C:/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
   （含 pypdf/fitz/weasyprint/pdfplumber/httpx，可 PDF 文本提取与 HTML→PDF 复现）
 - 探测脚本残留：`E:\Program\SecAutoMind\.workbuddy\tmp\ycb_md2pdf_probe.py`（批量载荷，可改单发）
-- SecAutoMind 赛时文档：`docs/ctf2_arena_integration_20261023.md`（快闪赛 19:00 用，勿混）
+- SecAutoMind 赛时文档：`docs/events/羊城杯_20261024/ctf2_arena_integration_20261023.md`（快闪赛 19:00 用，勿混）
 - **今晚还有 1024 快闪赛 Agent 赛道 19:00–20:00**（CTF²，SecAutoMind 自动参赛，另一战场）
 
 ---

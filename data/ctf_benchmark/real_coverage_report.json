@@ -1,8 +1,8 @@
 {
   "total": 55,
-  "hit": 20,
-  "miss": 35,
-  "coverage_pct": 36.4,
+  "hit": 16,
+  "miss": 39,
+  "coverage_pct": 29.1,
   "results": [
     {
       "id": "pico2024_interencdec",
@@ -270,8 +270,8 @@
       "sub": "source_audit",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag_sha256": "3e073be2f640601a6e2de1ef3ded1e87845372b0b916b748d526d3eb5a6d7964",
-      "sha256_match": true,
+      "presolve_flag_sha256": "62fa5b2b047068cec03adaa91243657507fc03330ca1f76712612e3a6559dc29",
+      "sha256_match": false,
       "expected_skill": "auto"
     },
     {
@@ -280,8 +280,8 @@
       "sub": "api",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag_sha256": "98f0095388f6a93cdf3d1540da909f8706f6981c93989b3e015b5b15f08001be",
-      "sha256_match": true,
+      "presolve_flag_sha256": "1d70cab61d1daf4dcf106f60ae887d30d77b83dc69b74994b6c488ceb2396875",
+      "sha256_match": false,
       "expected_skill": "auto"
     },
     {
@@ -290,8 +290,8 @@
       "sub": "cookie",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag_sha256": "a0171faad2ec8e85f45fb65ac49991e1941f73aee54b318603267916aaa211ba",
-      "sha256_match": true,
+      "presolve_flag_sha256": "0d0242ab14115ff0bdfd724fc86ab11dc3f07af20a2b7a750c720c5cff706705",
+      "sha256_match": false,
       "expected_skill": "auto"
     },
     {
@@ -300,8 +300,8 @@
       "sub": "forensics",
       "difficulty": "easy",
       "presolve_engine": "flag_scan",
-      "presolve_flag_sha256": "874ca99037a15fd64754d32b44c7e7f11e7961f4d2610f4b9d42786df33bb510",
-      "sha256_match": true,
+      "presolve_flag_sha256": "0ea228acd9f3c2c1cb9b0877fe88fddf07e5af3328b0103c5789df839a8697cc",
+      "sha256_match": false,
       "expected_skill": "auto"
     },
     {

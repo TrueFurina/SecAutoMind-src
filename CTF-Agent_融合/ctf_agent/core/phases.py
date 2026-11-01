@@ -163,6 +163,22 @@ async def plan_step(agent, ctx: AgentContext, attempt: int) -> dict:
             )
     user = agent._build_plan_prompt(ctx, attempt)
     result = await agent._llm_json(system, user, attempt, recover_script=True)
+    # 2026-10-26 计量（在结果返回后立即判，而不是等 `if not result`）：
+    # 实测 7/7 次坏 JSON 都被「代码围栏兜底」成功转成 script 动作，
+    # 所以 `if not result` 分支几乎不进 → 那时计数恒 0。
+    # 兜底成功 ≠ 模型守住了协议，只是框架替它擦了屁股，必须照样计入 protocol_fail。
+    try:
+        _m = getattr(agent, "_llm_parse_metrics", None)
+        if _m is not None:
+            try:
+                from llm.client import consume_last_unparsable
+                if consume_last_unparsable():
+                    _m["protocol_fail"] += 1
+            except Exception as _e:  # noqa: BLE001
+                import logging as _lg
+                _lg.getLogger(__name__).warning("[caliber] 计量异常: %r", _e)
+    except Exception:  # noqa: BLE001
+        pass
     # ── plan 嵌套拍平（2026-10-21 真题验证发现）──
     # 工具清单写「参数写在 plan 顶层」，LLM 稳定地把参数塞进一个叫 plan 的
     # **嵌套对象**：{"action":"tool","tool":"rea_probe","plan":{"lane":"decompile_batch"}}。
@@ -175,6 +191,17 @@ async def plan_step(agent, ctx: AgentContext, attempt: int) -> dict:
             if result.get(_k) is None:
                 result[_k] = _v
     if not result:
+        # 2026-10-26 计量埋点（不改 fallback 行为，只做独立计数）：
+        # result 为 None 有两种来源且必须分开记，否则会把「模型输出不合协议」
+        # 误读成「工具链有 bug」（今日实测 glm-4-flash 28.1% vs generalv3 1.2%）：
+        #   · protocol_fail —— LLM 返回了内容但解析不出 JSON（代码兜底也没成）；
+        #   · empty_reply   —— LLM 根本没返回内容（空回复/被掐断）。
+        try:
+            _m = getattr(agent, "_llm_parse_metrics", None)
+            if _m is not None:
+                _m["empty_reply"] += 1   # 走到这里说明 LLM 根本没返回内容
+        except Exception:  # noqa: BLE001 - 计量失败绝不影响主链路
+            pass
         if has_attachment and not ctx._attachment_analyzed:
             return {"action": "tool", "tool": "file_analyze",
                     "detail": "读取附件", "stage": STAGE_RECON, "done": False}

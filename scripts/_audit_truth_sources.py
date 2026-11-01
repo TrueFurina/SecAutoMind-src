@@ -34,7 +34,7 @@ from pathlib import Path
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SELF_BUILT_MARKERS = ("自研", "self", "自建", "synthetic", "local")
-PLAINTEXT_FLAG = re.compile(r"flag\{[^}]{2,}\}")
+PLAINTEXT_FLAG = re.compile(r"[Ff][Ll][Aa][Gg]\{[^}]{2,}\}")
 # 明文答案可能藏的字段名（true flag / answer / solution）
 SUSPECT_KEYS = ("flag", "answer", "solution", "plaintext_flag")
 

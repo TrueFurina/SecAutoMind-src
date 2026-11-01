@@ -59,15 +59,35 @@ def _matches(cand: bytes, truth: str) -> bool:
 
 def _resolve_attachment(rel: str, fp: Path, root: Path,
                         att_root: "Path | None" = None) -> "Path | None":
-    """解析单个附件声明路径 → 磁盘实际文件；找不到返回 None。
+    """解析单个附件声明路径 → 磁盘实际文件/目录；找不到返回 None。
 
     解析候选序（单一事实源，`missing_attachments` 与 `audit_question` 共用，
     避免「两处各写一遍」的判定漂移）：
       base=CWD(仓库根) → 绝对路径自身 → 题库根 → 仓库根 → base.parent
+
+    🔴 2026-10-26 修正：judge 由 `is_file()` 改为 `exists()`。
+    原实现把**目录形态的附件**误判为缺失——`ext_gctf2022_enigma` 声明的 `enigma/`、
+    `messages/` 是目录（前者 7 个源文件，后者含 may_12_2022/flag.ciphertext.txt 与
+    flag.fernet.txt，即本题密文与密钥），却被 `missing_attachments` 报"缺 2 项"。
+    目录同样是合法题面输入（如整包源码、多日期密文），故只判断"是否存在"。
+
+    🔴 同日二次修正：单纯 `exists()` 会让**空目录**也算有效附件（实测确认），
+    与 `attachment_available` 的"空壳附件"是同一类漏洞。故：
+      文件 → 存在即可；目录 → 必须**内含至少一个文件**（递归非空）才算存在。
+    这条判据仍不看内容质量（不含"文件是否够大/是否有用"），那属 `attachment_available`
+    的内容有效性范畴，不在本函数职责内。
     """
     base = att_root or Path.cwd()
     cands = [base / rel, Path(rel), root / rel, root.parent / rel, base.parent / rel]
-    return next((c for c in cands if c.is_file()), None)
+
+    def _usable(c: Path) -> bool:
+        if c.is_file():
+            return True
+        if c.is_dir():
+            return any(p.is_file() for p in c.rglob("*"))
+        return False
+
+    return next((c for c in cands if _usable(c)), None)
 
 
 def missing_attachments(q: dict, fp: Path, root: Path,
@@ -98,6 +118,13 @@ def audit_question(q: dict, fp: Path, root: Path, att_root: Path | None = None) 
         if p is None:
             continue
         payload_on_disk += 1
+        if not p.is_file():
+            # 目录形态附件（2026-10-26）：计入载荷存在，但无单文件字节可扫
+            # （密钥/泄露判定按文件粒度做，目录交由上游按需展开）
+            # ⚠️ 已知边界：目录内部的明文答案**不会被本函数检出**。当前全库
+            # 目录形态附件内实测 0 个 flag 形态串（2026-10-26 核验），故无实际漏检；
+            # 若将来引入含答案的目录附件，需在此展开递归扫描。
+            continue
         raw = p.read_bytes()
         if any(k in p.name.lower() for k in KEY_NAMES):
             txt = raw.decode("utf-8", errors="ignore").strip()

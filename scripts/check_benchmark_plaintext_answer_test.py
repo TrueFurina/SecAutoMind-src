@@ -70,9 +70,9 @@ print()
 print("[判据单测]")
 
 leak, plain = gate.answer_is_in_statement(
-    {"description": "POST /login.php user=admin flag{sqli_union_select} UNION",
-     "flag_sha256": sha("flag{sqli_union_select}")})
-case("答案写在题面 → 判为漏水", leak and plain == "flag{sqli_union_select}", str(plain))
+    {"description": "POST /login.php user=admin flag{ZZ_synthetic_sqli_probe_0001} UNION",
+     "flag_sha256": sha("flag{ZZ_synthetic_sqli_probe_0001}")})
+case("答案写在题面 → 判为漏水", leak and plain == "flag{ZZ_synthetic_sqli_probe_0001}", str(plain))
 
 leak, _ = gate.answer_is_in_statement(
     {"description": "给定原文 flag{admin_forge}，伪造其 CRC32 碰撞",
@@ -173,11 +173,14 @@ rc = subprocess.call([sys.executable, SCRIPT],
 case("报数模式 rc=0（--check 才是判定入口）", rc == 0, "rc=%d" % rc)
 
 # 8 真实仓库当前状态：违规数应与登记基线一致（回归锁定）
+# 2026-10-28：基线从 15/4 改为 0/0 —— 题干内嵌的答案已由
+# `scripts/redact_prompt_answers.py` 脱敏（real 4 道 / benchmark 15 道）。
+# 这里锁 0 是**收紧**而不是放宽：以后谁再往题面里塞答案，这门禁立刻红。
 res = gate.analyze(gate.REPO_ROOT)
 bad = gate.violations(res)
 leaks = {r["file"]: r["plaintext_answer"] for r in res}
-case("真实仓库：benchmark.json=15 / real_benchmark.json=4（回归锁定）",
-     leaks.get("benchmark.json") == 15 and leaks.get("real_benchmark.json") == 4, str(leaks))
+case("真实仓库：benchmark.json=0 / real_benchmark.json=0（题干已脱敏）",
+     leaks.get("benchmark.json", 0) == 0 and leaks.get("real_benchmark.json", 0) == 0, str(leaks))
 case("真实仓库：当前全部在基线内（登记契约成立）", not bad, str(bad[:1]))
 
 print()

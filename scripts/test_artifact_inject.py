@@ -145,6 +145,26 @@ def main() -> int:
             check("连续超时收口", "连续超时" in txt, "txt=%r" % txt[:200])
         finally:
             orch._post_json = _orig
+
+        print("=== [9] prepare_artifacts：目录形态附件（外部池 40 题全是目录）===")
+        ad = os.path.join(tmp, "att")
+        one = os.path.join(ad, "ext_pid_case")
+        os.makedirs(one)
+        with open(os.path.join(one, "data.txt"), "w", encoding="utf-8") as fh:
+            fh.write("DIR_MARKER_42")
+        cw, inf = orch.prepare_artifacts(ad, "ext_pid_case", None)
+        check("目录附件进工件模式", bool(cw) and os.path.isdir(cw), "cwd=%r" % cw)
+        check("文件清单含 data.txt",
+              any(f["name"] == "data.txt" for f in (inf or {}).get("files", [])),
+              "files=%r" % ((inf or {}).get("files"),))
+        check("小文本被内联", "DIR_MARKER_42" in (inf or {}).get("inline", ""), "inline 缺内容")
+        out9 = orch.run_python_tool('print(open("data.txt", encoding="utf-8").read())',
+                                    timeout=30, cwd=cw, artifact_mode=True)
+        check("相对路径可读目录附件", "DIR_MARKER_42" in out9, "out=%r" % out9[:120])
+        if cw:
+            shutil.rmtree(cw, ignore_errors=True)
+        cw2, inf2 = orch.prepare_artifacts(ad, "no_such_pid", None)
+        check("无附件题返回 None", cw2 is None and inf2 is None, "误报附件")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         if 'cwd' in dir() and cwd and os.path.isdir(cwd):

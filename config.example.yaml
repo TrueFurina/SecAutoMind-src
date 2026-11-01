@@ -87,6 +87,12 @@ ai:
         allow_client_reasoning: true # false 时忽略对话请求体 reasoning，仅以下方为准
         profile: openai_compat # auto | deepseek_compat | openai_compat | output_config_effort
         # extra_request_fields: {} # 可选：管理员自定义根级 JSON 片段（高级）
+    stepfun:
+      name: 阶跃星辰 Step Plan
+      provider: openai_compatible
+      api_key: ${STEPFUN_API_KEY}
+      base_url: https://api.stepfun.com/step_plan/v1
+      model: step-5-preview # 旗舰（100万上下文，支持视觉+推理）；备选 step-3.7-flash
     # qwen-plus:
     #   name: Qwen Plus Fallback
     #   provider: openai_compatible

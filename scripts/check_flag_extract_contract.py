@@ -42,7 +42,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+import tempfile
 from pathlib import Path
 
 # AGENTS.md 第五条实锤：本地 Windows GBK 控制台对含中文/emoji 的输出直接
@@ -173,6 +175,124 @@ def do_check() -> int:
               f"如属预期改动，请 --generate 并同步 Go 侧。")
         return 1
     print(f"[OK] flag 提取契约一致：{len(golden['cases'])} 条用例，正则 {FLAG_RE.pattern!r}")
+    # 跨语言 golden 过了还不够：仓库内另外 20+ 份拷贝也要锁住（CI 的 --check 因此覆盖两处）
+    return do_check_copies()
+
+
+# ── 拷贝一致性（2026-10-31 加）：跨语言契约只锁住了 flag_util ↔ Go 两侧 ──
+#
+# 🔴 实锤：真值源之外，仓库里还有 20+ 份**独立硬编码**的 flag 候选正则，三种口径并存：
+#     判分侧  {1,200}：flag_util / stepfun_batch_server / sanitize_conversations_db
+#     门禁侧  {6,200}：preflight_answer_leak / db_plaintext_diag / leak_audit / leak_scan_list
+#     清除侧  {6,200}：redact_prompt_answers / sanitize_plaintext
+#     跑批侧  {3,90} ：stepfun_s2_freekey（这个是判分用的！）/ benchmark_selfcheck_v2
+#   漂移方向最坏：**负责清除答案的工具比判分工具窄** ⇒
+#   「库里 0 命中 / 文件里 0 命中」只证明「没有长 flag」，短 flag 与超长 flag 仍在磁盘上。
+#   实测代价：扫 8 个实例库，含空格的真 flag 被窄口径整条漏掉 143 处（2293 vs 2436，6.2%）。
+#
+# 本检查与跨语言 golden 契约**共用同一条判分口径**，把「拷贝漂移」变成 CI 可见的红。
+
+COPY_PREFIX = "[A-Za-z][A-Za-z0-9_]{0,14}"
+# 变体前缀：遮蔽器/扫描器里常见的括号捕获写法（build_cross_bench.FLAG_CAND_RE 曾用）。
+# 它长得不像 COPY_PREFIX，故 v1 的扫描器**看不见它** —— 2026-10-31 因此漏掉了
+# 「判分认、遮蔽器不认」的 4 种绕过形态。两种前缀都要扫。
+ALT_PREFIX = "([A-Za-z0-9_]{2,})\\{"
+SPAN_RE = re.compile(r"\{(\d+),(\d+)\}")
+SCAN_SKIP_DIRS = {".git", "__pycache__", "node_modules", ".workbuddy",
+                  "CTF-Agent_融合", "dist", "miniconda3", "venv"}
+
+# 已备案的「有意不同」：路径后缀 → 理由（**必须非空**，否则本豁免变成静默放水）。
+#
+# 判据不是「所有拷贝都必须一样」，而是分两类：
+#   · 清除型（脱敏/遮蔽/擦除，如 sanitize_* / build_*_bench）：必须**至少**认得判分认得的全部形态，
+#     否则就是「重跑一次 = 再泄一次」 ⇒ 不同即阻断。
+#   · 检测型（扫描告警，如 secret_guard）：还要额外权衡**误报成本**，
+#     窄口径可能是有意的噪声防线 ⇒ 允许备案豁免，但每次都要把理由与代价打出来。
+ACCEPTED_VARIANTS = {
+    "scripts/secret_guard.py": (
+        "检测型扫描器的窄口径是有意的噪声防线：字符类禁引号/空格/冒号/分号，"
+        "专门避开 Go 结构体字面量。实测 400 个文件（internal/**/*.go + scripts/*.py）："
+        "改用判分口径会多出 **1039 个候选**（170 → 1208，约 7 倍），"
+        "多出的几乎全是 `AgentConfig{MaxIterations: 12000}` 之类噪声。"
+        "⇒ 不改。代价（记录在案的盲区）：看不见**含空格**与**内文 2~3 字符**的 flag 明文；"
+        "而本仓库语料里确实存在含空格的真 flag，故此盲区是**已知风险**，不是该改的漂移。"
+    ),
+}
+
+
+def scan_regex_copies(root: Path):
+    r"""扫描 root 下 .py，返回与判分口径不符的拷贝 [(file, line, kind, reason)]。
+
+    只锁「带长度约束的候选抽取正则」；形如 `^(...)\{(.*)\}$` 的分裂正则
+    （无 {n,m}）不在此列，故跳过——避免把正常代码判成漂移。
+    """
+    bad = []
+    if not root.is_dir():
+        return bad
+    for p in sorted(root.rglob("*.py")):
+        if SCAN_SKIP_DIRS & set(p.parts):
+            continue
+        try:
+            lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for i, ln in enumerate(lines, 1):
+            # 只认**真正创建正则**的行：注释/文档里引用旧正则是很常见的写法
+            # （2026-10-31 实锤：把 build_cross_bench 注释里的旧 {4,80} 当现役正则报了假红）
+            if not (("re.compile" in ln) or ("MustCompile" in ln)
+                    or re.search(r"\b[A-Za-z_]*RE\s*=\s*r?[\"']", ln)):
+                continue
+            if COPY_PREFIX in ln:
+                rest = ln.split(COPY_PREFIX, 1)[1]
+            elif ALT_PREFIX in ln:
+                rest = ln.split(ALT_PREFIX, 1)[1]
+            else:
+                continue
+            # 必须先切掉前缀：前缀自身含 {0,14}，不切会被当成内长而误报
+            m = SPAN_RE.search(rest)
+            if not m:
+                continue
+            span = (int(m.group(1)), int(m.group(2)))
+            grep_form = "[{]" in ln
+            why = []
+            if span != (1, 200):
+                why.append("内长 {%d,%d} ≠ {1,200}" % span)
+            if grep_form:
+                # grep 逐行处理，无需排除换行；字符类统一 [^{}]
+                if "[^{}]" not in ln:
+                    why.append("字符类不是 [^{}]（grep 形态）")
+            elif "[^{}\\n]" not in ln:
+                why.append("字符类不是 [^{}\\n]")
+            if why:
+                try:
+                    rel = p.relative_to(root.parent).as_posix()
+                except ValueError:
+                    rel = p.as_posix()
+                bad.append((rel, i, "grep" if grep_form else "python", "；".join(why)))
+    return bad
+
+
+def do_check_copies() -> int:
+    roots = [REPO / "scripts", REPO / "data"]
+    bad, accepted = [], []
+    for r in roots:
+        for item in scan_regex_copies(r):
+            if any(item[0].endswith(k) for k in ACCEPTED_VARIANTS):
+                accepted.append(item)
+            else:
+                bad.append(item)
+    for f, i, kind, why in accepted:
+        print("[备案豁免] %s:%d [%s] %s" % (f, i, kind, why))
+        print("           理由：%s" % ACCEPTED_VARIANTS[
+            next(k for k in ACCEPTED_VARIANTS if f.endswith(k))])
+    if bad:
+        print("[FAIL] %d 处 flag 正则拷贝与判分口径不一致（判分口径 %r）："
+              % (len(bad), FLAG_RE.pattern))
+        for f, i, kind, why in bad[:40]:
+            print("  %s:%d [%s] %s" % (f, i, kind, why))
+        print("  ⇒ 清除侧比判分侧窄 = 「0 命中」只证明没有长 flag。一律改成 {1,200}。")
+        return 1
+    print("[OK] flag 正则拷贝一致：仓库内各拷贝与判分口径逐份相符")
     return 0
 
 
@@ -224,6 +344,70 @@ def do_selftest() -> int:
     dedup = extract_normalized("flag{a}\nflag{a}\nflag{b}")
     ok &= (dedup == ["flag{a}", "flag{b}"])
     print(f"[5] 归一化去重语义 -> {dedup} (应 ['flag{{a}}','flag{{b}}'])")
+
+    # 6) 变异 C：仓库里多一份 {6,200} 的漂移拷贝，拷贝扫描必须抓到
+    with tempfile.TemporaryDirectory() as td:
+        drift = ('FLAG_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,14}'
+                 r'\{[^{}\n]{6,200}\}' + '")')
+        (Path(td) / "mutant.py").write_text(drift + "\n", encoding="utf-8")
+        got = scan_regex_copies(Path(td))
+        caught_c = len(got) == 1 and "6,200" in got[0][3]
+    ok &= caught_c
+    print(f"[6] 变异(拷贝内长漂到 6,200)被抓 -> {caught_c} (应 True)")
+
+    # 7) 反向：合规拷贝不许误报（否则扫描器会把正常代码判成漂移而变红）
+    with tempfile.TemporaryDirectory() as td:
+        clean = ('FLAG_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,14}'
+                 r'\{[^{}\n]{1,200}\}' + '")')
+        (Path(td) / "clean.py").write_text(clean + "\n", encoding="utf-8")
+        no_false = scan_regex_copies(Path(td)) == []
+    ok &= no_false
+    print(f"[7] 合规拷贝不误报 -> {no_false} (应 True)")
+
+    # 8) 变异 D：变体前缀（遮蔽器的括号捕获写法）被收窄，也必须被抓到
+    with tempfile.TemporaryDirectory() as td:
+        narrow = ('CAND = re.compile(r"([A-Za-z0-9_]{2,})'
+                  r'\{[^}\n]{4,80}\}")')
+        (Path(td) / "mutant2.py").write_text(narrow + "\n", encoding="utf-8")
+        got = scan_regex_copies(Path(td))
+        caught_d = len(got) == 1 and "4,80" in got[0][3]
+    ok &= caught_d
+    print(f"[8] 变异(变体前缀内长收窄到 4,80)被抓 -> {caught_d} (应 True)")
+
+    # 9) 反向：变体前缀改用判分口径后不误报（否则修好的人会被自己的门禁拦住）
+    with tempfile.TemporaryDirectory() as td:
+        wide = ('CAND = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,14})'
+                r'\{[^{}\n]{1,200}\}")')
+        (Path(td) / "clean2.py").write_text(wide + "\n", encoding="utf-8")
+        no_false2 = scan_regex_copies(Path(td)) == []
+    ok &= no_false2
+    print(f"[9] 变体前缀合规不误报 -> {no_false2} (应 True)")
+
+    # 10) 备案豁免要真的生效（否则 secret_guard 那条会静默阻断 CI）
+    narrow = ('FLAG_CAND_RE = re.compile(r"([A-Za-z0-9_]{2,})'
+              r'\{[^}\n\":; ]{4,200}\}")')
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td) / "scripts"
+        d.mkdir()
+        (d / "secret_guard.py").write_text(narrow + "\n", encoding="utf-8")
+        items = scan_regex_copies(d)
+        exempted = (len(items) == 1
+                    and any(items[0][0].endswith(k) for k in ACCEPTED_VARIANTS)
+                    and all(ACCEPTED_VARIANTS.values()))
+    ok &= exempted
+    print(f"[10] 备案豁免生效（secret_guard 不阻断、理由非空） -> {exempted} (应 True)")
+
+    # 11) 反向：豁免是**按名**生效的，换个名字的清除型工具照样必须阻断
+    #     （否则「豁免」就退化成全局放水，等于把门禁拆了）
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td) / "scripts"
+        d.mkdir()
+        (d / "sanitize_something.py").write_text(narrow + "\n", encoding="utf-8")
+        items = scan_regex_copies(d)
+        still_blocks = (len(items) == 1
+                        and not any(items[0][0].endswith(k) for k in ACCEPTED_VARIANTS))
+    ok &= still_blocks
+    print(f"[11] 同一窄正则换名后仍阻断（豁免不是放水） -> {still_blocks} (应 True)")
 
     print("\nSELFTEST:", "PASS" if ok else "FAIL")
     return 0 if ok else 1

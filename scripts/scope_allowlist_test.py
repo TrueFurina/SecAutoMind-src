@@ -126,5 +126,74 @@ class LoadTest(unittest.TestCase):
                          "出厂清单里有过期条目")
 
 
+class MutationTest(unittest.TestCase):
+    """变异验证：证明上面那些断言是「承重」的，而不是恒真的空转。
+
+    做法（与仓库既有门禁一致，如 check_flag_extract_contract --selftest）：
+      1. 干净实现跑一遍，拿到正确结果；
+      2. 把判据函数替换成失灵版本，再跑一遍；
+      3. 断言**结果必然改变** —— 若替换后结果不变，说明那条断言从未真正依赖这个判据，是摆设。
+
+    为什么值得做（2026-10-31）：本文件原有 9 条用例都验得对，但没人证明过
+    「判据失灵时它们会变红」。准入清单最危险的退化不是写错，是**悄悄失效却没人发现**。
+    """
+
+    # 已过期条目（审计 2019-01-01，到期 2020-01-01）
+    EXPIRED = dict(GOOD, audited_on="2019-01-01", expires_on="2020-01-01")
+
+    def _decide_expired(self):
+        return sa.decide("webshell_1", GOOD["category"], [self.EXPIRED],
+                         today=date(2021, 1, 1))[0]
+
+    def _decide_fresh(self):
+        return sa.decide("webshell_1", GOOD["category"], [GOOD],
+                         today=date(2026, 12, 1))[0]
+
+    def test_clean_baseline(self):
+        """先钉住干净态：过期→expired、在有效期内→allowed。"""
+        self.assertEqual(self._decide_expired(), "expired")
+        self.assertEqual(self._decide_fresh(), "allowed")
+
+    def test_mutation_is_expired_always_false(self):
+        """is_expired 恒 False ⇒ 过期条目被误判 allowed（永久准入后门）。"""
+        orig = sa.is_expired
+        try:
+            sa.is_expired = lambda entry, today=None: False
+            self.assertEqual(self._decide_expired(), "allowed",
+                             "变异后必须变成 allowed，否则「过期→expired」那条断言是空转")
+        finally:
+            sa.is_expired = orig
+
+    def test_mutation_is_expired_always_true(self):
+        """is_expired 恒 True ⇒ 有效期内条目被误判 expired（另一方向也要验，防恒假）。"""
+        orig = sa.is_expired
+        try:
+            sa.is_expired = lambda entry, today=None: True
+            self.assertEqual(self._decide_fresh(), "expired",
+                             "变异后必须变成 expired，否则「有效期内→allowed」那条断言是空转")
+        finally:
+            sa.is_expired = orig
+
+    def test_mutation_parse_date_always_none(self):
+        """_parse_date 恒 None ⇒ 日期全部解析失败 ⇒ is_expired 恒 False ⇒ 同样永久准入。
+
+        这一条更隐蔽：日期还在（没人动过条目），只是解析环节坏了，
+        表象是「所有条目永远有效」。
+        """
+        orig = sa._parse_date
+        try:
+            sa._parse_date = lambda value: None
+            self.assertEqual(self._decide_expired(), "allowed",
+                             "日期解析失灵也必须被「过期→expired」那条断言抓到")
+        finally:
+            sa._parse_date = orig
+
+    def test_mutation_after_mutation_restored(self):
+        """收尾自检：变异必须被还原，否则会污染同进程里的其他用例。"""
+        self.assertIsNot(sa.is_expired.__module__, "__main__")
+        self.assertEqual(self._decide_expired(), "expired")
+        self.assertEqual(self._decide_fresh(), "allowed")
+
+
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=1)

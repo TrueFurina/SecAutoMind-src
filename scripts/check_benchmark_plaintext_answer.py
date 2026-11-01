@@ -15,7 +15,7 @@ description 直接写 flag 明文，``flag_scan`` 一扫即命中）。但那是
 
 72 题集里 ``flag_scan`` 引擎恰好命中 15 题，**与题面即答案的 15 题完全重合**
 （``web_sqli`` / ``forensic_1`` 等题面形如
-``POST /login.php user=admin flag{sqli_union_select} UNION SELECT ...``）。
+``POST /login.php user=admin flag{REDACTED_web_sqli} UNION SELECT ...``）。
 即：这个引擎在该集上 100% 靠读题面得出答案，与真题集 A 层是同一个病根。
 
 ## 判据：必须机验，不许靠"看着像"
@@ -60,7 +60,13 @@ GLOB = os.path.join(BENCH_DIR, "*benchmark*.json")
 SKIP_FILES = {"all_benchmarks_summary.json"}
 
 # 常见 CTF flag 前缀。仅作"候选提取"用，是否真是答案由 sha256 比对裁定。
-FLAG_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}")
+# ── 统一 flag 判定口径（2026-10-28 迁移）：大小写不敏感 + 前缀归一 ──
+# 基准 72 个 flag 全小写 flag{}，LLM 常输出大写 FLAG{}；旧口径会「答对判未命中」。
+import os as _fu_os, sys as _fu_sys
+_fu_sys.path.insert(0, _fu_os.path.join(
+    _fu_os.path.dirname(_fu_os.path.abspath(__file__)), 'experiments'))
+from flag_util import candidate_variants  # noqa: E402
+FLAG_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}", re.IGNORECASE)
 
 # 题面字段：只从"给选手看的文本"里提取，不含 attachments 等工件路径。
 TEXT_FIELDS = ("description", "prompt", "hint", "hints", "note", "summary")
@@ -105,8 +111,9 @@ def answer_is_in_statement(prob):
         return False, None
     text = _problem_text(prob)
     for cand in FLAG_RE.findall(text):
-        if hashlib.sha256(cand.encode("utf-8")).hexdigest() == want:
-            return True, cand
+        for v in candidate_variants(cand):
+            if hashlib.sha256(v.encode("utf-8")).hexdigest() == want:
+                return True, v
     return False, None
 
 

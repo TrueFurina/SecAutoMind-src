@@ -794,7 +794,7 @@ var weakPasswords = []string{
 	"flag", "ctf", "ctf{", "flag{", "key", "secret", "challenge",
 	"secautomind", "security", "hack", "pwn", "crypto", "reverse",
 	// flag 变体
-	"flag{md5_hash_crack}", "flag{ctf_challenge}", "flag{weak_password}",
+	"flag{REDACTED_hash_md5}", "flag{REDACTED_hash_md5_ctf}", "flag{weak_password}",
 	"flag{hash_cracked}", "flag{rainbow_table}", "flag{dictionary_attack}",
 	// 技术相关
 	"password123", "admin123", "root123", "test123", "guest123",

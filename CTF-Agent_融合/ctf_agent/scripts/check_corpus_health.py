@@ -81,6 +81,12 @@ def compare(cur: dict, base: dict) -> dict:
             improvements.append(f"{pool}: 坏题 {b.get('broken')} → {c['broken']}（-{b.get('broken')-c['broken']}，建议 --update）")
     for pool in base:
         if pool not in cur:
+            # 🔴 2026-10-26 修正：基线本身就记为 0 题的池，其消失**不构成数据丢失**。
+            # 实证：基线 `questions_real_kpi9` total=0（该目录从未入 git），
+            # 但旧判定无条件报「池消失（曾有 0 题）」并计入阻断回归 → 门禁永久红。
+            # 「曾有 0 题」在语义上不可能丢失任何题目。
+            if base[pool].get("total", 0) <= 0:
+                continue
             regressions.append(f"{pool}: 池消失（曾有 {base[pool]['total']} 题）")
     return {"regressions": regressions, "improvements": improvements}
 

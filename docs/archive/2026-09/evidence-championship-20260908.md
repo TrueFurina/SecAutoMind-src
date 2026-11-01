@@ -133,25 +133,25 @@ go test ./internal/ctfplatform/ -run \
 
 | # | 真题 ID | 求解器 | 解出 flag | 类型 |
 |---|---|---|---|---|
-| 1 | pico2024_interencdec | base64_multilayer | picoCTF{caesar_d3cr9pt3d_f0212758} | 真实求解器 |
-| 2 | pico2024_canyousee | base64_multilayer | picoCTF{ME74D47A_HIDD3N_a6df8db8} | 真实求解器 |
-| 3 | sdctf2021_case64ar | base64_multilayer | sdctf{OBscUr1ty_a1nt_s3CURITy} | 真实求解器 |
-| 4 | cyberconverge2025_layers | base64_multilayer | CBCV{cRy9T0_L4y3r5_4RE_FuN_3135} | 真实求解器 |
-| 5 | base64_triple_real | base64_multilayer | flag{triple_base64_decoded} | 真实求解器 |
-| 6 | nahamcon2024_rsa | rsa_small_e | grodno{Sm4ll_e_1s_e4sy_t0_br3ak} | 真实求解器 |
-| 7 | breizhctf2022_rsa | rsa_small_e | BZHCTF{sur3m3nt_3n_fr4nc3_!!} | 真实求解器 |
-| 8 | rsa_common_real | rsa_common_factor | flag{rsa_common_modulus_attack} | 真实求解器 |
-| 9 | rsa_common_factor | rsa_common_factor | flag{common_factor_attack} | 真实求解器 |
-| 10 | caesar_shift19_real | caesar | picoCTF{caesar_d3cr9pt3d_f0212758} | 真实求解器 |
-| 11 | pico2024_endian | endian | picoCTF{f1u3n71n_pn9&_pdf_724b1287} | 真实求解器 |
-| 12 | ehaxctf2025_morse | vigenere_known_key | EHAX{m0rs3_v1g3n3r3_0p3r4t10n} | 真实求解器 |
-| 13 | vigenere_known_key | vigenere_known_key | flag{vigenere_cipher} | 真实求解器 |
-| 14 | rsa_fermat_small | rsa_fermat | flag{fermat_factorization} | 真实求解器 |
-| 15 | rail_fence_basic | rail_fence | flag{rail_fence_cipher} | 真实求解器 |
-| 16 | flag_in_html | flag_scan | flag{html_comment_flag} | 基准设计产物 |
-| 17 | flag_in_json_api | flag_scan | flag{json_api_secret} | 基准设计产物 |
-| 18 | flag_in_cookie_set | flag_scan | flag{cookie_secret_exfil} | 基准设计产物 |
-| 19 | flag_in_log_data | flag_scan | flag{log_exfil_data} | 基准设计产物 |
+| 1 | pico2024_interencdec | base64_multilayer | picoCTF{****} | 真实求解器 |
+| 2 | pico2024_canyousee | base64_multilayer | picoCTF{****} | 真实求解器 |
+| 3 | sdctf2021_case64ar | base64_multilayer | sdctf{****} | 真实求解器 |
+| 4 | cyberconverge2025_layers | base64_multilayer | CBCV{****} | 真实求解器 |
+| 5 | base64_triple_real | base64_multilayer | flag{****} | 真实求解器 |
+| 6 | nahamcon2024_rsa | rsa_small_e | grodno{****} | 真实求解器 |
+| 7 | breizhctf2022_rsa | rsa_small_e | BZHCTF{****} | 真实求解器 |
+| 8 | rsa_common_real | rsa_common_factor | flag{****} | 真实求解器 |
+| 9 | rsa_common_factor | rsa_common_factor | flag{****} | 真实求解器 |
+| 10 | caesar_shift19_real | caesar | picoCTF{****} | 真实求解器 |
+| 11 | pico2024_endian | endian | picoCTF{****} | 真实求解器 |
+| 12 | ehaxctf2025_morse | vigenere_known_key | EHAX{****} | 真实求解器 |
+| 13 | vigenere_known_key | vigenere_known_key | flag{****} | 真实求解器 |
+| 14 | rsa_fermat_small | rsa_fermat | flag{****} | 真实求解器 |
+| 15 | rail_fence_basic | rail_fence | flag{****} | 真实求解器 |
+| 16 | flag_in_html | flag_scan | flag{****} | 基准设计产物 |
+| 17 | flag_in_json_api | flag_scan | flag{****} | 基准设计产物 |
+| 18 | flag_in_cookie_set | flag_scan | flag{****} | 基准设计产物 |
+| 19 | flag_in_log_data | flag_scan | flag{****} | 基准设计产物 |
 
 - 行 1–15 = **真实求解器命中 15 道**（含 base64_multilayer×5、rsa_small_e×2、rsa_common_factor×2、vigenere_known_key×2、caesar/endian/rsa_fermat/rail_fence 各 1）。
 - 行 16–19 = `flag_scan` **4 道**（flag 直接嵌于描述文本，基准集设计产物，非真实技巧，已诚实标注不计入「技巧覆盖」）。
@@ -161,20 +161,20 @@ go test ./internal/ctfplatform/ -run \
 
 | # | 真题 ID | 技能 | 解出 flag | 类型 |
 |---|---|---|---|---|
-| 1 | exec_strings | strings_flag | flag{str1ngs_r3v34l5_5ecret5} | 工件 |
-| 2 | exec_base64_source | web_source_audit | flag{v13w_50urc3_70_f1nd} | 工件 |
-| 3 | exec_cookie | cookie_decode | flag{c00k13_c4n_h1d3} | 工件 |
-| 4 | exec_endian | endian_swap | flag{3nd14an_sw4p} | 工件 |
-| 5 | exec_git | git_history | flag{g1t_h1st0ry_l34ks} | 工件 |
-| 6 | exec_pcap | pcap_http | flag{http_p0st_b0dy} | 工件 |
-| 7 | exec_disk_image | strings_flag | picoCTF{d1sk_f0r3ns1cs_r0cks} | 工件（磁盘取证） |
-| 8 | exec_memdump | strings_flag | picoCTF{m3m0ry_dump_v0lat1l1ty} | 工件（内存取证） |
-| 9 | exec_git_cred | git_history | picoCTF{l34k3d_cr3d_in_g1t_h1st} | 工件（git 凭证） |
-| 10 | exec_pcap_get | pcap_http | flag{pcap_g3t_l34k_2026} | 工件（pcap GET） |
-| 11 | exec_morse | morse_decode | flag{m0rs3c0d3f0r3ns1c5} | 工件 |
-| 12 | exec_log_forensics | web_source_audit | picoCTF{l0g_4ud1t_b64_l34k} | 工件（日志审计） |
-| 13 | live_sqli | live_sqli | flag{l1v3_sqli_byp4ss_rce_demo} | 实时靶机 |
-| 14 | live_ssti | live_ssti | flag{l1v3_sst1_t3mplat3_1nj3ct10n} | 实时靶机 |
+| 1 | exec_strings | strings_flag | flag{****} | 工件 |
+| 2 | exec_base64_source | web_source_audit | flag{****} | 工件 |
+| 3 | exec_cookie | cookie_decode | flag{****} | 工件 |
+| 4 | exec_endian | endian_swap | flag{****} | 工件 |
+| 5 | exec_git | git_history | flag{****} | 工件 |
+| 6 | exec_pcap | pcap_http | flag{****} | 工件 |
+| 7 | exec_disk_image | strings_flag | picoCTF{****} | 工件（磁盘取证） |
+| 8 | exec_memdump | strings_flag | picoCTF{****} | 工件（内存取证） |
+| 9 | exec_git_cred | git_history | picoCTF{****} | 工件（git 凭证） |
+| 10 | exec_pcap_get | pcap_http | flag{****} | 工件（pcap GET） |
+| 11 | exec_morse | morse_decode | flag{****} | 工件 |
+| 12 | exec_log_forensics | web_source_audit | picoCTF{****} | 工件（日志审计） |
+| 13 | live_sqli | live_sqli | flag{****} | 实时靶机 |
+| 14 | live_ssti | live_ssti | flag{****} | 实时靶机 |
 
 > 行 13–14 为**真实起靶、真实利用、真实回 flag**（SQLi 登录绕过 + 命令执行 / SSTI 模板注入提权），证明不是「只在独立引擎里能打」。
 

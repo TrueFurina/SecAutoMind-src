@@ -48,7 +48,7 @@ var builtinOrder = []BuiltinChannel{
 	// 本地网关：只有 opencode serve 在跑时可用，故排在远端通道之后。
 	{ID: "ofm", BaseURL: "http://127.0.0.1:18899/v1", Model: "deepseek-v4.1-flash-free", KeyEnv: "OFM_API_KEY", Note: "本地网关（可能未启动）"},
 	{ID: "kilo", BaseURL: "https://api.kilo.ai/api/gateway/v1", Model: "cohere/north-mini-code:free", Anonymous: true, Note: "匿名"},
-	{ID: "pollinations", BaseURL: "https://text.pollinations.ai/v1", Model: "", Anonymous: true, Note: "匿名兜底，质量差"},
+	{ID: "pollinations", BaseURL: "https://text.pollinations.ai/v1", Model: "openai", Anonymous: true, Note: "匿名兜底（openai 别名，已验证可用），质量差"},
 }
 
 // Channel 是解析后的可用通道（含从环境读到的 key）。

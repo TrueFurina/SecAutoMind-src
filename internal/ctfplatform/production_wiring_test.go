@@ -26,6 +26,9 @@ type fakePlatform struct {
 	// 只数次数无法区分"拦住了错的"和"提交了错的"）。
 	submittedFlags []string
 	accessURL      string
+	// overviewCalls 排行榜快照接线断言用（2026-10-28）：数 GetOverview 生产调用量，
+	// 反向对照用例靠它证明「默认关 = 零调用」。
+	overviewCalls int
 }
 
 func (f *fakePlatform) ListChallenges(ctx context.Context) ([]Challenge, error) { return f.list, nil }
@@ -58,7 +61,8 @@ func (f *fakePlatform) GetMatchInfo(ctx context.Context) (map[string]interface{}
 	return nil, nil
 }
 func (f *fakePlatform) GetOverview(ctx context.Context) (map[string]interface{}, error) {
-	return nil, nil
+	f.overviewCalls++
+	return map[string]interface{}{"total": 3, "rank": 1}, nil
 }
 
 func contains(ss []string, s string) bool {

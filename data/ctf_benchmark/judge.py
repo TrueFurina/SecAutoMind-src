@@ -396,7 +396,7 @@ def try_hash_crack(text: str) -> list:
         'baseball', 'football', 'shadow', 'michael', 'superman', 'batman',
         'flag', 'ctf', 'ctf{', 'flag{', 'key', 'secret', 'challenge',
         'secautomind', 'security', 'hack', 'pwn', 'crypto', 'reverse',
-        'flag{md5_hash_crack}', 'flag{ctf_challenge}', 'flag{weak_password}',
+        'flag{REDACTED_hash_md5}', 'flag{REDACTED_hash_md5_ctf}', 'flag{weak_password}',
         'flag{hash_cracked}', 'flag{rainbow_table}', 'flag{dictionary_attack}',
         'password123', 'admin123', 'root123', 'test123', 'guest123',
         'changeme', 'default', 'temp', 'backup', 'debug', 'development',
@@ -548,7 +548,11 @@ def main():
             'expected_skill': p.get('presolve_skill', ''),
         })
         status = '✅ HIT' if matched else ('⚠️ MISMATCH' if flag else '❌ MISS')
-        print(f'  {status}  {pid}  engine={engine}  flag={flag}')
+        # 2026-10-28：不再打印明文 flag。旧版把命中答案直接写进 stdout，
+        # 任何人 `> run.log` 一次就在磁盘上多一份答案（本轮实测自己踩到）。
+        # 只输出候选的 sha256 前 8 位，足以对齐台账/复现，不足以取回答案。
+        cand = (hashlib.sha256(flag.encode()).hexdigest()[:8] if flag else 'None')
+        print(f'  {status}  {pid}  engine={engine}  cand_sha8={cand}')
 
     total = len(problems)
     report = {

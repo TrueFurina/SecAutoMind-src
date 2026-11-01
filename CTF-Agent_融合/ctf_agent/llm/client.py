@@ -610,12 +610,25 @@ def ai_chat_json_with_usage(
     if obj is None:
         logger.warning("LLM 返回内容无法解析为 JSON 对象")
         _log_unparsable_sample(content, "async")
+        # 2026-10-26 观测埋点：**只要「有内容但不是 JSON」就置位，包括兜底成功的情况**。
+        # 必须放在兜底 return 之前 —— 原本放在后面导致永远置不上（今日实测：
+        # 7/7 次坏 JSON 全被兜底转成 script，标记从未生效，metrics 恒 0）。
+        # 兜底成功 ≠ 模型守住协议，只是框架替它擦了屁股。
+        globals()["_LAST_LLM_UNPARSABLE"] = True
         if recover_script:
             recovered = _recover_script_from_code(content)
             if recovered is not None:
                 logger.info("代码动作兜底：JSON 失败但含代码围栏，恢复为 script 动作")
                 return recovered, usage
     return obj, usage
+
+
+def consume_last_unparsable() -> bool:
+    """读取并清除「上次调用是否返回了不可解析内容」标记（一次性）。"""
+    global _LAST_LLM_UNPARSABLE
+    v = bool(globals().get("_LAST_LLM_UNPARSABLE", False))
+    globals()["_LAST_LLM_UNPARSABLE"] = False
+    return v
 
 
 # ── 异步包装（P0-2 修复 2026-08-21）：同步 httpx.post 放进线程池 ──
@@ -705,6 +718,10 @@ def ai_chat_json(
     if obj is None:
         # 2026-09-01 P1 诊断+恢复：记录原文前 200 字（此前盲点），plan 步尝试从代码围栏恢复 script
         logger.warning("LLM 返回内容无法解析为 JSON 对象（原文前200字）: %s", str(content)[:200])
+        # 2026-10-26 观测埋点：只要「有内容但不是 JSON」就算协议失败——
+        # **包括兜底成功的情况**。兜底成功不代表模型守住了协议，只是框架替它擦了屁股
+        # （今日 glm-4-flash 28% 的调用全走兜底，若不在此处记，protocol_fail 恒 0）。
+        globals()["_LAST_LLM_UNPARSABLE"] = True
         if recover_script:
             recovered = _recover_script_from_code(content)
             if recovered is not None:
@@ -1022,6 +1039,15 @@ def _post_chat(
     data = response.json()
     usage = _extract_usage(data)
     _record_usage(data)  # 向后兼容：仍更新模块级 _LAST_USAGE
+    # 2026-10-26 观测：**成功调用也记一次模型名**（此前只有失败行有 payload.model）。
+    # 起因：配置快照读 AppConfig（只认全局 LIGHT/HEAVY_MODEL），实际请求读
+    # _resolve_settings（优先 provider 专属 env）→ 快照显示 lite、实发 generalv3，
+    # 没有任何产物能证伪。降为 debug：真实跑批日志量大，默认不刷屏。
+    try:
+        logger.debug("LLM 调用成功 provider=%s model=%s",
+                     settings.get("provider", ""), settings.get("model", ""))
+    except Exception:  # noqa: BLE001 - 观测失败不影响返回
+        pass
     return _extract_content(data), usage
 
 

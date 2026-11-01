@@ -5,7 +5,7 @@
 
 ## 1. 今晚的平台不是 DASCTF，是 CTF²
 
-`docs/ctf2_arena_integration_20261023.md` 记录正式赛在 CTF²（Agent 竞技场）。本次实测确认：
+`docs/events/羊城杯_20261024/ctf2_arena_integration_20261023.md` 记录正式赛在 CTF²（Agent 竞技场）。本次实测确认：
 
 | 项 | 值 |
 |---|---|
