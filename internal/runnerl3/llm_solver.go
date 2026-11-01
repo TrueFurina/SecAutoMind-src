@@ -24,7 +24,7 @@
 //   RUNNER_LLM_BASE_URL     默认 https://api.deepseek.com/v1
 //   RUNNER_LLM_MODEL        默认 deepseek-reasoner
 //   RUNNER_LLM_TIMEOUT_SEC  默认 300（**整题**总预算，不是单次请求超时，见下方事故说明）
-//   RUNNER_LLM_MAX_TOKENS   默认 2048
+//   RUNNER_LLM_MAX_TOKENS   默认 8000（推理 token 与正文共用预算，见 WithMaxTokens 处的出处）
 //   RUNNER_LLM_MAX_TOOL_CALLS 默认 12（每题工具调用上限）
 //   RUNNER_LLM_MAX_ROUNDS   默认 12（LLM 对话轮数上限 = 监督步数预算）
 //   RUNNER_LLM_FAILOVER     默认 true —— 通道 failover（P0-4）；false = 退回单通道
@@ -273,6 +273,15 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 	}
 
 	toolCallCount := 0
+	// truncated 统计**因输出预算耗尽被截断**的轮次数（finish_reason=="length"）。
+	//
+	// 为什么必须单列：推理模型的 reasoning_content 与正文共用 max_tokens，
+	// 预算不足时模型会"想了一半被掐断"，content 为空或半截 JSON。这种题的
+	// 报告表现是 cand=0 / 半截答案，与"模型不会"完全同形 —— 但修法相反
+	// （抬预算 vs 补能力）。不记这个字段，等于把预算缺陷算进能力分母。
+	// 2026-11-01 前全部历史日志都没有 finish_reason 记录，故此前的
+	// "零候选"归因都不排除截断污染（见 docs/evidence/复盘二）。
+	truncated := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
 	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
 	// droppedSet 记录"模型产出过、但最终没进提交链"的候选（去重）。
@@ -302,7 +311,14 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
 	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
 
-	tokenBudget := f.maxRounds * envInt("RUNNER_LLM_MAX_TOKENS", 4096)
+	// maxOutTokens 是每次生成请求的输出上限，**唯一事实源**。
+	//
+	// 此前默认值 4096 在三处各写一遍（注释写 2048、两处 envInt 写 4096），
+	// 注释与实现早已漂移 —— 同源项目把这类"同一常量多处硬编码"列为
+	// 「清单只允许有一处事实源」的违反项，本条即按该纪律收敛。
+	// 取值依据见下面 WithMaxTokens 处的出处说明。
+	maxOutTokens := envInt("RUNNER_LLM_MAX_TOKENS", 8000)
+	tokenBudget := f.maxRounds * maxOutTokens
 	usedTokens := 0 // 累计 token 用量（听风第四刀：喂监督 TokenRatio，走真实预算口径）
 
 	// 收口归因（2026-11-01）：Solve 有 8 个以上 return 点，逐点手写必然漏，
@@ -314,6 +330,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 			Distinct:   len(bestCandidates),
 			Suppressed: len(droppedSet),
 			ToolCalls:  toolCallCount,
+			Truncated:  truncated,
 		})
 	}()
 
@@ -322,10 +339,18 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 		if len(tools) > 0 {
 			opts = append(opts, model.WithTools(tools))
 		}
-		// 推理模型（deepseek-v4-pro 等）会把额度花在 reasoning_content 上，
-		// 若不显式设 max_tokens，长链推理可能截断最终答案导致 0 候选。
-		// 复用 RUNNER_LLM_MAX_TOKENS（默认 4096，给推理+正文留余量）。
-		opts = append(opts, model.WithMaxTokens(envInt("RUNNER_LLM_MAX_TOKENS", 4096)))
+		// 推理模型（deepseek-reasoner / deepseek-v4-* 等）先把额度花在
+		// reasoning_content 上，**推理 token 与正文共用同一个 max_tokens 预算**。
+		// 预算偏小的后果不是"答案差一点"，而是 content 为空或只剩半截 JSON
+		// —— 在报告里与"模型没答"完全同形，无法区分。
+		//
+		// 默认值 8000 的出处（非拍脑袋）：同源项目 Security-Agent 在
+		// `ai/client.py::DEFAULT_MAX_OUTPUT_TOKENS` 上真机踩过这一族，
+		// 其注释原文「预算偏小时推理尚未结束正文已被截断：content 为空或只剩
+		// 半截 JSON，调用方随即静默回退规则引擎——表面『已接入真 LLM』，
+		// 实际 AI 未生效」，故对输出预算设 8000 下限。max_tokens 是上限、
+		// 按实际生成计费，调高不产生额外成本。
+		opts = append(opts, model.WithMaxTokens(maxOutTokens))
 
 		resp, err := f.model.Generate(callCtx, msgs, opts...)
 		if err != nil {
@@ -352,6 +377,24 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 		// 规则⑥ 回落步数口径（nil 分支），避免 nil→0.0 误关 ⑥ 的 token 双口径闸。
 		if resp.ResponseMeta != nil && resp.ResponseMeta.Usage != nil {
 			usedTokens += resp.ResponseMeta.Usage.TotalTokens
+		}
+
+		// 截断观测（2026-11-01）：推理 token 与正文共用 max_tokens 预算，
+		// 预算耗尽时 finish_reason=="length"，content 可能为空或剩半截 JSON。
+		//
+		// 此前整个仓库没有任何一处读 finish_reason ⇒ 「被预算截断」与
+		// 「模型真的没答」在报告里完全同形，且前者会被算进能力分母。
+		// 这里只做**可见化**：WARN 留痕 + 计数进收口归因，不改变解题语义。
+		if resp.ResponseMeta != nil {
+			if fr := strings.TrimSpace(resp.ResponseMeta.FinishReason); fr == "length" {
+				truncated++
+				f.logger.Warn("LLM 输出被预算截断（finish_reason=length），本轮 content 可能为空或半截",
+					zap.String("challenge", ch.Title),
+					zap.Int("round", round),
+					zap.Int("max_tokens", maxOutTokens),
+					zap.Int("content_len", len(resp.Content)),
+					zap.Int("tool_calls", len(resp.ToolCalls)))
+			}
 		}
 
 		// 自评信心（听风第三刀）：按契约解析 CONFIDENCE 行；缺失保持上次值
@@ -1009,7 +1052,10 @@ func (f *LLMFallback) buildSystemPrompt() string {
 - crypto: 优先 execute_python 调 ctf_sage_* 数学模板（t1 Coppersmith 小根 / t2 ECDSA-HNP /
   t3 截断 LFSR / t4 Boneh-Durfee / t5 DLP / t6 Håstad 广播）——先从题干提取数学参数
   （n/e/c/签名序列/输出序列）经 params 传入；模板返回 not_applicable = 前提不满足，
-  换攻击路或换模板；人工推理只用于模板库不适用的题。禁止从零推格攻击或重写 LLL。
+  换攻击路或换模板。**当没有模板适用时，必须用 execute_python 编写并运行自定义解题脚本**
+  （可直接调用 sage / sympy / pow / 现成库，**无需从零实现格基约化等底层原语**）：
+  边读题面与附件、边写脚本、边运行、边按输出调整，直到拿到 flag。写并运行代码是 crypto
+  解题的常态核心动作，不要只用自然语言"推理"或只读文件。
 - web: 纯人工推理（SQLi/XSS/反序列化），不需要工具
 - misc: 看附件类型选工具（PCAP→pcap_analyze，图片→image_steg，压缩包→zip_crack）
 

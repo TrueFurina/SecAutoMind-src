@@ -35,6 +35,13 @@ type solveTally struct {
 	Suppressed int
 	// ToolCalls 本题实际执行的工具调用数（=0 说明它连工具都没动过）。
 	ToolCalls int
+	// Truncated 因输出预算耗尽被截断的轮次数（finish_reason=="length"）。
+	//
+	// 为什么要单列：推理模型的 reasoning_content 与正文共用 max_tokens，
+	// 预算不足时"想一半被掐断"，content 为空或半截 JSON。这种题的
+	// 报告表现是 cand=0，与"模型不会"同形，但修法相反（抬预算 vs 补能力）。
+	// **>0 时该题的"零候选"不能作为能力证据**，这是分母诚实性的一部分。
+	Truncated int
 }
 
 // SolveOutcome 是一次 Solve 的收口归因快照。
@@ -140,5 +147,6 @@ func (f *LLMFallback) recordOutcome(err error, returned int, t solveTally) {
 		zap.Int("cand_seen", o.CandSeen),
 		zap.Int("distinct", o.Distinct),
 		zap.Int("suppressed", o.Suppressed),
-		zap.Int("tool_calls", o.ToolCalls))
+		zap.Int("tool_calls", o.ToolCalls),
+		zap.Int("truncated", o.Truncated))
 }
