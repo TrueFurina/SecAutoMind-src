@@ -88,6 +88,8 @@ RECORD_GLOBS = ["logs/**/poll_records*.json", "data/results/**/*records*.json",
                 "CTF-Agent_融合/ctf_agent/data/results/**/benchmark_report.json"]
 # 归因值跨路径映射（Go 侧封闭枚举 vs A 库 eval 路径的历史命名）——统计前归一
 SOLVED_BY_ALIASES = {"main_agent_llm": "llm", "presolve_llm": "llm"}
+# 非能力口径的归因值（夹具/未判定）——计入"已知非能力桶"而非未登记告警
+NON_CAPABILITY_SOLVED_BY = {"dryrun_fixture", "unresolved", "unknown"}
 
 
 def run(cmd, cwd=ROOT, timeout=900):
@@ -173,6 +175,8 @@ def check_attribution():
                     continue
                 sb = rec.get("solved_by")
                 sb = SOLVED_BY_ALIASES.get(sb, sb)
+                if sb in NON_CAPABILITY_SOLVED_BY:
+                    continue  # 夹具/未判定记录：不进能力分桶也不告警（2026-11-02 语义收紧）
                 if rec.get("accepted") or rec.get("flag"):
                     if sb in buckets:
                         buckets[sb] += 1
