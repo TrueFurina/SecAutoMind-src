@@ -35,6 +35,7 @@ package runnerl3
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -57,6 +58,10 @@ import (
 	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/llmchannel"
 )
+
+// ErrLLMUnavailable 表示 LLM 所有通道均不可用（配额耗尽/网络故障），
+// 与「模型跑了但没解出」不同：这是基础设施失效，结果应标 skipped、排除出 KPI 分母。
+var ErrLLMUnavailable = errors.New("LLM 通道全部不可用（配额耗尽/网络故障），非能力问题")
 
 // SkillRunner 是 execute_python 工具的依赖抽象，使本包不耦合 cmd/runner 的
 // pySkillRunner 具体类型。cmd/runner 的 *pySkillRunner 实现 RunSkill 后即满足。
@@ -116,6 +121,11 @@ type LLMFallback struct {
 
 	maxToolCalls int // 每题工具调用上限
 	maxRounds    int // LLM 对话轮数上限（= 监督步数预算，A 库口径 12）
+
+	// outcome 记录最近一次 Solve 的收口归因（零值可用，不需要在 New 里初始化）。
+	// 为什么放在这里：报告里的 cand=0 同时代表"没答"和"给了假答案"，两者处置
+	// 方向相反。归因口径唯一的真值来源是 outcome.go 的 classifyMiss。
+	outcome outcomeBox
 }
 
 // NewLLMFallback 从 env 变量构造 LLM fallback。缺任何必需项返回 disabled 实例。
@@ -222,8 +232,10 @@ func envInt(key string, fallback int) int {
 // Solve 把题干喂给 LLM（带工具绑定），让它输出 flag 候选列表。
 // 手动 tool calling 循环：LLM → 检查 ToolCalls → 执行 → 追加 ToolMessage → 再 Generate。
 // 硬限：maxToolCalls 次工具调用 + maxRounds 轮对话，超过就停。
-func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]string, error) {
+func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (flags []string, err error) {
 	if !f.Enabled || f.model == nil {
+		// 归因要覆盖所有退出路径，否则"禁用"会被误读成"零候选=模型不行"。
+		f.outcome.set(SolveOutcome{Reason: ReasonDisabled})
 		return nil, nil
 	}
 
@@ -263,26 +275,62 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	toolCallCount := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
 	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
+	// droppedCands 记录"模型产出过、但最终没进提交链"的候选数。
+	//
+	// 两类来源，都必须计：
+	//  ① 反幻觉闸门当场打回（终局文本里的候选）；
+	//  ② 带工具调用的轮次里，模型自己的正文 / 工具参数中的候选 —— 候选池
+	//     只吃**工具输出**（下面的 obs 扫描块在 ToolCalls 分支内），所以模型
+	//     自己写的 flag 从来不参与判分。Primes 的 CTF{YkDOLI...} 就是这一类。
+	//
+	// 为什么要计：不计的话"模型编了个假答案"会被归因成"零候选"，而这两者
+	// 要修的东西正好相反（补幻觉抑制 vs 补能力）。本字段只做可见化，
+	// **不改变任何提交语义**。
+	droppedCands := 0
 	var bestCandidates []string                // 跨轮累积的候选（含工具返回里的 flag，防御"模型算出但没停手"漏抓）
 	bestCandSeen := make(map[string]bool)
 	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
 	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
 
-	tokenBudget := f.maxRounds * envInt("RUNNER_LLM_MAX_TOKENS", 2048)
+	tokenBudget := f.maxRounds * envInt("RUNNER_LLM_MAX_TOKENS", 4096)
 	usedTokens := 0 // 累计 token 用量（听风第四刀：喂监督 TokenRatio，走真实预算口径）
+
+	// 收口归因（2026-11-01）：Solve 有 8 个以上 return 点，逐点手写必然漏，
+	// 且以后新增 return 还会继续漏 —— defer 是唯一不随 return 点增加而失效的写法。
+	// 读命名返回值 flags/err 才能知道"最终交没交出东西"。
+	defer func() {
+		f.recordOutcome(err, len(flags), solveTally{
+			CandSeen:   candSeen,
+			Distinct:   len(bestCandidates),
+			Suppressed: droppedCands,
+			ToolCalls:  toolCallCount,
+		})
+	}()
 
 	for round := 0; round < f.maxRounds; round++ {
 		opts := []model.Option{}
 		if len(tools) > 0 {
 			opts = append(opts, model.WithTools(tools))
 		}
+		// 推理模型（deepseek-v4-pro 等）会把额度花在 reasoning_content 上，
+		// 若不显式设 max_tokens，长链推理可能截断最终答案导致 0 候选。
+		// 复用 RUNNER_LLM_MAX_TOKENS（默认 4096，给推理+正文留余量）。
+		opts = append(opts, model.WithMaxTokens(envInt("RUNNER_LLM_MAX_TOKENS", 4096)))
 
 		resp, err := f.model.Generate(callCtx, msgs, opts...)
 		if err != nil {
-			f.logger.Warn("LLM fallback 调用失败",
+			if callCtx.Err() != nil {
+				// 调用方整题预算/超时耗尽：模型确实在跑、只是没在预算内产出 → 合法 miss（仍计入分母）。
+				f.logger.Warn("LLM fallback 因预算/超时中断（记合法 miss）",
+					zap.String("challenge", ch.Title),
+					zap.Int("round", round), zap.Error(callCtx.Err()))
+				return nil, nil
+			}
+			// 所有通道都不可用（配额耗尽/网络故障）：基础设施失效，非能力问题 → 标 skipped（排除分母）。
+			f.logger.Error("LLM fallback 所有通道不可用（基础设施失效，非能力问题）",
 				zap.String("challenge", ch.Title),
 				zap.Int("round", round), zap.Error(err))
-			return nil, nil
+			return nil, ErrLLMUnavailable
 		}
 
 		if resp == nil {
@@ -322,6 +370,10 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 				// 执行工具
 				result := f.executeTool(callCtx, tc, ch, facts, sess)
 
+				// 归因可见化：模型把 flag 塞进工具参数（"拿这个去验一下"）也算它
+				// 产出过候选，但这类候选从不参与判分。只记账，不影响任何行为。
+				droppedCands += len(extractFlagCandidates(tc.Function.Arguments))
+
 				// 可观测性（2026-10-29）：工具执行全过程必须留痕。
 				// 踩坑背景：练习场 smoke 报 0/5，日志里只有「nflags=0」，完全看不出
 				// 模型调了哪些工具、工具为什么失败、模型在想什么，只能盲改。
@@ -345,6 +397,9 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 			// 助手本轮的推理文本（有工具调用时容易被忽略，但是判断
 			// 「模型在干嘛」的唯一直接证据，必须留痕）。
 			if c := strings.TrimSpace(resp.Content); c != "" {
+				// 归因可见化：带工具调用的轮次里，模型正文中的候选同样从不进
+				// 候选池（候选池只吃工具输出）。Primes 的假 flag 就出在这类地方。
+				droppedCands += len(extractFlagCandidates(c))
 				f.logger.Debug("LLM 推理文本",
 					zap.String("challenge", ch.Title),
 					zap.Int("round", round),
@@ -437,10 +492,14 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		// 为什么必须打回：D-CIPHER VI-B 日志显示「幻觉文件/函数/服务端」是工程失败主因；
 		// 让幻觉 flag 进入提交链，等于把一次误判记成得分（还会污染后续统计）。
 		if unbacked := extractUnbackedFileClaims(raw, facts); len(unbacked) > 0 {
+			// 归因记账：这批候选确实存在过、只是被判为不可信。不计入则会被
+			// 归因成"零候选"，把"该补幻觉抑制"误读成"该补能力"。
+			droppedCands += len(candidates)
 			f.logger.Warn("P0-3 反幻觉：LLM 声称的文件无工具记录 → 打回（不提交）",
 				zap.String("challenge", ch.Title),
 				zap.Strings("unbacked_paths", unbacked),
 				zap.Int("facts_recorded", facts.count()),
+				zap.Int("suppressed_candidates", len(candidates)),
 				zap.String("raw", truncate(raw, 200)))
 			return nil, nil
 		}

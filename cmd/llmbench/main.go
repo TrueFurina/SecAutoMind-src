@@ -36,6 +36,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -101,8 +102,16 @@ type row struct {
 	HasAttachment bool `json:"has_attachment"`
 	// Layer 记这题是谁解的：l2=确定性 skill 路由（零 token）/ l3=LLM。
 	// 不记就无法回答"这分是 skill 挣的还是模型挣的"。
-	Layer string `json:"layer,omitempty"`
-	Err   string `json:"error,omitempty"`
+	Layer   string `json:"layer,omitempty"`
+	Skipped bool   `json:"skipped,omitempty"` // 基础设施失效（通道全不可用）→ 排除分母，不计入 miss
+	// MissReason 只在未命中时写：no_candidate / candidates_suppressed。
+	// 存在原因（2026-11-01）：cand=0 同时代表"模型没给过任何 flag"与"给了但被
+	// 扣下（幻觉打回/未收口）"，两者要修的东西正好相反，不能继续合并成一个数。
+	MissReason string `json:"miss_reason,omitempty"`
+	// Dropped 模型产出过、但没能进提交链的候选数（反幻觉打回 + 非终局轮正文）。
+	// 与 Candidates 的区别：Candidates 是**交出**去判分的，Dropped 是被扣下的。
+	Dropped int    `json:"dropped,omitempty"`
+	Err     string `json:"error,omitempty"`
 }
 
 type report struct {
@@ -114,6 +123,7 @@ type report struct {
 	Total       int     `json:"total"`
 	Hit         int     `json:"hit"`
 	Miss        int     `json:"miss"`
+	Skipped     int     `json:"skipped"`
 	CoveragePct float64 `json:"coverage_pct"`
 	Results     []row   `json:"results"`
 }
@@ -440,7 +450,7 @@ func main() {
 		Solver:      "llm",
 		Model:       model,
 		BaseURL:     os.Getenv("RUNNER_LLM_BASE_URL"),
-		Note:        "离线题集 × runnerl3.LLMFallback（Layer 3 真 token），判分只认 flag_sha256。未解出照常计入分母，绝不剔除。engine=" + engine,
+		Note:        "离线题集 × runnerl3.LLMFallback（Layer 3 真 token），判分只认 flag_sha256。未解出照常计入分母；但若 LLM 通道全部不可用（配额/网络）则标 skipped 并排除分母（非能力失败）。engine=" + engine,
 		Total:       len(ids),
 	}
 
@@ -449,8 +459,24 @@ func main() {
 		fmt.Fprintf(os.Stderr, "[ERR] 建工作目录失败: %v\n", err)
 		os.Exit(2)
 	}
+	llmDead := false // 一旦确认 LLM 通道全不可用，后续题直接标 skipped，避免逐个 0 秒桩污染分母
 	for _, id := range ids {
 		p := probs[id]
+		if llmDead {
+			// LLM 通道已确认全不可用：剩余题直接标 skipped，不浪费时间逐个 0 秒桩。
+			rep.Skipped++
+			rep.Results = append(rep.Results, row{
+				ID:            id,
+				Category:      p.Category,
+				Sub:           p.Sub,
+				Engine:        engine + ":" + model,
+				HasAttachment: len(p.Artifacts) > 0 || len(p.AttachmentFiles) > 0,
+				Skipped:       true,
+				Err:           "LLM 通道全不可用（前置题已确认），跳过",
+			})
+			fmt.Printf("[%s] %-28s SKIPPED（LLM 不可用）\n", id, p.Category)
+			continue
+		}
 		// 有工件就切进该题工作目录（python_session 的 cwd 随之改变）；
 		// 无工件则保持进程 cwd，退化为 description-only。
 		hasAtt, aerr := prepareWorkdir(*workBase, p, *attRoot)
@@ -500,9 +526,22 @@ func main() {
 		}
 
 		flags, err := fb.Solve(ctx, ch)
+		// 收口归因：必须在下一题 Solve 之前读，否则会被覆盖。
+		outcome := fb.LastOutcome()
 		secs := time.Since(t0).Seconds()
 		r := row{ID: id, Category: p.Category, Sub: p.Sub, Engine: engine + ":" + model,
 			Candidates: len(flags), Seconds: secs, HasAttachment: hasAtt, Layer: "l3"}
+		if errors.Is(err, runnerl3.ErrLLMUnavailable) {
+			// 基础设施失效：所有 LLM 通道不可用（配额耗尽/网络故障），非能力问题。
+			// 标 skipped、排除分母，并短路后续题。
+			r.Skipped = true
+			r.Err = err.Error()
+			rep.Skipped++
+			llmDead = true
+			rep.Results = append(rep.Results, r)
+			fmt.Printf("[%s] %-28s SKIPPED（LLM 通道不可用）%.1fs\n", id, p.Category, secs)
+			continue
+		}
 		if err != nil {
 			r.Err = err.Error()
 		}
@@ -511,12 +550,21 @@ func main() {
 			rep.Hit++
 		} else {
 			rep.Miss++
+			// 未命中才记归因：命中时它没有解释价值，只会让报告变吵。
+			r.MissReason = outcome.Reason
+			r.Dropped = outcome.Suppressed
 		}
 		rep.Results = append(rep.Results, r)
-		fmt.Printf("[%s] %-28s cand=%d hit=%v %.1fs (L2 %.1fs)\n", id, p.Category, r.Candidates, r.Sha256Match, secs, l2secs)
+		reason := r.MissReason
+		if reason == "" {
+			reason = "-"
+		}
+		fmt.Printf("[%s] %-28s cand=%d hit=%v %.1fs (L2 %.1fs) reason=%s dropped=%d\n",
+			id, p.Category, r.Candidates, r.Sha256Match, secs, l2secs, reason, r.Dropped)
 	}
-	if rep.Total > 0 {
-		rep.CoveragePct = float64(rep.Hit) * 100.0 / float64(rep.Total)
+	executed := rep.Total - rep.Skipped
+	if executed > 0 {
+		rep.CoveragePct = float64(rep.Hit) * 100.0 / float64(executed)
 	}
 
 	b, merr := json.MarshalIndent(rep, "", "  ")
@@ -528,7 +576,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "[ERR] 写报告失败: %v\n", werr)
 		os.Exit(1)
 	}
-	fmt.Printf("=== llmbench: %d/%d = %.1f%%  (model=%s tier=%s) ===\n",
-		rep.Hit, rep.Total, rep.CoveragePct, rep.Model, tier(rep.Model))
+	fmt.Printf("=== llmbench: %d hit / %d executed (skipped %d / total %d) = %.1f%%  (model=%s tier=%s) ===\n",
+		rep.Hit, executed, rep.Skipped, rep.Total, rep.CoveragePct, rep.Model, tier(rep.Model))
 	fmt.Printf("报告: %s\n", *outPath)
 }
