@@ -32,6 +32,9 @@
 
 ## 最终账本（13 题）
 
+> 🔴 **勘误（见文末补记）**：本节"13 题"含 2 个无 json 目录，精确分母为
+> **11 题面**（8 解出 + 3 需外部环境）。以下正文按当时口径保留，以补记为准。
+
 | 状态 | 数量 | 题 |
 |---|---|---|
 | ✅ 锚验证解出 | **8** | dynastic / partial_tenacity / permuted / urgent / packedaway / data_siege / it_has_begun / crushing |
