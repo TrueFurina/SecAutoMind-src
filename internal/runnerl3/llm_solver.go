@@ -379,21 +379,50 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 			usedTokens += resp.ResponseMeta.Usage.TotalTokens
 		}
 
-		// 截断观测（2026-11-01）：推理 token 与正文共用 max_tokens 预算，
-		// 预算耗尽时 finish_reason=="length"，content 可能为空或剩半截 JSON。
+		// 空响应分级诊断（2026-11-01）：推理 token 与正文共用 max_tokens 预算，
+		// 预算耗尽时正文可能为空或只剩半截 JSON。
 		//
-		// 此前整个仓库没有任何一处读 finish_reason ⇒ 「被预算截断」与
-		// 「模型真的没答」在报告里完全同形，且前者会被算进能力分母。
-		// 这里只做**可见化**：WARN 留痕 + 计数进收口归因，不改变解题语义。
+		// 此前整个仓库没有任何一处读 finish_reason / reasoning_content ⇒
+		// 「被预算截断」与「模型真的没答」在报告里完全同形，且前者会被算进
+		// 能力分母。这里只做**可见化**：WARN 留痕 + 计数进收口归因，
+		// 不改变解题语义。
+		//
+		// 分两类而非一类（分类依据取自 Security-Agent 的
+		// `ai/client.py::_log_empty_response`，它在真机上区分过这两条）：
+		//   ① finish_reason=="length"  预算确实耗尽；
+		//   ② 正文空但 reasoning 非空 预算被推理吃掉，正文没机会写出来
+		//      —— 这一类的 finish_reason 可能不是 length，只看 ① 会漏。
+		//
+		// ⚠️ ② 必须排除「有 ToolCalls」：OpenAI 格式下模型调工具时 content
+		// 本来就为空，那是正常运行路径，不是截断。不排除会把每轮工具调用
+		// 都误计成截断，让这个信号彻底失去意义。
 		if resp.ResponseMeta != nil {
-			if fr := strings.TrimSpace(resp.ResponseMeta.FinishReason); fr == "length" {
+			fr := strings.TrimSpace(resp.ResponseMeta.FinishReason)
+			reasoningLen := len(resp.ReasoningContent)
+			reasoningTokens := 0
+			if resp.ResponseMeta.Usage != nil {
+				reasoningTokens = resp.ResponseMeta.Usage.CompletionTokensDetails.ReasoningTokens
+			}
+			switch {
+			case fr == "length":
 				truncated++
 				f.logger.Warn("LLM 输出被预算截断（finish_reason=length），本轮 content 可能为空或半截",
 					zap.String("challenge", ch.Title),
 					zap.Int("round", round),
 					zap.Int("max_tokens", maxOutTokens),
 					zap.Int("content_len", len(resp.Content)),
+					zap.Int("reasoning_len", reasoningLen),
+					zap.Int("reasoning_tokens", reasoningTokens),
 					zap.Int("tool_calls", len(resp.ToolCalls)))
+			case resp.Content == "" && reasoningLen > 0 && len(resp.ToolCalls) == 0:
+				truncated++
+				f.logger.Warn("LLM 只返回 reasoning、正文为空（推理吃掉输出预算）",
+					zap.String("challenge", ch.Title),
+					zap.Int("round", round),
+					zap.String("finish_reason", fr),
+					zap.Int("max_tokens", maxOutTokens),
+					zap.Int("reasoning_len", reasoningLen),
+					zap.Int("reasoning_tokens", reasoningTokens))
 			}
 		}
 
@@ -1063,7 +1092,9 @@ func (f *LLMFallback) buildSystemPrompt() string {
 1. 【最重要】一旦你通过工具或推理确信已得到 flag，必须立即停止调用任何工具，单独输出该 flag（格式为 flag{...} 或 dice{...}，多个候选每行一个）。不要"再跑一轮确认"——你已经算出来了就是完成。若你已算出结果却只输出了过程文本，本轮视为未完成，必须补一句只含 flag 的输出。若你得到的是字节序列/数字序列，先将其还原为可读字符串（flag 内容），再用 dice{...} 或 flag{...} 包裹输出，绝对不要只输出裸字节或裸数字。
 2. 如果用了工具，把工具结果融合进推理
 3. 如果实在没思路，直接输出 NO_SOLUTION
-4. 不要输出推理过程、不要输出代码，只输出 flag 或 NO_SOLUTION
+4. 解题过程中请用 execute_python 编写并运行解题/攻击脚本——写并运行代码是 crypto / pwn
+  解题的核心动作，不是"输出代码"。当你确信已得到 flag 时，停止调用任何工具，单独输出
+  该 flag 或 NO_SOLUTION（终局轮不要只贴代码而不给 flag）。
 5. 每轮回复末尾输出一行 CONFIDENCE: 0.x（0~1，一位小数），表示你对
    当前路径最终解出此题的信心。工具调用轮也要带（写在文本部分）。
    该数值是预算监督信号：低信心+连续无进展会被提前收口/要求换策略，

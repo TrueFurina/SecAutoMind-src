@@ -139,3 +139,51 @@ func TestNoTruncationOnNormalStop(t *testing.T) {
 		t.Fatalf("正常收尾被误计为截断 %d 次，收口归因 %+v", o.Truncated, o)
 	}
 }
+
+// 只返回 reasoning、正文为空（且没有工具调用）→ 预算被推理吃掉，必须计入。
+// 这一类的 finish_reason 可能不是 "length"，只看 length 会漏。
+func TestReasoningOnlyCountedAsTruncation(t *testing.T) {
+	reasoningOnly := func() *schema.Message {
+		return &schema.Message{
+			Role:             schema.Assistant,
+			Content:          "", // 正文没写出来
+			ReasoningContent: "先看题目描述……再考虑 RSA 因式分解……",
+			ResponseMeta:     &schema.ResponseMeta{FinishReason: "stop"},
+		}
+	}
+
+	m := &captureModel{resps: []*schema.Message{reasoningOnly(), reasoningOnly()}}
+	ff := newTestFallback(m, 2, 2)
+	if _, err := ff.Solve(context.Background(), testChallenge()); err != nil {
+		t.Fatalf("solve 不应报错: %v", err)
+	}
+
+	if o := ff.LastOutcome(); o.Truncated == 0 {
+		t.Fatalf("「只思考不答」未被计入 Truncated，收口归因 %+v", o)
+	}
+}
+
+// 反例（本改动最容易踩的坑）：带 ToolCalls 时 content 为空是 OpenAI 格式的
+// **正常**路径（模型调工具时不写正文）。若不排除，每轮工具调用都会被误计
+// 成截断，这个信号就彻底失去意义。
+func TestToolCallWithEmptyContentIsNotTruncation(t *testing.T) {
+	m := &captureModel{resps: []*schema.Message{{
+		Role:             schema.Assistant,
+		Content:          "", // 正常：调工具时不写正文
+		ReasoningContent: "我需要先看看附件里有什么，调个工具。",
+		ToolCalls: []schema.ToolCall{{
+			ID:       "call-empty-content",
+			Function: schema.FunctionCall{Name: "no_such_tool", Arguments: "{}"},
+		}},
+		ResponseMeta: &schema.ResponseMeta{FinishReason: "tool_calls"},
+	}}}
+	ff := newTestFallback(m, 2, 2)
+	if _, err := ff.Solve(context.Background(), testChallenge()); err != nil {
+		t.Fatalf("solve 不应报错: %v", err)
+	}
+
+	if o := ff.LastOutcome(); o.Truncated != 0 {
+		t.Fatalf("带工具调用的空正文被误计为截断 %d 次（这是正常路径），收口归因 %+v",
+			o.Truncated, o)
+	}
+}
