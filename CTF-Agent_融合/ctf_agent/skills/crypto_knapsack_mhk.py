@@ -266,6 +266,7 @@ def crypto_knapsack_mhk(params: dict) -> dict:
         kind: 'mhk2_decrypt'（端到端解密 MHK2）
             - pk: {'a1': [...], 'a2': [...]}（必填）
             - ct: [(c1, c2), ...]（必填）
+            - path: output.txt 路径（可选，**替代 pk/ct**）
     """
     kind = params.get("kind", "")
     s_bits = int(params.get("s_bits", 128))
@@ -281,8 +282,21 @@ def crypto_knapsack_mhk(params: dict) -> dict:
             return {"ok": True, "p": r["p"], "e": r["e"], "drop": r["drop"]}
         if kind == "mhk2_decrypt":
             pk, ct = params.get("pk"), params.get("ct")
+            # 2026-11-01 补口：原先只吃**已解析**的 pk/ct（各 256 个大整数，
+            # 序列化后约 12KB）。模型经 execute_python 调用时几乎不可能手抄
+            # 这么长的 JSON —— 实测它传的是 {"a1": [], "a2": [], "b": [], "c": []}。
+            # 这里补一条「给文件路径」的入口，与 zip_chain_decode 的
+            # params={'path': ...} 约定一致：output.txt 两行分别是 pk 与 ct。
+            if (not pk or not ct) and params.get("path"):
+                import ast as _ast
+
+                with open(params["path"], encoding="utf-8") as _f:
+                    lines = [l for l in _f.read().splitlines() if l.strip()]
+                if len(lines) < 2:
+                    return {"ok": False, "error": "path 指向的文件应至少两行（pk / ct）"}
+                pk, ct = _ast.literal_eval(lines[0]), _ast.literal_eval(lines[1])
             if not pk or not ct:
-                return {"ok": False, "error": "缺少 pk 或 ct"}
+                return {"ok": False, "error": "缺少 pk 或 ct（也可传 path 指向 output.txt）"}
             text = decrypt_mhk2(pk, ct, s_bits=s_bits, verbose=verbose)
             return {"ok": True, "plaintext": text}
         return {"ok": False, "error": f"unknown kind: {kind}"}

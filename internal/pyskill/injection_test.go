@@ -83,7 +83,7 @@ const injectionPayload = "os as s; import sys; print('INJ'+'ECTED'); sys.exit(0)
 func TestExecSkillSubprocessRejectsInjectedName(t *testing.T) {
 	r := newInjectionTestRunner(t)
 
-	out, ok := r.execSkillSubprocess(context.Background(), injectionPayload, map[string]any{})
+	out, ok := r.execSkillSubprocess(context.Background(), injectionPayload, map[string]any{}, r.timeout)
 	if ok {
 		t.Fatalf("注入名被当成成功执行（out=%q）—— 拼源码处没有拦截", out)
 	}
@@ -96,7 +96,7 @@ func TestExecSkillSubprocessRejectsInjectedName(t *testing.T) {
 func TestExecSkillSubprocessStillRunsValidSkill(t *testing.T) {
 	r := newInjectionTestRunner(t)
 
-	out, ok := r.execSkillSubprocess(context.Background(), "probe_ok", map[string]any{})
+	out, ok := r.execSkillSubprocess(context.Background(), "probe_ok", map[string]any{}, r.timeout)
 	if !ok {
 		t.Fatalf("合法 skill 执行失败：%q", out)
 	}

@@ -93,6 +93,17 @@ type SkillCatalogProvider interface {
 	SkillCatalog() map[string][]string
 }
 
+// SkillContractProvider 是**可选**能力：skill 名 → 该 skill 从 params 里读取的键。
+//
+// 存在原因（2026-11-01 第二层缺口，真机实测）：第一层修好之后模型确实开始用
+// 真名调 skill 了 —— 但它传的是 {"a1": [], "a2": [], "b": [], "c": []}，全是空数组。
+// 名字对了、参数全错，产出依然是零。只列名字等于让模型对着函数签名盲调。
+//
+// 不实现该接口 → Desc 只列名字（= 修复前行为），不报错。
+type SkillContractProvider interface {
+	SkillContracts() map[string]string
+}
+
 // LLMFallback 是 Layer 3（真 token 成本）的求解器。
 type LLMFallback struct {
 	// model 放宽为接口（BaseChatModel = BaseModel[*schema.Message]）：生产注入
@@ -571,14 +582,32 @@ func skillCatalogDesc(b SkillRunner) string {
 	// 固定顺序渲染，保证 Desc 逐字节稳定（顺序抖动会让上游 prompt 缓存全部失效）。
 	order := []string{"crypto", "reverse", "pwn", "misc", "web"}
 	seen := make(map[string]bool, len(order))
+	// 参数契约（可选）：模型光知道名字不够，还得知道这个 skill 读哪些 params 键。
+	contracts := map[string]string(nil)
+	if cp, ok2 := b.(SkillContractProvider); ok2 {
+		contracts = cp.SkillContracts()
+	}
 	var sb strings.Builder
 	sb.WriteString("skill_name 可选值（**只能从这里挑；未列出的名字一律不存在，不要编造**）：\n")
+	dump := func(c string, names []string) {
+		sb.WriteString("- " + c + ": ")
+		for i, n := range names {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(n)
+			if k, ok3 := contracts[n]; ok3 && k != "" {
+				sb.WriteString("(" + k + ")")
+			}
+		}
+		sb.WriteString("\n")
+	}
 	for _, c := range order {
 		if len(cat[c]) == 0 {
 			continue
 		}
 		seen[c] = true
-		sb.WriteString("- " + c + ": " + strings.Join(cat[c], ", ") + "\n")
+		dump(c, cat[c])
 	}
 	rest := make([]string, 0, len(cat))
 	for c := range cat {
@@ -588,7 +617,11 @@ func skillCatalogDesc(b SkillRunner) string {
 	}
 	sort.Strings(rest)
 	for _, c := range rest {
-		sb.WriteString("- " + c + ": " + strings.Join(cat[c], ", ") + "\n")
+		dump(c, cat[c])
+	}
+	if len(contracts) > 0 {
+		sb.WriteString("括号内是该 skill 从 params 读取的键名（缺一个就会 KeyError）。" +
+			"从附件里先把这些值算出来/读出来，再按同名键以 JSON 传入 params。\n")
 	}
 	return sb.String()
 }

@@ -97,8 +97,11 @@ type row struct {
 	Seconds    float64 `json:"seconds"`
 	// HasAttachment 记本题是否真有工件在场。判读分数时必须看它：
 	// 纯文本题（false）解不出往往是**按构造不可解**，不是模型能力问题。
-	HasAttachment bool   `json:"has_attachment"`
-	Err           string `json:"error,omitempty"`
+	HasAttachment bool `json:"has_attachment"`
+	// Layer 记这题是谁解的：l2=确定性 skill 路由（零 token）/ l3=LLM。
+	// 不记就无法回答"这分是 skill 挣的还是模型挣的"。
+	Layer string `json:"layer,omitempty"`
+	Err   string `json:"error,omitempty"`
 }
 
 type report struct {
@@ -229,6 +232,45 @@ func prepareWorkdir(base string, p problem, attRoot string) (bool, error) {
 	return hasAtt, os.Chdir(dir)
 }
 
+// anyFlagMatches 只认 sha256 精确相等。want 为空一律 false —— 题集没给真值时
+// 无法判分，绝不能"看到 flag 形态就算解出"（那正是 10-31 误报 291 条的同型错误）。
+func anyFlagMatches(flags []string, want string) bool {
+	want = strings.ToLower(strings.TrimSpace(want))
+	if want == "" {
+		return false
+	}
+	for _, f := range flags {
+		sum := sha256.Sum256([]byte(f))
+		if hex.EncodeToString(sum[:]) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// workdirFiles 列出**当前**工作目录里的附件绝对路径（跳过题面 CHALLENGE.md）。
+// 必须绝对路径：skill 子进程的工作目录不是这里，相对路径会解析到别处。
+// 调用时机固定在 prepareWorkdir 之后（它会把 cwd 切进该题目录）。
+func workdirFiles() []string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	ents, err := os.ReadDir(wd)
+	if err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(ents))
+	for _, e := range ents {
+		if e.IsDir() || e.Name() == "CHALLENGE.md" {
+			continue
+		}
+		out = append(out, filepath.Join(wd, e.Name()))
+	}
+	sort.Strings(out)
+	return out
+}
+
 func sanitizeID(s string) string {
 	var b strings.Builder
 	for _, r := range s {
@@ -273,6 +315,13 @@ func main() {
 	withSkills := flag.Bool("with-skills", false,
 		"接入 internal/pyskill 真实桥接（execute_python 可用 = 生产 runner 形态）；"+
 			"默认关 = 纯 LLM 下界口径。两种口径不可混算，报告里会写明")
+	withL2 := flag.Bool("with-l2", false,
+		"Layer 3 之前先跑 Layer 2 确定性 skill 路由（按 category 顺序试 skill，**零 token**），"+
+			"命中记 layer=l2。理由（2026-11-01 真机实测）：模型拿到正确清单+参数契约后仍然"+
+			"不用 skill（23s 就放弃、只调 python_session），不能只靠模型自觉")
+	l2Budget := flag.Duration("l2-budget", 300*time.Second,
+		"--with-l2 的**整类**时间预算；0=不限。"+
+			"crypto 有 28 个 skill、单个 30s，不限会拖到 14 分钟/题，赛时不可接受")
 	flag.Parse()
 
 	// 所有路径型参数**先转绝对路径**再进跑批：prepareWorkdir 会 chdir 进每题
@@ -289,8 +338,10 @@ func main() {
 		}
 	}
 
-	if os.Getenv("RUNNER_LLM_FALLBACK") != "true" {
-		fmt.Fprintln(os.Stderr, "[ERR] 必须先 export RUNNER_LLM_FALLBACK=true")
+	// 这道闸是防"误跑 L3 烧 token"，不是防 L2（L2 零 token、不需要任何凭证）。
+	// 因此 --with-l2 时放行；是否真跑 L3 由后面 fb.Enabled 决定（不可用 → l2Only）。
+	if os.Getenv("RUNNER_LLM_FALLBACK") != "true" && !*withL2 {
+		fmt.Fprintln(os.Stderr, "[ERR] 必须先 export RUNNER_LLM_FALLBACK=true（只跑零 token 的 Layer 2 请加 --with-l2）")
 		os.Exit(2)
 	}
 	// 环境失敏（2026-11-01 事故）：同 uid 的 `ps eww` 能读本进程的
@@ -338,23 +389,40 @@ func main() {
 	var (
 		bridge runnerl3.SkillRunner
 		engine = "llm"
+		pr     *pyskill.Runner // --with-skills 与 --with-l2 共用同一个桥接实例
 	)
-	if *withSkills {
-		pr := pyskill.New(context.Background(), logger)
+	if *withSkills || *withL2 {
+		pr = pyskill.New(context.Background(), logger)
 		if pr.SkillsDir() == "" {
-			fmt.Fprintln(os.Stderr, "[WARN] --with-skills 已开启，但未找到 skills 目录（可用 CTF_SKILLS_DIR 指定）→ "+
+			fmt.Fprintln(os.Stderr, "[WARN] 已开启 --with-skills/--with-l2，但未找到 skills 目录（可用 CTF_SKILLS_DIR 指定）→ "+
 				"execute_python 虽然可调，但实际没有任何 skill 可跑；本报告**不能**当作「带 skill 形态」使用")
 		} else {
-			fmt.Fprintf(os.Stderr, "[INFO] skill 桥接已接入：dir=%s catalog=%d\n", pr.SkillsDir(), pr.CatalogSize())
+			fmt.Fprintf(os.Stderr, "[INFO] skill 桥接已接入：dir=%s catalog=%d contracts=%d\n",
+				pr.SkillsDir(), pr.CatalogSize(), len(pr.SkillContracts()))
 		}
+	}
+	if *withSkills {
 		bridge = pr
 		engine = "llm+skills"
 	}
+	if *withL2 {
+		engine += "+l2"
+	}
 	fb := runnerl3.NewLLMFallback(context.Background(), logger, bridge)
+	// l2Only：LLM 通道不可用但开了 --with-l2 → 只跑确定性层。
+	// 这条路径零 token，是回答"不花一分钱能解几道"的唯一入口；硬要求 key 会把
+	// 它锁死。未命中的题照常记 miss，绝不因为"没跑 L3"而剔除分母。
+	l2Only := false
 	if !fb.Enabled {
-		fmt.Fprintln(os.Stderr, "[ERR] LLM fallback 装配失败（RUNNER_LLM_API_KEY 缺失或通道不可用）→ 拒绝跑批，"+
-			"避免产出一份看起来像「跑了 0 命中」、实际根本没跑的报告")
-		os.Exit(2)
+		if *withL2 {
+			fmt.Fprintln(os.Stderr, "[WARN] LLM 通道不可用，--with-l2 已开 → 只跑 Layer 2（零 token）；"+
+				"未命中一律记 miss，分母不剔除")
+			l2Only = true
+		} else {
+			fmt.Fprintln(os.Stderr, "[ERR] LLM fallback 装配失败（RUNNER_LLM_API_KEY 缺失或通道不可用）→ 拒绝跑批，"+
+				"避免产出一份看起来像「跑了 0 命中」、实际根本没跑的报告")
+			os.Exit(2)
+		}
 	}
 
 	model := os.Getenv("RUNNER_LLM_MODEL")
@@ -382,35 +450,61 @@ func main() {
 			os.Exit(2)
 		}
 		t0 := time.Now()
-		flags, err := fb.Solve(ctx, &ctfplatform.Challenge{
-			ID:           p.ID,
-			Title:        p.Title,
-			Category:     p.Category,
-			Description:  p.Description,
+		ch := &ctfplatform.Challenge{
+			ID:            p.ID,
+			Title:         p.Title,
+			Category:      p.Category,
+			Description:   p.Description,
 			HasAttachment: hasAtt,
-		})
+		}
+
+		// ── Layer 2：确定性 skill 路由（零 token）────────────────────────
+		// 放在 L3 之前，命中的题根本不烧 token；未命中才进 L3。
+		// 2026-11-01 实测：模型拿到正确清单 + 参数契约后仍然不用 skill（23s 放弃、
+		// 只调 python_session）——所以"模型自己会不会用"不能作为 skill 的价值判据。
+		var l2secs float64
+		if pr != nil && *withL2 {
+			lt := time.Now()
+			l2flags, hit := pr.TryCategoryLocal(ctx, p.Category, ch, workdirFiles(), *l2Budget)
+			l2secs = time.Since(lt).Seconds()
+			if hit && anyFlagMatches(l2flags, p.FlagSHA256) {
+				rep.Hit++
+				rep.Results = append(rep.Results, row{
+					ID: id, Category: p.Category, Sub: p.Sub, Engine: engine + ":" + model,
+					Candidates: len(l2flags), Seconds: l2secs, HasAttachment: hasAtt,
+					Sha256Match: true, Layer: "l2",
+				})
+				fmt.Printf("[%s] %-28s L2-HIT cand=%d %.1fs（零 token）\n", id, p.Category, len(l2flags), l2secs)
+				continue
+			}
+			fmt.Printf("[%s] %-28s L2 未命中 cand=%d %.1fs → 进 L3\n", id, p.Category, len(l2flags), l2secs)
+		}
+
+		if l2Only {
+			rep.Miss++
+			rep.Results = append(rep.Results, row{
+				ID: id, Category: p.Category, Sub: p.Sub, Engine: engine + ":" + model,
+				Seconds: l2secs, HasAttachment: hasAtt, Layer: "l2-miss",
+			})
+			fmt.Printf("[%s] %-28s L2-MISS %.1fs（无 L3）\n", id, p.Category, l2secs)
+			continue
+		}
+
+		flags, err := fb.Solve(ctx, ch)
 		secs := time.Since(t0).Seconds()
 		r := row{ID: id, Category: p.Category, Sub: p.Sub, Engine: engine + ":" + model,
-			Candidates: len(flags), Seconds: secs, HasAttachment: hasAtt}
+			Candidates: len(flags), Seconds: secs, HasAttachment: hasAtt, Layer: "l3"}
 		if err != nil {
 			r.Err = err.Error()
 		}
-		if len(flags) > 0 && p.FlagSHA256 != "" {
-			for _, f := range flags {
-				sum := sha256.Sum256([]byte(f))
-				if hex.EncodeToString(sum[:]) == strings.ToLower(p.FlagSHA256) {
-					r.Sha256Match = true
-					break
-				}
-			}
-		}
+		r.Sha256Match = anyFlagMatches(flags, p.FlagSHA256)
 		if r.Sha256Match {
 			rep.Hit++
 		} else {
 			rep.Miss++
 		}
 		rep.Results = append(rep.Results, r)
-		fmt.Printf("[%s] %-28s cand=%d hit=%v %.1fs\n", id, p.Category, r.Candidates, r.Sha256Match, secs)
+		fmt.Printf("[%s] %-28s cand=%d hit=%v %.1fs (L2 %.1fs)\n", id, p.Category, r.Candidates, r.Sha256Match, secs, l2secs)
 	}
 	if rep.Total > 0 {
 		rep.CoveragePct = float64(rep.Hit) * 100.0 / float64(rep.Total)

@@ -13,13 +13,26 @@ import (
 
 // catalogFake 实现 SkillRunner + SkillCatalogProvider，只用于检查 Desc 渲染。
 type catalogFake struct {
-	cat map[string][]string
+	cat       map[string][]string
+	contracts map[string]string // 可选：参数契约（实现 SkillContractProvider）
 }
 
 func (c *catalogFake) RunSkill(context.Context, string, *ctfplatform.Challenge) ([]string, bool) {
 	return nil, false
 }
 func (c *catalogFake) SkillCatalog() map[string][]string { return c.cat }
+
+// SkillContracts 只在 contracts 非 nil 时被调用（nil 时本方法仍存在，
+// 因此需要 contractlessFake 才能模拟"未升级的 bridge"）。
+func (c *catalogFake) SkillContracts() map[string]string { return c.contracts }
+
+// contractlessFake 有 catalog 但没有契约（模拟只实现了 SkillCatalogProvider 的 bridge）。
+type contractlessFake struct{ cat map[string][]string }
+
+func (contractlessFake) RunSkill(context.Context, string, *ctfplatform.Challenge) ([]string, bool) {
+	return nil, false
+}
+func (c contractlessFake) SkillCatalog() map[string][]string { return c.cat }
 
 // plainFake 只实现 SkillRunner，不提供清单（模拟未升级的 bridge）。
 type plainFake struct{}
@@ -76,6 +89,8 @@ func TestExecutePythonDescOnlyListsRealSkills(t *testing.T) {
 			continue // 例如 "- crypto 数学模板（..." 这种说明行不匹配本正则
 		}
 		matched++
+		// 渲染形态是 name 或 name(a,b,c)：括号内是参数契约，不是 skill 名的一部分。
+		list = regexp.MustCompile(`\([^)]*\)`).ReplaceAllString(list, "")
 		for _, n := range strings.Split(list, ",") {
 			n = strings.TrimSpace(n)
 			if n == "" || n == "…" {
@@ -126,5 +141,46 @@ func TestExecutePythonDescEmptyCatalog(t *testing.T) {
 	desc := descOfExecutePython(t, f)
 	if !strings.Contains(desc, "python_session") {
 		t.Errorf("空 catalog 时应引导模型用 python_session，实际：%q", desc)
+	}
+}
+
+// 第二层缺口回归锁（2026-11-01 真机实测）：光给名字不够，参数契约必须可见。
+//
+// 事故：Desc 换成真名之后，模型确实改用 crypto_knapsack_mhk（真名）了，
+// 但它传的是 {"a1": [], "a2": [], "b": [], "c": []} —— 全是空数组。
+// 名字对了、参数全错，产出依然是零。模型没法从名字猜出要 pk/ct/kind。
+func TestExecutePythonDescShowsSkillContracts(t *testing.T) {
+	cat := map[string][]string{"crypto": {"crypto_knapsack_mhk", "crypto_cycling"}}
+	f := &LLMFallback{
+		pyBridge: &catalogFake{cat: cat, contracts: map[string]string{
+			"crypto_knapsack_mhk": "ct,kind,path,pk",
+		}},
+		logger: zap.NewNop(),
+	}
+	desc := descOfExecutePython(t, f)
+
+	if !strings.Contains(desc, "crypto_knapsack_mhk(ct,kind,path,pk)") {
+		t.Errorf("Desc 未渲染 crypto_knapsack_mhk 的参数契约（模型只能盲调），实际：%q", desc)
+	}
+	// 没有契约的 skill 保持裸名，不能凭空造一个空括号。
+	if strings.Contains(desc, "crypto_cycling(") {
+		t.Errorf("无契约的 skill 不应出现括号：%q", desc)
+	}
+	// 必须解释括号含义，否则模型会把括号当成函数调用语法。
+	if !strings.Contains(desc, "params") {
+		t.Errorf("Desc 应说明括号内是 params 的键名，实际：%q", desc)
+	}
+}
+
+// 未提供契约时（旧 bridge / 探测失败）Desc 必须保持纯名字，不得回归成手写清单。
+func TestExecutePythonDescWithoutContracts(t *testing.T) {
+	cat := map[string][]string{"crypto": {"crypto_cycling"}}
+	f := &LLMFallback{pyBridge: contractlessFake{cat: cat}, logger: zap.NewNop()}
+	desc := descOfExecutePython(t, f)
+	if !strings.Contains(desc, "crypto_cycling") {
+		t.Fatalf("Desc 丢了真实 skill 名：%q", desc)
+	}
+	if strings.Contains(desc, "crypto_cycling(") {
+		t.Errorf("无契约时不应渲染括号：%q", desc)
 	}
 }

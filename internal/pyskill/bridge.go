@@ -42,6 +42,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -53,14 +54,23 @@ import (
 
 // Runner 通过 subprocess 调 Python skill。
 type Runner struct {
-	pythonPath   string            // Python 解释器路径
-	skillsDir    string            // skills/ 目录绝对路径
-	timeout      time.Duration     // 单次执行超时
-	hasAngr      bool              // angr 是否已装（启动时检查一次）
-	hasPwnTools  bool              // pwntools 是否已装
-	hasCrypto    bool              // pycryptodome / cryptography 是否已装
+	pythonPath   string        // Python 解释器路径
+	skillsDir    string        // skills/ 目录绝对路径
+	timeout      time.Duration // 单次执行超时（L2 批量扫用，需短，否则 28 个 skill 串行会拖死）
+	richTimeout  time.Duration // 模型显式单点调用（RunSkillRich）的超时，需长
+	hasAngr      bool          // angr 是否已装（启动时检查一次）
+	hasPwnTools  bool          // pwntools 是否已装
+	hasCrypto    bool          // pycryptodome / cryptography 是否已装
 	logger       *zap.Logger
 	skillCatalog map[string][]string // category → skill filename 列表（全量 79 skill）
+	// skillContracts: skill 名 → 它从 params 里读哪些键（逗号分隔，字典序）。
+	// 存在原因（2026-11-01 第二层缺口）：Desc 修好之后模型会用真名调 skill 了，
+	// 但实测它传的是 {"a1": [], "a2": [], "b": [], "c": []} —— 全是空数组。
+	// 名字对了、参数全错，等于还是零。契约必须让模型看得见。
+	// 抽取方式：启动时一个 python 子进程 ast 解析每个 skill 文件的
+	// params.get("x") / params["x"]，单一真值源 = skill 源码本身（禁止手写）。
+	// 抽取失败 → 留空 map，Desc 退化为只列名字（不回归、不影响可用性）。
+	skillContracts map[string]skillContract
 }
 
 // New 初始化 bridge。启动时检查一次关键依赖，避免每次调用都 pip show。
@@ -82,9 +92,10 @@ func New(ctx context.Context, logger *zap.Logger) *Runner {
 	}
 
 	r := &Runner{
-		pythonPath: pyPath,
-		timeout:    30 * time.Second,
-		logger:     logger,
+		pythonPath:  pyPath,
+		timeout:     durFromEnv("CTF_SKILL_TIMEOUT", 30*time.Second),
+		richTimeout: durFromEnv("CTF_SKILL_TIMEOUT_RICH", 180*time.Second),
+		logger:      logger,
 		skillCatalog: map[string][]string{
 			// 扩到全量 79 skill（2026-10-25 gap 分析：之前硬编码只有 10 个，Runner L2 实际只跑这 10 个）
 			// 所有 skill 都有 def run(params: dict) 接口；依赖门控在 TryCategory 里做
@@ -143,10 +154,14 @@ func New(ctx context.Context, logger *zap.Logger) *Runner {
 	// Crypto 依赖：pycryptodome (import Crypto) 或 cryptography (import cryptography)，任一存在即可
 	r.hasCrypto = r.checkDep(ctx, "Crypto") || r.checkDep(ctx, "cryptography")
 
+	// 参数契约抽取（一次性，失败不致命）
+	r.skillContracts = r.probeSkillContracts(ctx)
+
 	logger.Info("Python skill bridge 初始化",
 		zap.String("python", r.pythonPath),
 		zap.String("skills_dir", r.skillsDir),
 		zap.Int("catalog_size", totalSkills(r.skillCatalog)),
+		zap.Int("contracts", len(r.skillContracts)),
 		zap.Bool("angr", r.hasAngr),
 		zap.Bool("pwntools", r.hasPwnTools),
 		zap.Bool("crypto", r.hasCrypto))
@@ -178,15 +193,224 @@ func (r *Runner) SkillCatalog() map[string][]string {
 	return out
 }
 
+// skillContract 是单个 skill 从源码里抽出来的"调用契约"。
+//
+// Params：它从 params 读哪些键（模型必须按这些键传值，缺一个就 KeyError）。
+// Dispatch：语义分派参数 → 候选值（如 kind: [mhk2_decrypt, recover_key]）。
+// L2 通用路由没法猜 kind 这种语义参数，只能按源码里的 if kind == "..." 分支逐个试。
+type skillContract struct {
+	Params   string              `json:"params,omitempty"`
+	Dispatch map[string][]string `json:"dispatch,omitempty"`
+}
+
+// SkillContracts 返回 skill 名 → 参数键列表（逗号分隔，字典序），供 Desc 渲染。
+//
+// 存在原因（2026-11-01 第二层缺口，真机实测）：Desc 换成真名之后，模型确实
+// 改用了 crypto_knapsack_mhk（真名），但 params 传的是
+// {"a1": [], "a2": [], "b": [], "c": []} —— 名字对了、参数全错，结果仍是零。
+// 模型没法从名字猜出这个 skill 要 pk/ct/kind。契约必须显式给出。
+// 返回副本，避免调用方改动内部表。
+func (r *Runner) SkillContracts() map[string]string {
+	out := make(map[string]string, len(r.skillContracts))
+	for k, v := range r.skillContracts {
+		if v.Params != "" {
+			out[k] = v.Params
+		}
+	}
+	return out
+}
+
+// SkillDispatch 返回 skill 名 → 分派参数候选值（L2 逐个试）。
+func (r *Runner) SkillDispatch() map[string]map[string][]string {
+	out := make(map[string]map[string][]string, len(r.skillContracts))
+	for k, v := range r.skillContracts {
+		if len(v.Dispatch) == 0 {
+			continue
+		}
+		cp := make(map[string][]string, len(v.Dispatch))
+		for dk, dv := range v.Dispatch {
+			cp[dk] = append([]string(nil), dv...)
+		}
+		out[k] = cp
+	}
+	return out
+}
+
+// probeSkillContracts 用**一个** python 子进程 ast 解析各 skill 文件，抽两样东西：
+// ① params.get("x") / params["x"] 的键；
+// ② 分派分支：`k = params.get("kind")` 之后出现的 `k == "lit"` ⇒ kind 的候选值。
+//
+// 单一真值源 = skill 源码本身，禁止手写清单（第一层 P0 就是手写清单导致的：
+// 16 个名字 15 个不存在）。失败一律返回 nil：Desc 退化为只列名字、L2 也不试分派，
+// 等于修复前行为，不阻塞启动。
+func (r *Runner) probeSkillContracts(ctx context.Context) map[string]skillContract {
+	if r.skillsDir == "" {
+		return nil
+	}
+	names := make([]string, 0, totalSkills(r.skillCatalog))
+	for _, v := range r.skillCatalog {
+		names = append(names, v...)
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	namesJSON, err := json.Marshal(names)
+	if err != nil {
+		return nil
+	}
+
+	const probe = `
+import sys, os, json, ast
+names = json.loads(sys.argv[1])
+d = sys.argv[2]
+
+def params_aliases(tree):
+    """params 的别名：p = params or {} / p = dict(params) / p = params。
+    2026-11-01 实锤：zip_chain_decode 这类薄封装把 params 改名后再取键，
+    只认名字 'params' 会漏掉整整一类 skill 的契约。"""
+    alias = {"params"}
+    changed = True
+    while changed:
+        changed = False
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+                continue
+            t = node.targets[0]
+            if not isinstance(t, ast.Name) or t.id in alias:
+                continue
+            names = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name)}
+            if names & alias:
+                alias.add(t.id)
+                changed = True
+    return alias
+
+def key_of(node, alias):
+    """node 是 params.get('x') 或 params['x'] 时返回 'x'，否则 None。"""
+    if isinstance(node, ast.Call):
+        f = node.func
+        if (isinstance(f, ast.Attribute) and f.attr == "get"
+                and isinstance(f.value, ast.Name) and f.value.id in alias
+                and node.args and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)):
+            return node.args[0].value
+        return None
+    if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id in alias:
+        sl = node.slice
+        if isinstance(sl, ast.Constant) and isinstance(sl.value, str):
+            return sl.value
+    return None
+
+out = {}
+for n in names:
+    p = os.path.join(d, n + ".py")
+    try:
+        tree = ast.parse(open(p, encoding="utf-8", errors="replace").read())
+    except Exception:
+        continue
+    alias = params_aliases(tree)
+    keys = set()
+    src_var = {}   # 局部变量名 -> 它来自哪个 params 键
+    for node in ast.walk(tree):
+        k = key_of(node, alias)
+        if k:
+            keys.add(k)
+        # 注意：pk, ct = params.get("pk"), params.get("ct") 这种**元组赋值**的
+        # value 是 Tuple 不是 Call，若只认 Assign(Call) 会漏掉一整批键。
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            t = node.targets[0]
+            if isinstance(t, ast.Name):
+                kk = key_of(node.value, alias)
+                if kk:
+                    src_var[t.id] = kk
+    disp = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Compare) or len(node.ops) != 1 or not isinstance(node.ops[0], ast.Eq):
+            continue
+        for a, b in ((node.left, node.comparators[0]), (node.comparators[0], node.left)):
+            if isinstance(a, ast.Name) and isinstance(b, ast.Constant) and isinstance(b.value, str):
+                kk = src_var.get(a.id)
+                if not kk:
+                    continue
+                lst = disp.setdefault(kk, [])
+                if b.value not in lst:
+                    lst.append(b.value)
+    e = {}
+    if keys:
+        e["params"] = ",".join(sorted(keys))
+    if disp:
+        e["dispatch"] = disp
+    if e:
+        out[n] = e
+print(json.dumps(out))
+`
+	ctx2, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx2, r.pythonPath, "-c", probe, string(namesJSON), r.skillsDir)
+	cmd.Env = procenv.ChildEnv()
+	out, err := cmd.Output()
+	if err != nil {
+		r.logger.Debug("skill 参数契约抽取失败（Desc 将只列名字）", zap.Error(err))
+		return nil
+	}
+	var m map[string]skillContract
+	if err := json.Unmarshal(out, &m); err != nil {
+		r.logger.Debug("skill 参数契约解析失败", zap.Error(err))
+		return nil
+	}
+	return m
+}
+
+// durFromEnv 读时长型环境变量（如 "180s"/"5m"），缺失或非法则用 def。
+// 赛时需要按题型调超时（LLL 类 skill 单次可达 100s+，而 L2 批量扫必须短），
+// 硬编码会让"要么批量扫拖死、要么单点调用够不着"二选一。
+func durFromEnv(key string, def time.Duration) time.Duration {
+	if v := osGetenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return def
+}
+
 // osGetenv 包装：保留原 main 包内的调用形态（迁包后仍用它统一 TrimSpace 语义）
 func osGetenv(key string) string {
 	v, _ := os.LookupEnv(key)
 	return strings.TrimSpace(v)
 }
 
-func osGetwd() (string, error) { return os.Getwd() }
-func osStat(name string) (os.FileInfo, error) { return os.Stat(name) }
+func osGetwd() (string, error)                 { return os.Getwd() }
+func osStat(name string) (os.FileInfo, error)  { return os.Stat(name) }
 func execLookPath(file string) (string, error) { return exec.LookPath(file) }
+
+// collectStrings 递归收集 dict/list 里所有字符串值（跳过 __base64__ 包装）。
+func collectStrings(v interface{}) []string {
+	var out []string
+	switch t := v.(type) {
+	case string:
+		out = append(out, t)
+	case map[string]interface{}:
+		for k, vv := range t {
+			if k == "__base64__" {
+				continue
+			}
+			out = append(out, collectStrings(vv)...)
+		}
+	case []interface{}:
+		for _, vv := range t {
+			out = append(out, collectStrings(vv)...)
+		}
+	}
+	return out
+}
+
+// truncate 截断日志用文本，避免把 skill 的 base64 大输出灌进日志。
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}
 
 // totalSkills 返回 skillCatalog 总 skill 数（辅助 logger 输出）
 func totalSkills(cat map[string][]string) int {
@@ -215,9 +439,47 @@ func (r *Runner) checkDep(ctx context.Context, name string) bool {
 // TryCategory 对指定 category 依次跑"真跑"skill，第一个返回 solved=True 且有 flag 的就用。
 // 返回值：(flag candidates, 是否找到)
 func (r *Runner) TryCategory(ctx context.Context, category string, ch *ctfplatform.Challenge) ([]string, bool) {
+	return r.tryCategory(ctx, category, ch, nil, 0)
+}
+
+// TryCategoryLocal 与 TryCategory 同语义，但把**本地附件路径**注入 params["path"]。
+//
+// 存在原因（2026-11-01）：L2 原来只认 ch.AttachmentURLs（平台给的下载 URL），
+// 离线跑批的附件是本地文件、没有 URL ⇒ L2 永远拿不到 path ⇒ 所有"吃文件"的
+// skill 在跑批里一律等于没接上（与 40/40 附件静默阉割同型）。
+//
+// budget>0 时限制**整类**总耗时：crypto 有 28 个 skill、单个 30s，最坏 14 分钟/题。
+// 赛时不可接受，跑批入口必须给预算；<=0 表示不限（保持生产旧行为）。
+func (r *Runner) TryCategoryLocal(ctx context.Context, category string, ch *ctfplatform.Challenge, localFiles []string, budget time.Duration) ([]string, bool) {
+	return r.tryCategory(ctx, category, ch, localFiles, budget)
+}
+
+func (r *Runner) tryCategory(ctx context.Context, category string, ch *ctfplatform.Challenge, localFiles []string, budget time.Duration) ([]string, bool) {
 	skills, ok := r.skillCatalog[category]
 	if !ok || len(skills) == 0 {
 		return nil, false
+	}
+	// bases：每轮"基础参数"。有本地附件时**每个文件各算一个基础**——
+	// 2026-11-01 实锤：只取排序第一个文件时，mhk2 拿到的是 MHK2.sage 而不是
+	// output.txt，json 解析必然失败，skill 明明能解也永远命中不了。
+	var bases []map[string]any
+	if len(localFiles) == 0 {
+		bases = []map[string]any{nil}
+	} else {
+		for i, f := range localFiles {
+			if i >= maxPathVariants {
+				break
+			}
+			bases = append(bases, map[string]any{
+				"path":  f,
+				"files": localFiles,
+				"dir":   filepath.Dir(f),
+			})
+		}
+	}
+	var deadline time.Time
+	if budget > 0 {
+		deadline = time.Now().Add(budget)
 	}
 
 	r.logger.Debug("尝试 Python skill 求解",
@@ -226,6 +488,13 @@ func (r *Runner) TryCategory(ctx context.Context, category string, ch *ctfplatfo
 		zap.Strings("skills", skills))
 
 	for _, skillName := range skills {
+		if !deadline.IsZero() && time.Now().After(deadline) {
+			r.logger.Warn("L2 超出时间预算，剩余 skill 未尝试",
+				zap.String("category", category),
+				zap.Duration("budget", budget),
+				zap.String("at", skillName))
+			break
+		}
 		// 依赖门控（2026-10-25 扩：加 NeedCrypto，覆盖 crypto_* skill 大部分）
 		switch skillName {
 		case "reverse_angr_solver":
@@ -248,21 +517,106 @@ func (r *Runner) TryCategory(ctx context.Context, category string, ch *ctfplatfo
 			}
 		}
 
-		flags, ok := r.RunSkill(ctx, skillName, ch)
-		if ok && len(flags) > 0 {
-			return flags, true
+		var variants []map[string]any
+		for _, b := range bases {
+			variants = append(variants, r.paramVariants(skillName, b)...)
+			if len(variants) >= maxVariantsPerSkill {
+				break
+			}
+		}
+		if len(variants) > maxVariantsPerSkill {
+			variants = variants[:maxVariantsPerSkill]
+		}
+		for _, params := range variants {
+			if !deadline.IsZero() && time.Now().After(deadline) {
+				r.logger.Warn("L2 超出时间预算，剩余 skill/分派未尝试",
+					zap.String("category", category),
+					zap.Duration("budget", budget),
+					zap.String("at", skillName))
+				return nil, false
+			}
+			// 诊断可见性：L2 是"静默遍历"，出问题时（跑了但全 miss）
+			// 只能靠这条日志看出到底给 skill 喂了什么参数。
+			tTry := time.Now()
+			flags, ok := r.runSkillWith(ctx, skillName, ch, params)
+			r.logger.Debug("L2 试 skill",
+				zap.String("skill", skillName),
+				zap.String("path", fmt.Sprint(params["path"])),
+				zap.String("kind", fmt.Sprint(params["kind"])),
+				zap.Bool("got", ok && len(flags) > 0),
+				zap.Duration("took", time.Since(tTry)))
+			if ok && len(flags) > 0 {
+				return flags, true
+			}
 		}
 	}
 	return nil, false
+}
+
+// maxPathVariants 限制"每个 skill 试几个本地附件"；maxVariantsPerSkill 限制
+// (文件 × 分派) 的总展开数。二者相乘决定了单 skill 最坏耗时上限，
+// 不设界会让 28 个 crypto skill 的 L2 扫描变成小时级。
+const (
+	maxPathVariants     = 3
+	maxVariantsPerSkill = 6
+)
+
+// maxDispatchVariants 限制单个 skill 的分派展开数：15 个 skill 用 kind 分派，
+// 若每个都展开 3 个值、再乘以 30s 超时，预算会被瞬间吃光。
+const maxDispatchVariants = 4
+
+// paramVariants 在基础参数上叠加**分派候选值**（如 kind=mhk2_decrypt / recover_key）。
+//
+// 为什么需要：L2 是确定性路由，它没法知道"这道 MHK2 该用 mhk2_decrypt 还是
+// recover_key"——这是语义判断。2026-11-01 实测：只注入 path 时 knapsack 在
+// 2.4s 内返回 "unknown kind" 就算失败，L2 等于没接上。源码里的
+// `if kind == "mhk2_decrypt"` 分支就是答案，按它逐个试即可。
+//
+// 调用方显式给了该键（模型/上层指定）→ 不再叠加猜测，尊重显式值。
+// 没有分派信息（或未探测到）→ 只返回基础参数本身，行为与改造前一致。
+func (r *Runner) paramVariants(skillName string, base map[string]any) []map[string]any {
+	out := []map[string]any{base}
+	c, ok := r.skillContracts[skillName]
+	if !ok || len(c.Dispatch) == 0 {
+		return out
+	}
+	keys := make([]string, 0, len(c.Dispatch))
+	for k := range c.Dispatch {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // 固定顺序：多个分派键时只展开第一个，避免笛卡尔积爆炸
+	dk := keys[0]
+	if _, exists := base[dk]; exists {
+		return out
+	}
+	for _, dv := range c.Dispatch[dk] {
+		if len(out) >= maxDispatchVariants {
+			break
+		}
+		v := make(map[string]any, len(base)+1)
+		for k, vv := range base {
+			v[k] = vv
+		}
+		v[dk] = dv
+		out = append(out, v)
+	}
+	return out
 }
 
 // RunSkill subprocess 调单个 Python skill，返回 (flag candidates, 是否成功)
 // 导出为 RunSkill：供 internal/runnerl3.SkillRunner 接口解耦（execute_python 工具依赖）。
 // 2026-10-25 参数契约增强：Runner 之前只传 4 字段（name/category/description/attachment_urls），
 // 但 skill 通常需要 text/path/key。现在：
-//   ① 从 description regex 提取 text（密文）和 key（密钥）
-//   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
+//
+//	① 从 description regex 提取 text（密文）和 key（密钥）
+//	② attachment_urls 非空 → 下载第一个附件到临时文件传 path
 func (r *Runner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform.Challenge) ([]string, bool) {
+	return r.runSkillWith(ctx, skillName, ch, nil)
+}
+
+// runSkillWith 是 RunSkill 的实现体。extra 在**所有**推导之后覆盖：本地附件 path
+// 必须压过"从 description 正则猜出来的 text/key"，否则注入等于没注入。
+func (r *Runner) runSkillWith(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) ([]string, bool) {
 	params := r.buildSkillParams(ctx, ch)
 
 	// 从 description 提取 text（密文）——匹配 "密文: xxx" / "cipher: xxx" / "text=xxx" 等常见格式
@@ -284,8 +638,19 @@ func (r *Runner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform
 		}
 	}
 
-	out, ok := r.execSkillSubprocess(ctx, skillName, params)
+	// extra 必须在这里合并 —— 在 exec 之前！2026-11-01 自伤事故：这段原被插到
+	// "解析 JSON 返回值"之前，而那行在子进程执行**之后**，于是 L2 注入的
+	// path/kind 从未真正传给 skill：日志显示 kind=mhk2_decrypt，skill 实际收到空
+	// kind 并返回 "unknown kind"。现象极像"skill 不解决问题"，实则参数没送到。
+	for k, v := range extra {
+		params[k] = v
+	}
+
+	out, ok := r.execSkillSubprocess(ctx, skillName, params, r.timeout)
 	if !ok {
+		// 静默失败是 L2 最难查的地方：skill 自己 catch 住异常返回
+		// {"ok": false, "error": ...} 时退出码是 0，外层看不到任何信号。
+		r.logger.Debug("skill 子进程未成功", zap.String("skill", skillName), zap.String("raw", truncate(out, 400)))
 		return nil, false
 	}
 
@@ -325,14 +690,37 @@ func (r *Runner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform
 		// 有些 skill 返回 flow/note 但没 flag——不算成功
 	}
 
+	// 2026-11-01 实锤：crypto_knapsack_mhk 把解出的明文放在 "plaintext" 字段，
+	// 而这里只认 flag/flags ⇒ skill 明明解出来了却被判"未命中"。
+	// 兜底：只要 skill 自报成功（ok/solved），就从**所有**字符串值里按形态挑
+	// flag（plaintext / text / decoded / data 这些键都可能装答案）。
+	// 判分侧仍走 sha256 精确比对，这里放宽不会制造"假解出"。
+	if solved || okFlag {
+		if cands := ctfplatform.FilterFlagCandidates(collectStrings(result)); len(cands) > 0 {
+			r.logger.Debug("skill 命中（flag 在非 flag 字段）",
+				zap.String("skill", skillName), zap.Strings("flags", cands))
+			return cands, true
+		}
+	}
+	keys := make([]string, 0, len(result))
+	for k := range result {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	r.logger.Debug("skill 返回但无 flag 字段",
+		zap.String("skill", skillName),
+		zap.Strings("keys", keys),
+		zap.String("raw", truncate(out, 300)))
+
 	return nil, false
 }
 
 // buildSkillParams 从 Challenge 组装 skill 入参（RunSkill / RunSkillRich 共用）。
 // 2026-10-25 参数契约：Runner 之前只传 4 字段（name/category/description/attachment_urls），
 // 但 skill 通常需要 text/path/key。现在：
-//   ① 从 description regex 提取 text（密文）和 key（密钥）
-//   ② attachment_urls 非空 → 下载第一个附件到临时文件传 path
+//
+//	① 从 description regex 提取 text（密文）和 key（密钥）
+//	② attachment_urls 非空 → 下载第一个附件到临时文件传 path
 func (r *Runner) buildSkillParams(ctx context.Context, ch *ctfplatform.Challenge) map[string]interface{} {
 	params := map[string]interface{}{
 		"name":        ch.Title,
@@ -370,7 +758,7 @@ func (r *Runner) buildSkillParams(ctx context.Context, ch *ctfplatform.Challenge
 // execSkillSubprocess 的源码模板（`import %s as s`），非法字符即代码注入。
 var skillNameIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-func (r *Runner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}) (string, bool) {
+func (r *Runner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}, limit time.Duration) (string, bool) {
 	// 纵深防御（2026-11-01）：上层 internal/runnerl3 已经校验过 skill_name，
 	// 但这里是**真正拼源码**的地方 —— 谁调用都得在同一处被拦住（L2 编排、
 	// 未来新增调用方都不会漏）。非法名一律不执行，返回失败而非报错文本，
@@ -415,7 +803,15 @@ except Exception as _e:
 `
 	script := fmt.Sprintf(scriptTpl, r.skillsDir, r.skillsDir, skillName)
 
-	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
+	// limit<=0 兜底：Runner 可能被逐字段构造（测试、未来新增入口），漏设 richTimeout
+	// 会让 WithTimeout(0) 立刻到期 —— 表现为"skill 静默失败、输出为空"，极难排查。
+	if limit <= 0 {
+		limit = r.timeout
+	}
+	if limit <= 0 {
+		limit = 30 * time.Second
+	}
+	ctx2, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx2, r.pythonPath, "-c", script, string(paramsJSON))
@@ -427,7 +823,7 @@ except Exception as _e:
 	out, err := cmd.CombinedOutput()
 
 	if ctx2.Err() == context.DeadlineExceeded {
-		r.logger.Warn("skill 超时", zap.String("skill", skillName), zap.Duration("timeout", r.timeout))
+		r.logger.Warn("skill 超时", zap.String("skill", skillName), zap.Duration("timeout", limit))
 		return "", false
 	}
 	if err != nil {
@@ -442,16 +838,17 @@ except Exception as _e:
 
 // RunSkillRich 是 internal/runnerl3.RichSkillRunner 的实现（P0-1 ctf_sage 模板接入，2026-10-25）。
 // 与 RunSkill 的两点区别：
-//  ① extra（LLM 经 execute_python 的 params 字段传入的数学参数：n/e/c/f_coeffs/sigs…）
-//     并入 skill params，优先级高于 description 正则提取值——数学模板要精确参数，不要猜；
-//  ② 返回完整结果文本而非只提取 flag——数学模板的产出是中间量（小根/私钥/明文），
-//     flag 契约会把它们丢掉；LLM 需要看到原始结果才能决定下一步（如解密得 flag）。
+//
+//	① extra（LLM 经 execute_python 的 params 字段传入的数学参数：n/e/c/f_coeffs/sigs…）
+//	   并入 skill params，优先级高于 description 正则提取值——数学模板要精确参数，不要猜；
+//	② 返回完整结果文本而非只提取 flag——数学模板的产出是中间量（小根/私钥/明文），
+//	   flag 契约会把它们丢掉；LLM 需要看到原始结果才能决定下一步（如解密得 flag）。
 func (r *Runner) RunSkillRich(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) (string, bool) {
 	params := r.buildSkillParams(ctx, ch)
 	for k, v := range extra {
 		params[k] = v
 	}
-	return r.execSkillSubprocess(ctx, skillName, params)
+	return r.execSkillSubprocess(ctx, skillName, params, r.richTimeout)
 }
 
 // extractSkillText 从 Challenge.Description 中提取密文文本。
@@ -528,11 +925,12 @@ func (r *Runner) downloadAttachment(ctx context.Context, url string) (string, er
 // 返回第一个存在的目录路径；都不存在则返回空串（runner 会跳过 Layer 2）。
 //
 // 【吞并收口 2026-10-25】原第 4 条硬编码路径 `E:\Program\西湖论剑\ctf_agent\skills` 已删除。理由：
-//   ① **死候选**：归档副本排在它前面且恒存在，那条永远不会命中；
-//   ② **注释与代码曾经顺序相反**（注释说源仓第 3、归档第 4，代码正好颠倒），
-//      留着只会继续误导后来人；
-//   ③ 它是「西湖论剑尚未彻底并入」在运行链上的**唯一残留**——删掉之后，
-//      "把 E:\Program\西湖论剑 整个删掉、本项目功能不受影响"才成为可验证的事实。
+//
+//	① **死候选**：归档副本排在它前面且恒存在，那条永远不会命中；
+//	② **注释与代码曾经顺序相反**（注释说源仓第 3、归档第 4，代码正好颠倒），
+//	   留着只会继续误导后来人；
+//	③ 它是「西湖论剑尚未彻底并入」在运行链上的**唯一残留**——删掉之后，
+//	   "把 E:\Program\西湖论剑 整个删掉、本项目功能不受影响"才成为可验证的事实。
 //
 // 不变量由 bridge_test.go::TestCandidateSkillDirsAreRepoLocal 锁住：
 // **候选目录一律不得含仓库外绝对路径**。
