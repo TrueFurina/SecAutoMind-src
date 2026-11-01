@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
@@ -129,7 +129,19 @@ func TestSolveAllowsBackedFileClaim(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	realPath := filepath.Join(os.TempDir(), "secautomind_att_flag.txt")
+	// 附件落盘路径自 2026-11-01 起是「附件收件箱」（不再是临时目录根），
+	// 这里必须跟着走，否则测的是已经不存在的路径形态。
+	realPath := filepath.ToSlash(filepath.Join(attachmentInboxDir(), "flag.txt"))
+
+	// 路径闸门按 **POSIX 绝对路径** 比对（同 path_fence.go 的理由：解题只在 Linux
+	// 服务器上跑）。Windows 的 os.TempDir() 带盘符（C:/...），而 pathTokenRe 只认
+	// `/x/y` 形态 ⇒ 模型那句"我读取了 C:/..."里抽出来的永远是 `/Users/...` 尾巴，
+	// 与账本键必然对不上，本用例在 Windows 上只能给出"假红"。
+	// 不做形态模糊匹配来迁就它：那会把闸门放宽（不同前缀同名尾巴被当成同一文件），
+	// 而这条闸门的作用就是拦住模型编路径。真值验证在 Linux 上跑（CI + 服务器）。
+	if runtime.GOOS == "windows" {
+		t.Skip("路径闸门是 POSIX 口径：Windows 盘符路径必然对不上，改在 Linux（CI/服务器）验证")
+	}
 
 	m := &fakeModel{resps: []*schema.Message{
 		toolResp("read_attachment", fmt.Sprintf(`{"attachment_url": %q}`, srv.URL+"/flag.txt")),

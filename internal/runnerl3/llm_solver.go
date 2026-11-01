@@ -37,6 +37,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -233,6 +234,8 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 	toolCallCount := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
 	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
+	var bestCandidates []string                // 跨轮累积的候选（含工具返回里的 flag，防御"模型算出但没停手"漏抓）
+	bestCandSeen := make(map[string]bool)
 	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
 	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
 
@@ -331,6 +334,22 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		// 后，在「token 先耗尽、步数未到 85%」的零候选场景抢在 ⑥ 前收口（不再被遮蔽）。
 		obs := roundObs.String()
 		candSeen += len(extractFlagCandidates(obs))
+		// 防御：工具返回里若含 flag（如 python print(flag)），跨轮累积，避免"模型算出但没停手"被漏抓
+		for _, fc := range extractFlagCandidates(obs) {
+			if !bestCandSeen[fc] {
+				bestCandSeen[fc] = true
+				bestCandidates = append(bestCandidates, fc)
+			}
+		}
+		// 防御②：模型算对但没包裹 flag{} —— 常产出"大整数 / 字节序列"形式的答案
+		// （如 DAC 网表把 flag 二进制位重建为巨整数、或 reverse 题打印 flag 字节序列）。
+		// 归一化为 dice{...} 候选，交由真 submit 校验（isCorrect 兜底，错候选只算一次 miss）。
+		for _, rc := range extractRawAnswerCandidates(obs) {
+			if !bestCandSeen[rc] {
+				bestCandSeen[rc] = true
+				bestCandidates = append(bestCandidates, rc)
+			}
+		}
 		step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
 		if callsThisRound > 0 && allErr {
 			step.ErrCategory = "tool_error"
@@ -410,6 +429,21 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) ([]s
 		zap.String("challenge", ch.Title),
 		zap.Int("rounds", f.maxRounds),
 		zap.Int("tool_calls", toolCallCount))
+	// 轮数耗尽：若跨轮曾捕获到候选（含工具返回里的 flag），best-effort 返回，
+	// 交由上层真 submit 校验（isCorrect 兜底，错候选只算一次 miss）。
+	//
+	// ⚠️ 口径开关（2026-11-01）：该行为**默认关闭**，须 RUNNER_LLM_BEST_EFFORT=true 显式开启。
+	// 理由：这是"模型自己没收口、我们替它把中途出现过的候选当答案交上去"，属于**放宽判分口径**，
+	// 而 KPI 是「LLM 真题解出数」——默认开启会让一条半成品答案在统计上与真命中同列。
+	// 交由用户/上层显式选择：要 recall 就开，要干净口径就保持默认。
+	// 关闭时恢复既有的提交语义：轮数耗尽且无终局命中 ⇒ nil（既有 llm_solver_test.go 锁死）。
+	if envBool("RUNNER_LLM_BEST_EFFORT", false) && len(bestCandidates) > 0 {
+		f.logger.Info("LLM fallback 达到轮数上限，返回 best-effort 候选（跨轮累积，RUNNER_LLM_BEST_EFFORT=true）",
+			zap.String("challenge", ch.Title),
+			zap.Int("rounds", f.maxRounds),
+			zap.Strings("candidates", bestCandidates))
+		return bestCandidates, nil
+	}
 	return nil, nil
 }
 
@@ -552,6 +586,20 @@ func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any
 	if skillName == "" {
 		return "[execute_python 缺少 skill_name]"
 	}
+	// 第二道围栏（2026-11-01）：skill_name 会被桥接层拼进 Python 源码
+	// `import <name> as s`，非标识符输入等于代码注入；params 里的绝对路径
+	// 会被 skill 当 path 直接读，绕开 python_session 的围栏。两道都过
+	// 同一条 pathFence 口径（详见 llm_hardconstraint.go 该段注释）。
+	if err := validateSkillName(skillName); err != nil {
+		return fmt.Sprintf("[execute_python 拒绝执行] %v", err)
+	}
+	extra := parseExtraParams(args["params"])
+	if bad := paramPathViolations(extra); len(bad) > 0 {
+		return fmt.Sprintf("[execute_python 拒绝执行] params 引用了本题工作区之外的路径 %v；"+
+			"允许范围与 python_session 相同（本题工作目录 + 附件收件箱 + 只读系统路径）。"+
+			"要用附件请先 read_attachment，它会落到收件箱并把真实路径给你",
+			bad)
+	}
 
 	// 120s subprocess 硬超时
 	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -562,7 +610,7 @@ func (f *LLMFallback) toolExecutePython(ctx context.Context, args map[string]any
 	// 因此在 L3 不可用。RichSkillRunner + 非空 params 双条件才走富结果路径，
 	// 否则逐字节保持旧行为（现有 fake 与生产零变化）。
 	if rich, ok := f.pyBridge.(RichSkillRunner); ok {
-		if extra := parseExtraParams(args["params"]); extra != nil {
+		if extra != nil {
 			text, ran := rich.RunSkillRich(execCtx, skillName, ch, extra)
 			if !ran {
 				return fmt.Sprintf("[execute_python skill 执行失败或无依赖] skill=%s", skillName)
@@ -640,6 +688,39 @@ func parseExtraParams(v any) map[string]any {
 	return nil
 }
 
+// airgapBlockedHosts 在 RUNNER_LLM_AIRGAP=1 时拒绝到这些主机的出口 HTTP 请求，
+// 用于受控实验：隔离"检索公开 flag（如 github 上的 flag.txt）"与"真求解"。
+// 仅影响 read_attachment 的下载客户端；练习场附件（ctf2 等其他 host）不受影响。
+var airgapBlockedHosts = map[string]bool{
+	"github.com":                true,
+	"www.github.com":            true,
+	"raw.githubusercontent.com": true,
+	"api.github.com":            true,
+	"gist.github.com":           true,
+}
+
+type airgapTransport struct{ rt http.RoundTripper }
+
+func (t *airgapTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	host := req.URL.Host
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	if airgapBlockedHosts[host] {
+		return nil, fmt.Errorf("airgap: egress to %s blocked (RUNNER_LLM_AIRGAP=1)", host)
+	}
+	return t.rt.RoundTrip(req)
+}
+
+// attachmentHTTPClient 返回 read_attachment 使用的 HTTP 客户端。
+// 默认 http.DefaultClient；RUNNER_LLM_AIRGAP=1 时注入拒绝 GitHub 的 transport。
+var attachmentHTTPClient = func() *http.Client {
+	if os.Getenv("RUNNER_LLM_AIRGAP") == "1" {
+		return &http.Client{Transport: &airgapTransport{rt: http.DefaultTransport}}
+	}
+	return http.DefaultClient
+}()
+
 // toolReadAttachment 下载附件到 /tmp，返回路径 + 文件信息 + strings 前 80 行。
 // 硬限：30s 下载超时。
 func (f *LLMFallback) toolReadAttachment(ctx context.Context, args map[string]any) string {
@@ -662,16 +743,16 @@ func (f *LLMFallback) toolReadAttachment(ctx context.Context, args map[string]an
 		fileName = "attachment"
 	}
 
-	// 下载到临时目录
-	tmpDir := os.TempDir()
-	localPath := filepath.Join(tmpDir, "secautomind_att_"+sanitize(fileName))
+	// 下载到**附件收件箱**（不是临时目录根）：收件箱是 python_session 围栏唯一
+	// 额外放行的目录，落在 /tmp 根下会被自己的围栏挡回去（详见 attachment_inbox.go）。
+	localPath := filepath.Join(attachmentInboxDir(), sanitize(fileName))
 
 	req, err := http.NewRequestWithContext(dlCtx, "GET", attURL, nil)
 	if err != nil {
 		return fmt.Sprintf("[read_attachment 请求构造失败] %v", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := attachmentHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Sprintf("[read_attachment 下载失败] %v", err)
 	}
@@ -699,8 +780,13 @@ func (f *LLMFallback) toolReadAttachment(ctx context.Context, args map[string]an
 	// strings 前 80 行
 	stringsOut := runStrings(localPath, 80)
 
+	// 回给模型的是 POSIX 形态（`/` 分隔）：它要拿去在 python_session 里写代码，
+	// Windows 反斜杠在 Python 字符串里是转义符，直接给原生路径会引出无谓的报错。
+	// 事实账本记录的也是这个形态（模型复述的就是它）。
+	displayPath := filepath.ToSlash(localPath)
+
 	return fmt.Sprintf("附件下载成功:\n路径: %s\n大小: %d bytes\nMIME: %s\n--- strings 前 80 行 ---\n%s",
-		localPath, len(data), mime, stringsOut)
+		displayPath, len(data), mime, stringsOut)
 }
 
 // runStrings 执行 strings 命令取前 N 行可打印字符串。
@@ -773,7 +859,7 @@ func (f *LLMFallback) buildSystemPrompt() string {
 - misc: 看附件类型选工具（PCAP→pcap_analyze，图片→image_steg，压缩包→zip_crack）
 
 规则：
-1. 最终输出必须是 flag{...} 格式（或多个候选，每行一个）
+1. 【最重要】一旦你通过工具或推理确信已得到 flag，必须立即停止调用任何工具，单独输出该 flag（格式为 flag{...} 或 dice{...}，多个候选每行一个）。不要"再跑一轮确认"——你已经算出来了就是完成。若你已算出结果却只输出了过程文本，本轮视为未完成，必须补一句只含 flag 的输出。若你得到的是字节序列/数字序列，先将其还原为可读字符串（flag 内容），再用 dice{...} 或 flag{...} 包裹输出，绝对不要只输出裸字节或裸数字。
 2. 如果用了工具，把工具结果融合进推理
 3. 如果实在没思路，直接输出 NO_SOLUTION
 4. 不要输出推理过程、不要输出代码，只输出 flag 或 NO_SOLUTION
@@ -842,6 +928,14 @@ func (f *LLMFallback) buildUserPrompt(ch *ctfplatform.Challenge) string {
 		}
 	}
 
+	// 本地工件清单（2026-11-01）：read_attachment 只认 URL，本地工件走不到
+	// AttachmentURLs ⇒ 不注入的话模型完全不知道 cwd 里有附件可用（ycb2026 跑批
+	// 零工具调用的成因）。详见 internal/runnerl3/local_artifacts.go 文件头。
+	if hint := localArtifactHint(); hint != "" {
+		b.WriteString("\n")
+		b.WriteString(hint)
+	}
+
 	b.WriteString("\n题目描述：\n")
 	b.WriteString(truncate(ch.Description, 8000))
 
@@ -899,6 +993,59 @@ func extractFlagCandidates(text string) []string {
 	}
 
 	return flags
+}
+
+// rawIntRe 匹配"可能编码了 flag 的长纯数字串"（如 DAC 网表把 flag 二进制位重建为
+// 十进制巨整数）。阈值 20 位，避免误抓普通计数值；flag 通常 30+ 字节 → 70+ 位十进制。
+var rawIntRe = regexp.MustCompile(`\d{20,}`)
+
+// extractRawAnswerCandidates 捕获"模型算对但没包裹 flag{}"的答案：把工具返回里的长纯
+// 数字串当作 flag 的 ASCII 码拼接（或字节序列的数值），尝试 int→bytes（大端/小端）还原，
+// 若还原结果整体可打印 ASCII 则包成 dice{...} 候选。错候选交由真 submit 的 isCorrect 兜底
+// （平台判错只算一次 miss），不会虚高分数。
+func extractRawAnswerCandidates(text string) []string {
+	var out []string
+	seen := make(map[string]bool)
+
+	for _, m := range rawIntRe.FindAllString(text, -1) {
+		bi := new(big.Int)
+		if _, ok := bi.SetString(m, 10); !ok {
+			continue
+		}
+		if bi.BitLen() < 32 { // 太短，不像 flag（<4 字节）
+			continue
+		}
+		be := bi.Bytes() // 大端：最高字节在前
+		le := make([]byte, len(be))
+		for i := range be { // 小端：最低字节（flag 首字符）在前
+			le[i] = be[len(be)-1-i]
+		}
+		for _, b := range [][]byte{be, le} {
+			if len(b) == 0 || !isPrintableASCII(b) {
+				continue
+			}
+			cand := "dice{" + string(b) + "}"
+			if !seen[cand] {
+				seen[cand] = true
+				out = append(out, cand)
+			}
+		}
+	}
+	return out
+}
+
+// isPrintableASCII 判断字节切片是否整体为可打印 ASCII（含空格/常见标点），
+// 用于过滤 int→bytes 还原出的乱码，只对"看起来像 flag 正文"的结果发射候选。
+func isPrintableASCII(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	for _, c := range b {
+		if c < 0x20 || c > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 func truncate(s string, max int) string {

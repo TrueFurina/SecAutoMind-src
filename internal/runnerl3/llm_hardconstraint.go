@@ -216,3 +216,80 @@ func toolCallRejectText(name string, err error) string {
 
 // ensureSchema 保证接口的编译期约束（防止将来新增工具忘记登记 schema）。
 var _ = func(tc schema.ToolCall) error { return validateToolCall(tc.Function.Name, nil) }
+
+// ── execute_python 的第二道围栏（2026-11-01）────────────────────────────────
+//
+// `python_session` 的路径围栏只覆盖会话执行；`execute_python` 是**另一个进程**
+// （cmd/runner 的 pySkillRunner 起子进程跑 skill 模块），完全不吃那条围栏。
+// 于是它构成两条绕过路径，且都不需要模型"攻破"任何东西，只是正常调用参数：
+//
+//  ① **代码注入**：skill_name 被 `fmt.Sprintf` 拼进 Python 源码的
+//     `import %s as s`（见 cmd/runner/pyskill_bridge.go execSkillSubprocess）。
+//     旧实现只校验"非空字符串"⇒ 名字里带换行即可注入任意 Python：
+//     `"os as s\nprint(open('/data/answers/…').read())\nsys.exit(0)\nimport os"`
+//     进程以 0 退出 ⇒ 输出被当作"skill 成功结果"原样返回给模型。
+//     性质与 `python_session` 读到真值文件完全同级（伪造分数通道），
+//     区别只是入口换了。
+//  ② **参数夹带路径**：RunSkillRich 把模型给的 params 原样并进 skill 入参，
+//     而 zip_crack / image_steg / pcap_analyze 这类 skill 就是按 `path` 读文件的
+//     ⇒ `params={"path":"/…/real_benchmark.json"}` 等于让 skill 替模型越权读文件。
+//
+// 对应两道：skill_name 必须是**合法 Python 标识符**（结构上不可能拼出代码）；
+// params 里出现的绝对路径过**同一条 pathFence**（与 python_session 同口径同白名单）。
+
+// pythonIdentRe 合法 Python 标识符（足以承载 skill 模块名：全是小写+下划线）。
+var pythonIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// validateSkillName 拒掉一切"能拼出代码"的技能名。
+//
+// 为什么用结构校验而不是白名单枚举：工具描述里给模型的名字（angr_decompile、
+// zip_crack、ctf_sage_t1_coppersmith…）与 skills/ 里的模块文件名并非一一对应，
+// 硬枚举白名单会误杀文档里承诺可用的别名（那是功能回归）。
+// 结构校验只砍掉"根本不是标识符"的输入，合法别名一律放行；拼错的模块名
+// 会在 import 阶段自然失败（ModuleNotFoundError → 工具错误步），信息也够模型自纠。
+func validateSkillName(name string) error {
+	if pythonIdentRe.MatchString(name) {
+		return nil
+	}
+	return fmt.Errorf("skill_name 必须是 Python 标识符（字母/数字/下划线，不以数字开头），拒绝 %q", truncate(name, 60))
+}
+
+// paramPathViolations 扫描模型透传的 params 里的越界绝对路径。
+//
+// 与 python_session 用**同一套** pathFence（同白名单：本题工作目录 + 附件收件箱 +
+// 只读系统路径；同 deny 表：答案目录/密钥/版本库），避免"两个入口两套口径"。
+func paramPathViolations(extra map[string]any) []string {
+	if len(extra) == 0 {
+		return nil
+	}
+	fence := newPathFence(fenceWorkdir(), attachmentInboxFenceRoot())
+	if fence == nil || !fence.enabled {
+		return nil
+	}
+	var sb strings.Builder
+	collectParamStrings(extra, &sb)
+	if sb.Len() == 0 {
+		return nil
+	}
+	return fence.violations(sb.String())
+}
+
+// collectParamStrings 递归收集 params 里的所有字符串值（含 key，防"路径藏在键里"）。
+// 每项单独一行：absPathRe 的左边界要求空白/引号/等号等，换行正好满足。
+func collectParamStrings(v any, sb *strings.Builder) {
+	switch t := v.(type) {
+	case string:
+		sb.WriteString(t)
+		sb.WriteString("\n")
+	case map[string]any:
+		for k, vv := range t {
+			sb.WriteString(k)
+			sb.WriteString("\n")
+			collectParamStrings(vv, sb)
+		}
+	case []any:
+		for _, vv := range t {
+			collectParamStrings(vv, sb)
+		}
+	}
+}

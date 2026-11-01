@@ -50,6 +50,7 @@ import (
 
 	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/runnerl3"
+	"secautomind-ai/internal/procenv"
 )
 
 type artifact struct {
@@ -132,11 +133,25 @@ func loadProblems(path string) (map[string]problem, error) {
 //   `open("VVMM.exe","rb")`。这是零改动的注入方式（不碰 runnerl3）。
 //
 // 返回 (是否有工件, 错误)。
+// prepareWorkdir 为每题准备**全新空目录**并 chdir 进去；返回是否有附件。
+//
+// ⚠️ 2026-11-01 修复（严重）：原实现对"无附件 / 无 attRoot"的题**直接 return，
+// 不做 chdir**。后果有两层，第二层是伪造分数线：
+//  1. 纯文本题在**上一题的工作目录**（或启动时的 cwd）里跑，跨题残留互相可见；
+//  2. 启动 cwd 通常是仓库根 ⇒ 路径围栏按 cwd 建白名单 ⇒ **整个仓库放行**。
+//     假端点实测：模型 `open('/home/user/SecAutoMind/data/answers/ycb2026_truth.json')`
+//     读到明文真值 —— 读了再提交，sha256 必然匹配，账本上就是一条"LLM 解出"。
+//
+// 所以：无论有没有附件，都先 RemoveAll + MkdirAll 一个**新目录**再 chdir。
+// 空目录是安全的默认值；有附件往里放。
 func prepareWorkdir(base string, p problem, attRoot string) (bool, error) {
-	if attRoot == "" || len(p.Artifacts) == 0 {
-		return false, nil
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		return false, err
 	}
-	srcDir := filepath.Join(attRoot, fmt.Sprint(p.Cid))
+	// 删之前先离开目标目录：cwd 落在被删目录里时，Windows 直接 unlinkat 失败，
+	// Linux 虽允许但会留下"cwd 已删除"的悬空状态。先退回 base 最稳。
+	_ = os.Chdir(base)
+
 	dir := filepath.Join(base, sanitizeID(p.ID))
 	if err := os.RemoveAll(dir); err != nil {
 		return false, err
@@ -144,27 +159,31 @@ func prepareWorkdir(base string, p problem, attRoot string) (bool, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return false, err
 	}
-	n := 0
-	for _, a := range p.Artifacts {
-		src := filepath.Join(srcDir, a.Path)
-		dst := filepath.Join(dir, filepath.Base(a.Path))
-		b, rerr := os.ReadFile(src)
-		if rerr != nil {
-			fmt.Fprintf(os.Stderr, "[WARN] %s: 工件缺失 %s → 该题退化为无附件\n", p.ID, src)
-			continue
+
+	hasAtt := false
+	if attRoot != "" && len(p.Artifacts) > 0 {
+		srcDir := filepath.Join(attRoot, fmt.Sprint(p.Cid))
+		n := 0
+		for _, a := range p.Artifacts {
+			src := filepath.Join(srcDir, a.Path)
+			dst := filepath.Join(dir, filepath.Base(a.Path))
+			b, rerr := os.ReadFile(src)
+			if rerr != nil {
+				fmt.Fprintf(os.Stderr, "[WARN] %s: 工件缺失 %s → 该题退化为无附件\n", p.ID, src)
+				continue
+			}
+			if werr := os.WriteFile(dst, b, 0o644); werr != nil {
+				return false, werr
+			}
+			n++
 		}
-		if werr := os.WriteFile(dst, b, 0o644); werr != nil {
-			return false, werr
-		}
-		n++
+		hasAtt = n > 0
 	}
-	if n == 0 {
-		return false, nil
-	}
-	// 题面也写进去，模型不需要，但便于事后人工复核工作目录内容。
+
+	// 题面也写进去：模型不需要（已在 prompt 里），但便于事后人工复核工作目录内容。
 	_ = os.WriteFile(filepath.Join(dir, "CHALLENGE.md"),
 		[]byte("# "+p.ID+"\n\n"+p.Description+"\n"), 0o644)
-	return true, os.Chdir(dir)
+	return hasAtt, os.Chdir(dir)
 }
 
 func sanitizeID(s string) string {
@@ -213,6 +232,12 @@ func main() {
 	if os.Getenv("RUNNER_LLM_FALLBACK") != "true" {
 		fmt.Fprintln(os.Stderr, "[ERR] 必须先 export RUNNER_LLM_FALLBACK=true")
 		os.Exit(2)
+	}
+	// 环境失敏（2026-11-01 事故）：同 uid 的 `ps eww` 能读本进程的
+	// /proc/<pid>/environ（初始快照，unsetenv 清不掉）⇒ 模型能拿到 API key。
+	// 子进程环境白名单只挡"继承"，这条要内核开关。见 internal/procenv。
+	if err := procenv.Harden(); err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] 进程环境加固失败（ps 仍可能读到 /proc/<pid>/environ）：%v\n", err)
 	}
 	probs, err := loadProblems(*realPath)
 	if err != nil {

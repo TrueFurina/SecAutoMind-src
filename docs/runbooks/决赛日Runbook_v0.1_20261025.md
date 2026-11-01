@@ -52,9 +52,9 @@ export RUNNER_LLM_API_KEY=sk-deepseek-xxx
 | `RUNNER_LLM_API_KEY` | | - | L3 必须（deepseek） |
 | `RUNNER_LLM_BASE_URL` | | `api.deepseek.com/v1` | |
 | `RUNNER_LLM_MODEL` | | `deepseek-reasoner` | |
-| `RUNNER_LLM_TIMEOUT_SEC` | | 60 | |
-| `RUNNER_LLM_MAX_TOOL_CALLS` | | 5 | |
-| `RUNNER_LLM_MAX_ROUNDS` | | 3 | |
+| `RUNNER_LLM_TIMEOUT_SEC` | | 300 | ⚠️ **整题**总预算（ctx 建在 round 循环外），非单次请求超时。旧值 60 实测把正在解题的题掐死在超时点→记 MISS（2026-10-29 服务器真机：YCB 两题精确停在 120s；放开到 600s 后 12 题自然结束 7~63s） |
+| `RUNNER_LLM_MAX_TOOL_CALLS` | | 12 | 代码默认（原表写 5 与代码不符）。长链条逆向题建议抬高到 24+，实测 `ycb12085_vvmm` 打满 24 次仍在推理中 |
+| `RUNNER_LLM_MAX_ROUNDS` | | 12 | 代码默认（原表写 3 与代码不符）。同上，硬题建议 24+ |
 | `CTF_POLL_INTERVAL` | | 30 | |
 | `CTF_SOLVE_TIMEOUT` | | 300 | 单题总超时 |
 | `CTF_MAX_CONCURRENCY` | | 2 | 并发题数 |
@@ -63,6 +63,18 @@ export RUNNER_LLM_API_KEY=sk-deepseek-xxx
 | `CTF_AUTO_FETCH_ATTACHMENT` | | false | 附件默认关（需显式开） |
 | `CTF_AUTO_FETCH_DETAIL` | | true | 题干详情默认开 |
 | `CTF_AUTO_RELEASE_ENV` | | true | 解出后自动回收靶机 |
+| `RUNNER_LLM_BEST_EFFORT` | | false | **保持 false**。开 true 会把模型中途吐出的候选 flag 当命中返回，直接把"解出数"注水（2026-11-01 定） |
+| `RUNNER_PY_FENCE` | | 开 | `=0` 关闭 `python_session` 路径围栏。**赛时不许关**（围栏挡的是伪造分数与横向越权，见 `docs/evidence/LLM解题链路_围栏与附件闭环_20261101.md`） |
+| `RUNNER_PY_FENCE_ALLOW_REPO` | | false | `=1` 允许把「代码仓库根」当题目工作区（默认拒）。只有当某题真的要读仓库内文件时才开，且应在日志里留痕 |
+
+**备用通道 JIYUAN_LVDONG（2026-11-01 实测可用，25 个模型）**：TokenHub 402 时切它。
+
+```bash
+# key 只走文件，别写进命令行（会进 ps / history）
+set -a; . /tmp/llm_jy.env; set +a     # 内含 RUNNER_LLM_BASE_URL + RUNNER_LLM_API_KEY
+export RUNNER_LLM_BASE_URL=https://tokenrhythm.studio/v1
+export RUNNER_LLM_MODEL=deepseek-v4-pro-0813   # 或 deepseek-v4-flash-0731
+```
 
 ### 三层求解链（Solver 闭包）
 ```

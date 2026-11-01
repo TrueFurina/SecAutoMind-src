@@ -1,6 +1,42 @@
 package runnerl3
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"testing"
+)
+
+// TestFlagRegexMatchesPythonCounterpart 防止 Go / Python 两侧的 flag 正则**各活各的**。
+//
+// 存在理由：2026-10-29 发现的性质事故 —— Python 测量侧早就放宽到通用前缀
+// （scripts/experiments/flag_util.py::FLAG_RE），Go 生产侧却还是 `strings.Index("flag{")`，
+// 两侧口径漂移无人察觉，导致模型已解出的 `picoCTF{...}` 在生产路径被判「无候选」。
+// **同一套口径写在两个语言里而没有互锁，迟早再漂一次**。本测试就是那把锁。
+//
+// fail-closed：对方文件找不到或抓不到正则 → 直接 Fatal，不许静默跳过
+// （"跳过"会被当成绿，这正是本项目门禁失效的通用形态）。
+func TestFlagRegexMatchesPythonCounterpart(t *testing.T) {
+	const rel = "scripts/experiments/flag_util.py"
+	raw, err := os.ReadFile(rel)
+	if err != nil {
+		// 测试 cwd 在包目录内，往上两级才是仓库根。
+		alt, aerr := os.ReadFile(filepath.Join("..", "..", rel))
+		if aerr != nil {
+			t.Fatalf("读不到 Python 侧 %s：%v（若该文件已移动，请在本测试里同步路径，不要改成 skip）", rel, err)
+		}
+		raw = alt
+	}
+	m := regexp.MustCompile(`(?m)^FLAG_RE\s*=\s*re\.compile\(r"(.+)"\)`).FindSubmatch(raw)
+	if m == nil {
+		t.Fatalf("在 %s 里抓不到 FLAG_RE 的正则字面量 —— 要么被改写了，要么本测试的抓取正则过期", rel)
+	}
+	pyPat := string(m[1])
+	if pyPat != flagCandRe.String() {
+		t.Fatalf("两侧 flag 正则已漂移：\n  Python %s: %s\n  Go 内部   : %s\n"+
+			"请二选一并同步另一侧，然后在两侧各自补测试用例", rel, pyPat, flagCandRe.String())
+	}
+}
 
 // TestDefaultWholeSolveTimeoutNotRegressed 锁死「整题预算默认 300s」这条口径。
 //

@@ -40,6 +40,7 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+	"secautomind-ai/internal/procenv"
 )
 
 // pySkillRunner 通过 subprocess 调 Python skill。
@@ -170,6 +171,8 @@ func (r *pySkillRunner) checkDep(ctx context.Context, name string) bool {
 	defer cancel()
 	cmd := exec.CommandContext(ctx2, r.pythonPath, "-c",
 		fmt.Sprintf("import importlib.util; print('OK' if importlib.util.find_spec(%q) else 'MISSING')", name))
+	// 依赖探测本身不含模型输入，但它同样只解释器需要的变量才合理（少一份泄面）。
+	cmd.Env = procenv.ChildEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
@@ -330,7 +333,22 @@ func (r *pySkillRunner) buildSkillParams(ctx context.Context, ch *ctfplatform.Ch
 // RunSkill 与 RunSkillRich 共用同一调用契约：skillsDir 进 sys.path → import 模块 →
 // run(json params) → print(json.dumps(result))；bytes 值递归 sanitize 成 base64 dict。
 // 输出为 stdout/stderr 合并文本，解析方式由调用方决定（flag 提取或原样交 LLM）。
+//
+// skillNameIdentRe 合法 Python 标识符 —— skill 名会被 fmt.Sprintf 拼进下面
+// execSkillSubprocess 的源码模板（`import %s as s`），非法字符即代码注入。
+var skillNameIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 func (r *pySkillRunner) execSkillSubprocess(ctx context.Context, skillName string, params map[string]interface{}) (string, bool) {
+	// 纵深防御（2026-11-01）：上层 internal/runnerl3 已经校验过 skill_name，
+	// 但这里是**真正拼源码**的地方 —— 谁调用都得在同一处被拦住（L2 编排、
+	// 未来新增调用方都不会漏）。非法名一律不执行，返回失败而非报错文本，
+	// 避免任何模型输入进入 Python 源码。
+	if !skillNameIdentRe.MatchString(skillName) {
+		r.logger.Warn("skill 名不是合法标识符（疑似代码注入），拒绝执行",
+			zap.String("skill", skillName))
+		return "", false
+	}
+
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		r.logger.Warn("skill 参数序列化失败", zap.String("skill", skillName), zap.Error(err))
@@ -369,6 +387,11 @@ except Exception as _e:
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx2, r.pythonPath, "-c", script, string(paramsJSON))
+	// 环境失敏（2026-11-01 09:04 真机事故）：skill 子进程是模型可驱动的
+	// （params 直接来自模型），继承整份进程环境等于把 API key / 平台令牌 /
+	// ssh-agent 一起交出去 —— 模型 `print(os.environ)` 就能全部收走。
+	// 见 internal/procenv 与 py_session.go 同一处修法。
+	cmd.Env = procenv.ChildEnv()
 	out, err := cmd.CombinedOutput()
 
 	if ctx2.Err() == context.DeadlineExceeded {

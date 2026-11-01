@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"secautomind-ai/internal/procenv"
 )
 
 // ── P1-2 交互会话状态（2026-10-26）──────────────────────────────────────────
@@ -130,6 +132,10 @@ func (m *pySessionMgr) startSession() (*pySession, error) {
 	}
 	cmd := exec.Command(m.pyPath, "-u", "-c", pyBootstrap, dir)
 	cmd.Dir = dir
+	// 环境失敏（2026-11-01 09:04 真机事故）：模型 `print(os.environ)` 把
+	// RUNNER_LLM_API_KEY 明文当工具输出收走了。路径围栏管不到这条出口，
+	// 必须单独把环境变量白名单化。见 internal/procenv。
+	cmd.Env = procenv.ChildEnv()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		_ = os.RemoveAll(dir)
@@ -184,6 +190,20 @@ func (m *pySessionMgr) Exec(ctx context.Context, code string, reset bool) (strin
 	}
 	sess := m.sess
 	m.mu.Unlock()
+
+	// 围栏：任何越出「会话目录 + 题目工作目录 + 只读系统路径」的绝对路径一律挡下。
+	// 背景见 internal/runnerl3/path_fence.go 文件头（2026-11-01 实锤：模型读到别人会话的
+	// 私钥和 /home/user）。被拒时把白名单讲清楚，模型可改用会话目录继续做。
+	//
+	// 第三个根是**附件收件箱**：read_attachment 下载的文件落在那儿，不放行的话
+	// 模型拿着工具刚给它的路径来读，会被自己的围栏挡住（附件题直接不可解）。
+	// 只放行这一个桶，不是整个 /tmp —— 理由见 attachment_inbox.go 文件头。
+	if fence := newPathFence(sess.dir, fenceWorkdir(), attachmentInboxFenceRoot()); fence != nil {
+		if bad := fence.violations(code); len(bad) > 0 {
+			return "", fmt.Errorf("拒绝执行：代码引用了本题工作区之外的路径 %v；"+
+				"允许范围是 %s（相对路径不受限，cwd 已在允许区内）", bad, fence.describeAllowed())
+		}
+	}
 
 	out, err := sess.exec(ctx, code, reset)
 	if err != nil {

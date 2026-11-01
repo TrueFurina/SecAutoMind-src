@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -43,6 +44,7 @@ import (
 
 	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/runnerl3"
+	"secautomind-ai/internal/procenv"
 )
 
 var (
@@ -82,6 +84,15 @@ func envBool(key string, fallback bool) bool {
 
 func main() {
 	flag.Parse()
+
+	// 环境失敏（2026-11-01 事故）：让同 uid 的其他进程读不到本进程的
+	// /proc/<pid>/environ —— 否则模型一句 `ps eww` 就能拿到 API key 与
+	// 平台令牌（子进程环境白名单挡不住这条路）。见 internal/procenv。
+	if err := procenv.Harden(); err != nil {
+		// 不是致命错误（Windows 上恒为 nil；Linux 上极少数容器会 EPERM），
+		// 但必须留下痕迹，否则"以为加固了其实没有"。
+		fmt.Fprintf(os.Stderr, "[WARN] 进程环境加固失败（ps 仍可能读到 /proc/<pid>/environ）：%v\n", err)
+	}
 
 	// ── dry-run 覆盖 env ────────────────────────────────────
 	if *flagDryRun {
