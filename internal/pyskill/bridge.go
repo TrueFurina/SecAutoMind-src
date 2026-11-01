@@ -57,7 +57,13 @@ import (
 type Runner struct {
 	pythonPath   string        // Python 解释器路径
 	skillsDir    string        // skills/ 目录绝对路径
-	timeout      time.Duration // 单次执行超时（L2 批量扫用，需短，否则 28 个 skill 串行会拖死）
+	timeout      time.Duration // 单次执行超时（RunSkill / 模型单点之外的通用兜底）
+	// l2Timeout 是 L2 批量扫里**单个 skill** 的上限，默认 120s 而非 30s。
+	// 存在原因（2026-11-01 真机冒烟）：crypto_knapsack_mhk 的 mhk2_decrypt 要跑
+	// 99.4s，30s 直接把 LLL 类掐死 —— 表现是 "L2-MISS"，实际是超时截断。
+	// LLL/格基/因式分解这类正是 crypto 的主力 skill，短超时等于把高价值能力关掉。
+	// 总耗时仍由 CTF_L2_BUDGET（整类预算）兜底，所以放宽单点上限不会让单题失控。
+	l2Timeout    time.Duration
 	richTimeout  time.Duration // 模型显式单点调用（RunSkillRich）的超时，需长
 	hasAngr      bool          // angr 是否已装（启动时检查一次）
 	hasPwnTools  bool          // pwntools 是否已装
@@ -95,6 +101,7 @@ func New(ctx context.Context, logger *zap.Logger) *Runner {
 	r := &Runner{
 		pythonPath:  pyPath,
 		timeout:     durFromEnv("CTF_SKILL_TIMEOUT", 30*time.Second),
+		l2Timeout:   durFromEnv("CTF_L2_SKILL_TIMEOUT", 120*time.Second),
 		richTimeout: durFromEnv("CTF_SKILL_TIMEOUT_RICH", 180*time.Second),
 		logger:      logger,
 		skillCatalog: map[string][]string{
@@ -550,10 +557,22 @@ func (r *Runner) tryCategory(ctx context.Context, category string, ch *ctfplatfo
 					zap.String("at", skillName))
 				return nil, false
 			}
+			// 单点上限 = min(剩余预算, l2Timeout)。默认 120s 而不是 30s：
+			// LLL 类 skill（mhk2_decrypt 实测 99.4s）在 30s 下必然被掐死，
+			// 日志只写 "L2-MISS"，看起来像"skill 解不了"，实则超时。
+			limit := r.l2Timeout
+			if limit <= 0 {
+				limit = r.timeout
+			}
+			if !deadline.IsZero() {
+				if rem := time.Until(deadline); rem < limit {
+					limit = rem
+				}
+			}
 			// 诊断可见性：L2 是"静默遍历"，出问题时（跑了但全 miss）
 			// 只能靠这条日志看出到底给 skill 喂了什么参数。
 			tTry := time.Now()
-			flags, ok := r.runSkillWith(ctx, skillName, ch, params)
+			flags, ok := r.runSkillWithLimit(ctx, skillName, ch, params, limit)
 			r.logger.Debug("L2 试 skill",
 				zap.String("skill", skillName),
 				zap.String("path", fmt.Sprint(params["path"])),
@@ -632,6 +651,13 @@ func (r *Runner) RunSkill(ctx context.Context, skillName string, ch *ctfplatform
 // runSkillWith 是 RunSkill 的实现体。extra 在**所有**推导之后覆盖：本地附件 path
 // 必须压过"从 description 正则猜出来的 text/key"，否则注入等于没注入。
 func (r *Runner) runSkillWith(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any) ([]string, bool) {
+	return r.runSkillWithLimit(ctx, skillName, ch, extra, r.timeout)
+}
+
+// runSkillWithLimit 与 runSkillWith 同体，但显式给单次子进程上限。
+// L2 需要它：整类预算是硬的，单点上限必须能在预算耗尽时被裁到剩余量，
+// 否则最后一个 skill 会带着 120s 上限冲出预算（预算形同虚设）。
+func (r *Runner) runSkillWithLimit(ctx context.Context, skillName string, ch *ctfplatform.Challenge, extra map[string]any, limit time.Duration) ([]string, bool) {
 	params := r.buildSkillParams(ctx, ch)
 
 	// 从 description 提取 text（密文）——匹配 "密文: xxx" / "cipher: xxx" / "text=xxx" 等常见格式
@@ -661,7 +687,7 @@ func (r *Runner) runSkillWith(ctx context.Context, skillName string, ch *ctfplat
 		params[k] = v
 	}
 
-	out, ok := r.execSkillSubprocess(ctx, skillName, params, r.timeout)
+	out, ok := r.execSkillSubprocess(ctx, skillName, params, limit)
 	if !ok {
 		// 静默失败是 L2 最难查的地方：skill 自己 catch 住异常返回
 		// {"ok": false, "error": ...} 时退出码是 0，外层看不到任何信号。
