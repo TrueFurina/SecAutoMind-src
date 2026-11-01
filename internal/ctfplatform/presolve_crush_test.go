@@ -4,7 +4,13 @@ package ctfplatform
 // 夹具全部合成（encode 逆操作），另含格式负例。
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -68,4 +74,36 @@ func TestCrushRejectsBadFormat(t *testing.T) {
 	if crushDecompress(dup) != nil {
 		t.Fatal("位置冲突未拒绝")
 	}
+}
+
+func TestCrushRealMessageCz(t *testing.T) {
+	p := filepath.Join("..", "..", "CTF-Agent_融合", "ctf_agent", "data", "questions_ext_cybench",
+		"_attachments", "rev", "hackthebox_cyber_apocalypse_2024_reversing_easy_crushing", "message.txt.cz")
+	data, err := os.ReadFile(p)
+	if err != nil {
+		t.Skip("真题 cz 本地缺失")
+	}
+	text := crushDecompress(data)
+	if text == nil {
+		t.Fatal("Go 版解压器对真实 cz 文件失败")
+	}
+	m := regexp.MustCompile(`HTB\{[^}]+\}`).Find(text)
+	if m == nil {
+		t.Fatalf("重建文本无 flag 形态: %q", string(text[:minI(80, len(text))]))
+	}
+	t.Logf("Go 版对真实 cz 重建成功（不回显明文），长度 %d", len(text))
+	// 锚对账：flag sha256 必须命中题面锚 2995d226（crushing）
+	m2 := regexp.MustCompile(`HTB\{[^}]+\}`).FindString(string(text))
+	sum := sha256.Sum256([]byte(m2))
+	got := hex.EncodeToString(sum[:])
+	if !strings.HasPrefix(got, "2995d226efa7d09f") {
+		t.Fatalf("锚不匹配: %s", got[:16])
+	}
+}
+
+func minI(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
