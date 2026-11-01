@@ -181,6 +181,10 @@ scans/
 # runner 编译产物不入库（源码 main.go/pyskill_bridge.go 正常跟踪）
 /cmd/runner/runner_ctf
 /cmd/runner/runner_linux_amd64
+# 交叉编译到服务器的 linux 二进制：落在仓库根，2026-11-01 实测曾以 46MB 未跟踪状态
+# 污染 `git status`（156 项 untracked 里最显眼的两个），且会把"哪些是源码改动"遮住。
+# 重建：GOOS=linux GOARCH=amd64 go build -o llmbench_linux ./cmd/llmbench
+/*_linux
 data/flag_truth.local.json
 # CTF 明文答案（红线：禁止入 PUBLIC 仓）
 data/answers/
