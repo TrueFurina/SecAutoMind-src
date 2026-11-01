@@ -74,8 +74,15 @@ func tryXORKnownPlaintext(text string) []string {
 func init() {
 	RegisterSolver(SolverEntry{
 		Name: "xor_known_plaintext", Category: CategoryCryptoS, Priority: 37,
-		Solver: func(_ context.Context, text string, _ map[string]string) []string {
-			return tryXORKnownPlaintext(text)
+		Solver: func(_ context.Context, text string, attachments map[string]string) []string {
+			// 2026-11-02 修：注册路径曾丢弃 attachments——生产 Presolve 把附件
+			// 拼进 text（wolvctf2024_xor 实证密文在附件里），注册表 sweep 同题
+			// MISS，shipped ⊄ registry 断言红。对齐双拼语义。
+			fullText := text
+			for _, v := range attachments {
+				fullText += "\n" + v
+			}
+			return tryXORKnownPlaintext(fullText)
 		},
 	})
 }

@@ -33,11 +33,26 @@ func tryTrithemius(text string) []string {
 	}
 	try(func(s string) string { return trithemiusShift(s, +1) })
 	try(func(s string) string { return trithemiusShift(s, -1) })
-	// HTB dynastic 型：明文是**裸文本**（无 brand{} 前缀），flag=HTB{明文}——
-	// scanFlags 对裸文本必空。补 HTB 包装尝试（题目指引原话：
-	// "wrap the decrypted text with the HTB flag format"）。
-	try(func(s string) string { return "HTB{" + trithemiusShift(s, -1) + "}" })
-	try(func(s string) string { return "HTB{" + trithemiusShift(s, +1) + "}" })
+	// HTB dynastic 型：明文是**裸文本**（无 brand{} 前缀），flag=HTB{明文}。
+	// 🔴 包装分支必须有**可读性门禁**——2026-11-02 回归实证：对 base64 密文
+	// （wolvctf2024_xor）做位置移位后硬包 HTB{} 产出垃圾候选，priority 22
+	// 抢过 xor_known_plaintext(37) 成为 best，sha256 不匹配致 parity 断言红。
+	// 门禁：解码后可打印比例 ≥0.9 且含至少 2 个下划线/单词结构（dynastic
+	// 明文是语义句子），否则不包装。
+	try(func(s string) string {
+		dec := trithemiusShift(s, -1)
+		if trithemiusPlausible(dec) {
+			return "HTB{" + dec + "}"
+		}
+		return ""
+	})
+	try(func(s string) string {
+		dec := trithemiusShift(s, +1)
+		if trithemiusPlausible(dec) {
+			return "HTB{" + dec + "}"
+		}
+		return ""
+	})
 	// 词级变体：每行/每词重置位置计数（部分实现按块重置）
 	if len(out) == 0 {
 		for _, sep := range []string{"\n", " "} {
@@ -54,6 +69,24 @@ func tryTrithemius(text string) []string {
 		}
 	}
 	return out
+}
+
+// trithemiusPlausible 裸明文包装前的可读性门禁：可打印率 ≥0.9 且含 ≥2 个
+// 下划线或空格（语义句子特征；base64 密文移位后是大写字母随机串，无下划线）。
+func trithemiusPlausible(s string) bool {
+	if len(s) < 12 {
+		return false
+	}
+	printable, us := 0, 0
+	for _, c := range s {
+		if (c >= 0x20 && c <= 0x7e) || c == 10 || c == 13 || c == 9 {
+			printable++
+		}
+		if c == '_' || c == ' ' {
+			us++
+		}
+	}
+	return float64(printable)/float64(len(s)) >= 0.9 && us >= 2
 }
 
 // trithemiusShift 位置移位：字母位 `c ± pos`。pos = **全串字符索引**（含非
