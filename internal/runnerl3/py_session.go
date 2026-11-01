@@ -15,6 +15,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"secautomind-ai/internal/airgap"
 	"secautomind-ai/internal/procenv"
 )
 
@@ -136,6 +137,10 @@ func (m *pySessionMgr) startSession() (*pySession, error) {
 	// RUNNER_LLM_API_KEY 明文当工具输出收走了。路径围栏管不到这条出口，
 	// 必须单独把环境变量白名单化。见 internal/procenv。
 	cmd.Env = procenv.ChildEnv()
+	// 断网闸（2026-11-01）：模型写的代码走的是自己的 requests/urllib，
+	// HTTP 层 airgap 拦不住（真机事故）。offline 评测必须在这里落 seccomp，
+	// 否则外部池 16/40 道题的答案可以一条 curl 抄到。CTF_AIRGAP=1 时生效。
+	airgap.Wrap(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		_ = os.RemoveAll(dir)

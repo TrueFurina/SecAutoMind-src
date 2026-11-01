@@ -43,6 +43,7 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+	"secautomind-ai/internal/airgap"
 	"secautomind-ai/internal/procenv"
 	"secautomind-ai/internal/pyskill"
 	"secautomind-ai/internal/runnerl3"
@@ -84,6 +85,11 @@ func envBool(key string, fallback bool) bool {
 }
 
 func main() {
+	// 断网闸入口（2026-11-01）：赛时**默认关**（要连靶机/远程服务），
+	// 只有离线评测才 CTF_AIRGAP=1。这两行必须在最前面：包装子进程要在解析
+	// flag 之前就把自己 exec 成目标命令，否则参数会被当成本进程的参数解析。
+	airgap.RegisterMain()
+	airgap.MaybeRunChild()
 	flag.Parse()
 
 	// 环境失敏（2026-11-01 事故）：让同 uid 的其他进程读不到本进程的

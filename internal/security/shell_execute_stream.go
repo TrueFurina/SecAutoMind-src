@@ -11,6 +11,8 @@ import (
 
 	"github.com/cloudwego/eino/adk/filesystem"
 	"github.com/cloudwego/eino/schema"
+
+	"secautomind-ai/internal/airgap"
 )
 
 // resolveStreamingShell 返回流式 shell 命令的可执行路径。
@@ -146,6 +148,9 @@ func streamShellForeground(ctx context.Context, command string, w *schema.Stream
 		return
 	}
 	cmd := exec.CommandContext(ctx, shellPath, "-c", command)
+	// 断网闸（2026-11-01）：shell 是模型最直接的外网出口（curl/wget/python -c）。
+	// 离线评测必须在这里落 seccomp，否则"解出"可能只是把答案下载下来了。
+	airgap.Wrap(cmd)
 	applyDefaultTerminalEnv(cmd)
 	attachNonInteractiveStdin(cmd)
 

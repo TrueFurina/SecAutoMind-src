@@ -49,6 +49,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"secautomind-ai/internal/airgap"
 	"secautomind-ai/internal/ctfplatform"
 	"secautomind-ai/internal/procenv"
 )
@@ -861,6 +862,9 @@ except Exception as _e:
 	// ssh-agent 一起交出去 —— 模型 `print(os.environ)` 就能全部收走。
 	// 见 internal/procenv 与 py_session.go 同一处修法。
 	cmd.Env = procenv.ChildEnv()
+	// 断网闸（2026-11-01）：skill 的 params 由模型/题目驱动，skill 内部若有联网动作
+	// （或模型借 skill 外壳调 urllib），HTTP 层 airgap 拦不住。CTF_AIRGAP=1 时生效。
+	airgap.Wrap(cmd)
 	out, err := cmd.CombinedOutput()
 
 	if ctx2.Err() == context.DeadlineExceeded {

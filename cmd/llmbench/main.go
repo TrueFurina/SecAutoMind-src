@@ -49,6 +49,7 @@ import (
 	"go.uber.org/zap"
 
 	"secautomind-ai/internal/ctfplatform"
+	"secautomind-ai/internal/airgap"
 	"secautomind-ai/internal/procenv"
 	"secautomind-ai/internal/pyskill"
 	"secautomind-ai/internal/runnerl3"
@@ -306,6 +307,14 @@ func tier(model string) string {
 }
 
 func main() {
+	// 断网闸（2026-11-01）：外部池 16/40 道题的官方仓库里 challenge/flag.txt 的
+	// sha256 就是真值 —— 子进程能联网，任何"解出"都可能是抄的。CTF_AIRGAP=1 时，
+	// 所有跑模型/题目代码的子进程先装 seccomp（拦 socket(AF_INET/AF_INET6)）。
+	// 这两行必须在最前面：包装子进程要在解析 flag 之前就把自己 exec 成目标命令。
+	airgap.RegisterMain()
+	airgap.MaybeRunChild()
+	fmt.Fprintf(os.Stderr, "[llmbench] airgap=%v（CTF_AIRGAP；离线评测应为 true）\n", airgap.Enabled())
+
 	realPath := flag.String("real", "data/ctf_benchmark/real_benchmark.json", "离线题集 json")
 	outPath := flag.String("out", "llmbench_report.json", "产出报告路径")
 	attRoot := flag.String("att-root", "", "工件根目录（如 /tmp/ycb_static_survey，其下按 cid 分目录）；为空=纯文本题集")
