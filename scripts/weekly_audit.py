@@ -213,9 +213,17 @@ MEMORY_DETAIL_MIN_LINES = 180    # 完整细节应≥此；当前 DETAIL=194，�
 
 
 def check_memory_integrity():
-    p = os.path.join(ROOT, MEMORY_FILE)
-    if not os.path.isfile(p):
-        return "FAIL", "MEMORY.md 缺失——先查回收站恢复（2026-10-25 事故先例），禁急重构"
+    # 2026-11-02 迁移事件：主家 .workbuddy-ai/ → .workbuddy/（新家含 11-01 条目）。
+    # 双路径感知：任一存在即用之；两家并存=WARN（迁移未收口）；均缺=FAIL。
+    p = None
+    for cand in (MEMORY_FILE, os.path.join(".workbuddy", "memory", "MEMORY.md")):
+        if os.path.isfile(os.path.join(ROOT, cand)):
+            p = cand
+            break
+    if p is None:
+        return "FAIL", "MEMORY.md 双路径均缺失——先查回收站恢复（2026-10-25 事故先例），禁急重构"
+    if p != MEMORY_FILE:
+        return "WARN", "MEMORY.md 已迁至 .workbuddy/memory/（内容更新版）——旧路径引用待各会话同步"
     text = open(p, encoding="utf-8", errors="ignore").read()
     # 注入预算：超 3000 字符会在注入时被截断，下一个 agent 只见前半段（2026-10-31 发现）
     if len(text) > MEMORY_INJECTION_BUDGET:
