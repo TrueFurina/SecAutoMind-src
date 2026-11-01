@@ -68,6 +68,21 @@ type problem struct {
 	// real_benchmark.json 这类纯文本题集没有，此时退化为 description-only。
 	Cid       any        `json:"cid"`
 	Artifacts []artifact `json:"artifacts"`
+	// 外部真题池（external_bench.json）用 attachment_files 字段名且按 id 子目录存放，
+	// 与 ycb2026 的 artifacts/cid 形态不同；这里单独接，再并入 Artifacts 统一处理。
+	AttachmentFiles []struct {
+		Name string `json:"name"`
+	} `json:"attachment_files"`
+}
+
+// mergeAttachmentFiles 把外部池的 attachment_files 并入统一 Artifacts 形态。
+func (p problem) withAttachments() problem {
+	if len(p.AttachmentFiles) > 0 && len(p.Artifacts) == 0 {
+		for _, af := range p.AttachmentFiles {
+			p.Artifacts = append(p.Artifacts, artifact{Path: af.Name})
+		}
+	}
+	return p
 }
 
 type row struct {
@@ -109,6 +124,9 @@ func loadProblems(path string) (map[string]problem, error) {
 		Problems map[string]problem `json:"problems"`
 	}
 	if err := json.Unmarshal(raw, &byID); err == nil && len(byID.Problems) > 0 {
+		for id, p := range byID.Problems {
+			byID.Problems[id] = p.withAttachments()
+		}
 		return byID.Problems, nil
 	}
 	var byList struct {
@@ -119,7 +137,7 @@ func loadProblems(path string) (map[string]problem, error) {
 	}
 	out := make(map[string]problem, len(byList.Problems))
 	for _, p := range byList.Problems {
-		out[p.ID] = p
+		out[p.ID] = p.withAttachments()
 	}
 	return out, nil
 }
@@ -160,11 +178,30 @@ func prepareWorkdir(base string, p problem, attRoot string) (bool, error) {
 		return false, err
 	}
 
+	// 外部真题池用 attachment_files（不是 artifacts）。**这里必须合并**：
+	// 2026-11-01 实锤 —— 字段加了但没并入 Artifacts，于是 len(p.Artifacts)==0
+	// 直接跳过整段，40/40 题的附件一个都没落盘，模型 working dir 里只有
+	// CHALLENGE.md，跑批退化成"看题面硬猜"（连 [WARN] 工件缺失 都不会打，
+	// 因为条件压根没进去）。声明了附件却没文件可用，属于静默能力阉割。
+	arts := p.Artifacts
+	if len(arts) == 0 && len(p.AttachmentFiles) > 0 {
+		for _, f := range p.AttachmentFiles {
+			if strings.TrimSpace(f.Name) != "" {
+				arts = append(arts, artifact{Path: f.Name})
+			}
+		}
+	}
+
 	hasAtt := false
-	if attRoot != "" && len(p.Artifacts) > 0 {
-		srcDir := filepath.Join(attRoot, fmt.Sprint(p.Cid))
+	if attRoot != "" && len(arts) > 0 {
+		// 外部真题池按 id 子目录存放（无 cid 字段）；ycb2026 等按 cid 子目录。
+		cidKey := p.Cid
+		if cidKey == nil || fmt.Sprint(cidKey) == "" || fmt.Sprint(cidKey) == "<nil>" {
+			cidKey = p.ID
+		}
+		srcDir := filepath.Join(attRoot, fmt.Sprint(cidKey))
 		n := 0
-		for _, a := range p.Artifacts {
+		for _, a := range arts {
 			src := filepath.Join(srcDir, a.Path)
 			dst := filepath.Join(dir, filepath.Base(a.Path))
 			b, rerr := os.ReadFile(src)
@@ -178,6 +215,11 @@ func prepareWorkdir(base string, p problem, attRoot string) (bool, error) {
 			n++
 		}
 		hasAtt = n > 0
+		if n == 0 {
+			// 声明有附件却一个都没落地 = 该题被静默阉割，必须喊出来。
+			fmt.Fprintf(os.Stderr, "[WARN] %s: 声明了 %d 个附件，一个都没复制成功（源目录 %s）→ 该题退化为无附件\n",
+				p.ID, len(arts), srcDir)
+		}
 	}
 
 	// 题面也写进去：模型不需要（已在 prompt 里），但便于事后人工复核工作目录内容。
@@ -228,6 +270,20 @@ func main() {
 	limit := flag.Int("limit", 0, "只跑前 N 题（按 id 排序），0=全跑")
 	idsRaw := flag.String("ids", "", "只跑这些 id（逗号分隔），优先于 --limit")
 	flag.Parse()
+
+	// 所有路径型参数**先转绝对路径**再进跑批：prepareWorkdir 会 chdir 进每题
+	// 工作目录，此后相对路径的基址就变了。2026-11-01 实锤 —— `--att-root
+	// data/questions_external_bench/_attachments` 明明存在，日志却打
+	// `工件缺失 .../chall.py`，因为解析时进程 cwd 已是 /tmp/lb_att/<id>。
+	// 同一坑对 --out / --work-base 同样成立（相对路径会把结果写到别处）。
+	for _, p := range []*string{attRoot, outPath, workBase} {
+		if p == nil || strings.TrimSpace(*p) == "" {
+			continue
+		}
+		if abs, aerr := filepath.Abs(*p); aerr == nil {
+			*p = abs
+		}
+	}
 
 	if os.Getenv("RUNNER_LLM_FALLBACK") != "true" {
 		fmt.Fprintln(os.Stderr, "[ERR] 必须先 export RUNNER_LLM_FALLBACK=true")
