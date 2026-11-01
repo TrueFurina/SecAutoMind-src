@@ -275,7 +275,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 	toolCallCount := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
 	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
-	// droppedCands 记录"模型产出过、但最终没进提交链"的候选数。
+	// droppedSet 记录"模型产出过、但最终没进提交链"的候选（去重）。
 	//
 	// 两类来源，都必须计：
 	//  ① 反幻觉闸门当场打回（终局文本里的候选）；
@@ -286,7 +286,17 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 	// 为什么要计：不计的话"模型编了个假答案"会被归因成"零候选"，而这两者
 	// 要修的东西正好相反（补幻觉抑制 vs 补能力）。本字段只做可见化，
 	// **不改变任何提交语义**。
-	droppedCands := 0
+	droppedSet := make(map[string]struct{})
+	// noteDropped 按**去重后**计数：同一个假 flag 往往在多个轮次反复出现
+	// （2026-11-01 实测 Primes 同一串出现 8 次）。按出现次数记会让人误以为
+	// "有 8 个不同候选"，所以这里与 bestCandSeen 同口径 —— 只认不同值。
+	noteDropped := func(vals []string) {
+		for _, v := range vals {
+			if v != "" {
+				droppedSet[v] = struct{}{}
+			}
+		}
+	}
 	var bestCandidates []string                // 跨轮累积的候选（含工具返回里的 flag，防御"模型算出但没停手"漏抓）
 	bestCandSeen := make(map[string]bool)
 	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
@@ -302,7 +312,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 		f.recordOutcome(err, len(flags), solveTally{
 			CandSeen:   candSeen,
 			Distinct:   len(bestCandidates),
-			Suppressed: droppedCands,
+			Suppressed: len(droppedSet),
 			ToolCalls:  toolCallCount,
 		})
 	}()
@@ -372,7 +382,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 
 				// 归因可见化：模型把 flag 塞进工具参数（"拿这个去验一下"）也算它
 				// 产出过候选，但这类候选从不参与判分。只记账，不影响任何行为。
-				droppedCands += len(extractFlagCandidates(tc.Function.Arguments))
+				noteDropped(extractFlagCandidates(tc.Function.Arguments))
 
 				// 可观测性（2026-10-29）：工具执行全过程必须留痕。
 				// 踩坑背景：练习场 smoke 报 0/5，日志里只有「nflags=0」，完全看不出
@@ -399,7 +409,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 			if c := strings.TrimSpace(resp.Content); c != "" {
 				// 归因可见化：带工具调用的轮次里，模型正文中的候选同样从不进
 				// 候选池（候选池只吃工具输出）。Primes 的假 flag 就出在这类地方。
-				droppedCands += len(extractFlagCandidates(c))
+				noteDropped(extractFlagCandidates(c))
 				f.logger.Debug("LLM 推理文本",
 					zap.String("challenge", ch.Title),
 					zap.Int("round", round),
@@ -494,7 +504,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 		if unbacked := extractUnbackedFileClaims(raw, facts); len(unbacked) > 0 {
 			// 归因记账：这批候选确实存在过、只是被判为不可信。不计入则会被
 			// 归因成"零候选"，把"该补幻觉抑制"误读成"该补能力"。
-			droppedCands += len(candidates)
+			noteDropped(candidates)
 			f.logger.Warn("P0-3 反幻觉：LLM 声称的文件无工具记录 → 打回（不提交）",
 				zap.String("challenge", ch.Title),
 				zap.Strings("unbacked_paths", unbacked),

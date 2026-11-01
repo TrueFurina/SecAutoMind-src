@@ -48,8 +48,14 @@ type SolveOutcome struct {
 
 // Reason* 是归因的唯一真值来源（勿在别处硬编码字符串）。
 const (
-	// ReasonSolved 交出了至少一个候选（判分仍看 sha256，这里只表示"有东西可判"）。
-	ReasonSolved = "solved"
+	// ReasonAnswered 交出了至少一个候选（判分仍看 sha256，这里只表示"有东西可判"）。
+	//
+	// ⚠️ 刻意不用 "solved" 这个词：Solve 层看不到 sha256，无法断言"解出"。
+	// 用 solved 会让报告出现「miss_reason: solved」这种自相矛盾的字段。
+	ReasonAnswered = "answered"
+	// ReasonAnswerWrong 是**报告层**对 ReasonAnswered 的细化：确认 sha256 未命中后，
+	// 含义才变成"答了但答错"。Solve 层不得使用（它没有判分能力）。
+	ReasonAnswerWrong = "answer_wrong"
 	// ReasonCandidatesSuppressed 模型产出过候选，但最终一个都没交出。
 	// 成因：反幻觉闸门打回 / 监督 ABANDON / 轮数耗尽且 best-effort 关闭。
 	// ⚠️ 这一类包含**幻觉 flag**（Primes 案），是最需要人看的一类。
@@ -104,7 +110,7 @@ func classifyMiss(err error, returned int, t solveTally) string {
 		return ReasonLLMUnavailable
 	}
 	if returned > 0 {
-		return ReasonSolved
+		return ReasonAnswered
 	}
 	if t.CandSeen > 0 || t.Distinct > 0 || t.Suppressed > 0 {
 		return ReasonCandidatesSuppressed

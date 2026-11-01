@@ -20,7 +20,7 @@ func TestClassifyMiss(t *testing.T) {
 		want     string
 	}{
 		{"通道全挂优先于一切", ErrLLMUnavailable, 0, solveTally{}, ReasonLLMUnavailable},
-		{"交出候选即 solved", nil, 2, solveTally{CandSeen: 3, Distinct: 2}, ReasonSolved},
+		{"交出候选即 solved", nil, 2, solveTally{CandSeen: 3, Distinct: 2}, ReasonAnswered},
 		{"给了候选但没交出=抑制(幻觉类)", nil, 0, solveTally{CandSeen: 5, Distinct: 3}, ReasonCandidatesSuppressed},
 		{"只出现过一次也算给过", nil, 0, solveTally{CandSeen: 1, Distinct: 1}, ReasonCandidatesSuppressed},
 		{"去重表非空也必须判抑制", nil, 0, solveTally{Distinct: 2}, ReasonCandidatesSuppressed},
@@ -111,6 +111,32 @@ func TestSolveRecordsSuppressedByHallucinationGate(t *testing.T) {
 	}
 }
 
+// dropped 必须按**去重后**计数：同一个假 flag 会在多轮反复出现。
+// 2026-11-01 实测 Primes 同一串出现 8 次；若按出现次数记，报告会写成
+// dropped=8，让人误以为有 8 个不同候选。
+func TestDroppedCountsDistinctNotOccurrences(t *testing.T) {
+	const fake = "CTF{fakefakefake1234}"
+	m := &fakeModel{resps: []*schema.Message{
+		toolResp("no_such_tool", `{"q":"`+fake+`"}`),
+		toolResp("no_such_tool", `{"q":"`+fake+`"}`),
+		textResp("我还是没想出来"),
+	}}
+	ff := newTestFallback(m, 3, 5)
+	if flags, err := ff.Solve(context.Background(), testChallenge()); err != nil || flags != nil {
+		t.Fatalf("不应产出候选: flags=%v err=%v", flags, err)
+	}
+	got := ff.LastOutcome()
+	if got.Reason != ReasonCandidatesSuppressed {
+		t.Fatalf("应记 %q，实际 %q", ReasonCandidatesSuppressed, got.Reason)
+	}
+	if got.Suppressed != 1 {
+		t.Fatalf("同一候选出现 2 次应记 1（去重），实际 %d", got.Suppressed)
+	}
+	if got.ToolCalls != 2 {
+		t.Fatalf("应有 2 次工具调用，实际 %d", got.ToolCalls)
+	}
+}
+
 // 走 defer 的真实退出路径③：正常给出答案 → solved，且 Returned 与之一致。
 func TestSolveRecordsSolvedOutcome(t *testing.T) {
 	ff := newTestFallback(&fakeModel{resps: []*schema.Message{textResp("最终 flag{abc123def456}")}}, 2, 2)
@@ -119,8 +145,8 @@ func TestSolveRecordsSolvedOutcome(t *testing.T) {
 		t.Fatalf("应产出候选: flags=%v err=%v", flags, err)
 	}
 	got := ff.LastOutcome()
-	if got.Reason != ReasonSolved || got.Returned != len(flags) {
+	if got.Reason != ReasonAnswered || got.Returned != len(flags) {
 		t.Fatalf("应记 %q 且 Returned=%d，实际 %q/%d",
-			ReasonSolved, len(flags), got.Reason, got.Returned)
+			ReasonAnswered, len(flags), got.Reason, got.Returned)
 	}
 }

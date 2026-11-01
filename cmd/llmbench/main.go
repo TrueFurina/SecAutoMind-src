@@ -551,7 +551,13 @@ func main() {
 		} else {
 			rep.Miss++
 			// 未命中才记归因：命中时它没有解释价值，只会让报告变吵。
+			// 报告层细化：Solve 看不到 sha256，只能说"交出了候选"；既然本题
+			// 已判未命中，含义就是"答了但答错"。不细化会写出
+			// miss_reason: answered/solved 这种自相矛盾的字段。
 			r.MissReason = outcome.Reason
+			if r.MissReason == runnerl3.ReasonAnswered {
+				r.MissReason = runnerl3.ReasonAnswerWrong
+			}
 			r.Dropped = outcome.Suppressed
 		}
 		rep.Results = append(rep.Results, r)
