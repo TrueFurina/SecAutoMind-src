@@ -127,3 +127,5 @@ SecAutoMind 仅用于已获得明确授权的安全测试与教学科研目的�
 - **更正覆盖原文。** 后续实测推翻早前数字时，README 逐字保留原文作为历史记录，但以更正声明为准。能力分母与可跑题池是两套集合，不可互除。
 
 这正是 xihu 一以贯之的诚实纪律：说明系统能做什么、不能做什么，给出证据，错了公开更正。
+
+> 🔍 这套「诚实即 CI 门禁」的方法论已提炼为独立可转发仓：[honesty-ci-patterns](https://github.com/TrueFurina/honesty-ci-patterns)（源自 marl-ecdsa 源码研究）。
