@@ -1213,19 +1213,21 @@ jobs:
           import json, sys
           d = json.load(open('denominator.json', encoding='utf-8'))
           s = d['summary']
-          # 下限锚点（2026-11-02 实测）：real=14 / external=39 / ext=34，合计 87
-          FLOOR = {'total': 166, 'runnable': 87}
+          # 🔴 锚点必须以**干净检出**为准，不能照抄本机（2026-11-02 实锤）：
+          #   本机 cwd=ctf_agent/ 时 real=14 / external=39 / ext=34 = 87；
+          #   而 CI 是干净检出，`data/` 被 .gitignore 整目录排除，只有 questions_real
+          #   的 93 个 JSON 入库、**附件 0 个入库**，另两池根本不存在。
+          #   实测干净检出：total=93、runnable=1。
+          #   若照抄 87，本 job 一上线就红——那不是"发现回归"，是"锚点抄错了"。
+          #   故锚点取检出态真值；本机可用 --no-cwd-probe 自查更高水位。
+          FLOOR = {'total': 93, 'runnable': 1}
           bad = []
           for k, floor in FLOOR.items():
               if s[k] < floor:
                   bad.append(f"{k}: {s[k]} < 下限 {floor}")
           # 逐池下限：任一池可跑数下降即红（防「总量持平但结构塌陷」）
           per_pool = {p['pool']: p['runnable'] for p in d['pools']}
-          POOL_FLOOR = {
-              'data/questions_real': 14,
-              'data/questions_external': 39,
-              'data/questions_ext': 34,
-          }
+          POOL_FLOOR = {'data/questions_real': 1}
           for pool, floor in POOL_FLOOR.items():
               got = per_pool.get(pool, 0)
               if got < floor:
@@ -1236,4 +1238,10 @@ jobs:
                   print("   -", b)
               sys.exit(1)
           print("✅ 分母未缩水：可跑", s['runnable'], "/", s['total'])
+          # 显式提醒检出态与本地态的差距：这不是告警，是为了让看日志的人立刻明白
+          # 「CI 上分母小」是 data/ 未入库导致，而不是题库退化。
+          if s['runnable'] < 50:
+              print(f"ℹ️  检出态分母偏小（{s['runnable']}）：data/ 被 .gitignore 排除，"
+                    "附件与另两个池均不入库。这是已知数据缺口，非本次回归。")
+              print("   本机自查（含未入库 data/）：python scripts/audit_attachment_availability.py")
           PY
