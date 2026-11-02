@@ -1186,3 +1186,54 @@ jobs:
           DESELECT=$(python -c "import json;d=json.load(open('scripts/_ci_pytest_deselect.json',encoding='utf-8'));print(' '.join('--deselect '+e['node'] for e in d['entries']))")
           PYTHONIOENCODING=utf-8 python -m pytest -q -m "not slow and not local" \
             --timeout=180 -p no:cacheprovider $DESELECT
+
+  # 附件可用性盘点门禁（2026-11-02 接入）。
+  # 守什么：题库池里「真正能跑」的题数（有输入 + 有真值），防止分母凭空缩水。
+  # 为什么要单独一个 job：这个数字是**所有对外能力口径的分母**，而它此前从未被
+  # 任何门禁看住——跑批报告写 `total=0 solved=0` 时，看起来像「跑了没解出」，
+  # 实际是「附件缺失、根本没跑」。这是本项目最贵的假动作。
+  # 本次接入即实测抓到一个口径缺陷：`attachment_health` 用相对 cwd 解析附件路径，
+  # 导致同一份题库的可跑题数随启动目录漂移 13 → 1 → 0（已修）。
+  # 本 job 断言的**下限**取当前实测值；分母只许涨不许跌（跌了必是数据或口径退化）。
+  ctf-agent-corpus-denominator-gate:
+    name: CTF-Agent corpus denominator (runnable questions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Runnable denominator must not shrink
+        working-directory: CTF-Agent_融合/ctf_agent
+        # 只跑 python 标准库 + 仓库内模块，无需装三方依赖（盘点本身零 LLM、零网络）。
+        # --no-cwd-probe：CI 只有一个 cwd，不需要探测；本机可用它排查漂移。
+        run: |
+          python scripts/audit_attachment_availability.py --json denominator.json --no-cwd-probe
+          python - <<'PY'
+          import json, sys
+          d = json.load(open('denominator.json', encoding='utf-8'))
+          s = d['summary']
+          # 下限锚点（2026-11-02 实测）：real=14 / external=39 / ext=34，合计 87
+          FLOOR = {'total': 166, 'runnable': 87}
+          bad = []
+          for k, floor in FLOOR.items():
+              if s[k] < floor:
+                  bad.append(f"{k}: {s[k]} < 下限 {floor}")
+          # 逐池下限：任一池可跑数下降即红（防「总量持平但结构塌陷」）
+          per_pool = {p['pool']: p['runnable'] for p in d['pools']}
+          POOL_FLOOR = {
+              'data/questions_real': 14,
+              'data/questions_external': 39,
+              'data/questions_ext': 34,
+          }
+          for pool, floor in POOL_FLOOR.items():
+              got = per_pool.get(pool, 0)
+              if got < floor:
+                  bad.append(f"{pool}: 可跑 {got} < 下限 {floor}")
+          if bad:
+              print("❌ 分母缩水：")
+              for b in bad:
+                  print("   -", b)
+              sys.exit(1)
+          print("✅ 分母未缩水：可跑", s['runnable'], "/", s['total'])
+          PY

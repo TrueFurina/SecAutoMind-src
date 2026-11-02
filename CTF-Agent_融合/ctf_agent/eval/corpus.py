@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
 
 from eval.cases import load_questions, _SHA256_RE
@@ -73,13 +74,52 @@ class CorpusEntry:
     superseded: tuple = field(default_factory=tuple)  # 被它淘汰的其他副本所在目录
 
 
+def _attachment_candidates(rel: str) -> "tuple":
+    """附件的候选绝对路径，按可信度排序（**与 cwd 无关**）。
+
+    题库 JSON 里的附件路径几乎都是**相对 ctf_agent/** 的，例如
+    ``data/questions_real/_attachments/crypto/xxx/flag.txt``。
+    旧实现只做 ``os.path.isfile(str(a))`` —— 即「相对当前工作目录」解析，
+    于是同一份题库的判定结果随启动目录变化。2026-11-02 实测（93 题主库）：
+
+        cwd = ctf_agent/      → questions_real 13/93 可跑
+        cwd = CTF-Agent_融合/ → 1/93
+        cwd = 仓库根          → 0/93
+
+    这是**口径缺陷而非数据缺陷**：看起来像「题库大面积缺附件」，
+    实际只是进程从哪个目录启动。对外分母会因此凭空缩水，且无人察觉。
+
+    候选序（对齐 ``scripts/benchmark_heldout.py::_resolve_attachment`` 的既有口径）：
+      ① 原样（绝对路径或恰好正确相对）
+      ② ctf_agent/ 根（生产跑批的 cwd，题目真正的基准）
+      ③ 仓库根（少数登记了从仓库根起的相对路径）
+    另兼容 ``../`` 开头的跨目录声明（如 ``../_archive/recovered_external/...``）——
+    第 ② 项 ``ctf_agent/../_archive/...`` 正好覆盖这种写法。
+    """
+    p = Path(rel)
+    if p.is_absolute():
+        return (p,)
+    root = Path(__file__).resolve().parent.parent      # ctf_agent/
+    return (p, root / rel, root.parent / rel)
+
+
 def attachment_health(q: Any) -> AttachmentHealth:
-    """统计题目附件的磁盘可用情况（唯一的真理口径）。"""
+    """统计题目附件的磁盘可用情况（唯一的真理口径）。
+
+    🔴 2026-11-02 修：原实现只按当前 cwd 解析相对路径，导致同一份题库的
+    「可测量题数」随启动目录漂移（13 → 1 → 0）。改为多候选解析后，
+    三个 cwd 结果一致，且主库可跑题数 13 → 14（找回 1 道被误判为缺附件的题）。
+    """
     declared = list(getattr(q, "attachments", None) or [])
     existing, missing = [], []
     for a in declared:
         # pathlib.Path / str 一律转 str 后判定，覆盖两种形态
-        if os.path.isfile(str(a)):
+        cands = _attachment_candidates(str(a))
+        try:
+            hit = next((c for c in cands if c.is_file()), None)
+        except OSError:
+            hit = None
+        if hit is not None:
             existing.append(a)
         else:
             missing.append(str(a))

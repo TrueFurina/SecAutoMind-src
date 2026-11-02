@@ -247,5 +247,70 @@ class TestRealCorpusInvariants(unittest.TestCase):
                                  "%s 附件已失效，须判 no_input" % qid)
 
 
+class TestAttachmentResolutionIsCwdIndependent(unittest.TestCase):
+    """附件解析必须与 cwd 无关（2026-11-02 新增）。
+
+    背景（实测事故）：`attachment_health` 原用 `os.path.isfile(str(a))`，
+    即「相对当前工作目录」解析。而题库 JSON 里的附件路径几乎全是
+    **相对 ctf_agent/** 的，于是同一份题库的可测量题数随启动目录漂移：
+
+        cwd = ctf_agent/      → questions_real 13/93 可跑
+        cwd = CTF-Agent_融合/ → 1/93
+        cwd = 仓库根          → 0/93
+
+    危害：对外分母凭空缩水且无人察觉——看起来像「题库大面积缺附件」，
+    实际只是进程从哪个目录启动。已在 `_attachment_candidates` 修为多候选解析。
+
+    本用例锁住这条不变量：**同一道题，从三个不同 cwd 判定必须一致**。
+    变异验证：把 `_attachment_candidates` 改回 `(p,)`（只认原样），本用例必红。
+    """
+
+    REL = "data/questions_real/_attachments/crypto/_cwd_probe_fixture.txt"
+
+    def setUp(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.ctf_root = root
+        self.marker = os.path.join(root, self.REL)
+        os.makedirs(os.path.dirname(self.marker), exist_ok=True)
+        with open(self.marker, "w", encoding="utf-8") as f:
+            f.write("cwd-independence fixture\n")
+
+    def tearDown(self):
+        try:
+            os.remove(self.marker)
+        except OSError:
+            pass
+
+    def test_same_verdict_from_three_cwds(self):
+        q = _Q(attachments=[self.REL], flag="flag{x}")   # 相对 ctf_agent/ 的写法
+        old = os.getcwd()
+        verdicts = {}
+        try:
+            for label, d in (
+                ("ctf_agent", self.ctf_root),
+                ("fusion_parent", os.path.dirname(self.ctf_root)),
+                ("repo_root", os.path.dirname(os.path.dirname(self.ctf_root))),
+            ):
+                os.chdir(d)
+                verdicts[label] = attachment_health(q).existing
+        finally:
+            os.chdir(old)
+
+        self.assertEqual(
+            set(verdicts.values()), {1},
+            "附件判定随 cwd 漂移了：%r —— 这会让对外分母凭空缩水" % verdicts)
+
+    def test_absolute_path_still_works(self):
+        """绝对路径不应被多候选逻辑破坏。"""
+        q = _Q(attachments=[self.marker], flag="flag{x}")
+        self.assertEqual(attachment_health(q).existing, 1)
+
+    def test_genuinely_missing_still_missing(self):
+        """真缺的附件不能被多候选逻辑误判为存在（防「放宽成恒真」）。"""
+        q = _Q(attachments=["data/questions_real/_attachments/__nope__/x.txt"],
+               flag="flag{x}")
+        self.assertEqual(attachment_health(q).existing, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
