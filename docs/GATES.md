@@ -6,7 +6,7 @@
 > 每行的"守什么"取自该 job 上方的注释首句；**没有注释的 job 会显示为待补**——
 > 那本身就是缺陷：一个说不出自己守什么的门禁，无法判断它是否失效。
 
-共 **35** 个 job（其中 **30** 个带自测/变异验证）。
+共 **36** 个 job（其中 **30** 个带自测/变异验证）。
 
 | job | 守什么 | 步骤数 | 变异/自测 |
 |---|---|---|---|
@@ -41,8 +41,9 @@
 | `benchmark-parity-gate` | 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」 这句**写在对外汇总里的宣称**真正接上线 | 2 | 有 |
 | `suite-parity-gate` | 跨集 parity 门禁（台账驱动）—— 把【2】～【22】的「Python == Go」宣称按台账逐集接线 | 4 | 有 |
 | `external-bench` | 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口 | 3 | 有 |
-| `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 9 | 有 |
+| `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 8 | 有 |
 | `answer-leak-gate` | 题库答案泄漏门禁（2026-10-28） 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案； 门禁本体早已写好（scripts/check_ben… | 2 | 有 |
+| `arena-regression-gate` | （无注释——需补：这个门禁守什么） | 1 | **无** |
 | `artifact-inject-gate` | 附件注入守卫：工件白名单模式只放开「相对文件名的 open()」，越界读取(绝对路径/..穿越/答案路径/列目录)必须被拦 | 1 | **无** |
 | `ctf-agent-pytest-gate` | CTF-Agent 全量 pytest 门禁（2026-10-31 接入） | 6 | 有 |
 

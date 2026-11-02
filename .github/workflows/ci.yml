@@ -1166,13 +1166,23 @@ jobs:
           "
       # [2026-11-02] 原 deselect 记账表三件套
       #   （check_ci_pytest_deselect_test.py / check_ci_pytest_deselect.py /
-      #    _ci_pytest_deselect.json）从未入库、全仓历史亦无，clean checkout 必红
-      #   （详见 docs/specs/CI门禁红清单与清理路线_20261102.md 簇 A）。原件由原作者恢复前，
-      #   本 job 改为**真实可用的降级**：跑 pytest --collect-only 校验 2212 用例的集合完整性
-      #   （import 解析 / 标记表达式合法 / 无 ModuleNotFoundError）—— 这是真门禁而非假绿：
-      #   本就抓得出 2026-10-31 那 6 个缺失依赖。记账表恢复后，换回 --deselect 全量实跑。
-      - name: Pytest collection integrity (interim; ledger files lost, full run restored later)
+      #    _ci_pytest_deselect.json）当时 8f2b145 判定为"从未入库、clean checkout 必红"，
+      #   本 job 一度降级为 --collect-only 以解锁流水线（该判断在当时是正确的：
+      #   三件套确实只在工作树里，没被 git 跟踪）。
+      #
+      # [2026-11-02 原作者回填] 三件套现已入库（本提交），故**恢复全量实跑**：
+      #   降级版只能验"2212 个用例能被收集"（import 解析 / 标记合法 / 依赖齐全），
+      #   验不到任何一条断言是否成立；而全量实跑本轮在真实克隆上测得
+      #   2037 passed / 0 failed，才是真正守着行为的门禁。
+      #   如三件套再度丢失，本 job 会以「找不到 ledger」明确红，而不是静默退化成 collect-only。
+      - name: Deselect ledger self-test (inflation / dangling / no-reason / marker drift)
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_pytest_deselect_test.py"
+      - name: Deselect ledger is accounted for
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_pytest_deselect.py"
+      - name: Full pytest under the documented gate expression
         working-directory: CTF-Agent_融合/ctf_agent
+        # 用 deselect 记账表驱动 --deselect，避免在 workflow 里手写 19 条路径（两处必漂）。
         run: |
-          PYTHONIOENCODING=utf-8 python -m pytest --collect-only -q -m "not slow and not local" \
-            --timeout=180 -p no:cacheprovider
+          DESELECT=$(python -c "import json;d=json.load(open('scripts/_ci_pytest_deselect.json',encoding='utf-8'));print(' '.join('--deselect '+e['node'] for e in d['entries']))")
+          PYTHONIOENCODING=utf-8 python -m pytest -q -m "not slow and not local" \
+            --timeout=180 -p no:cacheprovider $DESELECT
