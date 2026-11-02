@@ -114,6 +114,16 @@ SecAutoMind/
 
 Source-available, non-open-source. See `installer/LICENSE.txt` for terms.
 
+## Honest Capability Boundary
+
+Carried over from the frozen [xihu-sword-ctf-agent](https://github.com/TrueFurina/xihu-sword-ctf-agent) project, where this honesty policy was first written:
+
+- **No claim of autonomous LLM reasoning.** On the live competition platform the verified count of **autonomous LLM-solved challenges is 0**. The real, reproducible capability is a **deterministic static analyzer (presolve)** covering common CTF categories — the LLM is a fallback, gated by a whitelist, token budget, and wall-clock stop-loss.
+- **Every public number is registered with its provenance.** Offline figures in `docs/` refer to **deterministic analysis of historical challenge corpora**, never to any live contest score. Each figure is backed by an evidence file (e.g. [`presolve_baseline_41_20261008.md`](docs/2027决赛作战规划/evidence/presolve_baseline_41_20261008.md), [`presolve_9of17_pollution_20261008.md`](docs/2027决赛作战规划/evidence/presolve_9of17_pollution_20261008.md)).
+- **Corrections supersede originals.** When a later run overturns an earlier figure, the README keeps the original as a historical record but the correction notice is what governs. Never divide one denominator by another (capability pool vs. runnable pool are separate sets).
+
+This is the same honesty discipline that governed xihu: state what the system can and cannot do, cite the evidence, and correct in public when wrong.
+
 ## Disclaimer
 
 SecAutoMind is intended for use only on systems you own or have explicit written authorization to test. The maintainers disclaim responsibility for any misuse. Please read `SECURITY.md` before operating this tool in any shared or production environment.
