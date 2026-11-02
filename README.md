@@ -124,6 +124,8 @@ Carried over from the frozen [xihu-sword-ctf-agent](https://github.com/TrueFurin
 
 This is the same honesty discipline that governed xihu: state what the system can and cannot do, cite the evidence, and correct in public when wrong.
 
+> 🔍 The "honesty as a CI gate" methodology has been distilled into a standalone shareable repo: [honesty-ci-patterns](https://github.com/TrueFurina/honesty-ci-patterns) (extracted from the marl-ecdsa source research).
+
 ## Disclaimer
 
 SecAutoMind is intended for use only on systems you own or have explicit written authorization to test. The maintainers disclaim responsibility for any misuse. Please read `SECURITY.md` before operating this tool in any shared or production environment.
