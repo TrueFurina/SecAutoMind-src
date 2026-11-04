@@ -5,31 +5,6 @@
   "rationale": "CTF-Agent_融合/ 是迁移副本：README.md 被改写为 33 行迁移说明、data/ 整目录被 .gitignore 排除。下列用例原样随代码迁入，但前提在副本里不存在，因此必然红。它们不是被'放宽'，而是被记账；根因修复（补齐 README 章节 / 把 data 纳入跟踪）后应逐条删除本表条目。",
   "entries": [
     {
-      "node": "tests/test_crossfilter_patch_order.py::test_patch_covers_all_three_files",
-      "root_cause": "data_dir_gitignored",
-      "reason": "同 test_patch_file_exists：读 docker/vendor/bkcrack-1.6.1-crossfilter.patch，该文件未入库"
-    },
-    {
-      "node": "tests/test_crossfilter_patch_order.py::test_patch_file_exists",
-      "root_cause": "data_dir_gitignored",
-      "reason": "docker/vendor/ 整个目录未入库（git ls-files 零命中），patch 文件在干净检出中不存在"
-    },
-    {
-      "node": "tests/test_crossfilter_patch_order.py::test_real_patch_attack_size_check_disabled",
-      "root_cause": "data_dir_gitignored",
-      "reason": "同上，断言真实 patch 里 ATTACK_SIZE 检查被 #if 0 停用；patch 未入库"
-    },
-    {
-      "node": "tests/test_crossfilter_patch_order.py::test_real_patch_check_after_rewind",
-      "root_cause": "data_dir_gitignored",
-      "reason": "同上，断言真实 patch 的 hunk 次序；patch 未入库故无从校验"
-    },
-    {
-      "node": "tests/test_crossfilter_patch_order.py::test_real_patch_keeps_crossfilter_echo",
-      "root_cause": "data_dir_gitignored",
-      "reason": "同上，断言真实 patch 保留 cross-filter 回显；patch 未入库"
-    },
-    {
       "node": "tests/test_doc_consistency.py::test_breakice_qualifier_not_gate_enforced",
       "root_cause": "readme_not_migrated",
       "reason": "同上：读同一份 README.md 的同一段落，段落不存在故 assert 失败；属于同一根因的第二条"
@@ -38,16 +13,6 @@
       "node": "tests/test_doc_consistency.py::test_live_repo_breakice_denominator_qualifier_present",
       "root_cause": "readme_not_migrated",
       "reason": "断言 CTF-Agent_融合/README.md 的 break-ice 段落含 Denominator caveat 限定语；该 README 在 8bb6e71 被改写为 33 行迁移说明，段落未迁入"
-    },
-    {
-      "node": "tests/test_external_benchmark_and_health.py::TestBenchmarkManifestRules::test_benchmark_attachments_exist",
-      "root_cause": "data_dir_gitignored",
-      "reason": "遍历 benchmarks/external_unseen 清单的载荷路径；data/ 被 ctf_agent/.gitignore:113 的 /data/* 排除，ext_gctf2025_numerology 的 __pycache__/*.pyc 载荷在任何干净检出中都不存在"
-    },
-    {
-      "node": "tests/test_external_benchmark_and_health.py::TestBenchmarkManifestRules::test_check_passes_on_current_disk",
-      "root_cause": "data_dir_gitignored",
-      "reason": "调用 bench.check() 做同一批载荷存在性校验，与上一条同源；data/ 不入库故必然报载荷缺失"
     },
     {
       "node": "tests/test_kpi_canonical.py::test_readme_counts_green_on_live_repo",
@@ -83,11 +48,6 @@
       "node": "tests/test_run_all_gates.py::TestExitCodes::test_passes_now",
       "root_cause": "aggregate_of_above",
       "reason": "总闸要求上述多道门禁全绿；它是上面各条红的聚合表现，根因全部修复后本条自然转绿，届时一并删除"
-    },
-    {
-      "node": "tests/test_skill_coverage.py::test_coverage_gap_is_known_and_documented",
-      "root_cause": "readme_not_migrated",
-      "reason": "要求 skills 覆盖缺口在 README 中被记录成文；迁移说明版 README 无该章节"
     },
     {
       "node": "tests/test_structure_guard.py::TestStructureGuardPaths::test_listing_is_repo_root_relative_from_subdir",

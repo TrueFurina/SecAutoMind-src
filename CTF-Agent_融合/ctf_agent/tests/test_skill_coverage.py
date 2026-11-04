@@ -145,6 +145,22 @@ def test_coverage_gap_is_known_and_documented():
         "skills.zip_filename_chain_decode",
         # ── zip 伪加密：与 misc_zip_fake_encryption 同源（presolve 已接 misc_ 版） ──
         "skills.zip_fake_encryption",
+        # ── Sage 模板适配层（2026-11-04 补登记）──────────────────────────
+        # 这 6 个是 scripts/ctf_sage/t1..t6 的**适配层**（skill 只做 params→模板映射，
+        # 不含攻击逻辑）。设计上就**不该由 presolve 静态接线**——它们要求
+        # modulus/poly/X/beta 等参数，必须由 LLM 从题干提取后调 execute_python 传入。
+        # 之前未登记，导致本测试报"未预期缺口"；按测试设计意图（接线 or 显式说明）
+        # 这里显式说明它们属于 solver 阶段。
+        "skills.ctf_sage_t1_coppersmith",
+        "skills.ctf_sage_t2_ecdsa_hnp",
+        "skills.ctf_sage_t3_truncated_lfsr",
+        "skills.ctf_sage_t4_boneh_durfee",
+        "skills.ctf_sage_t5_dlp_bsgs_ph",
+        "skills.ctf_sage_t6_hastad_broadcast",
+        # ── source_audit_patterns（2026-11-04 补登记）───────────────────
+        # 源码审计模式扫描，需要 LLM 判定"哪段像漏洞"；其 --selftest 已接 CI
+        # （skill-exec-gate），但生产链路由 solver 阶段调用，非 presolve 静态嗅探。
+        "skills.source_audit_patterns",
     }
     unexpected = [g for g in gap if g not in KNOWN_GAP]
     assert not unexpected, (

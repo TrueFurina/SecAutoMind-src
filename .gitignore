@@ -73,6 +73,13 @@ __pycache__/
 vendor/
 !internal/app/web/static/vendor/
 !internal/app/web/static/vendor/*
+# 2026-11-04：上面的 Go `vendor/` 规则误伤了 CTF-Agent 的 docker/vendor/。
+# 那里放的是 **bkcrack 源码补丁**（bkcrack-1.6.1-crossfilter.patch 等，共 224K），
+# 是 `test_crossfilter_patch_order` 5 条用例的被测对象，也是 zip 明文攻击链的原料。
+# 被忽略的后果：干净检出里这 5 条必然红，只能进 deselect 豁免表——
+# 而它们本该是可验的真门禁。只放行这一个路径，不解除全局 vendor/ 规则。
+!CTF-Agent_融合/ctf_agent/docker/vendor/
+!CTF-Agent_融合/ctf_agent/docker/vendor/*
 
 # Node / browser extension
 node_modules/
