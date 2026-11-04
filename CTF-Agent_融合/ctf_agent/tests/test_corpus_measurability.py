@@ -311,6 +311,25 @@ class TestAttachmentResolutionIsCwdIndependent(unittest.TestCase):
                flag="flag{x}")
         self.assertEqual(attachment_health(q).existing, 0)
 
+    def test_windows_backslash_path_resolves_on_posix(self):
+        """Windows 反斜杠写法在 POSIX 上必须能解析（2026-11-02 服务器实锤）。
+
+        事故现场：题库里大量附件写成
+            data\\questions_external\\crypto\\xxx\\_attachments\\chall.py
+        Linux 上 `Path(...)` **不把 \\ 当分隔符**，整串被当成一个文件名 →
+        永远 is_file()=False。表现：同一份题库，本机 questions_external 39/39，
+        服务器 0/39 —— 看起来像数据缺失，实际是路径写法不可移植。
+        已由 `_normalize_attachment_path` 在 POSIX 上把 \\ 归一化为 /。
+
+        变异验证：去掉归一化 → 该用例在 Linux 上必红（Windows 上因 \\ 本就是
+        合法分隔符而仍然通过，所以本用例的价值在 CI/Linux 侧）。
+        """
+        win_rel = self.REL.replace("/", "\\")
+        q = _Q(attachments=[win_rel], flag="flag{x}")
+        self.assertEqual(
+            attachment_health(q).existing, 1,
+            "Windows 反斜杠路径在 POSIX 上未被解析：%r" % win_rel)
+
 
 if __name__ == "__main__":
     unittest.main()

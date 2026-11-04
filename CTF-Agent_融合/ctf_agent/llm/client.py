@@ -829,10 +829,18 @@ def _resolve_settings(model: Optional[str], provider: Optional[str] = None) -> d
     # 只有未显式指定 provider（走环境变量单一 provider）时才允许全局 base_url 覆盖。
     if provider:
         base_url = default_base_url
-        # 仅当全局 base_url 与 provider 默认端点一致（罕见同端点场景）时保留显式值
-        env_base = os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip()
-        if env_base and env_base.rstrip("/") == default_base_url.rstrip("/"):
-            base_url = env_base
+        # 2026-11-02：provider **专属** base 变量优先（如 STEP_BASE_URL）。
+        # 必须在 default_base_url 之后、全局 env_base 之前——专属变量是用户按厂商
+        # 文档显式设的，语义上比"provider 默认端点"更具体，也比全局变量更贴切
+        # （全局 CTF_AGENT_LLM_BASE_URL 在多 provider 场景会串味，见下方事故注释）。
+        _own_base = AppConfig._provider_base_env(provider)
+        if _own_base:
+            base_url = _own_base
+        else:
+            # 仅当全局 base_url 与 provider 默认端点一致（罕见同端点场景）时保留显式值
+            env_base = os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip()
+            if env_base and env_base.rstrip("/") == default_base_url.rstrip("/"):
+                base_url = env_base
     else:
         base_url = (
             os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip()

@@ -96,11 +96,31 @@ def _attachment_candidates(rel: str) -> "tuple":
     另兼容 ``../`` 开头的跨目录声明（如 ``../_archive/recovered_external/...``）——
     第 ② 项 ``ctf_agent/../_archive/...`` 正好覆盖这种写法。
     """
-    p = Path(rel)
+    p = Path(_normalize_attachment_path(rel))
     if p.is_absolute():
         return (p,)
     root = Path(__file__).resolve().parent.parent      # ctf_agent/
-    return (p, root / rel, root.parent / rel)
+    # 候选用**归一化后的相对路径**再做拼接，避免 root / "a\b" 在 POSIX 上仍是单段
+    norm = _normalize_attachment_path(rel)
+    return (p, root / norm, root.parent / norm)
+
+
+def _normalize_attachment_path(rel: str) -> str:
+    """把附件路径归一化成当前平台的写法（2026-11-02）。
+
+    🔴 实测事故：题库里有大量 **Windows 反斜杠**路径，
+        ``data\\questions_external\\crypto\\xxx\\_attachments\\chall.py``
+    在 Linux 上 ``Path(...)`` **不把反斜杠当分隔符**，整串被当成一个文件名 →
+    永远 is_file()=False。表现为「服务器上 questions_external 可跑 0/39，
+    而本机 39/39」——看起来像数据缺失，实际是路径写法不可移植。
+
+    处置：凡出现 ``\\`` 且当前平台不是 Windows，就把反斜杠换成平台分隔符；
+    同时把空段/首尾多余的 ``/`` 规整掉。只在非 Windows 上做替换，
+    Windows 上反斜杠本来就是合法分隔符，保持原样避免误伤含反斜杠的文件名。
+    """
+    if os.sep != "\\" and "\\" in rel:
+        rel = rel.replace("\\", "/")
+    return rel
 
 
 def attachment_health(q: Any) -> AttachmentHealth:

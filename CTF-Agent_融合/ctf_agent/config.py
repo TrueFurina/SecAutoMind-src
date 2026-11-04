@@ -182,6 +182,37 @@ class AppConfig:
     templates_dir: str = "data/templates"
     results_dir: str = "data/results"
 
+    @staticmethod
+    def _provider_base_env(provider: str) -> str:
+        """按 provider 读取**专属** base_url 环境变量（2026-11-02）。
+
+        为什么需要：`_resolve_provider_defaults` 里的端点是硬编码的，而不少厂商
+        会同时提供「官方变量名 + 自定义网关」两种用法——如 StepFun 的
+        ``STEP_BASE_URL`` / ``STEP_API_KEY``。旧逻辑只认 ``CTF_AGENT_LLM_BASE_URL``，
+        于是「用户按厂商文档设了 STEP_BASE_URL」这条路径根本不生效，
+        表现为「key 明明设了却打错端点」——最难查的一类故障。
+
+        约定（与官方 SDK 的环境变量名保持一致，便于直接复用厂商文档）：
+          provider=stepfun → STEP_BASE_URL
+        其余 provider 没有专属变量，返回空串（走既有 CTF_AGENT_LLM_BASE_URL 逻辑）。
+
+        返回的 base 统一规范化为**完整 chat/completions 端点**：
+        厂商变量通常只给到 ``https://api.stepfun.com/v1``，而本项目内部用的是完整
+        ``.../chat/completions``（见 _resolve_provider_defaults）。两种写法都接受，
+        避免用户多写/少写一段后缀就 404。
+        """
+        _MAP = {"stepfun": "STEP_BASE_URL"}
+        env_name = _MAP.get((provider or "").lower())
+        if not env_name:
+            return ""
+        raw = os.getenv(env_name, "").strip()
+        if not raw:
+            return ""
+        base = raw.rstrip("/")
+        if base.endswith("/chat/completions"):
+            return base
+        return base + "/chat/completions"
+
     @classmethod
     def from_env(cls) -> "AppConfig":
         """从环境变量构建配置（未设置则用默认值）。"""
@@ -227,7 +258,9 @@ class AppConfig:
         return cls(
             use_real_llm=os.getenv("CTF_AGENT_USE_REAL_LLM", "0") == "1",
             llm_provider=provider,
-            llm_base_url=os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip() or base_url,
+            llm_base_url=(cls._provider_base_env(provider)
+                          or os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip()
+                          or base_url),
             llm_api_key=os.getenv("CTF_AGENT_LLM_API_KEY", ""),
             llm_timeout_seconds=_int_env("CTF_AGENT_LLM_TIMEOUT", DEFAULT_TIMEOUT_SECONDS),
             light_model=_env_light or light_model,
@@ -500,6 +533,18 @@ def _resolve_provider_defaults(provider: str) -> tuple[str, str, str, str]:
         "xfyun": ("https://spark-api-open.xf-yun.com/v1/chat/completions", "lite", "lite", "lite"),
         "siliconflow": ("https://api.siliconflow.cn/v1/chat/completions", "Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-7B-Instruct"),
         "moonshot": ("https://api.moonshot.cn/v1/chat/completions", "kimi-k2.6", "kimi-k2.6", "kimi-k2.6"),
+        # 2026-11-02 接入 StepFun（阶跃星辰）。实测凭据（STEP_BASE_URL / STEP_API_KEY）：
+        #   · GET /v1/models 返回 34 个模型，文本类可用 3 个：
+        #       step-3.5-flash / step-3.7-flash / step-5-preview
+        #   · 三者 POST /v1/chat/completions 均 200，且都是 **reasoning 模型**
+        #     （返回 reasoning_content）。踩过的坑：max_tokens=20 时 content 为空串
+        #     ——token 全被 reasoning 吃光，与 openrouter 那次同型（见上方注释）。
+        #     故 max_tokens 必须给足（实测 ≥1500 稳定出 content）。
+        # 档位选择：light=3.5-flash（最便宜）、mid=3.7-flash、heavy=5-preview（最强）。
+        # 端点写完整 /v1/chat/completions 形式，与既有 provider 保持一致；
+        # 但 STEP_BASE_URL 已含 /v1，故 base 解析时用 _env_base_for() 兜住两种写法。
+        "stepfun": ("https://api.stepfun.com/v1/chat/completions",
+                    "step-3.5-flash", "step-3.7-flash", "step-5-preview"),
         "openai": ("https://api.openai.com/v1/chat/completions", "gpt-5.6-luna", "gpt-5.6-luna", "gpt-5.6-luna"),
         # 2026-10-25 破晓接入：OpenRouter 免费层（国内直连，实测 3 个 :free 模型 200 OK）。
         # 为什么走 openrouter：openai-next 网关 key 于 10-25 上午失效，其余 12 个 provider
@@ -567,6 +612,8 @@ def resolve_api_key(provider: str = "") -> str:
         "xfyun": "XFYUN_API_KEY",
         "siliconflow": "SILICONFLOW_API_KEY",
         "moonshot": "MOONSHOT_API_KEY",
+        # 2026-11-02：StepFun 官方变量名就是 STEP_API_KEY（与 STEP_BASE_URL 配套）。
+        "stepfun": "STEP_API_KEY",
     }
     if provider in _key_env:
         return (
