@@ -50,11 +50,6 @@
       "reason": "扫描 README.md 中引用的路径必须全部存在；迁移说明里引用的是源仓库结构（如 ctf_agent/data/attachments），副本中不存在"
     },
     {
-      "node": "tests/test_release_export_policy.py::test_current_tracked_tree_passes_gate",
-      "root_cause": "data_dir_gitignored",
-      "reason": "按完整仓库的目录/文件结构校验发布导出策略，迁移副本缺 data/ 等被排除目录，结构校验必然不通过"
-    },
-    {
       "node": "tests/test_run_all_gates.py::TestExitCodes::test_passes_now",
       "root_cause": "aggregate_of_above",
       "reason": "总闸要求上述多道门禁全绿；它是上面各条红的聚合表现，根因全部修复后本条自然转绿，届时一并删除"
