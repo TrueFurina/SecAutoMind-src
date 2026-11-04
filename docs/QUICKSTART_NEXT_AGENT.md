@@ -225,7 +225,8 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 > 本附录只加指针，不改上文任何内容。跑 CTF 基准（S1–S5 切片）时先读这两处：
 
-1. **唯一入口**：`scripts/stepfun_batch_server.py`
+1. **唯一入口**：`scripts/exp_stepfun_jsonmode_ab.py`（协议层 A/B 复跑；产见 `docs/evidence/stepfun_jsonmode_AB_预注册_20261104.md`）
+   - ⚠️ **2026-11-04 核实**：本附录原来写的 stepfun_batch_server.py（位于 `scripts/`）**全仓从未入库**，当时据此走「平台队列」路线只会 `can't open file`。该条已作废，勿再按它找入口。
    - `--doctor` 只读体检；`--session S3` 跑切片；`--queue-id` 续跑；`--retry-gate` 处理闸门偶发。
    - 内建**服务器守卫**：Windows 上打 `127.0.0.1:18086` 直接 `REFUSED`（退出码 3），符合 §0 服务器口径。
    - 取代此前 5 个自建脚本（其中两个是"本地直连 StepFun"的旁路，已标废弃）。
