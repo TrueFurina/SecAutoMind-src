@@ -308,7 +308,10 @@ def check(root: Path) -> tuple[int, list[str]]:
         bi = e.get("baseline_impact")
         if isinstance(bi, dict) and bi.get("suite"):
             suites = baseline.get("suites") or {}
-            cur = (suites.get(bi["suite"]) or {}).get("min_hit")
+            # 基线在 7a5c2b9 把单列 min_hit 拆成 min_real_hit / max_flag_scan；
+            # 这里两个键都认（优先新的），否则 R6 会在改名后静默读不到地板。
+            suite_cfg = suites.get(bi["suite"]) or {}
+            cur = suite_cfg.get("min_real_hit", suite_cfg.get("min_hit"))
             frm, to = bi.get("from"), bi.get("to")
             if cur == to:
                 pass

@@ -68,7 +68,10 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
         man = [{"name": "web_xss", "mode": "service", "cmd": "x",
                 "flag": "flag{svc}", "flag_from_env": True}]
     _write(tmp, "scripts/arena_manifest.json", man)
-    _write(tmp, "docs/benchmark_baseline.json", {"suites": {"static": {"min_hit": baseline_min_hit}}})
+    # 基线形状与入仓一致（7a5c2b9 起 static 是 min_real_hit / max_flag_scan 双列）
+    _write(tmp, "docs/benchmark_baseline.json",
+           {"suites": {"static": {"total": 55, "min_real_hit": baseline_min_hit,
+                                  "max_flag_scan": 0}}})
     entries = [{
         "file": "data/ctf_benchmark/benchmark.json",
         "problem": "web_xss",
