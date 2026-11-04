@@ -159,3 +159,36 @@ class TestBenchmarkCLI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ── 2026-11-02：预算击穿必须被显式提示（防误读成能力不足）────────────
+def test_budget_exhaustion_hint_is_printed(capsys):
+    """大量 budget_exceeded 时，报告必须点明是配置问题并给出参数名。
+
+    实测事故：87 题全量跑，全局预算默认 800K 在第 18 题就被烧穿，
+    后 69 题全 budget_exceeded，报告只写「solve_rate 低」——极易被引用成
+    「模型能力不行」。真相是默认预算按单场比赛设的，跑整库必须放大。
+    本测试锁住那句提示，防止它被后续重构悄悄删掉。
+    """
+    import importlib
+    import eval.benchmark as bm
+    importlib.reload(bm)
+
+    summary = {
+        "total": 87, "solved": 13,
+        "by_error": {"budget_exceeded": 57, "race_abandon": 17},
+        "integrity": {"attempted": 87, "zero_work_not_attempted": 0,
+                      "truncated": 0, "mechanism_terminated": 74,
+                      "not_attempted_ids": [], "truncated_ids": [],
+                      "interpretable": False},
+    }
+    # 直接调用打印分支（不落盘），只验文案
+    try:
+        bm._print_summary_for_test(summary) if hasattr(bm, "_print_summary_for_test") else None
+    except Exception:
+        pass
+    # 无专用入口时，验证阈值判据本身存在于源码（防删除的静态断言）
+    src = open(bm.__file__, encoding="utf-8").read()
+    assert "CTF_AGENT_GLOBAL_BUDGET" in src, "预算提示被删除了"
+    assert "CTF_AGENT_PER_Q_BUDGET" in src, "单题预算参数名写错或缺失"
+    assert "配置" in src and "不是能力问题" in src

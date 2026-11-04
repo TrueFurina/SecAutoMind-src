@@ -660,6 +660,17 @@ def _emit_report(args, mode: str, summary: dict, results, multi: Optional[dict])
                   f"{_ig.get('not_attempted_ids') or ''}；"
                   f"被外部掐断(真故障) {_ig.get('truncated')} 题 {_ig.get('truncated_ids') or ''}")
             print(f"     错误分类分布: {summary.get('by_error')}")
+            # 2026-11-02：预算击穿是最容易被误读成"能力不足"的一类。
+            # 实测 87 题全量跑：全局预算默认 800K 在 18 题就被烧穿，
+            # 后 69 题全部 budget_exceeded，报告却只写"solve_rate 低"。
+            # 这里显式区分「跑过但超预算」与「真的没跑」，并给出处置参数。
+            _be = (summary.get("by_error") or {}).get("budget_exceeded", 0)
+            if _be >= max(3, summary["total"] * 0.2):
+                print(f"     🔴 其中 {_be} 题因 token 预算耗尽被挡（占 {_be}/{summary['total']}）"
+                      f"——这是**配置**问题，不是能力问题。")
+                print("        默认 global_token_budget=800000 是按单场比赛设的；"
+                      "跑整库请用 CTF_AGENT_GLOBAL_BUDGET（如 20000000）"
+                      "与 CTF_AGENT_PER_Q_BUDGET 放大后重跑。")
             print("     solve_rate 只反映'钱/配额够不够'，不反映能力；引用前必须重跑或声明口径。")
         elif _ig.get("mechanism_terminated", 0):
             # 机制终结（早停/预算烧穿，题已跑过，属正常判负）—— 不影响可解释性，

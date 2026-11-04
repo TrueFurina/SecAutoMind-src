@@ -963,16 +963,20 @@ def _post_chat(
 
     # ── JSON 输出约束（2026-11-02）────────────────────────────────────
     # 为什么需要：主 Agent 的 plan/reason 步要求模型返回 JSON 动作协议，
-    # 但部分模型（实测 stepfun 三档全部如此）倾向输出**散文式推理**，
-    # 于是 12 题跑出 protocol_fail=248 / empty_reply=131 —— 框架靠代码围栏兜底
-    # 才没崩，但兜底只能救出 script 动作，其余结构化字段全丢，直接拖低解出率。
-    # 这不是能力不足，是协议不遵守。
+    # 而 stepfun 倾向输出**散文式推理**（三档均为 reasoning 模型）。
     #
-    # 处置：仅对**实测支持该参数的 provider** 显式开 json_object，
-    # 不动其他 provider（有的端点见到未知字段直接 400，不能一概而论）。
-    # 实测 stepfun：response_format={"type":"json_object"} 与 json_schema 均 200 且
-    # 正确返回纯 JSON（见 2026-11-02 接入记录）。
-    # 可用 CTF_AGENT_JSON_MODE=0 关掉（对照实验 / 端点回归时用）。
+    # 🔴 2026-11-04 更正（并行会话预注册 A/B 推翻了我的初步归因）：
+    #   开 json_object 前后各 16 次真实调用，ok 率均为 100%，增量 **0.0pp**。
+    #   探针四格（max_tokens 64/256 × 开关）显示：**开关不是变量，输出预算才是**
+    #   —— mt=64 时无论开关 content 都是 0、finish_reason=length（CoT 吃满）。
+    #   我最初看到「12 题 41.7%→50%」就归因于 json_object，后被 Fisher 精确检验
+    #   否掉（p=0.424，n=12 下 1 题差异=8.3pp，纯噪声）。
+    #   证据：docs/evidence/stepfun_jsonmode_AB_20261104/（预注册口径）
+    #   真正的修复是 005e2df 的「截断检测 + 最多两次加倍重发」，不是本开关。
+    #
+    # 那为什么仍保留：该参数**无害且语义正确**（要求返回 JSON 对象本就符合
+    # plan/reason 步的契约），成本为 0（不增 token）。但它**不是**效果来源，
+    # 不要拿它当解出率提升的依据。默认开；CTF_AGENT_JSON_MODE=0 可关。
     _json_mode_providers = {"stepfun"}
     if (settings.get("provider") in _json_mode_providers
             and os.getenv("CTF_AGENT_JSON_MODE", "1").strip() != "0"):
