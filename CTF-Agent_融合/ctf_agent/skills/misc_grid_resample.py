@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 
 import numpy as np
@@ -229,8 +230,17 @@ def run(params: dict) -> dict:
     used = None
     reveal_path = None
     reveal_max_path = None
-    tess = params.get("tesseract") or r"C:\Users\Lenovo\miniconda3\Library\bin\tesseract.exe"
-    have_tess = os.path.isfile(tess)
+    # 2026-11-04：改为统一跨平台探测（原实现写死个人 conda 路径，换机器即失效）
+    _explicit = params.get("tesseract")
+    if _explicit:
+        tess = _explicit
+    else:
+        try:
+            from tools.external_tools import find_tesseract
+            tess = find_tesseract() or "tesseract"
+        except Exception:  # noqa: BLE001 - 探测失败退化为 PATH 查找
+            tess = "tesseract"
+    have_tess = bool(tess) and (os.path.isfile(tess) or bool(shutil.which(tess)))
     best_candidates: list[str] = []
 
     for (gx, gy, ox, oy) in candidates:

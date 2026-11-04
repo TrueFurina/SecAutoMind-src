@@ -222,12 +222,19 @@ def check_tooling() -> None:
     # ③ bkcrack 二进制预检（2026-08-22 质检整改：zip 已知明文攻击唯一工具，
     #    exe 曾被系统 Temp 清理 + 中文路径执行失败——必须纯 ASCII 稳定路径）
     _bkcrack = None
-    for _cand in (os.environ.get("BKCRACK", ""),
-                  "C:/Users/Lenovo/bkcrack_161/bkcrack.exe",
-                  "/usr/local/bin/bkcrack", "/usr/bin/bkcrack"):
-        if _cand and os.path.isfile(_cand):
-            _bkcrack = _cand
-            break
+    # 2026-11-04：改为统一跨平台探测（原列表写死个人路径 + 两个 Linux 路径，
+    # 换机器即失效）。显式环境变量 BKCRACK 仍最高优先。
+    try:
+        from tools.external_tools import find_bkcrack
+        _bkcrack = find_bkcrack()
+    except Exception:  # noqa: BLE001 - 探测失败不阻断预检
+        _bkcrack = None
+    if _bkcrack is None:
+        for _cand in (os.environ.get("BKCRACK", ""),
+                      "/usr/local/bin/bkcrack", "/usr/bin/bkcrack"):
+            if _cand and os.path.isfile(_cand):
+                _bkcrack = _cand
+                break
     if _bkcrack:
         _ascii = _bkcrack.encode("ascii", errors="ignore").decode() == _bkcrack
         print(f"  [{'✓' if _ascii else '✗'}] bkcrack 可用: {_bkcrack}"

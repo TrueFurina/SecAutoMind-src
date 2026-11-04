@@ -15,14 +15,19 @@ _FLAG_PAT = re.compile(rb"(?:flag|FLAG|Flag|DASCTF)\{[^}]{2,80}\}")
 # 传 Windows 风格路径（D:/... 或 D:\\...），Git Bash 的 /d/... POSIX 路径会被它忽略并报
 # "does not exist, ignore it" 导致加载不到 eng.traineddata。
 _TESS_CANDIDATES = [
-    r"D:/miniconda3_new/Library/bin/tesseract.exe",
-    r"C:/Users/Lenovo/miniconda3/Library/bin/tesseract.exe",
-    r"C:/Program Files/Tesseract-OCR/tesseract.exe",
-    r"C:/Program Files (x86)/Tesseract-OCR/tesseract.exe",
-    r"C:/tools/tesseract/tesseract.exe",
-    r"C:/tools/Tesseract-OCR/tesseract.exe",
-    r"C:/Users/Lenovo/AppData/Local/Programs/tesseract/tesseract.exe",
+    # 2026-11-04：改为经 tools.external_tools 统一探测（原列表写死个人路径，
+    # 换机器/换平台即失效，且错误信息泄个人目录）。保留该常量名供既有测试引用。
 ]
+
+
+def _candidate_tesseracts():
+    """跨平台候选（env → PATH → 平台常见位置），由 external_tools 统一给出。"""
+    try:
+        from tools.external_tools import find_tesseract
+        hit = find_tesseract()
+        return [hit] if hit else []
+    except Exception:  # noqa: BLE001 - 探测失败退化为空，调用方会明确报告缺失
+        return []
 
 
 def _which(name):
@@ -52,8 +57,8 @@ def _locate_tesseract():
     if exe:
         exe = os.path.abspath(exe)
     else:
-        for c in _TESS_CANDIDATES:
-            if os.path.isfile(c):
+        for c in _candidate_tesseracts():
+            if c and os.path.isfile(c):
                 exe = c
                 break
     if not exe:

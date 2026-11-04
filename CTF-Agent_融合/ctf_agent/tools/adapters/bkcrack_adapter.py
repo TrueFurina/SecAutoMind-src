@@ -25,15 +25,18 @@ from typing import Optional
 
 from tools.base import ToolAdapter, ToolOutput
 
-# 常见 bkcrack 位置（本机 / 决赛机）
+# 常见 bkcrack 位置（跨平台探测，2026-11-04 重写）
+# 🔴 原列表里混着本机绝对路径（C:/Users/Lenovo/bkcrack_161/...），换机器/换平台即失效。
+# 保留同类位置但改为**用户可改的推导式**，而不是写死某个人的目录。
 _BKCRACK_CANDIDATES = [
     os.environ.get("BKCRACK", ""),
     shutil.which("bkcrack") or "",
     # 纯 ASCII 路径（2026-08-22 质检修复：项目路径含中文「西湖论剑」，
     # Windows cmd 按 GBK 解析导致 exe 执行失败——bkcrack 必须放纯 ASCII 目录）
-    "C:/Users/Lenovo/bkcrack_161/bkcrack.exe",
-    "/tmp/bkcrack/bkcrack-1.6.1-win64/bkcrack.exe",
-    "C:/Users/Lenovo/AppData/Local/Temp/bkcrack/bkcrack-1.6.1-win64/bkcrack.exe",
+    # 由 HOME/TMPDIR 推导，不再写死用户名
+    os.path.join(os.path.expanduser("~"), "bkcrack_161", "bkcrack.exe"),
+    os.path.join(os.environ.get("TMPDIR") or os.environ.get("TEMP") or "/tmp",
+                 "bkcrack", "bkcrack-1.6.1-win64", "bkcrack.exe"),
     "/usr/local/bin/bkcrack",
     "/usr/bin/bkcrack",
 ]

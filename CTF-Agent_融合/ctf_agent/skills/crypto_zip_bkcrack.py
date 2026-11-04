@@ -59,9 +59,13 @@ ZIPHARD_SECOND_CIPHERTEXT = bytes.fromhex("9f6180b0e2fb7c529e2851025f121e89")
 
 def _bkcrack_candidates() -> list:
     out = []
-    env = os.environ.get("BKRACK_BIN", "")
-    if env:
-        out.append(env)
+    # 🔴 2026-11-04：原环境变量名拼成 `BKRACK_BIN`（少一个 c），
+    # 与全仓其它地方用的 `BKCRACK` 不一致 → 用户按文档设 BKCRACK 时这里读不到。
+    # 两个名字都接受（旧名保留向后兼容），但新名优先。
+    for _env in ("BKCRACK", "BKCRACK_BIN", "BKRACK_BIN"):
+        v = os.environ.get(_env, "")
+        if v:
+            out.append(v)
     out.extend([
         os.path.join(_PROJECT_ROOT, "logs", "bkcrack_build", "bkcrack-1.5.0", "bkcrack150_omp.exe"),
         os.path.join(_PROJECT_ROOT, "logs", "bkcrack_build", "attack", "bkcrack150_omp.exe"),
@@ -70,8 +74,20 @@ def _bkcrack_candidates() -> list:
         # 2026-10-09：1.6.1+crossfilter-fix 原生 MSVC 构建（ziphard 真跑验证通过：
         # 恢复密钥与官方 solution README 逐字一致，见 logs/ziphard_attack_20261009/）。
         # 纯 ASCII 路径（中文路径下 cmd/GBK 会解析失败），静态 /MT 无 DLL 依赖。
-        "C:/Users/Lenovo/ziphard_run/bkcrack-patched.exe",
+        # 2026-11-04：改为 **HOME 推导**而非写死个人目录。
+        # 原写法 `C:/Users/<用户名>/ziphard_run/...` 换机器即失效；
+        # 但该候选**必须保留**——tests/test_presolve_b1_wiring 明确要求候选表包含
+        # 修复版路径（否则 logs/bkcrack_build 被清理后 find_bkcrack 恒空，
+        # 接线形同虚设，这是 2026-10-09 的真实事故）。
+        os.path.join(os.path.expanduser("~"), "ziphard_run", "bkcrack-patched.exe"),
     ])
+    try:
+        from tools.external_tools import find_bkcrack as _ft
+        _hit = _ft()
+        if _hit:
+            out.append(_hit)
+    except Exception:  # noqa: BLE001 - 探测失败不影响既有候选
+        pass
     return [p for p in out if p]
 
 
