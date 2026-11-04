@@ -48,3 +48,19 @@
 - 产物：`docs/evidence/stepfun_jsonmode_AB_20261104/step-5-preview/`（同 schema）。
 - 运行：`EXP_MODEL=step-5-preview python -X utf8 scripts/exp_stepfun_jsonmode_ab.py`。
 
+## 7. v2 登记（2026-11-04 12:40，修正 harness 缺陷 + 追加生产路径臂）
+
+**发现的 harness 缺陷（自曝）**：v1 脚本调用 `_extract_content(body)` 时**未传 provider**，
+等于绕过了 2026-11-04 的 stepfun 修复（content 空时仍回退 CoT）。因此 v1 的 step-5 结果
+测的是「修复前提取路径」，不能代表生产行为。v1 原始数据保留、原样披露，不删除。
+
+**v2 口径（测前锁定）**：
+- 修改：`_extract_content(body, "stepfun")`（与生产同一参数），其余分桶规则不变。
+- 新增 **C 臂（生产路径）**：直接调用 `llm.client.ai_chat_json(...)`，provider=stepfun、max_tokens=2000。
+  该路径含「截断→最多两次加倍重发」修复。成功判据：返回 dict → `client_ok`；返回 None → `client_none`。
+- 分母：A/B 各 16 次；C 16 次（8 提示 × 2 重复）。
+- 判定：**A/B 仍按 20pp 阈值**；C 臂只报观测值，不设阈值（样本 16，不足以定阈值）。
+- 产物：`docs/evidence/stepfun_jsonmode_AB_20261104/<model>/v2/`。
+- 运行：`EXP_MODEL=step-5-preview EXP_RUN=v2 python -X utf8 scripts/exp_stepfun_jsonmode_ab.py`。
+
+

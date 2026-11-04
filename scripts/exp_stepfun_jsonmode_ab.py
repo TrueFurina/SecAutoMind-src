@@ -22,10 +22,14 @@ from pathlib import Path
 import httpx
 
 REPO = Path(__file__).resolve().parents[1]
-_OUT_ROOT = REPO / "docs" / "evidence" / "stepfun_jsonmode_AB_20261104"
+_OUT_NAME = "stepfun_jsonmode_AB_20261104"
+_OUT_ROOT = REPO / "docs" / "evidence" / _OUT_NAME
 ENDPOINT = os.getenv("STEP_BASE_URL", "https://api.stepfun.com/v1").rstrip("/") + "/chat/completions"
 MODEL = os.getenv("EXP_MODEL", "step-3.5-flash")
+_RUN = os.getenv("EXP_RUN", "").strip()
 OUT_DIR = _OUT_ROOT if MODEL == "step-3.5-flash" else _OUT_ROOT / MODEL.replace("/", "_")
+if _RUN:
+    OUT_DIR = OUT_DIR / _RUN
 MAX_TOKENS = 2000          # 引擎默认，见 ctf_agent/llm/client.py:345
 REPS = 2
 TIMEOUT = 300.0
@@ -73,8 +77,9 @@ def _engine_helpers():
     sys.path.insert(0, str(REPO / "CTF-Agent_融合"))
     sys.path.insert(0, str(REPO / "CTF-Agent_融合" / "ctf_agent"))
     try:
-        from ctf_agent.llm.client import _extract_content, _extract_json_object  # noqa: PLC0415
-        return _extract_content, _extract_json_object, "engine"
+        from ctf_agent.llm.client import (  # noqa: PLC0415
+            _extract_content, _extract_json_object, ai_chat_json)
+        return _extract_content, _extract_json_object, ai_chat_json, "engine"
     except Exception as exc:  # noqa: BLE001
         def _extract_content(data):
             try:
@@ -104,7 +109,7 @@ def _engine_helpers():
             return obj if isinstance(obj, dict) else None
 
         print(f"[warn] 引擎导入失败({type(exc).__name__}: {exc})，使用本地等价实现")
-        return _extract_content, _extract_json_object, "fallback"
+        return _extract_content, _extract_json_object, None, "fallback"
 
 
 def main() -> int:
@@ -113,7 +118,7 @@ def main() -> int:
         print("REFUSED: STEP_API_KEY 为空")
         return 3
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    extract_content, extract_json, helper_src = _engine_helpers()
+    extract_content, extract_json, ai_chat_json, helper_src = _engine_helpers()
 
     arms = [("A_off", None), ("B_on", {"type": "json_object"})]
     raw_path = OUT_DIR / "raw.jsonl"
@@ -167,7 +172,7 @@ def main() -> int:
                             "reasoning_len": len(rs) if isinstance(rs, str) else 0,
                             "usage": body.get("usage"),
                         })
-                        engine_out = extract_content(body)
+                        engine_out = extract_content(body, "stepfun")
                         obj = extract_json(engine_out) if engine_out else None
                         if engine_out is None:
                             bucket = "empty_reply"
@@ -184,6 +189,32 @@ def main() -> int:
                     fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
                     fh.flush()
                     print(f"{arm} {pid} r{rep} -> {rec['bucket']} ({latency}ms, http={status})")
+
+        # ── C 臂：生产路径（llm.client.ai_chat_json，含截断加倍重发）─────────
+        if ai_chat_json is not None:
+            for pid, ptext in PROMPTS:
+                for rep in range(1, REPS + 1):
+                    t0 = time.time()
+                    obj = None
+                    err = None
+                    try:
+                        obj = ai_chat_json(
+                            [{"role": "user", "content": ptext}], system=SYSTEM,
+                            max_tokens=MAX_TOKENS, model=MODEL, provider="stepfun")
+                    except Exception as exc:  # noqa: BLE001
+                        err = f"{type(exc).__name__}: {exc}"
+                    rec = {
+                        "ts": _dt.datetime.now().isoformat(timespec="seconds"),
+                        "arm": "C_client", "prompt_id": pid, "rep": rep,
+                        "model": MODEL, "error": err,
+                        "latency_ms": round((time.time() - t0) * 1000),
+                        "bucket": "client_ok" if isinstance(obj, dict) else "client_none",
+                        "content_head": (json.dumps(obj, ensure_ascii=False)[:120] if isinstance(obj, dict) else ""),
+                    }
+                    records.append(rec)
+                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    fh.flush()
+                    print(f"C_client {pid} r{rep} -> {rec['bucket']} ({rec['latency_ms']}ms)")
 
     def rate(arm, b):
         sel = [r for r in records if r["arm"] == arm and r["bucket"] in ("ok", "protocol_fail", "empty_reply")]
@@ -214,6 +245,14 @@ def main() -> int:
     summary["verdict"] = (
         None if delta is None else ("json_object 有效（≥20pp）" if delta >= 20 else "未证有效（<20pp）")
     )
+    _c = [r for r in records if r.get("arm") == "C_client"]
+    if _c:
+        _cok = sum(1 for r in _c if r["bucket"] == "client_ok")
+        summary["arm_C_client"] = {
+            "denominator": len(_c), "client_ok": _cok,
+            "client_none": len(_c) - _cok,
+            "client_ok_rate_pct": round(100.0 * _cok / len(_c), 1),
+        }
     (OUT_DIR / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
