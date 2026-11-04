@@ -63,13 +63,14 @@ PROMPTS = [
     ("rev_obf", "题目分类：rev。题干：附件 crackme，字符串被混淆。已完成步骤：strings 输出稀疏。"),
     ("forensics_pcap", "题目分类：forensics。题干：附件 traffic.pcap，疑似 DNS 隧道。已完成步骤：无。"),
     ("script_brute", "题目分类：crypto。题干：4 位数字 PIN 的 MD5 为 5f4dcc3b5aa765d61d8327deb882cf99。已完成步骤：无。"),
-    ("flag_check", "题目分类：misc。题干：脚本输出中出现疑似 flag 片段 flag{base64_is_easy}。已完成步骤：脚本已执行成功。"),
+    ("flag_check", "题目分类：misc。题干：脚本输出中出现疑似 flag 片段（此处已遮蔽字面量）。已完成步骤：脚本已执行成功。"),
 ]
 
 
 def _engine_helpers():
     """优先用引擎原函数；导入失败则回落到本地等价实现，并在汇总里标注。"""
     sys.path.insert(0, str(REPO / "CTF-Agent_融合"))
+    sys.path.insert(0, str(REPO / "CTF-Agent_融合" / "ctf_agent"))
     try:
         from ctf_agent.llm.client import _extract_content, _extract_json_object  # noqa: PLC0415
         return _extract_content, _extract_json_object, "engine"

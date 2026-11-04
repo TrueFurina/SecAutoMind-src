@@ -78,11 +78,12 @@ def test_ai_chat_json_async_with_usage_works(monkeypatch):
 
 # ── 2026-11-02：StepFun JSON 输出约束 + reasoning 超时 ──────────────────
 def test_stepfun_gets_json_object_response_format(monkeypatch):
-    """stepfun 请求必须带 response_format=json_object（治 protocol_fail）。
+    """stepfun 请求必须带 response_format=json_object（现行行为，保留）。
 
-    实测：stepfun 三档全是 reasoning 模型，倾向输出散文式推理，
-    12 题跑出 protocol_fail=248——框架靠代码围栏兜底才没崩，但结构化字段全丢。
-    这不是能力问题，是协议不遵守。该 provider 已实测支持此参数（200 + 纯 JSON）。
+    2026-11-04 A/B 修正（docs/evidence/stepfun_jsonmode_AB_20261104/）：同题集同模型下
+    开/关 json_object 的协议成功率均为 16/16，**零增量**；原"12 题 protocol_fail=248"
+    无落盘证据、且与本次实测不符。真实故障是 CoT 吃满输出预算被记成协议失败
+    （见 test_stepfun_truncated_cot_*）。该参数保留为无害旁路，不得再宣称其"治病"。
     """
     from llm import client as llm_client
 
@@ -171,3 +172,100 @@ def test_stepfun_reasoning_gets_extended_timeout():
     from llm.client import _resolve_settings
     s = _resolve_settings(None, provider="stepfun")
     assert s["timeout"].read >= 300.0, s["timeout"]
+
+
+# ── 2026-11-04：CoT 吃预算 / CoT 不得当答案（A/B 实证）─────────────────────
+def _mk_resp(content="", reasoning=None, reasoning_content=None, finish_reason="stop"):
+    msg = {"content": content}
+    if reasoning is not None:
+        msg["reasoning"] = reasoning
+    if reasoning_content is not None:
+        msg["reasoning_content"] = reasoning_content
+    body = {"choices": [{"message": msg, "finish_reason": finish_reason}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+
+    class _R:
+        status_code = 200
+        text = ""
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return body
+
+    return _R()
+
+
+def _sf_settings():
+    return {"api_key": "x", "provider": "stepfun", "model": "step-3.5-flash",
+            "base_url": "https://api.stepfun.com/v1/chat/completions", "timeout": 300.0}
+
+
+def test_stepfun_reasoning_only_is_not_answer(monkeypatch):
+    """content 空时不得把 stepfun 的思维链当答案（会把截断伪装成成功）。"""
+    from llm import client as llm_client
+
+    monkeypatch.setattr(llm_client, "_resolve_settings",
+                        lambda model=None, provider=None: _sf_settings())
+    monkeypatch.setattr(llm_client.httpx, "post", lambda _url, **kw: _mk_resp(
+        content="", reasoning_content='{"action":"flag","flag":"PLACEHOLDER_NOT_A_FLAG"}', finish_reason="stop"))
+    out = llm_client.ai_chat([{"role": "user", "content": "x"}],
+                             model="step-3.5-flash", provider="stepfun")
+    assert out is None, "stepfun 的 CoT 被当成答案了"
+
+
+def test_stepfun_truncated_cot_retries_once_with_bigger_budget(monkeypatch):
+    """finish_reason=length + content 空 → 一次性加倍预算重发，第二次内容才算答案。"""
+    from llm import client as llm_client
+
+    calls = []
+
+    def fake_post(_url, **kw):
+        calls.append(dict(kw.get("json") or {}))
+        if len(calls) == 1:
+            return _mk_resp(content="", reasoning_content="思考中……", finish_reason="length")
+        return _mk_resp(content='{"action":"think"}', finish_reason="stop")
+
+    monkeypatch.setattr(llm_client, "_resolve_settings",
+                        lambda model=None, provider=None: _sf_settings())
+    monkeypatch.setattr(llm_client.httpx, "post", fake_post)
+    out = llm_client.ai_chat([{"role": "user", "content": "x"}],
+                             model="step-3.5-flash", provider="stepfun")
+    assert out == '{"action":"think"}'
+    assert len(calls) == 2, f"截断未重发（实际 {len(calls)} 次调用）"
+    assert calls[1]["max_tokens"] == calls[0]["max_tokens"] * 2
+
+
+def test_no_retry_when_content_present(monkeypatch):
+    """content 有内容时不得重发（省配额）。"""
+    from llm import client as llm_client
+
+    calls = []
+
+    def fake_post(_url, **kw):
+        calls.append(dict(kw.get("json") or {}))
+        return _mk_resp(content='{"action":"reason"}', finish_reason="stop")
+
+    monkeypatch.setattr(llm_client, "_resolve_settings",
+                        lambda model=None, provider=None: _sf_settings())
+    monkeypatch.setattr(llm_client.httpx, "post", fake_post)
+    out = llm_client.ai_chat([{"role": "user", "content": "x"}],
+                             model="step-3.5-flash", provider="stepfun")
+    assert out == '{"action":"reason"}'
+    assert len(calls) == 1
+
+
+def test_non_stepfun_reasoning_fallback_kept(monkeypatch):
+    """非 stepfun 的 reasoning_content 回退行为必须保留（回归保护）。"""
+    from llm import client as llm_client
+
+    settings = {"api_key": "x", "provider": "deepseek", "model": "deepseek-chat",
+                "base_url": "https://api.deepseek.com/v1/chat/completions", "timeout": 30.0}
+    monkeypatch.setattr(llm_client, "_resolve_settings",
+                        lambda model=None, provider=None: settings)
+    monkeypatch.setattr(llm_client.httpx, "post", lambda _url, **kw: _mk_resp(
+        content="", reasoning_content="answer", finish_reason="stop"))
+    out = llm_client.ai_chat([{"role": "user", "content": "x"}],
+                             model="deepseek-chat", provider="deepseek")
+    assert out == "answer"

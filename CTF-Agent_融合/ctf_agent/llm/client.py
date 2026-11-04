@@ -1069,6 +1069,27 @@ def _post_chat(
         logger.warning("LLM 请求耗尽重试仍失败 model=%s", settings.get("model", ""))
         return None, dict(_ZERO)
     data = response.json()
+    # 2026-11-04 实测（docs/evidence/stepfun_jsonmode_AB_20261104/）：StepFun 的 CoT 会把
+    # 输出预算吃满——content 为空且 finish_reason=length。这不是"不守 JSON 协议"，是截断。
+    # 一次性把预算翻倍重发（上限 8192），避免把截断记成 protocol_fail / empty_reply。
+    try:
+        for _ in range(2):  # 最多两次加倍：2000→4000→8000，避免一次不够（实测 256→512 仍截断）
+            if not (_stepfun_cot_truncated(data, settings) and payload.get("max_tokens", 0) < 8192):
+                break
+            _bumped = min(int(payload.get("max_tokens", 0) or 0) * 2, 8192)
+            logger.warning(
+                "StepFun CoT 耗尽输出预算(max_tokens=%s)，加倍到 %s 重发", payload.get("max_tokens"), _bumped)
+            payload["max_tokens"] = _bumped
+            with _LLM_HTTP_SEMAPHORE:
+                _retry_resp = httpx.post(
+                    settings["base_url"], json=payload, headers=headers,
+                    timeout=settings["timeout"], trust_env=False)
+            if _retry_resp.status_code != 200:
+                break
+            response = _retry_resp
+            data = response.json()
+    except Exception as exc:  # noqa: BLE001 - 重发失败保留首响应
+        logger.warning("StepFun 截断重发失败（保留首响应）：%s", exc)
     usage = _extract_usage(data)
     _record_usage(data)  # 向后兼容：仍更新模块级 _LAST_USAGE
     # 2026-10-26 观测：**成功调用也记一次模型名**（此前只有失败行有 payload.model）。
@@ -1080,7 +1101,7 @@ def _post_chat(
                      settings.get("provider", ""), settings.get("model", ""))
     except Exception:  # noqa: BLE001 - 观测失败不影响返回
         pass
-    return _extract_content(data), usage
+    return _extract_content(data, settings.get("provider")), usage
 
 
 def _strip_control_chars(s: str) -> str:
@@ -1132,7 +1153,26 @@ def _with_system(messages: list[dict], system: Optional[str]) -> list[dict]:
     return [{"role": "system", "content": system}, *messages]
 
 
-def _extract_content(data: Any) -> Optional[str]:
+def _stepfun_cot_truncated(data: Any, settings: dict) -> bool:
+    """StepFun 专属：输出预算被 CoT 吃满（content 空 + finish_reason=length）。
+
+    2026-11-04 A/B 实证：step-3.5-flash 在 2000 输出 token 下会把全部预算写进
+    reasoning/reasoning_content，content 恒为空、finish_reason=length。
+    判据只用 provider，不认模型名，避免新增 step-* 档位再漏。
+    """
+    if settings.get("provider") != "stepfun":
+        return False
+    try:
+        choice = data["choices"][0]
+    except (KeyError, IndexError, TypeError):
+        return False
+    if choice.get("finish_reason") != "length":
+        return False
+    content = (choice.get("message") or {}).get("content")
+    return not (isinstance(content, str) and content.strip())
+
+
+def _extract_content(data: Any, provider: Optional[str] = None) -> Optional[str]:
     """从 OpenAI 兼容响应中防御性提取文本内容。
 
     DeepSeek V4 thinking 模式下 message.content 可能为空，推理在
@@ -1144,8 +1184,15 @@ def _extract_content(data: Any) -> Optional[str]:
         return None
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
+        if provider == "stepfun":
+            # 2026-11-04 A/B 实证：stepfun 的 reasoning/reasoning_content 是思维链，
+            # 不是答案。拿 CoT 里捡到的 JSON 当动作 = 在错误前提上继续跑（会污染
+            # ok 桶，也会把截断伪装成成功），故该 provider 不回退到 CoT。
+            return None
         # 回退：thinking 模式的推理内容
         content = message.get("reasoning_content")
+        if not isinstance(content, str) or not content.strip():
+            content = message.get("reasoning")
     if isinstance(content, str):
         return content.strip() or None
     if isinstance(content, list):  # 部分多模态端点以分片数组返回文本
