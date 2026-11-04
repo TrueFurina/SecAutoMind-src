@@ -15,6 +15,16 @@
       "reason": "断言 CTF-Agent_融合/README.md 的 break-ice 段落含 Denominator caveat 限定语；该 README 在 8bb6e71 被改写为 33 行迁移说明，段落未迁入"
     },
     {
+      "node": "tests/test_external_benchmark_and_health.py::TestBenchmarkManifestRules::test_benchmark_attachments_exist",
+      "root_cause": "data_dir_gitignored",
+      "reason": "遍历 benchmarks/external_unseen 清单的载荷路径；data/ 被 ctf_agent/.gitignore 排除，clean checkout 无附件故报缺失。本地工作树能过（data/ 在磁盘），归档态必红——2026-11-04 误删后由干净检出实测复现"
+    },
+    {
+      "node": "tests/test_external_benchmark_and_health.py::TestBenchmarkManifestRules::test_check_passes_on_current_disk",
+      "root_cause": "data_dir_gitignored",
+      "reason": "bench.check() 做同一批载荷存在性校验，同上：本地过、归档红。误删教训：**只按本地跑通就删豁免是错的，必须在干净检出复验**"
+    },
+    {
       "node": "tests/test_kpi_canonical.py::test_readme_counts_green_on_live_repo",
       "root_cause": "readme_not_migrated",
       "reason": "要求 README 声明 skills=85 / real_corpus=94 / regression_checks=16 等计数；迁移说明版 README 不含这些声明，断言为'计数声明缺失'"
