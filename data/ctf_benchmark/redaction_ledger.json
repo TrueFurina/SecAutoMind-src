@@ -1,0 +1,253 @@
+{
+  "schema": 1,
+  "note": "脱敏台账：每一处题面脱敏都必须在此登记。判分口径未同步的登记为 accepted_debt —— 债务期相关 job 仍会红，红是账单不是绿。新增脱敏而未登记 → check_redaction_consistency.py 直接红。",
+  "entries": [
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "cookie_leak",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "forensic_1",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "forensic_2",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "forensic_3",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "html_comment",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "json_leak",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "log_forensics",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "net_forensics",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_csrf",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_idor",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_lfi",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_rce",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_sqli",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_ssrf",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/benchmark.json",
+      "problem": "web_xss",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": false,
+      "status": "accepted_debt",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/real_benchmark.json",
+      "problem": "flag_in_cookie_set",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": true,
+      "status": "synced",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/real_benchmark.json",
+      "problem": "flag_in_html",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": true,
+      "status": "synced",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/real_benchmark.json",
+      "problem": "flag_in_json_api",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": true,
+      "status": "synced",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    },
+    {
+      "file": "data/ctf_benchmark/real_benchmark.json",
+      "problem": "flag_in_log_data",
+      "redacted_fields": [
+        "description"
+      ],
+      "judge_synced": true,
+      "status": "synced",
+      "owner": "unassigned",
+      "expires": "",
+      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "baseline_impact": null
+    }
+  ]
+}

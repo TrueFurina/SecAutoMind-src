@@ -29,7 +29,7 @@
 | `web-js-tests` | 前端运行时测试：`internal/app/web/static/js/*.test.cjs` 曾长期是**孤儿测试**—— ci.yml 全文没有 node --test，全靠人手跑，于是两条断言在实现重构后**静默腐… | 1 | **无** |
 | `line-endings-gate` | 行尾门禁：脚本行尾此前是「各机器 core.autocrlf 说了算」的盲区（本仓无 .gitattributes） | 2 | 有 |
 | `doc-port-gate` | 文档端口一致性门禁：docs/ 里的 curl / 浏览器地址 / nginx `proxy_pass` / docker `-p` 都是**可执行指令**，读者会直接复制；而交付包开箱的 config.yaml 端口是… | 2 | 有 |
-| `docs-lint-gate` | 文档静态门禁：代码块围栏闭合 / 本地链接可达 / scripts 引用存在 / 英文文档有中文对应 | 2 | 有 |
+| `docs-lint-gate` | 文档静态门禁：代码块围栏闭合 / 本地链接可达 / scripts 引用存在 / 英文文档有中文对应 | 4 | 有 |
 | `agent-docs-gate` | 文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分） | 2 | 有 |
 | `mcp-servers-gate` | MCP 服务清单与契约一致性门禁 | 3 | 有 |
 | `external-payload-gate` | 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着 payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析； 同目录… | 2 | 有 |

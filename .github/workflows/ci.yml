@@ -774,6 +774,14 @@ jobs:
         run: python scripts/check_docs_lint.py
       - name: Docs lint gate regression + mutation check
         run: python scripts/check_docs_lint_test.py
+      # 脱敏一致性（2026-11-04 立）：防「为了不泄密改语料、判据没跟着改」这类自伤。
+      # 实锤：benchmark.json 15 题题面脱敏后 arena_manifest 仍用原 flag 判分 → 15 题恒判退化；
+      # real_benchmark.json 4 题脱敏后 static 地板仍写 20 → evidence/parity/quant 四门连坐。
+      # 本步把差异强制入账；新增脱敏未登记一律红。挂在本 job 内（不新增 job，避免门禁地图漂移）。
+      - name: Redaction ledger self-test (10 cases incl. mutation)
+        run: python scripts/check_redaction_consistency_test.py
+      - name: Redaction vs judge consistency (differences must be accounted)
+        run: python scripts/check_redaction_consistency.py
   # 文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分）。
   # 守的是「文档结构会自己烂掉」：AGENTS.md 只增不删会撑爆常驻预算；路由表里的
   # 路径会随重构失效，而写错的路径看起来最像证据；docs/ 顶层文档只增不登记，
