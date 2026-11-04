@@ -53,6 +53,11 @@
       "node": "tests/test_structure_guard.py::TestStructureGuardPaths::test_no_violation_when_run_from_subdir",
       "root_cause": "data_dir_gitignored",
       "reason": "同上，从子目录运行时按同一套跟踪集合判定，data/ 缺失导致违例"
+    },
+    {
+      "node": "tests/test_truth_consistency_audit.py::TestTruthConsistencyAudit::test_real_data_baby_third_is_l0_match",
+      "root_cause": "data_dir_gitignored",
+      "reason": "该用例要求 babysthird 附件在库以验证「L0 送分层」判定（曾因前缀截断被误判的真实 bug）。但该附件**内容含与题面 sha256 逐字匹配的真实答案**，按安全边界不得入公开仓库（见 ctf-agent/.gitignore 说明）。冲突处置：安全优先，用例改为豁免。要恢复它，需把该附件换成脱敏样本，属另一件事"
     }
   ]
 }
