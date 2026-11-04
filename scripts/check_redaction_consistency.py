@@ -188,14 +188,17 @@ def _scan_files(root: Path) -> list[str]:
     return files
 
 
-def scan_answer_plaintext(root: Path, known: dict) -> list[tuple[str, str, list[str]]]:
+def scan_answer_plaintext(root: Path, known: dict) -> tuple[list[tuple[str, str, list[str]]], int]:
+    """返回 (命中列表, 被跳过的超限文件数)。跳过数要显式报出，不许静默放过。"""
     hits = []
+    skipped = 0
     for rel in _scan_files(root):
         if os.path.splitext(rel)[1].lower() in ANSWER_SKIP_EXT:
             continue
         p = root / rel
         try:
             if p.stat().st_size > MAX_SCAN_BYTES:
+                skipped += 1
                 continue
             txt = p.read_text(encoding="utf-8", errors="ignore")
         except OSError:
@@ -207,7 +210,7 @@ def scan_answer_plaintext(root: Path, known: dict) -> list[tuple[str, str, list[
             h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
             if h in known:
                 hits.append((rel.replace("\\", "/"), cand, known[h]))
-    return hits
+    return hits, skipped
 
 
 def check(root: Path) -> tuple[int, list[str]]:
@@ -362,7 +365,7 @@ def check(root: Path) -> tuple[int, list[str]]:
     exempt_doc = load_json(root / EXEMPT_REL, {"schema": 1, "entries": []})
     exempt_entries = [e for e in (exempt_doc.get("entries") or []) if isinstance(e, dict)]
     ex_by_file = {str(e.get("file") or "").replace("\\", "/"): e for e in exempt_entries}
-    hits = scan_answer_plaintext(root, known)
+    hits, skipped_large = scan_answer_plaintext(root, known)
     used_exempt: set[str] = set()
     for rel, cand, ids in hits:
         e = ex_by_file.get(rel)
@@ -374,8 +377,9 @@ def check(root: Path) -> tuple[int, list[str]]:
                          "（判分只用哈希，明文在入仓文件里等于把答案白送；"
                          "确需保留的登记到 %s）"
                          % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
-    lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处"
-                 % (len(known), len(hits), len(used_exempt)))
+    lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处 ｜ 超大文件跳过 %d 个（>%dKB 未解码，属已知盲区）"
+                 % (len(known), len(hits), len(used_exempt), skipped_large,
+                    MAX_SCAN_BYTES // 1024))
     horizon_ex = horizon  # 与 R8 同一个 365 天上限
     for e in exempt_entries:
         rel = str(e.get("file") or "").replace("\\", "/")
