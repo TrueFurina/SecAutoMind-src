@@ -12,7 +12,7 @@
   两次都是**同一个机制**：为了不泄密而改语料，判据没有跟着改，也没有任何人
   把这件事记在一处，于是「红」被叫作「历史遗留」。
 
-本门禁只做四件事，全部是确定性判定，不猜、不测能力：
+本门禁只做以下确定性判定，不猜、不测能力：
   R1 语料里每一处脱敏都必须在台账登记；台账外的**新增**脱敏直接红。
   R2 登记项必须声明脱敏字段（`prompt_answer_redacted_fields` 非空），
      说不清「脱了哪一段」的脱敏不接受。
@@ -28,6 +28,11 @@
   R7 判分清单（arena_manifest）里**不得再出现明文 `flag`**（service 模式例外，且必须
      声明 `flag_from_env`）——只能存 `flag_sha256`。2026-11-04 实测：题面脱敏后，
      该清单仍以明文躺着全部 15 题答案，脱敏被答案表原样抵消。
+  R8 台账必须**有人负责、有到期日、不能靠手改延期**（2026-11-04 用户拍板「负责人就是
+     agent」后补）：owner 非空且不是 `unassigned`；expires 必填、合法、未过期，
+     且不得超过 MAX_EXPIRY_DAYS 天（防止「填 2999 年 = 永不复查」）；
+     若条目带 `renewals`，最后一条的 to 必须等于当前 expires，且须有 date/by/reason
+     （防止手改 JSON 悄悄延期，续期只能走 `--renew --reason`）。
 
 退出码：0 = 一致（含已入账的债）｜1 = 存在违规｜2 = 用法/文件错误。
 口径说明：本门禁**不**判断债务该不该还，只保证债务被看见、被记名、有期限。
@@ -36,7 +41,9 @@
 用法：
   python scripts/check_redaction_consistency.py            # 检查（CI 入口）
   python scripts/check_redaction_consistency.py --update-ledger \\
-      --owner <责任人> [--expires YYYY-MM-DD]              # 新增脱敏时同步台账
+      --owner agent [--expires YYYY-MM-DD]                 # 新增脱敏时同步台账
+  python scripts/check_redaction_consistency.py --update-ledger --renew \\
+      --owner agent --expires YYYY-MM-DD --reason "<为何延期>"   # 到期后续期（留痕）
   python scripts/check_redaction_consistency.py --root <目录>   # 供自测使用
 """
 
@@ -46,7 +53,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 CORPUS_DIR = "data/ctf_benchmark"
@@ -57,6 +64,10 @@ BASELINE_REL = "docs/benchmark_baseline.json"
 REDACTED_TOKEN = re.compile(r"flag\{REDACTED_[A-Za-z0-9_]+\}")
 ANY_FLAG = re.compile(r"flag\{[^}]{3,}\}")
 VALID_STATUS = {"synced", "accepted_debt"}
+# 到期日上限：脱敏是「临时遮住」，不是「永久封存」。超过一年的到期日等同于没有到期日，
+# 而「填个很久以后的日子」正是把记账动作做空的最省力方式，故由机器卡死。
+MAX_EXPIRY_DAYS = 365
+OWNER_PLACEHOLDERS = {"", "-", "unassigned", "tbd", "TODO", "todo"}
 
 
 def str_fields(obj, path=""):
@@ -229,6 +240,48 @@ def check(root: Path) -> tuple[int, list[str]]:
                 fails.append("R6 地板未联动：suite=%s min_hit=%r（应=%r；如仍为 %r 须登记为债务）"
                              % (bi["suite"], cur, to, frm))
 
+    # R8 记账三件套：有人负责 / 有到期日 / 延期只能留痕地做
+    horizon = date.today() + timedelta(days=MAX_EXPIRY_DAYS)
+    for key in sorted(current_keys & ledger_keys):
+        e = entry_by_key[key]
+        owner = str(e.get("owner") or "").strip()
+        if owner in OWNER_PLACEHOLDERS:
+            fails.append("R8 无人负责：%s :: %s owner=%r（脱敏必须点名责任人；"
+                         "本项目由 agent 负责，填 agent 或 agent:<会话>）" % (key[0], key[1], owner))
+        exp_raw = e.get("expires")
+        exp = str(exp_raw or "").strip()
+        if not exp:
+            fails.append("R8 无到期日：%s :: %s（expires 空 = 永不复查，等于没记账）"
+                         % (key[0], key[1]))
+        else:
+            try:
+                exp_d = date.fromisoformat(exp)
+            except ValueError:
+                fails.append("R8 expires 非法日期：%s :: %s %r（须 YYYY-MM-DD）"
+                             % (key[0], key[1], exp_raw))
+            else:
+                if exp_d < date.today():
+                    fails.append("R8 已过期未续：%s :: %s expires=%s（到期必须复核；"
+                                 "续期用 --renew --expires --reason 留痕）" % (key[0], key[1], exp))
+                elif exp_d > horizon:
+                    fails.append("R8 到期日过远：%s :: %s expires=%s（超过 %d 天上限，"
+                                 "等于把记账做空）" % (key[0], key[1], exp, MAX_EXPIRY_DAYS))
+        renewals = e.get("renewals")
+        if renewals:
+            if not isinstance(renewals, list):
+                fails.append("R8 renewals 非法：%s :: %s 须为数组" % (key[0], key[1]))
+            else:
+                last = renewals[-1] if isinstance(renewals[-1], dict) else {}
+                missing = [k for k in ("date", "by", "to", "reason")
+                           if not str(last.get(k) or "").strip()]
+                if missing:
+                    fails.append("R8 续期缺留痕：%s :: %s 最后一条 renewals 缺 %s"
+                                 % (key[0], key[1], ",".join(missing)))
+                elif str(last.get("to")).strip() != exp:
+                    fails.append("R8 手改过期日：%s :: %s expires=%s 与最后一条续期 to=%s 不符"
+                                 "（续期只能走 --renew，不许手改 JSON）"
+                                 % (key[0], key[1], exp, last.get("to")))
+
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
         for d in debt:
@@ -251,7 +304,15 @@ def check(root: Path) -> tuple[int, list[str]]:
     return 0, lines
 
 
-def update_ledger(root: Path, owner: str, expires: str) -> int:
+def update_ledger(root: Path, owner: str, expires: str,
+                  renew: bool = False, reason: str = "") -> int:
+    """按当前语料同步台账。
+
+    2026-11-04 补两条口径（否则「记账」可以留空，等于没记）：
+      · expires 缺省不再写空，而是机器算出 today + MAX_EXPIRY_DAYS；
+      · 续期只能显式 `renew=True` + `--reason`：覆盖 expires 的同时把
+        {date, by, from, to, reason} 追加进 `renewals`，手改 JSON 会被 R8 抓出来。
+    """
     path = root / LEDGER_REL
     ledger = load_json(path, {"schema": 1, "note": "", "entries": []})
     old = {(e.get("file"), e.get("problem")): e for e in ledger.get("entries") or []}
@@ -259,6 +320,7 @@ def update_ledger(root: Path, owner: str, expires: str) -> int:
     manifest = load_json(root / MANIFEST_REL, [])
     man = {c["name"]: c for c in manifest if isinstance(c, dict) and c.get("name")} \
         if isinstance(manifest, list) else {}
+    default_exp = expires or (date.today() + timedelta(days=MAX_EXPIRY_DAYS)).isoformat()
     entries = []
     for c in corpus:
         key = (c["file"], c["problem"])
@@ -267,6 +329,11 @@ def update_ledger(root: Path, owner: str, expires: str) -> int:
         judge_synced = True
         if consumer:
             judge_synced = str(consumer.get("expect") or "") == "not_attemptable"
+        prev_exp = str(prev.get("expires") or "").strip()
+        # 占位符不算「有人负责」：旧账里的 unassigned/空 可以被本次点名覆盖，
+        # 但已有具名 owner 一律保留（旧账的记名不许被后一次同步静默改写）。
+        prev_owner = str(prev.get("owner") or "").strip()
+        owner_val = prev_owner if prev_owner not in OWNER_PLACEHOLDERS else owner
         item = {
             "file": c["file"],
             "problem": c["problem"],
@@ -274,11 +341,20 @@ def update_ledger(root: Path, owner: str, expires: str) -> int:
             "judge_synced": judge_synced,
             # 判分已同步 → synced；否则保留旧状态（旧账不可被静默洗白）或登记为债务
             "status": "synced" if judge_synced else (prev.get("status") or "accepted_debt"),
-            "owner": prev.get("owner") or owner,
-            "expires": prev.get("expires") or expires,
+            "owner": owner_val,
+            "expires": default_exp if renew or not prev_exp else prev_exp,
             "reason": prev.get("reason") or "",
             "baseline_impact": prev.get("baseline_impact"),
+            "renewals": list(prev.get("renewals") or []),
         }
+        if renew and prev_exp and prev_exp != item["expires"]:
+            item["renewals"].append({
+                "date": date.today().isoformat(),
+                "by": item["owner"] or owner,
+                "from": prev_exp,
+                "to": item["expires"],
+                "reason": reason,
+            })
         if not judge_synced and item["status"] == "synced":
             item["status"] = "accepted_debt"
         entries.append(item)
@@ -286,7 +362,8 @@ def update_ledger(root: Path, owner: str, expires: str) -> int:
     ledger["entries"] = entries
     ledger.setdefault("schema", 1)
     path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("台账已同步：%d 条 → %s" % (len(entries), path))
+    print("台账已同步：%d 条 → %s（expires 缺省=%s%s）"
+          % (len(entries), path, default_exp, "，已续期并留痕" if renew else ""))
     return 0
 
 
@@ -294,15 +371,35 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="脱敏一致性门禁")
     ap.add_argument("--root", default=".", help="仓库根目录（自测用）")
     ap.add_argument("--update-ledger", action="store_true", help="按当前语料同步台账")
-    ap.add_argument("--owner", default="unassigned", help="--update-ledger 时写入的责任人")
-    ap.add_argument("--expires", default="", help="--update-ledger 时写入的到期日 YYYY-MM-DD")
+    ap.add_argument("--owner", default="agent",
+                    help="--update-ledger 时写入的责任人（本项目由 agent 负责；"
+                         "留空/占位符会被 R8 判红）")
+    ap.add_argument("--expires", default="",
+                    help="到期日 YYYY-MM-DD；缺省 = 今天 + %d 天" % MAX_EXPIRY_DAYS)
+    ap.add_argument("--renew", action="store_true",
+                    help="续期：覆盖 expires 并把 date/by/from/to/reason 追加进 renewals")
+    ap.add_argument("--reason", default="", help="续期理由（--renew 时必填）")
     args = ap.parse_args(argv)
+    if args.expires:
+        try:
+            exp_d = date.fromisoformat(args.expires)
+        except ValueError:
+            print("[ERROR] --expires 非法日期：%r（须 YYYY-MM-DD）" % args.expires)
+            return 2
+        if exp_d > date.today() + timedelta(days=MAX_EXPIRY_DAYS):
+            print("[ERROR] --expires 超过 %d 天上限：%s（填太远等于没有到期日）"
+                  % (MAX_EXPIRY_DAYS, args.expires))
+            return 2
+    if args.renew and not args.reason.strip():
+        print("[ERROR] --renew 必须带 --reason（续期要留谁在何时为何延期）")
+        return 2
     root = Path(args.root)
     if not (root / CORPUS_DIR).is_dir():
         print("[ERROR] 找不到语料目录：%s" % (root / CORPUS_DIR))
         return 2
     if args.update_ledger:
-        return update_ledger(root, args.owner, args.expires)
+        return update_ledger(root, args.owner, args.expires,
+                             renew=args.renew, reason=args.reason.strip())
     code, lines = check(root)
     for ln in lines:
         print(ln)

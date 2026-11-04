@@ -12,12 +12,16 @@ import json
 import shutil
 import sys
 import tempfile
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_redaction_consistency as C  # noqa: E402
 
 RESULTS: list[tuple[str, bool, str]] = []
+# 夹具默认的「合规」记账值：R8 要求有人负责 + 到期日在 365 天内且未过期。
+DEFAULT_OWNER = "agent"
+DEFAULT_EXPIRES = (date.today() + timedelta(days=180)).isoformat()
 
 
 def _write(root: Path, rel: str, obj) -> None:
@@ -27,7 +31,8 @@ def _write(root: Path, rel: str, obj) -> None:
 
 
 def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
-              status: str = "synced", expires: str | None = None,
+              status: str = "synced", expires: str | None = DEFAULT_EXPIRES,
+              owner: str = DEFAULT_OWNER, renewals=None,
               baseline_min_hit: int = 20, baseline_impact=None,
               dangling_entry: bool = False, consumer: str = "synced") -> Path:
     """造一个最小仓库形态。
@@ -69,11 +74,13 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
         "redacted_fields": ["description"],
         "judge_synced": consumer == "synced",
         "status": status,
-        "owner": "unassigned",
+        "owner": owner,
         "expires": expires,
         "reason": "自测夹具",
         "baseline_impact": baseline_impact,
     }]
+    if renewals is not None:
+        entries[0]["renewals"] = renewals
     if dangling_entry:
         entries.append({
             "file": "data/ctf_benchmark/benchmark.json", "problem": "ghost",
@@ -138,6 +145,30 @@ def main() -> int:
     # T12 正例：service 模式明文 flag 且声明来自环境变量 → 不算泄密
     run_case("T12 service 模式 flag_from_env 例外 → PASS", 0,
              consumer="service_env", status="accepted_debt")
+    # ---- R8 记账三件套（2026-11-04 补：负责人=agent / 有到期日 / 续期须留痕）----
+    # T13 变异：owner 仍是占位符 unassigned（「没人负责」）
+    run_case("T13 owner=unassigned → FAIL（无人负责）", 1, consumer="synced",
+             status="synced", owner="unassigned")
+    # T14 变异：expires 为空（「永不复查」）
+    run_case("T14 expires 为空 → FAIL", 1, consumer="synced", status="synced",
+             expires=None)
+    # T15 变异：synced 条目也已过期（旧版只校验债务，synced 逃检）
+    run_case("T15 synced 但已过期 → FAIL", 1, consumer="synced", status="synced",
+             expires="2020-01-01")
+    # T16 变异：到期日超过 365 天上限（「填个很久以后」= 把记账做空）
+    run_case("T16 expires 超上限 → FAIL", 1, consumer="synced", status="synced",
+             expires=(date.today() + timedelta(days=400)).isoformat())
+    # T17 变异：手改 expires 却不留续期记录（renewals 最后一条 to 对不上）
+    run_case("T17 手改过期日留痕不符 → FAIL", 1, consumer="synced", status="synced",
+             expires=DEFAULT_EXPIRES,
+             renewals=[{"date": "2026-01-01", "by": "agent",
+                        "from": "2026-01-01", "to": "2027-01-01", "reason": "手改"}])
+    # T18 正例：续期记录完整且与 expires 一致
+    run_case("T18 续期留痕一致 → PASS", 0, consumer="synced", status="synced",
+             expires=DEFAULT_EXPIRES,
+             renewals=[{"date": date.today().isoformat(), "by": "agent",
+                        "from": "2026-01-01", "to": DEFAULT_EXPIRES,
+                        "reason": "复核后延期"}])
 
     bad = 0
     for title, ok, detail in RESULTS:

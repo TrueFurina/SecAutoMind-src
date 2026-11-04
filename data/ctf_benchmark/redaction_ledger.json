@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "脱敏台账：每一处题面脱敏都必须在此登记。判分口径未同步的登记为 accepted_debt —— 债务期相关 job 仍会红，红是账单不是绿。2026-11-04 起判分清单只允许 flag_sha256，明文 flag 一律视为答案表泄密（R7）。",
+  "note": "脱敏台账：每一处题面脱敏都必须在此登记。判分口径未同步的登记为 accepted_debt —— 债务期相关 job 仍会红，红是账单不是绿。2026-11-04 起判分清单只允许 flag_sha256，明文 flag 一律视为答案表泄密（R7）。2026-11-04 起记账三件套由 R8 机验：负责人一律为 agent（用户定调「本项目都是 agent 开发，负责人就是 agent」），owner 写 unassigned/空 一律红；expires 必填、未过期、且不超过 365 天（填太远等于没有到期日）；到期续期只能走 --update-ledger --renew --reason 追加 renewals 留痕，手改 JSON 会被 R8 抓出。",
   "entries": [
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -10,10 +10,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -23,10 +24,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -36,10 +38,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -49,10 +52,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -62,10 +66,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -75,10 +80,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -88,10 +94,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -101,10 +108,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -114,10 +122,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -127,10 +136,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -140,10 +150,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -153,10 +164,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -166,10 +178,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -179,10 +192,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -192,10 +206,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/real_benchmark.json",
@@ -205,10 +220,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/real_benchmark.json",
@@ -218,10 +234,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/real_benchmark.json",
@@ -231,10 +248,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     },
     {
       "file": "data/ctf_benchmark/real_benchmark.json",
@@ -244,10 +262,11 @@
       ],
       "judge_synced": true,
       "status": "synced",
-      "owner": "unassigned",
-      "expires": "",
+      "owner": "agent",
+      "expires": "2027-11-04",
       "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
-      "baseline_impact": null
+      "baseline_impact": null,
+      "renewals": []
     }
   ]
 }
