@@ -16,6 +16,20 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+@pytest.fixture(autouse=True)
+def _dummy_api_keys(monkeypatch):
+    """本文件所有用例都把 httpx.post 替换掉了，永不发真网络请求。
+
+    ai_chat 在「无 key」时会**在 HTTP 之前**直接 return None（client.py:367），
+    于是 patch 的 post 根本不会被调用、`captured` 里没有 `payload` → KeyError。
+    本机有真 key 所以本地绿、CI 无 key 必红（2026-11-04 CI 实锤 3 个用例）。
+    这里注入假 key，让本地与 CI 走同一条代码路径。
+    """
+    for k in ("DEEPSEEK_API_KEY", "CTF_AGENT_LLM_API_KEY", "STEP_API_KEY"):
+        monkeypatch.setenv(k, "test-key-not-real")
+
+
+
 def test_ai_chat_returns_str_not_tuple(monkeypatch):
     """_post_chat 返回 (content, usage) 后，ai_chat 必须只返回 content 字符串。"""
     from llm import client as llm_client
