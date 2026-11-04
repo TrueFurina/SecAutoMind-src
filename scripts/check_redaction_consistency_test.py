@@ -122,6 +122,96 @@ def run_case(title: str, expect: int, **kw) -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _patch_case(title: str, *, expect_hits: int, added: str, removed: str,
+                header_name: str = "") -> None:
+    """R10 的纯函数夹具：造一段 `git log -p` 文本，喂给 scan_patch_added。
+
+    为什么不用真仓库：自测要能在任何环境毫秒级跑完，且要能精确控制
+    「这行是 +（新增）还是 -（删除）」，真仓库反而难以构造这种反差。
+    """
+    import hashlib
+    leak = "XXX{fixture_patch_leak}"
+    known = {hashlib.sha256(leak.encode("utf-8")).hexdigest(): ["fixture#patch"]}
+    patch = "\n".join([
+        "commit 0123456789abcdef0123456789abcdef01234567",
+        "Author: agent <agent@example>",
+        "    fixture commit",
+        "",
+        "diff --git a/%s b/%s" % (header_name or "scripts/x.py", header_name or "scripts/x.py"),
+        "--- a/%s" % (header_name or "scripts/x.py"),
+        "+++ b/%s" % (header_name or "scripts/x.py"),
+        "@@ -1 +1 @@",
+        ("-" + removed) if removed else "-old line",
+        ("+" + added) if added else "+new line",
+        "",
+    ])
+    hits = C.scan_patch_added(patch, known)
+    ok = len(hits) == expect_hits
+    RESULTS.append((title, ok,
+                    "hits=%d（期望 %d）%s" % (len(hits), expect_hits,
+                                             "" if ok else " ｜ %r" % (hits,))))
+
+
+def _history_case(title: str) -> None:
+    """真仓库端到端：先提交一次带答案明文的文件，再提交把它删掉。
+
+    结果：HEAD 上看什么都没有（R9 查不到），但历史里还在——这正是本项目
+    真实发生过的事（答案进过测试夹具与归档文档，后来才清）。只有 R10 能抓。
+    """
+    import hashlib
+    import subprocess
+
+    leak = "flag{fixture_history_leak}"
+    tmp = Path(tempfile.mkdtemp(prefix="rl_hist_"))
+    try:
+        make_repo(tmp, consumer="synced", status="synced")
+        # 让题目真值指向这条明文，R10 才有「已知答案」可比对
+        prob_path = tmp / "data/ctf_benchmark/benchmark.json"
+        doc = json.loads(prob_path.read_text(encoding="utf-8"))
+        doc["problems"]["web_xss"]["flag_sha256"] = hashlib.sha256(
+            leak.encode("utf-8")).hexdigest()
+        prob_path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n",
+                             encoding="utf-8")
+
+        def git(*a):
+            return subprocess.run(["git", *a], cwd=str(tmp), capture_output=True,
+                                  text=True, encoding="utf-8")
+
+        git("init", "-q")
+        git("config", "user.email", "agent@example")
+        git("config", "user.name", "agent")
+        git("config", "commit.gpgsign", "false")
+        git("add", "-A")
+        git("commit", "-q", "-m", "clean baseline")
+        base = git("rev-parse", "HEAD").stdout.strip()
+
+        (tmp / "scripts" / "history_leak.py").write_text(
+            '# 曾经把答案写在这里\nLEAK = "%s"\n' % leak, encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", "leak slipped in")
+
+        (tmp / "scripts" / "history_leak.py").unlink()
+        git("add", "-A")
+        git("commit", "-q", "-m", "clean it up")
+
+        saved = C.HISTORY_SINCE
+        C.HISTORY_SINCE = base[:8]
+        try:
+            code, lines = C.check(tmp)
+        finally:
+            C.HISTORY_SINCE = saved
+        joined = "\n".join(lines)
+        r10_lines = [ln for ln in lines if "R10" in ln and "[FAIL]" in ln]
+        r9_lines = [ln for ln in lines if "R9 入仓明文答案" in ln]
+        ok = (code == 1 and len(r10_lines) == 1 and not r9_lines)
+        detail = "RC=%d ｜ R10 命中 %d ｜ R9 命中 %d ｜ %s" % (
+            code, len(r10_lines), len(r9_lines),
+            r10_lines[0].strip() if r10_lines else joined[-80:])
+        RESULTS.append((title, ok, detail))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
     # T1 正例：判分已标不可判，台账 synced
     run_case("T1 判分已标不可判 + synced → PASS", 0, consumer="synced", status="synced")
@@ -203,6 +293,22 @@ def main() -> int:
              answer_leak=True,
              exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
                       "owner": "unassigned", "expires": DEFAULT_EXPIRES}])
+
+    # ---- R10 历史防线（清干净只对 HEAD 有效；历史里的明文照样能 git log -p 抄走）----
+    # T23 变异：新提交的新增行里带答案明文 → 命中（只看 + 行）
+    _patch_case("T23 历史新增行含答案明文 → 命中", expect_hits=1,
+                added='XXX{fixture_patch_leak}', removed="")
+    # T24 反例：明摆着是被删掉的那一行（历史债），不算新债 → 不命中
+    _patch_case("T24 删除行不算新增泄密 → 不命中", expect_hits=0,
+                added="", removed="XXX{fixture_patch_leak}")
+    # T25 反例：新增行里的 REDACTED 占位不算命中（否则脱敏本身会被判红）
+    _patch_case("T25 新增行是 REDACTED 占位 → 不命中", expect_hits=0,
+                added="XXX{REDACTED_placeholder}", removed="")
+    # T26 变异：新增行里的答案被拆进 diff 头（+++ b/file）时不许误判成内容行
+    _patch_case("T26 文件头 +++ 不算新增内容 → 不命中", expect_hits=0,
+                added="", removed="", header_name="XXX{fixture_patch_leak}")
+    # T27 端到端：HEAD 干净、历史里有过明文 → 只有 R10 能抓到（证明「清 HEAD 不等于清干净」）
+    _history_case("T27 HEAD 干净但历史含明文 → 只有 R10 抓得到")
 
     bad = 0
     for title, ok, detail in RESULTS:

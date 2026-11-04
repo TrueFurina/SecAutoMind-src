@@ -38,6 +38,9 @@
      任何位置出现「sha256 与已知答案相符」的明文即红；确需保留的（如题目生成器必须
      知道明文才能出题）登记在 `redaction_exempt.json` 豁免表，豁免同样要 owner + 到期日
      （复用 R8 口径），命中消失后豁免变悬空 → 红。
+  R10 **历史防线**：R9 只清 HEAD，而 git 历史里留着的明文照样 `git log -p` 能抄走，
+     要擦还得改写历史（不可逆）。故从 HISTORY_SINCE 起，**任何新提交的新增行**都不许
+     再把答案明文写进仓库；删除行不算（那是历史债，不是新债）。
 
 退出码：0 = 一致（含已入账的债）｜1 = 存在违规｜2 = 用法/文件错误。
 口径说明：本门禁**不**判断债务该不该还，只保证债务被看见、被记名、有期限。
@@ -86,6 +89,13 @@ ANSWER_SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".g
                    ".sqlite", ".db"}
 ANSWER_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".idea"}
 MAX_SCAN_BYTES = 2 * 1024 * 1024
+
+# R10 历史防线：从 6ea2c81（首次把全仓答案明文清干净的那笔）起，
+# 任何提交都不许**再次**把答案明文写进仓库。理由是清除只对 HEAD 有效：
+# 一旦明文进了历史，`git log -p` 照样能抄走，而且再想擦就得改写历史（不可逆）。
+# 起始点前移的条件：由人工确认某提交之后确实干净，改这一行常量。
+HISTORY_SINCE = "6ea2c81"
+MAX_HISTORY_COMMITS = 200
 
 
 def str_fields(obj, path=""):
@@ -211,6 +221,51 @@ def scan_answer_plaintext(root: Path, known: dict) -> tuple[list[tuple[str, str,
             if h in known:
                 hits.append((rel.replace("\\", "/"), cand, known[h]))
     return hits, skipped
+
+
+def _git_out(root: Path, *args: str) -> str | None:
+    """跑一条 git 命令，失败返回 None（调用方必须按 fail-closed 处理）。"""
+    try:
+        r = subprocess.run(["git", *args], cwd=str(root), capture_output=True,
+                           text=True, encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+    if r.returncode != 0:
+        return None
+    return r.stdout
+
+
+def scan_patch_added(text: str, known: dict) -> list[tuple[str, str, str, list[str]]]:
+    """从 `git log -p` 文本里只看**新增行**（`+`，不是 `+++`）。
+
+    删除行不算新增泄密（它是历史债，不是新债）；只看 `+` 才能做到
+    「从某提交起零新增」，否则每一笔清污提交都会被自己判红。
+    返回 [(commit, 文件, 字面, 对应)]。
+    """
+    hits: list[tuple[str, str, str, list[str]]] = []
+    commit = "?"
+    path = "?"
+    for raw in text.splitlines():
+        if raw.startswith("commit ") and len(raw) > 8:
+            parts = raw.split()
+            if len(parts) >= 2:
+                commit = parts[1][:8]
+            continue
+        if raw.startswith("diff --git "):
+            frag = raw[len("diff --git "):]
+            idx = frag.find(" b/")
+            path = frag[idx + 3:].strip() if idx >= 0 else frag.strip()
+            continue
+        if not raw.startswith("+") or raw.startswith("+++"):
+            continue
+        for m in ANSWER_SHAPE.finditer(raw):
+            cand = m.group(0)
+            if "REDACTED" in cand:
+                continue
+            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+            if h in known:
+                hits.append((commit, path, cand, known[h]))
+    return hits
 
 
 def check(root: Path) -> tuple[int, list[str]]:
@@ -407,6 +462,31 @@ def check(root: Path) -> tuple[int, list[str]]:
                                  % (rel, exp, MAX_EXPIRY_DAYS))
         if rel not in used_exempt:
             fails.append("R9 豁免悬空：%s（该文件已无答案明文命中，须删除豁免）" % rel)
+
+    # R10 历史防线：清干净之后的新提交，不许再把答案明文写回来
+    if _git_out(root, "rev-parse", "--git-dir") is None:
+        lines.append("  历史新增行扫描：非 git 环境（自测夹具/源码包副本），跳过 R10")
+    else:
+        revs = _git_out(root, "rev-list", "%s..HEAD" % HISTORY_SINCE)
+        if revs is None:
+            fails.append("R10 无法解析起始提交 %s（历史扫描面为空即不可信，fail-closed）"
+                         % HISTORY_SINCE)
+        else:
+            rev_list = revs.split()
+            if len(rev_list) > MAX_HISTORY_COMMITS:
+                fails.append("R10 待扫提交过多：%s..HEAD 有 %d 个（上限 %d）——"
+                             "请把 HISTORY_SINCE 前移到已确认干净的提交，再继续累计"
+                             % (HISTORY_SINCE, len(rev_list), MAX_HISTORY_COMMITS))
+            patch = _git_out(root, "log", "-p", "-U0", "--no-color", "--no-merges",
+                             "%s..HEAD" % HISTORY_SINCE) or ""
+            hist_hits = scan_patch_added(patch, known)
+            lines.append("  历史新增行扫描：%s..HEAD 共 %d 个提交 ｜ 新增行里命中 %d 处"
+                         % (HISTORY_SINCE, len(rev_list), len(hist_hits)))
+            for commit, path, cand, ids in hist_hits:
+                fails.append("R10 历史新增明文：commit %s ｜ %s ｜ %s ｜ 对应 %s"
+                             "（清除只对 HEAD 有效：进了历史就能 git log -p 抄走，"
+                             "且擦掉要改写历史；请在提交前就清掉）"
+                             % (commit, path, cand, ",".join(sorted(set(ids)))[:80]))
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
