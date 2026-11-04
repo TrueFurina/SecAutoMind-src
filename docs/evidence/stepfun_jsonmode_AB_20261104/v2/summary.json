@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-11-04T12:39:55",
+  "endpoint": "https://api.stepfun.com/v1/chat/completions",
+  "model": "step-3.5-flash",
+  "max_tokens": 2000,
+  "reps": 2,
+  "prompts": 8,
+  "helper_source": "engine",
+  "arms": {
+    "A_off": {
+      "denominator": 16,
+      "ok": 15,
+      "protocol_fail": 0,
+      "empty_reply": 1,
+      "ok_rate_pct": 93.8,
+      "protocol_fail_rate_pct": 0.0,
+      "empty_reply_rate_pct": 6.2,
+      "http_error_calls": 0
+    },
+    "B_on": {
+      "denominator": 16,
+      "ok": 16,
+      "protocol_fail": 0,
+      "empty_reply": 0,
+      "ok_rate_pct": 100.0,
+      "protocol_fail_rate_pct": 0.0,
+      "empty_reply_rate_pct": 0.0,
+      "http_error_calls": 0
+    }
+  },
+  "delta_ok_rate_pp": 6.2,
+  "verdict": "未证有效（<20pp）",
+  "arm_C_client": {
+    "denominator": 16,
+    "client_ok": 16,
+    "client_none": 0,
+    "client_ok_rate_pct": 100.0
+  }
+}
