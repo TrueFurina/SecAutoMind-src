@@ -77,6 +77,13 @@ line-length = 100
 extend-exclude = [
     "tools/tools",
     "_archive_defense",
+    # 2026-11-04：题库入版本库后，ruff 会扫描**题目附件里的 .py**。
+    # 那些是赛题给的素材（protobuf 生成代码、题目脚本、他人 exploit，
+    # 甚至有故意写坏的语法），不是本项目源码——对它们做 lint 既无意义又恒红
+    # （实测 msgs_pb2.py 报 _RSAENCRYPTIONDATA 未定义；chal.py 报 invalid-syntax）。
+    # ⚠️ 用 glob 形式 `**/_attachments/**`：实测写具体前缀 `data/xxx/_attachments`
+    # 时 ruff 不匹配（它按文件中转路径匹配），换成 `**/` 前缀后生效。
+    "**/_attachments/**",
 ]
 
 [tool.ruff.lint]

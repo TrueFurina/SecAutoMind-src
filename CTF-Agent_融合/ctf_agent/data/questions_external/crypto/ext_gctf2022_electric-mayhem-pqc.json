@@ -1,0 +1,18 @@
+{
+ "id": "ext_gctf2022_electric-mayhem-pqc",
+ "title": "Electric Mayhem PQC",
+ "category": "crypto",
+ "description": "The server presents power traces of a secret firmware crypto operation. The goal is to recover the secret key.",
+ "external_source": "google-ctf-2022",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2022/quals/crypto-electric-mayhem-pqc",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2022_electric-mayhem-pqc\\_attachments\\elmo.tgz",
+  "data\\questions_external\\crypto\\ext_gctf2022_electric-mayhem-pqc\\_attachments\\firmware.tgz",
+  "data\\questions_external\\crypto\\ext_gctf2022_electric-mayhem-pqc\\_attachments\\stm32f0_kyber512.json.gz"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "726be233db051afadfcbf60894793874dd808d8f071f3da879b6550a3c8786af",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2022_segfault-labyrinth",
+ "title": "Segfault Labyrinth",
+ "category": "misc",
+ "description": "Be careful! One wrong turn and the whole thing comes crashing down",
+ "external_source": "google-ctf-2022",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2022/quals/misc-segfault-labyrinth",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2022_segfault-labyrinth\\_attachments\\challenge"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "4e395272277002866e79b6a451001f94dcb05f94839d379a573992785d9f39e3",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

@@ -1,0 +1,19 @@
+{
+ "id": "ext_gctf2021_abc-arm-and-amd",
+ "title": "abc arm and amd",
+ "category": "misc",
+ "description": "Provide a payload that prints the contents of the 'flag' file and runs on both\nx86-64 and arm64v8.",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/misc-shellcode",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2021_abc-arm-and-amd\\_attachments\\chal-aarch64",
+  "data\\questions_external\\misc\\ext_gctf2021_abc-arm-and-amd\\_attachments\\chal-x86-64",
+  "data\\questions_external\\misc\\ext_gctf2021_abc-arm-and-amd\\_attachments\\libc-aarch64.so",
+  "data\\questions_external\\misc\\ext_gctf2021_abc-arm-and-amd\\_attachments\\libc-x86-64.so"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "6d0457f9be5c0605a13cecc2a2f66d215fab8d2a3c01be034112104ca4ff95d5",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

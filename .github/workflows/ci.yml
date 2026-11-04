@@ -1228,14 +1228,22 @@ jobs:
           #   实测干净检出：total=93、runnable=1。
           #   若照抄 87，本 job 一上线就红——那不是"发现回归"，是"锚点抄错了"。
           #   故锚点取检出态真值；本机可用 --no-cwd-probe 自查更高水位。
-          FLOOR = {'total': 93, 'runnable': 1}
+          # 🔴 2026-11-04 更新：题库已纳入版本库（见 ctf_agent/.gitignore 的说明），
+          # 检出态从「可跑 1」恢复到「可跑 81」（real 9 / external 39 / ext 33）。
+          # 含真实答案的 5 个附件仍排除，故 real 由 14 降到 9——这是安全意识的结果，不是退化。
+          # 锚点取实测下界，只许涨不许跌。
+          FLOOR = {'total': 166, 'runnable': 81}
           bad = []
           for k, floor in FLOOR.items():
               if s[k] < floor:
                   bad.append(f"{k}: {s[k]} < 下限 {floor}")
           # 逐池下限：任一池可跑数下降即红（防「总量持平但结构塌陷」）
           per_pool = {p['pool']: p['runnable'] for p in d['pools']}
-          POOL_FLOOR = {'data/questions_real': 1}
+          POOL_FLOOR = {
+              'data/questions_real': 9,
+              'data/questions_external': 39,
+              'data/questions_ext': 33,
+          }
           for pool, floor in POOL_FLOOR.items():
               got = per_pool.get(pool, 0)
               if got < floor:

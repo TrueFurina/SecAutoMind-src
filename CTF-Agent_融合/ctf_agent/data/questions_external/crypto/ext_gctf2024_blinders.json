@@ -1,0 +1,17 @@
+{
+ "id": "ext_gctf2024_blinders",
+ "title": "Blinders",
+ "category": "crypto",
+ "description": "If you are really efficient at guessing which number is missing from {0, 1, ..., 255}, I am more than happy to share you the flag!",
+ "external_source": "google-ctf-2024",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2024/quals/crypto-blinders",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2024_blinders\\_attachments\\chall.py",
+  "data\\questions_external\\crypto\\ext_gctf2024_blinders\\_attachments\\client.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "099cc26a39b564a47674d865c54245c8bc83532dd11d5ad872a85175d00404fa",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

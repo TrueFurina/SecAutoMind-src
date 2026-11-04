@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2021_pythia",
+ "title": "pythia",
+ "category": "crypto",
+ "description": "Yet another oracle, but the queries are costly and limited so be frugal with them.",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/crypto-pythia",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2021_pythia\\_attachments\\server.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "57bbf5cf67e49a3f39b7efb20b80e47edaf5537d675cd8d1d5d3afc8fab79037",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

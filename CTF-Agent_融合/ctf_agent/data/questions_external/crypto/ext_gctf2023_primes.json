@@ -1,0 +1,16 @@
+{
+  "id": "ext_gctf2023_primes",
+  "title": "Primes",
+  "category": "crypto",
+  "description": "I have prepared a flag for you but unfortunately it has been mangled somehow :/",
+  "external_source": "google-ctf-2023",
+  "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/crypto-primes",
+  "license": "Apache-2.0",
+  "attachments": [
+    "data\\questions_external\\crypto\\ext_gctf2023_primes\\_attachments\\chal.sage"
+  ],
+  "difficulty": "unknown",
+  "flag_sha256": "df18e59de0157907864737b5f2a3d1a0fb5ffc4fe7e64a5f467c92054a783d56",
+  "provenance": "real_past_ctf",
+  "flag_pattern": "CTF\\{[^}]+\\}"
+}

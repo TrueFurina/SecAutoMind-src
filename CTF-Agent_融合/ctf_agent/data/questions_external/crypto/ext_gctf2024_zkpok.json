@@ -1,0 +1,18 @@
+{
+ "id": "ext_gctf2024_zkpok",
+ "title": "ZKPOK",
+ "category": "crypto",
+ "description": "If you know the flag... you know the flag!",
+ "external_source": "google-ctf-2024",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2024/quals/crypto-zkpok",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2024_zkpok\\_attachments\\chall.py",
+  "data\\questions_external\\crypto\\ext_gctf2024_zkpok\\_attachments\\generate.py",
+  "data\\questions_external\\crypto\\ext_gctf2024_zkpok\\_attachments\\param.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "b2b94d189a30bf906abea043a54c562b66f28f524b957e195414cc08c74ad11d",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

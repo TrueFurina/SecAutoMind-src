@@ -1,0 +1,17 @@
+{
+ "id": "ext_gctf2023_zip",
+ "title": "ZIP",
+ "category": "crypto",
+ "description": "Someone rolled their own implementation of PKZIP-compatible encryption to produce an encrypted ZIP file. The PKZIP-compatible cipher is old and known to be weak, but did the author leak sufficient information for you to decrypt the flag?",
+ "external_source": "google-ctf-2023",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/crypto-ziphard",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2023_zip\\_attachments\\hard.py",
+  "data\\questions_external\\crypto\\ext_gctf2023_zip\\_attachments\\hard.zip"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "d3109ddee29b5916e1b3356a863bd4203bd356cbfa76a5d5467c62cac692a69e",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

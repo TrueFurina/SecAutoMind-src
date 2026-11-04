@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2024_desfunctional",
+ "title": "desfunctional",
+ "category": "crypto",
+ "description": "A newbie friend of mine was trying to implement a secure server\nfor DES encryption and decryption but there seem to be some errors\nunexpectedly creeping in the key. It is getting frustrating, please help",
+ "external_source": "google-ctf-2024",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2024/quals/crypto-desfunctional",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2024_desfunctional\\_attachments\\chall.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "c1dcdcf4ec34958734643d15f431721d3b88e7af4d9b102c65040520d0fe79f1",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

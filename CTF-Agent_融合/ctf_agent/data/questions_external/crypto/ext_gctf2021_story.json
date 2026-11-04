@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2021_story",
+ "title": "story",
+ "category": "crypto",
+ "description": "Please, tell me a beautiful story.",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/crypto-story",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2021_story\\_attachments\\server.dart"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "87103faa49dd5ef5028fbd9a4e5d34480a074400e70c453add814de9d0c8d400",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

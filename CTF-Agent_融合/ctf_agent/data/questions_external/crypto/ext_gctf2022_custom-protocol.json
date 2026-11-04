@@ -1,0 +1,18 @@
+{
+ "id": "ext_gctf2022_custom-protocol",
+ "title": "Custom Protocol",
+ "category": "crypto",
+ "description": "I like to implement crypto myself. Please, take a look at my new implementation. It looks amazing, right?",
+ "external_source": "google-ctf-2022",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2022/quals/crypto-custom-protocol",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2022_custom-protocol\\_attachments\\msgs.proto",
+  "data\\questions_external\\crypto\\ext_gctf2022_custom-protocol\\_attachments\\msgs_pb2.py",
+  "data\\questions_external\\crypto\\ext_gctf2022_custom-protocol\\_attachments\\server.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "2eb85cf5344b86a105e233b8945420f6f38359c5be175cf45be712a7fb20b41e",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2025_hwsimv2",
+ "title": "HwSimV2",
+ "category": "misc",
+ "description": "Last year we were notified that our circuitry was backdoored, so now we formally verify our designs before they get sent to the factory. Implement an instruction decoder for our next-gen CPU!",
+ "external_source": "google-ctf-2025",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2025/quals/misc-hwsim",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2025_hwsimv2\\_attachments\\chal.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "0fa13375b6c673442521b735add8f3ea1f1aa817c68a508efae75ac7af1bafee",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

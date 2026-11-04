@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2021_filestore",
+ "title": "Filestore",
+ "category": "misc",
+ "description": "We stored our flag on this platform, but forgot to save the id. Can you help us restore it?",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/misc-filestore",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2021_filestore\\_attachments\\filestore.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "dd86ea90cce467810a85c6fdd8bec23e4ff1e1a90042cf1bc791bed380e66f70",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

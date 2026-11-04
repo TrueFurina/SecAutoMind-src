@@ -1,0 +1,17 @@
+{
+ "id": "ext_gctf2025_merkurated",
+ "title": "Merkurated",
+ "category": "crypto",
+ "description": "Can you rugpull my crypto?",
+ "external_source": "google-ctf-2025",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2025/quals/crypto-merkurated",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2025_merkurated\\_attachments\\chall.py",
+  "data\\questions_external\\crypto\\ext_gctf2025_merkurated\\_attachments\\requirements.txt"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "5a1c3a795a9d1a4e1902927af958bda3c659da3b52199f9d5b70c8bb0d6ca0d4",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

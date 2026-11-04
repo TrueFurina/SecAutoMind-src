@@ -1,0 +1,20 @@
+{
+ "id": "ext_gctf2025_numerology",
+ "title": "numerology",
+ "category": "crypto",
+ "description": "I made a new cipher, can you help me test it? I'll give you the key, please use it to decrypt my ciphertext.",
+ "external_source": "google-ctf-2025",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2025/quals/crypto-numerology",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2025_numerology\\_attachments\\__pycache__\\crypto_numerology.cpython-312.pyc",
+  "data\\questions_external\\crypto\\ext_gctf2025_numerology\\_attachments\\ctf_challenge_package.json",
+  "data\\questions_external\\crypto\\ext_gctf2025_numerology\\_attachments\\flag.txt",
+  "data\\questions_external\\crypto\\ext_gctf2025_numerology\\_attachments\\init.sh",
+  "data\\questions_external\\crypto\\ext_gctf2025_numerology\\_attachments\\readme.md"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "6e1f6526c3d9a298be5b1a2ae36759b77de2508d3061480b8e8cfedfb5cf7e16",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

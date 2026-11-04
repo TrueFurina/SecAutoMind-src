@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2023_cursved",
+ "title": "Cursved",
+ "category": "crypto",
+ "description": "This new signature scheme I built should be super secure. I know that you do not have a quantum computer, so what could possibly go wrong.",
+ "external_source": "google-ctf-2023",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/crypto-cursved",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2023_cursved\\_attachments\\chal.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "8185f0adaafb18b0f95d0ee11fd8e5cf3225cccfb117457bef7defa8b6482e7f",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

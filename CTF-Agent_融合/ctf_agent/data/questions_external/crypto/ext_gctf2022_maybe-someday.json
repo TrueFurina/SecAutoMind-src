@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2022_maybe-someday",
+ "title": "Maybe Someday",
+ "category": "crypto",
+ "description": "Leave me your ciphertexts. I will talk to you later.",
+ "external_source": "google-ctf-2022",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2022/quals/crypto-maybe-someday",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2022_maybe-someday\\_attachments\\chall.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "119b199b2399c36c551469e1551360965adf168cc76158a3f7a3f4d7877abc3d",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

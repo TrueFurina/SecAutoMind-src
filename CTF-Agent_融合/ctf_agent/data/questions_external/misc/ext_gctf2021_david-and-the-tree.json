@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2021_david-and-the-tree",
+ "title": "David and the Tree",
+ "category": "misc",
+ "description": "Sometimes, what's more important is not what you have, but what you're missing.",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/misc-zippi",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2021_david-and-the-tree\\_attachments\\challenge.zip"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "b05a30c36ed8e082856d1758d60cd06360c5cb2c8aa2b779abb5af87caf8e8aa",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

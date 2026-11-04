@@ -1,0 +1,17 @@
+{
+  "id": "ext_gctf2021_h1",
+  "title": "H1",
+  "category": "crypto",
+  "description": "Crypto is not real hacking, they say.",
+  "external_source": "google-ctf-2021",
+  "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/crypto-H1",
+  "license": "Apache-2.0",
+  "attachments": [
+    "data\\questions_external\\crypto\\ext_gctf2021_h1\\_attachments\\chall.py",
+    "data\\questions_external\\crypto\\ext_gctf2021_h1\\_attachments\\output.txt"
+  ],
+  "difficulty": "unknown",
+  "flag_sha256": "c62e7c1804e27b9b53bdb9e63f8a6e08c8ed2e11e4ffa9384f24d6317ab0d2df",
+  "provenance": "real_past_ctf",
+  "flag_pattern": "CTF\\{[^}]+\\}"
+}

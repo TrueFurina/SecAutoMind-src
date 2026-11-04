@@ -1,0 +1,17 @@
+{
+ "id": "ext_gctf2025_underhanded",
+ "title": "Underhanded",
+ "category": "crypto",
+ "description": "Proudly sharing our Python implementation of AES.\nBy the way, we sneakily hid a backdoor. Can you see sharp and see what went wrong?",
+ "external_source": "google-ctf-2025",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2025/quals/crypto-underhanded",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2025_underhanded\\_attachments\\aes.py",
+  "data\\questions_external\\crypto\\ext_gctf2025_underhanded\\_attachments\\chall.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "090f21dbb33b0995569b9e9c4136aaa93a0ad8b58d0c2ac102052899b6984554",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

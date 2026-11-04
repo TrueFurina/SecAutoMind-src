@@ -1,0 +1,22 @@
+{
+ "id": "ext_gctf2025_bpfbox",
+ "title": "BpfBox",
+ "category": "misc",
+ "description": "I heard people can write LSMs using BPF, so I built one.",
+ "external_source": "google-ctf-2025",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2025/quals/misc-bpfbox",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\Dockerfile",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\flag.txt",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\flake.lock",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\flake.nix",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\init\\go.mod",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\init\\main.go",
+  "data\\questions_external\\misc\\ext_gctf2025_bpfbox\\_attachments\\run_qemu"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "f47d97b0da61e829a95fdd72d26ceb7ecb1acd2ab51b18971d8d3dd418c8507a",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

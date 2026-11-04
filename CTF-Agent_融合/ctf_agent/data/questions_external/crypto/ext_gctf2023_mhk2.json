@@ -1,0 +1,17 @@
+{
+ "id": "ext_gctf2023_mhk2",
+ "title": "MHK2",
+ "category": "crypto",
+ "description": "I hid your flag using one of Murakami's knapsacks",
+ "external_source": "google-ctf-2023",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/crypto-mhk2",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2023_mhk2\\_attachments\\MHK2.sage",
+  "data\\questions_external\\crypto\\ext_gctf2023_mhk2\\_attachments\\output.txt"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "57fadd46d13972fee45dd5da37db06be6f5781e9bfa7c12a4044273cc2595a8e",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "CTF\\{[^}]+\\}"
+}

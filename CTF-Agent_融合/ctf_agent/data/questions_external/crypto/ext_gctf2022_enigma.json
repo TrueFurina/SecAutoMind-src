@@ -1,0 +1,22 @@
+{
+ "id": "ext_gctf2022_enigma",
+ "title": "Enigma",
+ "category": "crypto",
+ "description": "Cryptanalysis has advanced a long way.\nCan you break Enigma without a known plaintext?\nThe flag is written in all caps, with spaces and punctuation between words. It does not contain quotes.",
+ "external_source": "google-ctf-2022",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2022/quals/crypto-enigma",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\.bazelrc",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\README.md",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\WORKSPACE",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\encode.py",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\encrypt_modern.py",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\enigma",
+  "data\\questions_external\\crypto\\ext_gctf2022_enigma\\_attachments\\messages"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "1f65f4b59f246dc7b8274486339e4fa72a57ebca11d1fb6b0b8c12245e93ee55",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

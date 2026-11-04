@@ -1,0 +1,19 @@
+{
+ "id": "ext_gctf2023_least-common-genominator",
+ "title": "Least Common Genominator?",
+ "category": "crypto",
+ "description": "Someone used this program to send me an encrypted message but I can't read it! It uses something called an LCG, do you know what it is? I dumped the first six consecutive values generated from it but what do I do with it?!",
+ "external_source": "google-ctf-2023",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/crypto-lcg",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\dump.txt",
+  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\flag.txt",
+  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\generate.py",
+  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\public.pem"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "69981daf9abdebef789ff622d1672c37c6a1e97737415369dc77a4ba6360fd96",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "CTF\\{[^}]+\\}"
+}

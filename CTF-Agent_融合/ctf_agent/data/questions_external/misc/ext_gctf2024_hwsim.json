@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2024_hwsim",
+ "title": "hwsim",
+ "category": "misc",
+ "description": "You are the hardware supplier for  G.U.G.L. Can you sneak past the formal verification?",
+ "external_source": "google-ctf-2024",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2024/quals/misc-hwsim",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2024_hwsim\\_attachments\\hwsim.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "a8665b054e21c5b63617befa0f5af67827c67b904403a14a27faf04158e1e009",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

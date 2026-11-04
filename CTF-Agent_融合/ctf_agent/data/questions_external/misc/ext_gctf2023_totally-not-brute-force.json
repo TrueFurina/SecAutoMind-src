@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2023_totally-not-brute-force",
+ "title": "Totally Not Brute Force",
+ "category": "misc",
+ "description": "I found a service that can tell me whether the flag is correct or not, but it is hard to guess...\nCan you help me out here?",
+ "external_source": "google-ctf-2023",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2023/quals/misc-totallynotbruteforce",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2023_totally-not-brute-force\\_attachments\\src\\Makefile"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "0f5332246937ffa7aec17fe638320c346f95a4079f9189d3a338bddf38485b67",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

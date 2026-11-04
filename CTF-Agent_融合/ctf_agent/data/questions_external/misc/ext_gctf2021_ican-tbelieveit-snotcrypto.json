@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2021_ican-tbelieveit-snotcrypto",
+ "title": "ICan'tBelieveIt'sNotCrypto",
+ "category": "misc",
+ "description": "Every journey starts with a single step",
+ "external_source": "google-ctf-2021",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2021/quals/misc-steps",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\misc\\ext_gctf2021_ican-tbelieveit-snotcrypto\\_attachments\\chal.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "acee0feec01008a1ba26c5dc206a88325d7749b59a29e7bbf1f356ab2c3bb76f",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

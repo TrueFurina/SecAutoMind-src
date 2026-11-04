@@ -1,0 +1,16 @@
+{
+ "id": "ext_gctf2024_idea",
+ "title": "IDEA",
+ "category": "crypto",
+ "description": "We have a new idea about a cipher which we think may provide pretty good privacy\nSo bruce for impact as we may patent our new proposed encryption standard",
+ "external_source": "google-ctf-2024",
+ "source_repo": "https://github.com/google/google-ctf/tree/main/2024/quals/crypto-idea",
+ "license": "Apache-2.0",
+ "attachments": [
+  "data\\questions_external\\crypto\\ext_gctf2024_idea\\_attachments\\chall.py"
+ ],
+ "difficulty": "unknown",
+ "flag_sha256": "3b17e7f55d09e143d4acfe5647ce167b8e21539c5453a362ffbbe4c0c7d13435",
+ "provenance": "real_past_ctf",
+ "flag_pattern": "flag\\{[^}]+\\}"
+}

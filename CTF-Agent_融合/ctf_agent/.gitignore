@@ -120,6 +120,40 @@ data/questions_real/**/flag.txt
 data/questions_real/**/flag.png
 data/questions_real/**/*.flag
 
+# ── 2026-11-04：题库入版本库（例外，重置上面几行）─────────────────────
+# 背景：干净检出里 data/ 被整体排除 → 题库分母从 87 塌到 1 →
+#   `ctf-agent-corpus-denominator-gate` 只能守 1，5 条 data 用例被迫进豁免表。
+# 实测代价：三个题池共 424 文件 / 34.0 MB（git 压缩后约 22 MB），
+#   换回分母 85/166 与 CI 能跑真解题。
+#
+# 🔴 安全前提（本轮逐字节核对，非凭印象）：
+#   159 个附件里，**5 个内容确实含与题面 flag_sha256 逐字匹配的答案**：
+#     questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt
+#     questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt
+#     questions_real/_attachments/reverse/real_reverse_upx/helloupx11
+#     questions_real/_attachments/web/real_web_gongye_web2/index.php
+#     questions_ext/_attachments/rev/2023q-rev-baby_s_third/babysthird
+#   这 5 个 **必须继续排除**（公开仓库不得含答案）。实测排除后仍可跑 86/166
+#   （只少 1 题，那 5 题各有其它附件可用）。
+#
+# ⚠️ 未纳入：data/race_attachments（29 MB，赛时附件快照，无题库清单引用）与
+#   data/results/、platform_downloads/ 等运行时产物——它们对分母无贡献。
+!data/questions_real/**
+!data/questions_external/
+!data/questions_external/**
+!data/questions_ext/
+!data/questions_ext/**
+# 2026-11-04 追加：cybench 池漏掉过（DEFAULT_ROOTS 不含它，但
+# benchmarks/external_unseen 的清单引用它）——3 MB / 11 题全部可跑，收益高。
+!data/questions_ext_cybench/
+!data/questions_ext_cybench/**
+# 含真实答案的 5 个文件：覆盖回排除（必须放在上面放行规则之后）
+data/questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt
+data/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt
+data/questions_real/_attachments/reverse/real_reverse_upx/helloupx11
+data/questions_real/_attachments/web/real_web_gongye_web2/index.php
+data/questions_ext/_attachments/rev/2023q-rev-baby_s_third/babysthird
+
 # 根目录临时解密产物（赛时手工解题输出，非源码）
 /*.bin
 
