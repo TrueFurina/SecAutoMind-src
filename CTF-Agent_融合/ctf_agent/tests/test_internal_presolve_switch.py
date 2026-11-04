@@ -4,6 +4,7 @@
 外部真题 5 题探针中 2 题被附件直扫秒解，若无法关闭内部预扫，这 2 题会被
 误记为 LLM 能力。
 """
+import ast
 import importlib.util
 import os
 import sys
@@ -43,6 +44,55 @@ class TestInternalPresolveSwitch(unittest.TestCase):
     def test_call_site_uses_helper(self):
         # 调用点必须走 helper，不能另有独立 env 读取（否则改一处漏一处）
         self.assertIn("if not internal_presolve_enabled():", src)
+
+    def test_all_presolve_calls_go_through_gate(self):
+        """所有 presolve 调用必须走 `_gated_presolve` 闸门（2026-11-04 新增）。
+
+        事故：本开关原先只守住「题首预扫」一处，而同文件另有 2 处兜底调用
+        （放弃前 / 死循环前）完全不受控。实测三闸全关后仍有 11 题被
+        `solved_by=presolve` 出答案，纯 LLM 口径被污染，而**没有任何测试变红**。
+
+        本用例锁住"不许再有裸调用"：除闸门内部那一次外，
+        `await presolve(` / `from core.presolve import presolve` 都不许出现在
+        main_agent.py 里。以后新增调用点如果绕过闸门，这里立刻红。
+        变异验证：把任一处 _gated_presolve 改回 presolve → 本用例 FAIL。
+        """
+        # 只看**真实代码行**（剥掉 docstring / 注释），否则闸门自身的说明文字会被误判
+        try:
+            tree = ast.parse(src)
+        except SyntaxError as e:  # pragma: no cover
+            self.fail("main_agent.py 语法错误：%s" % e)
+
+        gate_node = next(
+            (n for n in ast.walk(tree)
+             if isinstance(n, (ast.AsyncFunctionDef, ast.FunctionDef))
+             and n.name == "_gated_presolve"), None)
+        self.assertIsNotNone(gate_node, "闸门 _gated_presolve 不存在")
+
+        # 统计「闸门体之外」的 await presolve() 与 core.presolve import
+        g_start, g_end = gate_node.lineno, (gate_node.end_lineno or gate_node.lineno)
+        outside_lines = [
+            ln for i, ln in enumerate(src.splitlines(), start=1)
+            if not (g_start <= i <= g_end)
+        ]
+        bare_await = [ln for ln in outside_lines
+                      if "await presolve(" in ln and not ln.strip().startswith("#")]
+        self.assertEqual(
+            bare_await, [],
+            "存在绕过 _gated_presolve 的裸 presolve 调用（开关会漏管）：%r" % bare_await)
+
+        bare_import = [ln for ln in outside_lines
+                       if "from core.presolve import presolve" in ln
+                       and not ln.strip().startswith("#")
+                       and not ln.strip().startswith("`")]
+        self.assertEqual(
+            bare_import, [],
+            "存在直连 core.presolve 的 import（应改用 _gated_presolve）：%r" % bare_import)
+
+        # 正向：闸门必须真的被调用（防"全删掉也算通过"）
+        self.assertGreaterEqual(
+            src.count("_gated_presolve("), 3,
+            "闸门调用点过少，疑似被移除（至少应有 题首/放弃前/死循环前 三处）")
 
 
 if __name__ == "__main__":

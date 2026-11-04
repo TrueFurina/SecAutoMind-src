@@ -531,9 +531,45 @@ def internal_presolve_enabled() -> bool:
     用途：量测「纯 LLM 独立贡献」——solver 层的 --presolve-skip 只跳过 solver 级预扫，
     主 Agent 内部的题首预扫仍会跑，附件直扫命中的题会被当确定性答案直接提交。
     口径纪律：确定性直扫与 LLM 贡献必须能分开记账，否则会把前者记成后者。
+
+    🔴 2026-11-04 修接线缺口（87 题全量实锤）
+    --------------------------------------
+    本开关原先只守住 `main_agent.py` 的**题首入口**一处，而文件里共有 4 处
+    `from core.presolve import presolve`：
+      ① 题首预扫（受本开关管）
+      ② 放弃前确定性兜底（受 CTF_AGENT_LAST_CHANCE_PRESOLVE 管）
+      ③ 死循环前确定性兜底（**无任何开关** ← 就是这一处漏了）
+    实测：`--presolve-skip` + `INTERNAL_PRESOLVE=off` + `LAST_CHANCE_PRESOLVE=off`
+    三闸全关，仍有 **11 题**被记成 `solved_by=presolve`（全部是
+    `ext_nyu_ctf_bench_*`，从日志看是 `presolve:flag_scan` / `presolve:ecxor`
+    / `presolve:rsa_ibe_collusion` 命中）——纯 LLM 口径被污染，25.3% 这个数字里
+    混进了确定性管线的成绩。
+
+    根因不是某个入口写错，而是「开关加在调用点」这种接法天然漏：新增一处 presolve
+    调用就多一个漏口，且**不会有任何测试变红**。故改为在 presolve 的**统一出口**
+    设闸（`_gated_presolve`），四处调用全部改走它。这样以后再加调用点只要走这个
+    函数就自动受控；不走的话，`test_presolve_switch_wiring` 会红。
     """
     return os.getenv("CTF_AGENT_INTERNAL_PRESOLVE", "on").strip().lower() not in (
         "off", "0", "false")
+
+
+async def _gated_presolve(*args, **kwargs):
+    """presolve 的**统一闸门**（2026-11-04）。
+
+    为什么必须在出口设闸而不是在各调用点：`main_agent.py` 里原有 4 处
+    `from core.presolve import presolve`，而开关只接了其中一处。实测三闸全关
+    （--presolve-skip + INTERNAL_PRESOLVE=off + LAST_CHANCE_PRESOLVE=off）仍有
+    11 题被 presolve 出答案 —— 纯 LLM 口径被污染。这种「加开关」的接法每多一处
+    调用就多一个漏口，且没有任何测试会红。
+
+    本函数把「关掉」这件事收敛到一个地方：所有 presolve 调用都走它，
+    关闭时统一返回 None（调用方本来就把 None 当"未命中"，无需改判据）。
+    """
+    if not internal_presolve_enabled():
+        return None
+    from core.presolve import presolve
+    return await presolve(*args, **kwargs)
 
 
 class MainAgent:
@@ -670,7 +706,7 @@ class MainAgent:
                 "off", "0", "false", "no"):
             return None
         try:
-            from core.presolve import presolve
+            # 走统一闸门（见 _gated_presolve）：本处是放弃前兜底
 
             # 2026-09-30 修复（92 题审计）：兜底路径此前传 answers=None，
             # 形状扫描引擎扫到的诱饵/别题 flag（8 例假命中）会无闸入账。
@@ -680,7 +716,7 @@ class MainAgent:
             # 即判为共享文档/噪声，跳过全部嗅探（防"抓第一个"抄错别题 flag）。
             from eval.cases import preset_answers
 
-            flag = await presolve(question, registry=self.registry, sandbox=self.sandbox,
+            flag = await _gated_presolve(question, registry=self.registry, sandbox=self.sandbox,
                                   answers=preset_answers([question]), force=True)
             if flag:
                 logger.info("[%s] 放弃前确定性兜底命中: %s",
@@ -731,10 +767,9 @@ class MainAgent:
                         getattr(question, "id", "?"))
         else:
             try:
-                from core.presolve import presolve
                 from eval.cases import preset_answers
 
-                _pre = await presolve(question, registry=self.registry, sandbox=self.sandbox,
+                _pre = await _gated_presolve(question, registry=self.registry, sandbox=self.sandbox,
                                       answers=preset_answers([question]))
                 if _pre:
                     logger.info("[%s] 确定性预扫命中: %s",
@@ -1002,10 +1037,9 @@ class MainAgent:
                         # → math_engine → fast_solve）。若入口已嗅探过（同附件只嗅探一次），
                         # presolve 直接返回 None，落到下方死循环止损。
                         try:
-                            from core.presolve import presolve
                             from eval.cases import preset_answers
 
-                            _fb_flag = await presolve(
+                            _fb_flag = await _gated_presolve(
                                 question, registry=self.registry, sandbox=self.sandbox,
                                 answers=preset_answers([question]))
                             if _fb_flag:
