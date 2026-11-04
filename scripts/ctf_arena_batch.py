@@ -25,6 +25,20 @@
 
 判分纪律（与 ctf_arena 一致）：**只看输出里有没有 flag 明文**，不猜、不看退出码。
 
+## 期望答案的两种存法（2026-11-04 起）
+
+- `flag`：明文期望答案。**只允许 service 模式**使用——因为假服务必须被写入真 flag 才能被
+  利用，这是模式本身的物理约束。local 模式出现 `flag` 明文即视为「答案表泄密」，
+  由 `check_redaction_consistency.py` 判红。
+- `flag_sha256`：期望答案的 sha256（hex 小写）。local 模式**必须**用这个：solver 输出明文，
+  裁判在本地对它做哈希再比对，仓库里于是不再躺着一份答案表。
+- `expect: not_attemptable`：该题**不可判**（例：题面已脱敏、密文已不在语料里）。
+  不执行、不计入 stable/regressed，单列 excluded——避免「测不了」被误读成「退化了」。
+
+> 为什么加这一层：2026-11-04 实测，`benchmark.json` 15 题题面脱敏后，
+> `arena_manifest.json` 里仍以明文躺着一份包含全部 15 题答案的 flag 表。
+> 题面脱敏防的泄密，被答案表原样抵消。
+
 ## 仪器自检（--self-test，部署后 / 改动后先跑）
 
 用假解题者（cat flag）证明判分确实说 SOLVED、负例（echo nope）说 UNSOLVED、
@@ -54,8 +68,10 @@ python3 ctf_arena_batch.py --manifest arena_manifest.json \
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -63,12 +79,36 @@ import tempfile
 import threading
 import time
 
+# flag 形态：`前缀{内容}`。用于从 solver 输出里摘候选串做哈希比对。
+FLAG_SHAPE = re.compile(r"[A-Za-z0-9_]{1,24}\{[^}\s]{1,160}\}")
+
+
+def sha256_hex(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def _judge_output(raw: bytes, flag_value: str | None, flag_sha256: str | None) -> int:
+    """判分本体：明文命中 或 候选串哈希命中。
+
+    两个入口都不给 → rc=1（运行层面，绝不算 UNSOLVED）。
+    """
+    if flag_sha256:
+        want = flag_sha256.strip().lower()
+        for cand in FLAG_SHAPE.findall(raw.decode("utf-8", "replace")):
+            if sha256_hex(cand) == want:
+                return 0
+    if flag_value is not None:
+        return 0 if flag_value.encode() in raw else 2
+    if flag_sha256:
+        return 2
+    return 1
+
 
 # ───────────────────────── 内联靶场裁判原语 ─────────────────────────
 
 def _judge_local(cmd: str, cwd: str, flag_value: str | None, timeout: float,
-                 log_path: str | None) -> int:
-    """本地静态模式：subprocess 捕合并输出，判 flag 明文。无 socket。"""
+                 log_path: str | None, flag_sha256: str | None = None) -> int:
+    """本地静态模式：subprocess 捕合并输出，判 flag 明文命中或哈希命中。无 socket。"""
     if flag_value is not None:
         os.makedirs(cwd, exist_ok=True)
         with open(os.path.join(cwd, "flag"), "w", encoding="utf-8") as fh:
@@ -82,15 +122,14 @@ def _judge_local(cmd: str, cwd: str, flag_value: str | None, timeout: float,
     if log_path:
         with open(log_path, "wb") as fh:
             fh.write(raw)
-    if flag_value is None:
-        return 1
-    return 0 if flag_value.encode() in raw else 2
+    return _judge_output(raw, flag_value, flag_sha256)
 
 
 def _judge_service(cmd: str, cwd: str, port: int, flag_value: str | None,
                    flag_file: str, timeout: float, auto_send: bytes | None,
                    log_path: str | None, flag_path: str | None,
-                   bind: str = "127.0.0.1") -> int:
+                   bind: str = "127.0.0.1",
+                   flag_sha256: str | None = None) -> int:
     """服务/pwn 模式：socket 中继 + transcript 判分（等价于 ctf_arena.run_arena）。"""
     if flag_value is not None:
         if flag_path:
@@ -180,9 +219,7 @@ def _judge_service(cmd: str, cwd: str, port: int, flag_value: str | None,
     if log_path:
         with open(log_path, "wb") as fh:
             fh.write(raw)
-    if flag_value is None:
-        return 1
-    return 0 if flag_value.encode() in raw else 2
+    return _judge_output(raw, flag_value, flag_sha256)
 
 
 # ───────────────────────── 批量 / 基线 / 报告 ─────────────────────────
@@ -193,17 +230,24 @@ def _run_one(inst: dict, timeout: float) -> dict:
     cwd = inst.get("cwd") or os.getcwd()
     port = int(inst.get("port", 31337))
     flag = inst.get("flag")
+    flag_sha256 = inst.get("flag_sha256")
     flag_path = inst.get("flag_path")
     auto_hex = inst.get("auto_send_hex")
     log_path = inst.get("log") or os.path.join(
         tempfile.gettempdir(), "arena_%s.log" % name)
+    # 不可判（题面已脱敏、密文不在语料里）：不执行，单列 excluded。
+    # 让它进 stable/regressed 等于把「测不了」伪装成「退化了」——那正是要防的自伤。
+    if str(inst.get("expect") or "") == "not_attemptable":
+        return {"name": name, "verdict": "EXCLUDED", "rc": None,
+                "elapsed": 0, "log": "",
+                "reason": inst.get("not_attemptable_reason") or "declared not_attemptable"}
     if mode == "service":
         rc = _judge_service(inst["cmd"], cwd, port, flag,
                            inst.get("flag_file", "flag"), timeout,
                            bytes.fromhex(auto_hex) if auto_hex else None,
-                           log_path, flag_path)
+                           log_path, flag_path, flag_sha256=flag_sha256)
     else:
-        rc = _judge_local(inst["cmd"], cwd, flag, timeout, log_path)
+        rc = _judge_local(inst["cmd"], cwd, flag, timeout, log_path, flag_sha256)
     return {"name": name, "verdict": {0: "SOLVED", 2: "UNSOLVED"}.get(rc, "ERROR"),
             "rc": rc, "elapsed": 0, "log": log_path}
 
@@ -220,9 +264,13 @@ def batch(manifest: list, timeout: float) -> list:
 
 def compare(results: list, baseline: dict) -> dict:
     base = {r["name"]: r["verdict"] for r in baseline.get("results", [])}
-    rep = {"stable": [], "new_solved": [], "regressed": [], "new_broken": [], "unknown": []}
+    rep = {"stable": [], "new_solved": [], "regressed": [], "new_broken": [],
+           "unknown": [], "excluded": []}
     for r in results:
         n, v = r["name"], r["verdict"]
+        if v == "EXCLUDED":
+            rep["excluded"].append(n)
+            continue
         b = base.get(n)
         if b is None:
             rep["unknown"].append(n)
@@ -272,19 +320,23 @@ def self_test() -> int:
 
 
 def _report(results: list, rep: dict | None, gate: int) -> int:
-    solved = sum(1 for r in results if r["verdict"] == "SOLVED")
-    total = len(results)
+    exc = [r for r in results if r["verdict"] == "EXCLUDED"]
+    runnable = [r for r in results if r["verdict"] != "EXCLUDED"]
+    solved = sum(1 for r in runnable if r["verdict"] == "SOLVED")
+    total = len(runnable)
     print("\n===== 批量回归报告 =====")
-    print("实例数=%d  解出=%d  通过率=%.1f%%"
-          % (total, solved, 100.0 * solved / total if total else 0))
+    print("实例数=%d  可判=%d  解出=%d  通过率=%.1f%%"
+          % (len(results), total, solved, 100.0 * solved / total if total else 0))
+    if exc:
+        print("  其中不可判(已脱敏/无密文)=%d：%s" % (len(exc), ", ".join(r["name"] for r in exc)))
     for r in results:
         print("  %-20s %s" % (r["name"], r["verdict"]))
     if rep is not None:
         print("-- 基线对比 --")
-        print("  stable=%d new_solved=%d regressed=%d new_broken=%d unknown=%d"
+        print("  stable=%d new_solved=%d regressed=%d new_broken=%d unknown=%d excluded=%d"
               % (len(rep["stable"]), len(rep["new_solved"]), len(rep["regressed"]),
-                 len(rep["new_broken"]), len(rep["unknown"])))
-        for cat in ("regressed", "new_broken", "new_solved", "unknown"):
+                 len(rep["new_broken"]), len(rep["unknown"]), len(rep["excluded"])))
+        for cat in ("regressed", "new_broken", "new_solved", "unknown", "excluded"):
             if rep[cat]:
                 print("  %s: %s" % (cat, ", ".join(rep[cat])))
     if rep is not None and len(rep["regressed"]) > gate:

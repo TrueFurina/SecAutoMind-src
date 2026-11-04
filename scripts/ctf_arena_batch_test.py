@@ -68,6 +68,49 @@ def test_run_one_service_judging():
     assert r["verdict"] in ("SOLVED", "UNSOLVED", "ERROR"), r
 
 
+def test_judge_local_sha256_solved():
+    """期望答案只以哈希存在时，solver 输出明文也判 SOLVED（答案是哈希比对出来的）。"""
+    tmp = tempfile.mkdtemp()
+    sp = _write_solver(tmp, "print('flag{hash_case_ok}')\n")
+    cmd = '"%s" "%s"' % (sys.executable, sp)
+    want = m.sha256_hex("flag{hash_case_ok}")
+    rc = m._judge_local(cmd, tmp, None, 5, None, want)
+    assert rc == 0, rc
+
+
+def test_judge_local_sha256_unsolved():
+    tmp = tempfile.mkdtemp()
+    sp = _write_solver(tmp, "print('flag{wrong_answer}')\n")
+    cmd = '"%s" "%s"' % (sys.executable, sp)
+    want = m.sha256_hex("flag{hash_case_ok}")
+    rc = m._judge_local(cmd, tmp, None, 5, None, want)
+    assert rc == 2, rc
+
+
+def test_run_one_not_attemptable_skips():
+    """expect=not_attemptable 的题不执行、不进 stable/regressed，单列 EXCLUDED。"""
+    tmp = tempfile.mkdtemp()
+    bomb = os.path.join(tmp, "boom.txt")
+    sp = _write_solver(tmp, "open(%r, 'w').write('ran')\n" % bomb)
+    cmd = '"%s" "%s"' % (sys.executable, sp)
+    r = m._run_one({"name": "x", "cmd": cmd, "cwd": tmp, "mode": "local",
+                    "flag_sha256": m.sha256_hex("flag{x}"),
+                    "expect": "not_attemptable"}, 5)
+    assert r["verdict"] == "EXCLUDED", r
+    assert not os.path.exists(bomb), "不可判的题竟然被执行了"
+
+
+def test_compare_excluded():
+    base = {"results": [{"name": "a", "verdict": "SOLVED"},
+                        {"name": "b", "verdict": "SOLVED"}]}
+    results = [{"name": "a", "verdict": "SOLVED"},
+               {"name": "b", "verdict": "EXCLUDED"}]
+    rep = m.compare(results, base)
+    assert rep["stable"] == ["a"], rep
+    assert rep["regressed"] == [], rep
+    assert rep["excluded"] == ["b"], rep
+
+
 def test_compare():
     base = {"results": [{"name": "a", "verdict": "SOLVED"},
                         {"name": "b", "verdict": "UNSOLVED"}]}

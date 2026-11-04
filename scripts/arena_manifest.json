@@ -4,384 +4,399 @@
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py b64_4layer",
-    "flag": "flag{base64_4layers}"
+    "flag_sha256": "39a5fe53d52913566780782c36ff0891271bbc25f4a9aca1b0717d57b8798c31"
   },
   {
     "name": "b64_5layer",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py b64_5layer",
-    "flag": "flag{base64_5layers}"
+    "flag_sha256": "86383c79e93278e51192923c170783fb8fbb6e03191ee1e15f6fb20c86d7e741"
   },
   {
     "name": "b64_double",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py b64_double",
-    "flag": "flag{double_base64_layer}"
+    "flag_sha256": "60f1e5ba47570ea5a9aea40184b6b48278ace76d3b4e275658d292c04eee4638"
   },
   {
     "name": "b64_multi",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py b64_multi",
-    "flag": "flag{base64_multilayer_three}"
+    "flag_sha256": "1d283bb254ff75aa5ab325d841a214f7f2991c6bfcfb46912d02a6ad07eedcd6"
   },
   {
     "name": "b64_single",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py b64_single",
-    "flag": "flag{base64_single_layer}"
+    "flag_sha256": "8117bd09fe35efa040a4dca729d6e3af95c7e7378538153267cd49d9bf297e55"
   },
   {
     "name": "caesar_1",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_1",
-    "flag": "flag{caesar_shift_1}"
+    "flag_sha256": "6a2fc17427fd837e7a82248b63e874ff74649d00132e22093cb0c396e5c91256"
   },
   {
     "name": "caesar_10",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_10",
-    "flag": "flag{caesar_shift_10}"
+    "flag_sha256": "d02f2da0974d965a5124408656d9dd06b6f506a0c562b9f9c8a62b90089da968"
   },
   {
     "name": "caesar_11",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_11",
-    "flag": "flag{caesar_shift_11}"
+    "flag_sha256": "5672c969d8ba9f96c08340d0347bf882191f75b375cd30c6be3f03bd14e4f722"
   },
   {
     "name": "caesar_12",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_12",
-    "flag": "flag{caesar_shift_12}"
+    "flag_sha256": "49d768bad1adefbf3f330369d7468dc3733a972779e00122d4b6e7eb74a5ceb8"
   },
   {
     "name": "caesar_13",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_13",
-    "flag": "flag{rot_thirteen_flag}"
+    "flag_sha256": "e637ebd856a5f7c0ca1963f1829a748e1c3c2a2295d547424b5bc8a1d82d49a4"
   },
   {
     "name": "caesar_14",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_14",
-    "flag": "flag{caesar_shift_14}"
+    "flag_sha256": "57e25c145896f39a32fd7015e772057965a2c7dc7431262814eb2efc83946415"
   },
   {
     "name": "caesar_15",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_15",
-    "flag": "flag{caesar_shift_15}"
+    "flag_sha256": "0bb61e60cea43ab6923cfacee6d33c85b85ea26c09f0e5d2575c82a7b2555fde"
   },
   {
     "name": "caesar_16",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_16",
-    "flag": "flag{caesar_shift_16}"
+    "flag_sha256": "7cba695bcb7ba3727ac083c6a6c19229781a5dda8f1e0ba546c7bd85be14b932"
   },
   {
     "name": "caesar_17",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_17",
-    "flag": "flag{caesar_shift_17}"
+    "flag_sha256": "0d4caa3afefeec076ddf70b55ae47d724e4a0957e7a22d6e7c2dbb435e7cab6a"
   },
   {
     "name": "caesar_18",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_18",
-    "flag": "flag{caesar_shift_18}"
+    "flag_sha256": "cf5f5ed619d7ca3707130f39645aa6ff1fd1ce526eef2dc08fc018b0f9d8736e"
   },
   {
     "name": "caesar_19",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_19",
-    "flag": "flag{nineteen_shift}"
+    "flag_sha256": "bc04109a048a1715c010e60639c7dbb20612b2cab8b71afbfda8b8d76a23136c"
   },
   {
     "name": "caesar_2",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_2",
-    "flag": "flag{caesar_shift_2}"
+    "flag_sha256": "4e4538627aeea1ef2d34dc3033fb671ecb405431f16f16afb8d9b1c4dd5b443d"
   },
   {
     "name": "caesar_20",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_20",
-    "flag": "flag{caesar_shift_20}"
+    "flag_sha256": "84fdda8cd77259f720d01c92bbf69c88c39d1aaef49eda14dbc8397a7f3f22f3"
   },
   {
     "name": "caesar_21",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_21",
-    "flag": "flag{caesar_shift_21}"
+    "flag_sha256": "ab363e94f925f165eced9e77165caa87115285ff88c6f5dc05ba28a72b754df7"
   },
   {
     "name": "caesar_22",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_22",
-    "flag": "flag{caesar_shift_22}"
+    "flag_sha256": "4470beabe79adadc644ed2499011319cc8357ee05128c22635a4c0dd046b401f"
   },
   {
     "name": "caesar_23",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_23",
-    "flag": "flag{caesar_shift_23}"
+    "flag_sha256": "f74058bd71725a1dd7df1f6e36b41289bc955ae1c9011eedbabca84a3c99379a"
   },
   {
     "name": "caesar_24",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_24",
-    "flag": "flag{caesar_shift_24}"
+    "flag_sha256": "20e6ea72e61bfbd5d2e95463ac336b0df9239ef2fc5e45be698bcadd3c8ef266"
   },
   {
     "name": "caesar_25",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_25",
-    "flag": "flag{caesar_shift_25}"
+    "flag_sha256": "53c33ccda9ce3d194b9ec9d1758bb51eb7e2933233ddca431260a096888e06bc"
   },
   {
     "name": "caesar_3",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_3",
-    "flag": "flag{caesar_shift_three}"
+    "flag_sha256": "1e286a91bd9c46ef0eee1756228724f8503175f0cf2fab149253990e7340ac47"
   },
   {
     "name": "caesar_4",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_4",
-    "flag": "flag{caesar_shift_4}"
+    "flag_sha256": "af343de524b265681022733417633aec0a52792cf3ba3da0fe1c0d2b9ece72a1"
   },
   {
     "name": "caesar_5",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_5",
-    "flag": "flag{caesar_five_shift}"
+    "flag_sha256": "d7cc6bc5de6266200254cecd7d65b47d184e8a55dd34004fdd22de2b2dcaee81"
   },
   {
     "name": "caesar_6",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_6",
-    "flag": "flag{caesar_shift_6}"
+    "flag_sha256": "b02bdb1edca9a68e7d2eca738b7f43e0ef3eaccd1bd872bfe6bda778e356ecc8"
   },
   {
     "name": "caesar_7",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_7",
-    "flag": "flag{caesar_shift_seven}"
+    "flag_sha256": "e4897fb56d977173744c0284f3a0c0152ab16c43061e99642b0e9431d183a744"
   },
   {
     "name": "caesar_8",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_8",
-    "flag": "flag{caesar_shift_8}"
+    "flag_sha256": "b41acafec383cf69fcac0cbfa393ecc38baf16968e199eab5e646188eda11470"
   },
   {
     "name": "caesar_9",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py caesar_9",
-    "flag": "flag{caesar_shift_9}"
+    "flag_sha256": "9b326216f60a1602408bf1edacf190b0496bbeac47ccd5f1f3da96f3fce8d415"
   },
   {
     "name": "cookie_leak",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py cookie_leak",
-    "flag": "flag{cookie_session_hijack}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "forensic_1",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py forensic_1",
-    "flag": "flag{memory_forensics}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "forensic_2",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py forensic_2",
-    "flag": "flag{pcap_http_leak}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "forensic_3",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py forensic_3",
-    "flag": "flag{log_backdoor_found}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "html_comment",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py html_comment",
-    "flag": "flag{html_comment_exfil}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "json_leak",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py json_leak",
-    "flag": "flag{json_api_leak}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "log_forensics",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py log_forensics",
-    "flag": "flag{log_forensics_exfil}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "morse_hello",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py morse_hello",
-    "flag": "flag{morse_code_hello}"
+    "flag_sha256": "dbf109f6c294cfffb2a33a4a58c18750ea80bbefca4cfe35d4507046a9d85b1d"
   },
   {
     "name": "net_forensics",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py net_forensics",
-    "flag": "flag{network_packet_found}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_csrf",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_csrf",
-    "flag": "flag{csrf_attack}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_idor",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_idor",
-    "flag": "flag{idor_access}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_lfi",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_lfi",
-    "flag": "flag{path_traversal}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_rce",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_rce",
-    "flag": "flag{command_injection}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_sqli",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_sqli",
-    "flag": "flag{sqli_union_select}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_ssrf",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_ssrf",
-    "flag": "flag{ssrf_metadata}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "web_xss",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py web_xss",
-    "flag": "flag{reflected_xss}"
+    "expect": "not_attemptable",
+    "not_attemptable_reason": "题面已于 2026-10-31~11-04 脱敏（防泄密），密文不在语料里，无法从题面推出答案；判分不得继续要求答案"
   },
   {
     "name": "xor_01",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_01",
-    "flag": "flag{xor_key_01}"
+    "flag_sha256": "9d34171f73453a920d3d427c2136b27eef66527faa10aed53f4037a18c9d1f4a"
   },
   {
     "name": "xor_10",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_10",
-    "flag": "flag{xor_key_10}"
+    "flag_sha256": "d424ee5995a485379b9a240188978cf38eb83dcfdc92fb5941466d93a9e17571"
   },
   {
     "name": "xor_33",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_33",
-    "flag": "flag{xor_key_33}"
+    "flag_sha256": "14befc0c146319cd4ab38da861179bedb79df19627482e7daae1574d4ba4e333"
   },
   {
     "name": "xor_55",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_55",
-    "flag": "flag{xor_key_55}"
+    "flag_sha256": "716b8501ad7b2aa7b6ae5d03dfac0d2339893da29f395ae6f9283f7427bac454"
   },
   {
     "name": "xor_77",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_77",
-    "flag": "flag{xor_key_77}"
+    "flag_sha256": "457746327496c095346ec951a4cdfac6cfa3d70e35e9fc47d6180c529f278474"
   },
   {
     "name": "xor_aa",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_aa",
-    "flag": "flag{xor_key_aa}"
+    "flag_sha256": "9ed7916a3495c556cd12991a93fa863313f19cc6051b832f1ad08d6145496851"
   },
   {
     "name": "xor_cc",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_cc",
-    "flag": "flag{xor_key_cc}"
+    "flag_sha256": "8fa9bc54897033329ab180686aedd16cd62c150f48da144982cbfdcf12718b70"
   },
   {
     "name": "xor_ff",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_ff",
-    "flag": "flag{xor_ff_invert}"
+    "flag_sha256": "6ecadf0744e9efcc71d5b3a35f3a50a3f3c17c17c820fa202902b37056d2b626"
   },
   {
     "name": "xor_single",
     "mode": "local",
     "cwd": "{{CWD}}",
     "cmd": "\"{{PY}}\" arena_solvers.py xor_single",
-    "flag": "flag{xor_single_byte}"
+    "flag_sha256": "16d97c4c2eacd5efe753bc9b225cc25c230e7e38ff8571ed51819a707cc5c44f"
   }
 ]

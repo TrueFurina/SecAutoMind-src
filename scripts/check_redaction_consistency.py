@@ -17,13 +17,17 @@
   R2 登记项必须声明脱敏字段（`prompt_answer_redacted_fields` 非空），
      说不清「脱了哪一段」的脱敏不接受。
   R3 若该题仍被判分消费（当前消费方：`scripts/arena_manifest.json`），
-     且期望答案与题面里的脱敏串不一致，则必须显式登记为债务
-     （`status=accepted_debt`）；没登记 = 红。已同步的必须写 `status=synced`。
+     题面已脱敏的题**不得再被要求给出答案**——必须显式标 `expect=not_attemptable`
+     （不执行、不计入 stable/regressed）；标了就视为已同步（`status=synced`）。
+     没标却仍指望答案 = 恒判退化，必红。
   R4 台账里登记、语料里已不存在的脱敏 → 台账悬空，红（避免台账变成装饰）。
   R5 同一题内既有脱敏串又有非脱敏形态的 `flag{...}` → 脱敏漏了，红（泄密）。
   R6 声明了 `baseline_impact` 的，`docs/benchmark_baseline.json` 的地板必须
      要么已改成 `to`，要么仍是 `from` 且该条为 `accepted_debt`——
      防止「改了口径却不重锁地板」这类静默漂移。
+  R7 判分清单（arena_manifest）里**不得再出现明文 `flag`**（service 模式例外，且必须
+     声明 `flag_from_env`）——只能存 `flag_sha256`。2026-11-04 实测：题面脱敏后，
+     该清单仍以明文躺着全部 15 题答案，脱敏被答案表原样抵消。
 
 退出码：0 = 一致（含已入账的债）｜1 = 存在违规｜2 = 用法/文件错误。
 口径说明：本门禁**不**判断债务该不该还，只保证债务被看见、被记名、有期限。
@@ -145,6 +149,21 @@ def check(root: Path) -> tuple[int, list[str]]:
     lines.append("  语料：%s/*.json —— 脱敏题 %d 道" % (CORPUS_DIR, len(corpus)))
     lines.append("  台账：%s —— 登记 %d 条" % (LEDGER_REL, len(entries)))
 
+    # R7 答案表泄密（先查，因为它比「口径不一致」更严重）
+    for c in man_by_name.values():
+        if "flag" not in c:
+            continue
+        if c.get("mode") == "service" and c.get("flag_from_env"):
+            continue
+        fails.append("R7 答案表泄密：arena_manifest 条目 %r 仍是明文 flag"
+                     "（local 模式只能存 flag_sha256）" % c.get("name"))
+    sha_cases = sum(1 for c in man_by_name.values() if c.get("flag_sha256"))
+    exc_cases = sum(1 for c in man_by_name.values()
+                    if str(c.get("expect") or "") == "not_attemptable")
+    lines.append("  判分清单：%d 条 —— 哈希判分 %d ｜ 声明不可判 %d ｜ 明文答案 %d"
+                 % (len(man_by_name), sha_cases, exc_cases,
+                    len([c for c in man_by_name.values() if "flag" in c])))
+
     entry_by_key = {(e.get("file"), e.get("problem")): e for e in entries}
     current_keys = {(c["file"], c["problem"]) for c in corpus}
     ledger_keys = set(entry_by_key)
@@ -168,12 +187,11 @@ def check(root: Path) -> tuple[int, list[str]]:
         if c["residual"]:
             fails.append("R5 脱敏不彻底：%s :: %s 仍有非脱敏 flag 形态（字段 %s）"
                          % (key[0], key[1], ",".join(c["residual"])))
-        # R3 判分消费方一致性
+        # R3 判分消费方一致性：题面脱敏后，判分不得再要求这题给出答案
         consumer = man_by_name.get(c["problem"])
         judge_synced = True
         if consumer:
-            want = str(consumer.get("flag") or "")
-            judge_synced = bool(want) and want in c["text"]
+            judge_synced = str(consumer.get("expect") or "") == "not_attemptable"
         status = e.get("status")
         if status not in VALID_STATUS:
             fails.append("R3 状态非法：%s :: %s status=%r（须为 synced / accepted_debt）"
@@ -182,8 +200,8 @@ def check(root: Path) -> tuple[int, list[str]]:
         if judge_synced and status != "synced":
             fails.append("R3 口径已同步却登记为债务：%s :: %s（须改 status=synced）" % key)
         if (not judge_synced) and status != "accepted_debt":
-            fails.append("R3 判分口径未同步却未登记债务：%s :: %s"
-                         "（arena_manifest 期望与题面脱敏串不一致，必然恒红）" % key)
+            fails.append("R3 题面已脱敏但判分仍要求答案：%s :: %s"
+                         "（arena_manifest 须标 expect=not_attemptable；否则该题恒判退化）" % key)
         if status == "accepted_debt":
             exp = e.get("expires")
             if exp:
@@ -248,14 +266,14 @@ def update_ledger(root: Path, owner: str, expires: str) -> int:
         consumer = man.get(c["problem"])
         judge_synced = True
         if consumer:
-            want = str(consumer.get("flag") or "")
-            judge_synced = bool(want) and want in c["text"]
+            judge_synced = str(consumer.get("expect") or "") == "not_attemptable"
         item = {
             "file": c["file"],
             "problem": c["problem"],
             "redacted_fields": c["declared_fields"] or c["fields"],
             "judge_synced": judge_synced,
-            "status": prev.get("status") or ("synced" if judge_synced else "accepted_debt"),
+            # 判分已同步 → synced；否则保留旧状态（旧账不可被静默洗白）或登记为债务
+            "status": "synced" if judge_synced else (prev.get("status") or "accepted_debt"),
             "owner": prev.get("owner") or owner,
             "expires": prev.get("expires") or expires,
             "reason": prev.get("reason") or "",

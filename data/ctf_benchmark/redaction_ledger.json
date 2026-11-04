@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "脱敏台账：每一处题面脱敏都必须在此登记。判分口径未同步的登记为 accepted_debt —— 债务期相关 job 仍会红，红是账单不是绿。新增脱敏而未登记 → check_redaction_consistency.py 直接红。",
+  "note": "脱敏台账：每一处题面脱敏都必须在此登记。判分口径未同步的登记为 accepted_debt —— 债务期相关 job 仍会红，红是账单不是绿。2026-11-04 起判分清单只允许 flag_sha256，明文 flag 一律视为答案表泄密（R7）。",
   "entries": [
     {
       "file": "data/ctf_benchmark/benchmark.json",
@@ -8,11 +8,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -21,11 +21,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -34,11 +34,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -47,11 +47,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -60,11 +60,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -73,11 +73,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -86,11 +86,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -99,11 +99,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -112,11 +112,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -125,11 +125,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -138,11 +138,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -151,11 +151,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -164,11 +164,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -177,11 +177,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -190,11 +190,11 @@
       "redacted_fields": [
         "description"
       ],
-      "judge_synced": false,
-      "status": "accepted_debt",
+      "judge_synced": true,
+      "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -207,7 +207,7 @@
       "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -220,7 +220,7 @@
       "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -233,7 +233,7 @@
       "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     },
     {
@@ -246,7 +246,7 @@
       "status": "synced",
       "owner": "unassigned",
       "expires": "",
-      "reason": "题面已脱敏（防泄密），但 scripts/arena_manifest.json 仍以原 flag 判分，该题必被判退化；处置未定：同步 manifest 或从清单剔除，二选一",
+      "reason": "2026-11-04 处置：题面已脱敏（防泄密），arena_manifest 该题改标 expect=not_attemptable（不执行、不计入 stable/regressed，单列 excluded）；答案表已由明文 flag 改为 flag_sha256，仓库内不再留答案明文",
       "baseline_impact": null
     }
   ]
