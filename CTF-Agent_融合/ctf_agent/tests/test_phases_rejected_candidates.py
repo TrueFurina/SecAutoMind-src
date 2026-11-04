@@ -86,18 +86,18 @@ class TestRejectedCandidates(unittest.TestCase):
     def test_provenance_reject_recorded(self):
         ctx = _ctx()
         # 无 kind="tool" → provenance 闸拒绝（checker=None → 正则兜底路径）
-        got = extract_flag(_agent(), ctx, {"output": "flag{abc123}"})
+        got = extract_flag(_agent(), ctx, {"output": "flag{fixture_0001}"})
         self.assertIsNone(got)
         stages = [r["stage"] for r in ctx.rejected_candidates]
         self.assertIn("fallback_provenance_reject", stages)
         values = [r["value"] for r in ctx.rejected_candidates
                   if r["stage"] == "fallback_provenance_reject"]
-        self.assertEqual(values, ["flag{abc123}"])
+        self.assertEqual(values, ["flag{fixture_0001}"])
 
     def test_no_record_on_accept(self):
         ctx = _ctx()
-        out = "the flag is flag{abc123}"
-        self.assertEqual(extract_flag(_agent(), ctx, _act(out)), "flag{abc123}")
+        out = "the flag is flag{fixture_0001}"
+        self.assertEqual(extract_flag(_agent(), ctx, _act(out)), "flag{fixture_0001}")
         # 采信路径不产生弃值记录（记录只属于拒绝分支）
         self.assertFalse(hasattr(ctx, "rejected_candidates"))
 

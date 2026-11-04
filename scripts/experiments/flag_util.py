@@ -190,9 +190,10 @@ def _self_test() -> int:
 
     # 9) 🔴 前缀白名单回归：非 flag 前缀（picoCTF）必须命中
     #    这是 2026-10-28 实锤的第二个漏判源（比大小写更致命）
-    t9 = "解出 picoCTF{caesar_d3cr9pt3d_f0212758}"
-    hit, m = flag_sha256_hit(t9, sha("picoCTF{caesar_d3cr9pt3d_f0212758}"))
-    ok &= (hit and m == "picoCTF{caesar_d3cr9pt3d_f0212758}")
+    #    注：原题真值已脱敏（判分改用 flag_sha256），此处用合成形态复现同一漏洞。
+    t9 = "解出 picoCTF{contract_fixture_9f2a}"
+    hit, m = flag_sha256_hit(t9, sha("picoCTF{contract_fixture_9f2a}"))
+    ok &= (hit and m == "picoCTF{contract_fixture_9f2a}")
     print(f"[9] 非 flag 前缀(picoCTF) -> hit={hit} matched={m}")
 
     # 10) 反证：旧正则抽不到 → 旧口径必漏判（证明修复必要）

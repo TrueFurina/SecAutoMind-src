@@ -34,7 +34,8 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
               status: str = "synced", expires: str | None = DEFAULT_EXPIRES,
               owner: str = DEFAULT_OWNER, renewals=None,
               baseline_min_hit: int = 20, baseline_impact=None,
-              dangling_entry: bool = False, consumer: str = "synced") -> Path:
+              dangling_entry: bool = False, consumer: str = "synced",
+              answer_leak: bool = False, exempt=None) -> Path:
     """造一个最小仓库形态。
 
     consumer 四种形态：
@@ -89,6 +90,18 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
             "baseline_impact": None,
         })
     _write(tmp, "data/ctf_benchmark/redaction_ledger.json", {"schema": 1, "entries": entries})
+    # R9 夹具：在入仓位置放一条「可被直接抄走」的答案明文，并让题目真值指向它
+    if answer_leak:
+        import hashlib
+        leak = "flag{fixture_leak_0001}"
+        prob["flag_sha256"] = hashlib.sha256(leak.encode("utf-8")).hexdigest()
+        _write(tmp, "data/ctf_benchmark/benchmark.json",
+               {"version": 1, "problems": {"web_xss": prob}})
+        leak_p = tmp / "scripts" / "leaky_fixture.py"
+        leak_p.parent.mkdir(parents=True, exist_ok=True)
+        leak_p.write_text('# 夹具：答案明文躺在这里\nLEAK = "%s"\n' % leak, encoding="utf-8")
+    if exempt is not None:
+        _write(tmp, C.EXEMPT_REL, {"schema": 1, "entries": exempt})
     return tmp
 
 
@@ -169,6 +182,24 @@ def main() -> int:
              renewals=[{"date": date.today().isoformat(), "by": "agent",
                         "from": "2026-01-01", "to": DEFAULT_EXPIRES,
                         "reason": "复核后延期"}])
+    # ---- R9 全域答案明文（2026-11-04 补：判分只用哈希，明文在任何入仓文件里都是白送）----
+    # T19 变异：入仓文件里躺着可直接抄的答案明文
+    run_case("T19 入仓文件含答案明文 → FAIL", 1, consumer="synced", status="synced",
+             answer_leak=True)
+    # T20 正例：同一命中，但该文件在豁免表里且豁免本身合规
+    run_case("T20 明文中豁免且豁免合规 → PASS", 0, consumer="synced", status="synced",
+             answer_leak=True,
+             exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
+                      "owner": "agent", "expires": DEFAULT_EXPIRES}])
+    # T21 变异：豁免表里挂着一条已无命中的条目（豁免变防腐堆）
+    run_case("T21 豁免悬空 → FAIL", 1, consumer="synced", status="synced",
+             exempt=[{"file": "scripts/leaky_fixture.py", "reason": "已无用",
+                      "owner": "agent", "expires": DEFAULT_EXPIRES}])
+    # T22 变异：豁免无人负责（等于开了个没有人管的洞）
+    run_case("T22 豁免 owner=unassigned → FAIL", 1, consumer="synced", status="synced",
+             answer_leak=True,
+             exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
+                      "owner": "unassigned", "expires": DEFAULT_EXPIRES}])
 
     bad = 0
     for title, ok, detail in RESULTS:

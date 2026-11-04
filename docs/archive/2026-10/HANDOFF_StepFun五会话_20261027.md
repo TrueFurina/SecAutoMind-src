@@ -171,7 +171,7 @@ python scripts/stepfun_batch_server.py --category web --slice 1-10     # 自定�
 ### S3 明细（我的切片）
 - 13 题构成：`caesar_15/16/17/18/20/21/22/23/24/25`（10 题，**无 caesar_19**）+ `xor_01/10/33`（3 题）= 13。
 - **12/13 通过**，唯一未过 `caesar_17`：`missing_execution_evidence`（反注水闸门，非答错）。
-- `caesar_17` 的**三次尝试**：主队列首跑失败 → 主队列重试失败 → 独立单题队列**通过**（`flag{caesar_shift_17}`，sha256 通过）。
+- `caesar_17` 的**三次尝试**：主队列首跑失败 → 主队列重试失败 → 独立单题队列**通过**（`<已脱敏:见 benchmark.json#caesar_17 的 flag_sha256>`，sha256 通过）。
   → 该题实际通过率 1/3，**性质是闸门 flaky，不是能力缺失，也不能算 13/13**。
 - 台账：`data/ctf_benchmark/stepfun_sessions/s3_server_crypto27_39_20261027_074128.json`
 

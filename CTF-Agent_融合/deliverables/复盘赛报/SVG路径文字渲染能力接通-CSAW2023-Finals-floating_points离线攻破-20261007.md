@@ -74,7 +74,7 @@ floating_points  --bzip2-->  Ascii85 文本  --a85decode-->  SVG path 数据
   `6500f523…5b2e` == 题面 `flag_sha256`；亦与上游 `challenge.json` 的 `flag`
   字段逐字一致。
 - **新增测试 19/19**：容器 round-trip / a85 / 反例、path 解析（含相对+曲线+
-  弧）、栅格化几何、`run` 接口与负例、OCR 合成 round-trip（`flag{abc123}` 等）、
+  弧）、栅格化几何、`run` 接口与负例、OCR 合成 round-trip（合成夹具串 `flag{fixture_0001}` 等）、
   真实题 sha256 锁、presolve 接线与端到端。
 - **变异验证生效**：把 even-odd 异或填充改为并集（`^=`→`|=`）→ 真实题
   sha256 测试与 presolve 端到端**双双转红**，恢复后 19/19 复绿。

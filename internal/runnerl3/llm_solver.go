@@ -1196,7 +1196,8 @@ const defaultWholeSolveTimeoutSec = 300
 // 为什么必须换成正则，不能再做 `strings.Index(lower, "flag{")` 字面量查找：
 //   前缀 `flag{}` 只是**一种**约定，不是全部。2026-10-29 服务器真机冒烟实锤：
 //   pico2024_interencdec 题，step-5-preview 已输出正确解
-//   `picoCTF{caesar_d3cr9pt3d_f0212758}`，旧实现因为找不到字面量 `flag{`
+//   `picoCTF{contract_fixture_9f2a}`（原题真值已脱敏并改由 `flag_sha256` 判分，
+//   此处仅复现「带非 flag 前缀」形态），旧实现因为找不到字面量 `flag{`
 //   判为「LLM 输出里没找到 flag 格式」→ **候选 0 → 不提交 → 记 MISS**。
 //   真实题库里 picoCTF{} / sdctf{} / CBCV{} / wctf{} / grodno{} / DASCTF{} /
 //   BZHCTF{} 等前缀普遍存在，旧实现对它们**逐道系统性判死**。

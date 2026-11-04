@@ -778,7 +778,7 @@ jobs:
       # 实锤：benchmark.json 15 题题面脱敏后 arena_manifest 仍用原 flag 判分 → 15 题恒判退化；
       # real_benchmark.json 4 题脱敏后 static 地板仍写 20 → evidence/parity/quant 四门连坐。
       # 本步把差异强制入账；新增脱敏未登记一律红。挂在本 job 内（不新增 job，避免门禁地图漂移）。
-      - name: Redaction ledger self-test (18 cases incl. mutation)
+      - name: Redaction ledger self-test (22 cases incl. mutation)
         run: python scripts/check_redaction_consistency_test.py
       - name: Redaction vs judge consistency (differences must be accounted)
         run: python scripts/check_redaction_consistency.py

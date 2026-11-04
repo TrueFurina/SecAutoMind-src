@@ -13,9 +13,9 @@
     },
     {
       "name": "picoCTF_事故原题",
-      "input": "解出 picoCTF{caesar_d3cr9pt3d_f0212758}\n\nCONFIDENCE: 1.0",
+      "input": "解出 picoCTF{contract_fixture_9f2a}\n\nCONFIDENCE: 1.0",
       "expected": [
-        "picoCTF{caesar_d3cr9pt3d_f0212758}"
+        "picoCTF{contract_fixture_9f2a}"
       ]
     },
     {

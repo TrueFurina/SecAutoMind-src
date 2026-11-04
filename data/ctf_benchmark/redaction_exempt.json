@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "note": "答案明文豁免表：登记「必须知道明文才能工作」的入仓文件（如题目生成器：艺术/题面里的答案由它写进去）。豁免不是免死金牌——每一条都要点名负责人与到期日（R9 复用 R8 口径），命中消失后豁免变悬空并判红。判分侧一律只用 flag_sha256，明文永不进入判分清单。",
+  "entries": [
+    {
+      "file": "data/ctf_benchmark/gen_morse_image.py",
+      "reason": "摩斯图像题生成器：答案必须明文写进生成图像的像素/点划序列，否则出不了题。答案只存在于生成器与题面工件，判分走 benchmark.json 的 flag_sha256。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "scripts/gen_forensics_artifacts.py",
+      "reason": "取证工件生成器：LSB 题的真 flag 必须明文嵌入 PNG 像素，solver 才能从工件里抽出来。脱敏只能作用于题面与判分清单，作用不到生成器。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    }
+  ]
+}

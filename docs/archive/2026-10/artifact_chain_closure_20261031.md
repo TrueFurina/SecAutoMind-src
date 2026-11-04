@@ -17,7 +17,9 @@
 | A | 默认（不注入工件） | MISS | 工件从不进 prompt，agent 自陈「无数据」 |
 | B | 注入路径 + 严格守卫 | MISS | 守卫 `open(` → `file-open` 拦死 |
 | C(临时) | 真实 `--artifact-dir` + 临时加 `zip` 字段 | agent 解出真 flag（判分仍 false） | 4 次调用全 allowed / 0 blocked；读 PNG→逆滤波→LSB 抽取 |
-| **收口** | 真实文件 + `--artifact-dir` + `--max-iter 24` | **solved=1 / exact=1** | `got=flag{lsb_p1x3l_st3g0_2026}` / blocked=0 / artifact_mode=true |
+| **收口** | 真实文件 + `--artifact-dir` + `--max-iter 24` | **solved=1 / exact=1** | `got=<脱敏:见 real_benchmark.json#steg_lsb_png 的 flag_sha256>` / blocked=0 / artifact_mode=true |
+
+> 2026-11-04 脱敏纪律：本表原先展示的答案明文已替换为哈希引用（判分只用哈希，明文可被直接抄分）。原值可在本文件更早的 git 历史里查。
 
 `--max-iter 6` 时 solved=0 是**迭代预算/模型能力信号**（模型卡在调试 PNG 尺寸，调用全 allowed），多给预算即收敛——非架构故障。
 
@@ -48,7 +50,7 @@ python3 scripts/ctf_stepfun_orchestrator.py \
   --benchmark data/ctf_benchmark/real_benchmark.json \
   --only-ids steg_lsb_png --agentic --max-iter 24 \
   --out /tmp/steg_verify.json --slice real-verify
-# => solved=1 exact=1 got=flag{lsb_p1x3l_st3g0_2026} blocked=0
+# => solved=1 exact=1 got=<脱敏:见 real_benchmark.json#steg_lsb_png 的 flag_sha256> blocked=0
 
 # 独立确定性提取（不依赖模型，确认真值）：
 python3 - <<'PY'

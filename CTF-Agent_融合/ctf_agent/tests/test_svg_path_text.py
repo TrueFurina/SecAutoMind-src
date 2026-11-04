@@ -229,7 +229,7 @@ def test_mutation_break_parser(monkeypatch):
 # ------------------------------------------------------------------ OCR 端到端
 
 @_need_ocr
-@pytest.mark.parametrize("text", ["flag{abc123}", "flag{hello}", "flag{abc123xyz}"])
+@pytest.mark.parametrize("text", ["flag{abc124}", "flag{hello}", "flag{abc123xyz}"])
 def test_ocr_synthetic_roundtrip(text):
     """合成夹具：像素描摹的 SVG path 经渲染 + OCR 必须读回原文。"""
     got = S.run({"data": _text_to_path(text)})

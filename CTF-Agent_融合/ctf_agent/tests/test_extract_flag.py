@@ -35,8 +35,8 @@ def _act(out):
 class TestExtractFlag(unittest.TestCase):
     def test_plain_output(self):
         ctx = _ctx()
-        out = "the flag is flag{abc123}"
-        self.assertEqual(extract_flag(_agent(), ctx, _act(out)), "flag{abc123}")
+        out = "the flag is flag{fixture_0001}"
+        self.assertEqual(extract_flag(_agent(), ctx, _act(out)), "flag{fixture_0001}")
         self.assertFalse(ctx._extract_failed)
 
     def test_template_placeholder_rejected(self):

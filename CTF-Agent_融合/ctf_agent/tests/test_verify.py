@@ -11,7 +11,7 @@ from verify.error_classifier import (ErrorClassifier, ERR_STUCK_LOOP, ERR_TOOL_F
 def test_flag_checker_states():
     fc = FlagChecker()
     # ACCEPT：合法 flag（本地 + 平台前缀）
-    assert fc.check("flag{abc123}") == V_ACCEPT
+    assert fc.check("flag{fixture_0001}") == V_ACCEPT
     assert fc.check("DASCTF{abc-123-def}") == V_ACCEPT
     assert fc.check("flag{rsa_small_e_2026}") == V_ACCEPT
     # REJECT：空/未闭合/控制字符/非法字符

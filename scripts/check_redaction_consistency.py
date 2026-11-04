@@ -33,6 +33,11 @@
      且不得超过 MAX_EXPIRY_DAYS 天（防止「填 2999 年 = 永不复查」）；
      若条目带 `renewals`，最后一条的 to 必须等于当前 expires，且须有 date/by/reason
      （防止手改 JSON 悄悄延期，续期只能走 `--renew --reason`）。
+  R9 **全域答案明文**：R1~R7 只守 `data/ctf_benchmark/*.json` 与判分清单，但同一份答案
+     还可能躺在测试夹具、归档文档、生成器里——读一眼就能抄。故扫描**入仓文本文件**，
+     任何位置出现「sha256 与已知答案相符」的明文即红；确需保留的（如题目生成器必须
+     知道明文才能出题）登记在 `redaction_exempt.json` 豁免表，豁免同样要 owner + 到期日
+     （复用 R8 口径），命中消失后豁免变悬空 → 红。
 
 退出码：0 = 一致（含已入账的债）｜1 = 存在违规｜2 = 用法/文件错误。
 口径说明：本门禁**不**判断债务该不该还，只保证债务被看见、被记名、有期限。
@@ -50,8 +55,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -68,6 +76,16 @@ VALID_STATUS = {"synced", "accepted_debt"}
 # 而「填个很久以后的日子」正是把记账动作做空的最省力方式，故由机器卡死。
 MAX_EXPIRY_DAYS = 365
 OWNER_PLACEHOLDERS = {"", "-", "unassigned", "tbd", "TODO", "todo"}
+
+# R9 全域答案明文扫描用的面：入仓文本文件（CI 干净检出 = 入仓内容，天然排除他人 WIP）
+EXEMPT_REL = "data/ctf_benchmark/redaction_exempt.json"
+ANSWER_SHAPE = re.compile(r"[A-Za-z0-9_]{1,24}\{[^}\s]{1,160}\}")
+ANSWER_SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".gz",
+                   ".7z", ".pdf", ".docx", ".xlsx", ".pptx", ".pyc", ".so", ".dll",
+                   ".exe", ".bin", ".woff", ".woff2", ".ttf", ".mp4", ".wav",
+                   ".sqlite", ".db"}
+ANSWER_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".idea"}
+MAX_SCAN_BYTES = 2 * 1024 * 1024
 
 
 def str_fields(obj, path=""):
@@ -133,6 +151,63 @@ def load_json(p: Path, default):
     if not p.is_file():
         return default
     return json.loads(p.read_text(encoding="utf-8"))
+
+
+def collect_answer_hashes(root: Path) -> dict:
+    """已知答案哈希 → [来源标识]。口径与判分同源：sha256(整串候选)。"""
+    known: dict[str, list[str]] = {}
+    manifest = load_json(root / MANIFEST_REL, [])
+    cases = manifest if isinstance(manifest, list) else (manifest.get("cases") or [])
+    for c in cases:
+        if isinstance(c, dict) and c.get("flag_sha256"):
+            known.setdefault(str(c["flag_sha256"]).strip().lower(), []).append(
+                "arena:%s" % c.get("name"))
+    for rel in ("data/ctf_benchmark/real_benchmark.json",
+                "data/ctf_benchmark/benchmark.json"):
+        for name, prob in iter_problems(load_json(root / rel, {})):
+            if isinstance(prob, dict) and prob.get("flag_sha256"):
+                known.setdefault(str(prob["flag_sha256"]).strip().lower(), []).append(
+                    "%s#%s" % (rel, name))
+    return known
+
+
+def _scan_files(root: Path) -> list[str]:
+    """扫描面：git 仓库取入仓文件；非仓库（自测夹具）退回全目录遍历。"""
+    try:
+        out = subprocess.run(["git", "ls-files", "-z"], cwd=str(root),
+                             capture_output=True, text=True, encoding="utf-8")
+    except OSError:
+        out = None
+    if out is not None and out.returncode == 0:
+        return [p for p in out.stdout.split("\0") if p.strip()]
+    files = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in ANSWER_SKIP_DIRS]
+        for fn in filenames:
+            files.append(str(Path(dirpath, fn).relative_to(root)))
+    return files
+
+
+def scan_answer_plaintext(root: Path, known: dict) -> list[tuple[str, str, list[str]]]:
+    hits = []
+    for rel in _scan_files(root):
+        if os.path.splitext(rel)[1].lower() in ANSWER_SKIP_EXT:
+            continue
+        p = root / rel
+        try:
+            if p.stat().st_size > MAX_SCAN_BYTES:
+                continue
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        for m in ANSWER_SHAPE.finditer(txt):
+            cand = m.group(0)
+            if "REDACTED" in cand:
+                continue
+            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+            if h in known:
+                hits.append((rel.replace("\\", "/"), cand, known[h]))
+    return hits
 
 
 def check(root: Path) -> tuple[int, list[str]]:
@@ -281,6 +356,50 @@ def check(root: Path) -> tuple[int, list[str]]:
                     fails.append("R8 手改过期日：%s :: %s expires=%s 与最后一条续期 to=%s 不符"
                                  "（续期只能走 --renew，不许手改 JSON）"
                                  % (key[0], key[1], exp, last.get("to")))
+
+    # R9 全域答案明文：入仓文件里任何「可被直接抄走」的答案
+    known = collect_answer_hashes(root)
+    exempt_doc = load_json(root / EXEMPT_REL, {"schema": 1, "entries": []})
+    exempt_entries = [e for e in (exempt_doc.get("entries") or []) if isinstance(e, dict)]
+    ex_by_file = {str(e.get("file") or "").replace("\\", "/"): e for e in exempt_entries}
+    hits = scan_answer_plaintext(root, known)
+    used_exempt: set[str] = set()
+    for rel, cand, ids in hits:
+        e = ex_by_file.get(rel)
+        if e:
+            used_exempt.add(rel)
+            lines.append("    [EXEMPT] %s ｜ %s ｜ %s" % (rel, cand, ",".join(ids)[:80]))
+        else:
+            fails.append("R9 入仓明文答案：%s ｜ %s ｜ 对应 %s"
+                         "（判分只用哈希，明文在入仓文件里等于把答案白送；"
+                         "确需保留的登记到 %s）"
+                         % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
+    lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处"
+                 % (len(known), len(hits), len(used_exempt)))
+    horizon_ex = horizon  # 与 R8 同一个 365 天上限
+    for e in exempt_entries:
+        rel = str(e.get("file") or "").replace("\\", "/")
+        owner = str(e.get("owner") or "").strip()
+        if owner in OWNER_PLACEHOLDERS:
+            fails.append("R9 豁免无人负责：%s owner=%r" % (rel, owner))
+        if not str(e.get("reason") or "").strip():
+            fails.append("R9 豁免无理由：%s（必须写明为何这份明文必须留在仓库里）" % rel)
+        exp = str(e.get("expires") or "").strip()
+        if not exp:
+            fails.append("R9 豁免无到期日：%s" % rel)
+        else:
+            try:
+                exp_d = date.fromisoformat(exp)
+            except ValueError:
+                fails.append("R9 豁免 expires 非法：%s %r" % (rel, exp))
+            else:
+                if exp_d < date.today():
+                    fails.append("R9 豁免已过期：%s expires=%s（到期必须复核）" % (rel, exp))
+                elif exp_d > horizon_ex:
+                    fails.append("R9 豁免到期日过远：%s expires=%s（超过 %d 天）"
+                                 % (rel, exp, MAX_EXPIRY_DAYS))
+        if rel not in used_exempt:
+            fails.append("R9 豁免悬空：%s（该文件已无答案明文命中，须删除豁免）" % rel)
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))

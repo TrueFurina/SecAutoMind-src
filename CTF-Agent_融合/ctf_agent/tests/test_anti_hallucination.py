@@ -35,16 +35,16 @@ def _agent():
 
 class TestProvenanceAllows(unittest.TestCase):
     def test_tool_output_current_ok(self):
-        act = {"kind": "tool", "output": "result is flag{abc123}"}
-        ok, reason = provenance_allows("flag{abc123}", _ctx(), act)
+        act = {"kind": "tool", "output": "result is flag{fixture_0001}"}
+        ok, reason = provenance_allows("flag{fixture_0001}", _ctx(), act)
         self.assertTrue(ok)
         self.assertEqual(reason, "tool-output-current")
 
     def test_history_tool_obs_ok(self):
         # flag 出现在历史工具 observation，当前是 reason 步
-        ctx = _ctx(tool_obs="decrypted payload flag{abc123} end")
-        act = {"kind": "reason", "output": "so flag{abc123}"}
-        ok, reason = provenance_allows("flag{abc123}", ctx, act)
+        ctx = _ctx(tool_obs="decrypted payload flag{fixture_0001} end")
+        act = {"kind": "reason", "output": "so flag{fixture_0001}"}
+        ok, reason = provenance_allows("flag{fixture_0001}", ctx, act)
         self.assertTrue(ok)
         self.assertEqual(reason, "tool-output-history")
 
@@ -66,9 +66,9 @@ class TestProvenanceAllows(unittest.TestCase):
 
     def test_script_computed_ok(self):
         # 脚本真实算出 flag（源码不含 flag 字面量）
-        act = {"kind": "script", "output": "flag{abc123}",
+        act = {"kind": "script", "output": "flag{fixture_0001}",
                "source": "pt = decrypt(cipher, key)\nprint(pt)"}
-        ok, _ = provenance_allows("flag{abc123}", _ctx(), act)
+        ok, _ = provenance_allows("flag{fixture_0001}", _ctx(), act)
         self.assertTrue(ok)
 
 
@@ -87,9 +87,9 @@ class TestExtractFlagGate(unittest.TestCase):
         self.assertTrue(ctx._extract_failed)
 
     def test_history_tool_evidence_accepted(self):
-        ctx = _ctx(tool_obs="the bytes decode to flag{abc123}!!")
-        act = {"kind": "reason", "output": "therefore flag{abc123}"}
-        self.assertEqual(extract_flag(_agent(), ctx, act), "flag{abc123}")
+        ctx = _ctx(tool_obs="the bytes decode to flag{fixture_0001}!!")
+        act = {"kind": "reason", "output": "therefore flag{fixture_0001}"}
+        self.assertEqual(extract_flag(_agent(), ctx, act), "flag{fixture_0001}")
         self.assertFalse(ctx._extract_failed)
 
 

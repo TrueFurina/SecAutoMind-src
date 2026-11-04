@@ -74,7 +74,7 @@ except Exception as exc:  # pragma: no cover - 环境问题要显式暴露，不
 # 以及 10-29 事故原题。expected 不手写，一律由真值源 FLAG_RE 现算，避免人肉口径漂移。
 CASES: list[tuple[str, str]] = [
     ("flag_standard",        "答案是 flag{abc_123}，请提交"),
-    ("picoCTF_事故原题",      "解出 picoCTF{caesar_d3cr9pt3d_f0212758}\n\nCONFIDENCE: 1.0"),
+    ("picoCTF_事故原题",      "解出 picoCTF{contract_fixture_9f2a}\n\nCONFIDENCE: 1.0"),
     ("sdctf_含特殊字符",       "sdctf{Case64_ar!}"),
     ("CBCV_前缀",             "CBCV{dGhpcyBpcyBiYXNlNjQ=}"),
     ("wctf_前缀",             "wctf{xor_known_plaintext}"),
@@ -336,7 +336,7 @@ def do_selftest() -> int:
     # 4) 事故回归护栏：真值源正则必须能抽出 picoCTF{}（10-29 冤案原题）
     import flag_util as _fu
     pico_hit = _ordered_unique(_fu.FLAG_RE.findall(
-        "picoCTF{caesar_d3cr9pt3d_f0212758}")) == ["picoCTF{caesar_d3cr9pt3d_f0212758}"]
+        "picoCTF{contract_fixture_9f2a}")) == ["picoCTF{contract_fixture_9f2a}"]
     ok &= pico_hit
     print(f"[4] 事故回归：真值源正则抽得 picoCTF 候选 -> {pico_hit} (应 True)")
 
