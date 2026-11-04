@@ -766,7 +766,12 @@ jobs:
   docs-lint-gate:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 是 R10 的硬前提：R10 要 `git log -p SINCE..HEAD` 扫历史新增行，
+      # 默认 depth=1 的浅克隆里起始提交不可达 → R10 fail-closed 判红（首次上线即实测到）。
+      # 不要为了省几秒改回浅克隆，那等于把「历史防线」换成「读不到就跳过」。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
