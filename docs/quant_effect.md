@@ -49,54 +49,54 @@
 ```yaml
 claims:
   - id: real_static_shipped
-    陈述: 生产路径 Presolve 真题覆盖率
+    陈述: 生产路径 Presolve 真题覆盖率（**全量口径，已不含伪解**：2026-11-04 起 4 道题面即答案的题已脱敏，static 全量命中 = 真求解器命中 = 16）
     基准集: 真题集(55)
-    期望: 20/55 = 36.4%
+    期望: 16/55 = 29.1%
     command: go test ./internal/ctfplatform/ -run TestRealBenchmark_ShippedPresolve -v
     pattern: '(\d+)/(\d+) = ([\d.]+)%'
-    实测: 2026-10-13 20/55 = 36.4%
+    实测: 2026-11-04 16/55 = 29.1%（旧值 20/55 含 4 道伪解，已作废）
     状态: 已验证
     耗时类: quick
 
   - id: real_static_registry
-    陈述: 注册表路径 PresolveWithRegistry 真题覆盖率（对外材料"静态 36.4%"取的就是这条）
+    陈述: 注册表路径 PresolveWithRegistry 真题覆盖率（对外材料"静态 29.1%"取的就是这条）
     基准集: 真题集(55)
-    期望: 20/55 = 36.4%
+    期望: 16/55 = 29.1%
     command: go test ./internal/ctfplatform/ -run TestRealBenchmark_RegistryPresolve -v
     pattern: '(\d+)/(\d+) = ([\d.]+)%'
-    实测: 2026-10-15 20/55 = 36.4%
+    实测: 2026-11-04 16/55 = 29.1%
     状态: 已验证
     耗时类: quick
 
   - id: real_static_real_solver
-    陈述: 真求解器口径真题覆盖率（剔除 4 道「题面即答案」伪解后的**能力口径**）
+    陈述: 真求解器口径真题覆盖率（剔除题面即答案伪解后的**能力口径**；伪解已于 2026-11-04 清零，故与全量一致）
     基准集: 真题集(55)
     期望: 16/55 = 29.1%
     command: go test ./internal/ctfplatform/ -run TestRealBenchmarkHitNotInflatedByPlaintextFlag -v
     pattern: '真求解器\s*(\d+)/(\d+)\s*=\s*([\d.]+)%'
-    实测: 2026-10-15 16/55 = 29.1%
+    实测: 2026-11-04 16/55 = 29.1%
     状态: 已验证
     耗时类: quick
-    注: 全量 20/55 中有 4 题 description 直接写 flag 明文、由 flag_scan 正则命中，
-        不构成解题能力；本条扣除它们，是**建议对外使用的主口径**。
+    注: 旧全量 20/55 中有 4 题 description 直接写 flag 明文、由 flag_scan 正则命中，不构成解题能力；
+        这 4 题已脱敏（台账 data/ctf_benchmark/redaction_ledger.json，synced），伪解 0，真解仍是 16。
 
   - id: selfgen_static
     陈述: 自研基准集确定性求解覆盖率（**内部回归用，不得对外作为赛题能力**）
     基准集: 自研集(72)
-    期望: 总数 72 · 命中 70 = 97.2%（注：judge.py 先输出总数后输出命中，pattern 顺序同此）
+    期望: 总数 72 · 命中 53 = 73.6%（注：judge.py 先输出总数后输出命中，pattern 顺序同此）
     command: python data/ctf_benchmark/judge.py
     pattern: '总数:\s*(\d+)[\s\S]*?确定性命中[^:]*:\s*(\d+)'
-    实测: 2026-10-13 总数 72 · 命中 70 = 97.2%
+    实测: 2026-11-04 总数 72 · 命中 53 = 73.6%（旧值 70 含 15 道题面即答案伪解，该 15 题已脱敏）
     状态: 已验证
     耗时类: quick
 
   - id: selfgen_static_real_solver
-    陈述: 自研集**真求解器**覆盖率（剔除 15 道「题面即答案」伪解）
+    陈述: 自研集**真求解器**覆盖率（题面即答案的伪解已于 2026-11-04 清零，故与全量一致）
     基准集: 自研集(72)
-    期望: 55/72 = 76.4%（真求解器口径；全量 70/72 = 97.2% 含伪解，不得单独作为能力证据）
+    期望: 53/72 = 73.6%（真求解器口径；伪解 0，不得再出现含伪解的全量分值）
     command: python scripts/check_benchmark_plaintext_answer.py
     pattern: '真求解器 benchmark\.json:\s*(\d+)/(\d+)\s*=\s*([\d.]+)%'
-    实测: 2026-10-16 55/72 = 76.4%（全量命中 70，伪解 15）
+    实测: 2026-11-04 53/72 = 73.6%（全量命中 53，伪解 0）
     状态: 已验证
     耗时类: quick
 

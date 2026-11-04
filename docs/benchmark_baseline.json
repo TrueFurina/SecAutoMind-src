@@ -8,8 +8,9 @@
   "suites": {
     "static": {
       "total": 55,
-      "min_hit": 20,
-      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。20/55 = 36.4% 是当前水位（其中 4 道为题面即答案伪解，真求解器口径 16/55 = 29.1%，见 check_benchmark_plaintext_answer.py）。关键事实（2026-10-21 实测，见 miss_attribution_test.go）：未命中的 35 道题在库内 description 长度为 0、附件数为 0——是数据缺失，不是能力缺口；有数据的 20 道真求解器命中 16 = 80%。剩余 35 道的原始题面/附件需从赛事平台补齐后才可评估能力。这里只锁『不低于 20』防退化，不假装它是满分。"
+      "min_real_hit": 16,
+      "max_flag_scan": 0,
+      "why": "真题集 real_benchmark.json（55 道真实赛题，仅 description 输入）。🔴 2026-11-04 改判据：旧地板 min_hit=20 是「全量命中」口径，其中 4 道是 description 里直接写着答案、被 flag_scan 正则扫出来的伪解——那不是解题能力，而是泄密。4 道题面已脱敏（台账 data/ctf_benchmark/redaction_ledger.json，state=synced），伪解随之清零，真求解器命中 16/55 = 29.1% 一分未少。故把地板从「全量 20」改为「真求解器 16 + 伪解上限 0」：这不是下调能力水位，而是把一直混在里面的 4 条假货从分母里分出去，并且**新增禁止伪解回潮**（旧地板 20 恰恰容忍 4 条伪解，等于把泄密当能力）。关键事实（2026-10-21 实测，见 miss_attribution_test.go）：未命中的 39 道题在库内 description 长度为 0、附件数为 0——是数据缺失，不是能力缺口。剩余题的原始题面/附件需从赛事平台补齐后才可评估能力。"
     },
     "execution": {
       "total": 17,

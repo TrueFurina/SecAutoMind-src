@@ -68,9 +68,15 @@ _fu_sys.path.insert(0, _fu_os.path.join(
 from flag_util import candidate_variants  # noqa: E402
 FLAG_PLAIN_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}", re.IGNORECASE)
 
-# 登记基线（2026-10-16 实测当前值）：语义是"不许再恶化"，不是"已经合格"。
-BASELINE_A = 4            # A 层题面即答案数
-BASELINE_C_PCT = 71.0     # C 层占比上限（当前实测 70.9%，留 0.1 余量；40/55=72.7% 会超）
+# 登记基线（2026-11-04 重锁）：语义是"不许再恶化"，不是"已经合格"。
+# A 层（题面即答案）由 4 → **0**：4 道 description 里写着答案的真题已按台账脱敏
+# （data/ctf_benchmark/redaction_ledger.json，state=synced），这 4 道随之从 A 层迁到 C 层
+# ——不是题变难了，而是不再泄密。上限同时收紧到 0：以后题面再出现答案一律红。
+BASELINE_A = 0
+# C 层占比上限：39（原实测）+ 4（上述台账处置）= 43/55 = 78.2%。
+# 分母仍是全部 55 道真题（不靠扩分母凑数，反注水语义不变），只是分子多了 4 道
+# 「按设计不可解」的题——它们从 A 层合法迁来，不是新注水。
+BASELINE_C_PCT = 78.2
 # 真实数据载荷特征
 B64ISH_RE = re.compile(r"[A-Za-z0-9+/=]{20,}")
 HEX_RE = re.compile(r"0x[0-9a-fA-F]{8,}")

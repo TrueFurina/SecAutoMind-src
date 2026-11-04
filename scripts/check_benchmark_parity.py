@@ -248,11 +248,19 @@ def load_bench():
 
 
 def load_floor():
-    """读 docs/benchmark_baseline.json 的 static.min_hit；缺失返回 None（fail-closed 由调用方处理）。"""
+    """读 static 的地板；缺失返回 None（fail-closed 由调用方处理）。
+
+    2026-11-04 起静态集用双列口径：`min_real_hit` 是**真求解器**地板，`max_flag_scan`
+    是题面嵌答案伪解的上限。旧 `min_hit`（全量命中，含 4 条伪解）已作废——它把泄密
+    算成了能力，改掉题面里的答案反而判成退化。为兼容尚未重锁的基线文件，仍回退读
+    `min_hit`。
+    """
     try:
         with open(BASELINE_PATH, encoding="utf-8") as fh:
-            d = json.load(fh)
-        return int(d["suites"]["static"]["min_hit"])
+            st = json.load(fh)["suites"]["static"]
+        if "min_real_hit" in st:
+            return int(st["min_real_hit"])
+        return int(st["min_hit"])
     except Exception:
         return None
 

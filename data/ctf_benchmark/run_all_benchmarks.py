@@ -647,6 +647,22 @@ def check_baseline(summary, baseline_path=None):
         need_hit = int(base.get("min_hit", -1))
         if g_total != need_total:
             bad.append("%s：题数漂移 %d → %d（基线锁 %d）" % (name, need_total, g_total, need_total))
+        # 🔴 静态集双列判据（2026-11-04）：题面嵌答案的 flag_scan 命中不是能力，
+        # 必须与真求解器命中分开计数——否则「删掉题面里的答案」会让命中数下降，
+        # 而门禁把它误读成能力退化。基线同时锁 real 地板与伪解上限，两边都不能动。
+        elif "min_real_hit" in base:
+            g_real = int(got.get("real_solver_hit", -1))
+            g_scan = int(got.get("flag_scan_only", -1))
+            need_real = int(base["min_real_hit"])
+            need_scan = int(base.get("max_flag_scan", 0))
+            if g_real < need_real:
+                bad.append("%s：真求解器命中退化 %d/%d → %d/%d（基线地板 %d）"
+                           % (name, need_real, need_total, g_real, g_total, need_real))
+            elif g_scan > need_scan:
+                bad.append("%s：题面嵌答案的伪解命中 %d > 上限 %d（等于把泄密当能力）"
+                           % (name, g_scan, need_scan))
+            else:
+                ok_n += 1
         elif g_hit < need_hit:
             bad.append("%s：命中退化 %d/%d → %d/%d（基线地板 %d）"
                        % (name, need_hit, need_total, g_hit, g_total, need_hit))
@@ -692,6 +708,11 @@ def update_baseline(summary, baseline_path=None):
             "min_hit": int(got.get("hit", 0)),
             "why": old.get(name, {}).get("why", ""),
         }
+        # 静态集按双列口径重写（真求解器地板 + 伪解上限），不再写入会被伪解污染的 min_hit。
+        if "real_solver_hit" in got:
+            item.pop("min_hit", None)
+            item["min_real_hit"] = int(got.get("real_solver_hit", 0))
+            item["max_flag_scan"] = 0
         if name == "attachment":
             item["max_water_filled"] = 0
         suites[name] = item
@@ -707,6 +728,12 @@ def update_baseline(summary, baseline_path=None):
             if item["min_group_b"] < old_b or item["min_delta"] < old_d:
                 lowered.append("web_hints：读题组 %d→%d 或 增量 %d→%d" %
                                (old_b, item["min_group_b"], old_d, item["min_delta"]))
+            continue
+        if "min_real_hit" in item:
+            old_real = int(old_item.get("min_real_hit", 0))
+            if item["min_real_hit"] < old_real:
+                lowered.append("%s：真求解器 %d/%d → %d/%d" %
+                               (name, old_real, item["total"], item["min_real_hit"], item["total"]))
             continue
         old_hit = int(old_item.get("min_hit", 0))
         if item["min_hit"] < old_hit:
@@ -996,8 +1023,13 @@ def main():
     print("    攻破维度：crc(admin)=crc(guest)⊕crc(Δ)，GF(2) 线性性 + oracle 学自定义多项式参数")
     print()
 
-    # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注
-    flag_scan = [r for r in st_res if r.get("presolve_engine") == "flag_scan"]
+    # 诚实化口径：静态集内 flag 直接嵌在描述文本里的「flag_scan」题单独标注。
+    # 🔴 2026-11-04 修正计数口径（实锤）：旧代码只按 presolve_engine == 'flag_scan' 过滤，
+    # 不要求 sha256_match，于是**未命中的**题只要被 flag_scan 引擎试过也会被减掉，
+    # 出现「16 命中里算出真实求解器 12」的错账（把引擎尝试数当成了命中数）。
+    # 正确口径：伪解只计「被 flag_scan 引擎命中且 sha256 匹配」的题。
+    flag_scan = [r for r in st_res
+                 if r.get("presolve_engine") == "flag_scan" and r.get("sha256_match")]
     real_solver = st_hit - len(flag_scan)
     print("【诚实化拆解】静态集 %d 命中中：" % st_hit)
     print("    - 真实求解器命中 (base64/rsa/endian/rail_fence/vigenere/caesar/...) : %d" % real_solver)

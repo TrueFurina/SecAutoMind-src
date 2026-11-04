@@ -85,10 +85,12 @@ class TestRegression(unittest.TestCase):
             len(problems),
             "分层之和必须等于总数（覆盖度）",
         )
-        # 人工核查值（2026-10-15）：题面即答案 4 / 有输入 12 / 无输入 39
-        self.assertEqual(len(layers["A"]), 4)
+        # 人工核查值（2026-11-04 重锁）：题面即答案 0 / 有输入 12 / 无输入 43。
+        # 原值为 4 / 12 / 39（2026-10-15）；差别就是那 4 道 description 里写着答案的真题
+        # 已按台账脱敏，从 A 层合法迁到 C 层——A 归零是这次处置的目的，不是数据变差。
+        self.assertEqual(len(layers["A"]), 0)
         self.assertEqual(len(layers["B"]), 12)
-        self.assertEqual(len(layers["C"]), 39)
+        self.assertEqual(len(layers["C"]), 43)
 
     def test_real_data_check_passes_within_baseline(self):
         """当前数据在登记基线内 → PASS。
