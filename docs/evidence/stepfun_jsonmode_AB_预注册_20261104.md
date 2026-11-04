@@ -39,3 +39,12 @@
 ## 5. 审计声明
 
 本会话是产出方，**不得自任审计**。本文件产出后的一切数字标「线索级」，需另一会话或独立复跑复核后才可升级为结论。
+
+## 6. 扩展登记（2026-11-04 12:2x，追加模型，未改动上文口径）
+
+- 追加模型：**`step-5-preview`**（队列级实际跑的档位）。其余口径（提示集、臂定义、max_tokens=2000、
+  判定阈值 20pp、分桶规则）**逐条不变**，仅换 `model` 字段。
+- 动机：§3 已登记"单模型不外推"，step-5-preview 是真实跑批档位，必须单独测一次否则结论不覆盖主用档。
+- 产物：`docs/evidence/stepfun_jsonmode_AB_20261104/step-5-preview/`（同 schema）。
+- 运行：`EXP_MODEL=step-5-preview python -X utf8 scripts/exp_stepfun_jsonmode_ab.py`。
+

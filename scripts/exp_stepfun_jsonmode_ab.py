@@ -22,9 +22,10 @@ from pathlib import Path
 import httpx
 
 REPO = Path(__file__).resolve().parents[1]
-OUT_DIR = REPO / "docs" / "evidence" / "stepfun_jsonmode_AB_20261104"
+_OUT_ROOT = REPO / "docs" / "evidence" / "stepfun_jsonmode_AB_20261104"
 ENDPOINT = os.getenv("STEP_BASE_URL", "https://api.stepfun.com/v1").rstrip("/") + "/chat/completions"
-MODEL = "step-3.5-flash"
+MODEL = os.getenv("EXP_MODEL", "step-3.5-flash")
+OUT_DIR = _OUT_ROOT if MODEL == "step-3.5-flash" else _OUT_ROOT / MODEL.replace("/", "_")
 MAX_TOKENS = 2000          # 引擎默认，见 ctf_agent/llm/client.py:345
 REPS = 2
 TIMEOUT = 300.0
