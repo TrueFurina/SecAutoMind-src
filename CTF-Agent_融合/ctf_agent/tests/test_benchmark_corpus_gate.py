@@ -192,3 +192,53 @@ def test_budget_exhaustion_hint_is_printed(capsys):
     assert "CTF_AGENT_GLOBAL_BUDGET" in src, "预算提示被删除了"
     assert "CTF_AGENT_PER_Q_BUDGET" in src, "单题预算参数名写错或缺失"
     assert "配置" in src and "不是能力问题" in src
+
+
+# ── 2026-11-04：LLM 侧全灭时 solve_rate 必须作废（fail-closed）──────────
+def test_solve_rate_voided_when_provider_wiped_out():
+    """provider 大面积熔断时，solve_rate 必须置 None（不能给百分比外观）。
+
+    实证事故（docs/evidence/stepfun_quota_exhausted_20261104/）：
+    StepFun 额度耗尽那轮 HTTP 200 计数为 0、402 共 5774 次，
+    报告却写 solved=11 / solve_rate=0.126 —— 那 11 题是工具产物，与模型能力无关。
+    这种数字有精确百分比外观，却来自一条没打通的链路，最容易被引用。
+    """
+    from eval.benchmark import summarize, BenchmarkResult
+    from eval.cases import Question
+
+    def mk(qid, out):
+        q = Question(id=qid, title="t", category="crypto")
+        q.provenance = "real_past_ctf"
+        return BenchmarkResult(q, out, 1000, 1)
+
+    rs = []
+    for i in range(87):
+        if i < 34:
+            rs.append(mk(f"c{i}", {"error": {"category": "provider_circuit_open"}}))
+        elif i < 76:
+            rs.append(mk(f"c{i}", {"error": {"category": "tool_failure"}}))
+        else:
+            rs.append(mk(f"c{i}", {"flag": "flag{x}"}))
+
+    s = summarize(rs)
+    assert s["solve_rate"] is None, "熔断 39% 时 solve_rate 必须作废"
+    assert s["integrity"]["infrastructure_unavailable"] is True
+    assert s["integrity"]["interpretable"] is False
+    # 分桶也要作废：下游常只读 by_category，只堵顶层等于没堵
+    assert s["by_category"]["crypto"]["solve_rate"] is None
+
+
+def test_solve_rate_normal_when_provider_healthy():
+    """反向对照：熔断少时必须照常输出数字，防"恒 None"式假安全。"""
+    from eval.benchmark import summarize, BenchmarkResult
+    from eval.cases import Question
+
+    def mk(qid, out):
+        q = Question(id=qid, title="t", category="crypto")
+        q.provenance = "real_past_ctf"
+        return BenchmarkResult(q, out, 1000, 1)
+
+    rs = [mk(f"n{i}", {"error": {"category": "tool_failure"}}) for i in range(10)]
+    s = summarize(rs)
+    assert s["solve_rate"] is not None, "健康轮次不该被误判成基础设施不可用"
+    assert s["solve_rate"] == 0.0

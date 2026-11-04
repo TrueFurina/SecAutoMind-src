@@ -346,10 +346,36 @@ def summarize(results: list[BenchmarkResult]) -> dict:
         "interpretable": (len(truncated) == 0 and len(zero_work) == 0),
     }
 
+    # 🔴 2026-11-04 fail-closed：LLM 侧全灭时，solve_rate 必须显式作废。
+    # 实证事故（docs/evidence/stepfun_quota_exhausted_20261104/）：
+    # StepFun 额度耗尽后整轮 5774 次 402、**HTTP 200 计数为 0**，
+    # 但报告仍写出 solved=11 / solve_rate=0.126 —— 那 11 题是工具/脚本产物，
+    # 与"模型能力"毫无关系。这种数字最危险：它有精确的百分比外观，
+    # 却来自一条根本没打通的链路。
+    # 判据：provider 级熔断（provider_circuit_open）占已完成题的比例过高时，
+    # 判定本轮"基础设施不可用"，把 solve_rate 置 None 并留原因。
+    _circuit = by_error.get("provider_circuit_open", 0)
+    _done = max(total, 1)
+    _infra_dead = _circuit >= max(3, _done * 0.3)
+    if _infra_dead:
+        integrity["infrastructure_unavailable"] = True
+        integrity["infrastructure_reason"] = (
+            f"{_circuit}/{total} 题因 provider 熔断未打通 LLM（阈值 30%）——"
+            f"本轮 solve_rate 不可作为能力率引用")
+        integrity["interpretable"] = False
+        # 分桶里的 solve_rate 同样要作废：下游很可能只读 by_category/by_provenance，
+        # 不读顶层 solve_rate —— 只堵顶层等于没堵。
+        for _coll in (by_category, by_provenance, by_solved_by):
+            for _b in (_coll.values() if isinstance(_coll, dict) else []):
+                if isinstance(_b, dict) and "solve_rate" in _b:
+                    _b["solve_rate"] = None
+
     return {
         "total": total,
         "solved": solved,
-        "solve_rate": round(solved / total, 3) if total else 0.0,
+        # 基础设施不可用时置 None：让下游无法"顺手"把它当百分比用
+        "solve_rate": (None if _infra_dead
+                       else (round(solved / total, 3) if total else 0.0)),
         "by_category": by_category,
         "by_provenance": by_provenance,
         "by_solved_by": by_solved_by,
