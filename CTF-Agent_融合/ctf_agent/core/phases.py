@@ -196,10 +196,22 @@ async def plan_step(agent, ctx: AgentContext, attempt: int) -> dict:
         # 误读成「工具链有 bug」（今日实测 glm-4-flash 28.1% vs generalv3 1.2%）：
         #   · protocol_fail —— LLM 返回了内容但解析不出 JSON（代码兜底也没成）；
         #   · empty_reply   —— LLM 根本没返回内容（空回复/被掐断）。
+        # 🔴 2026-11-02 修口径重复计数：上面已按 consume_last_unparsable() 记过
+        # protocol_fail，若此处无条件 +empty_reply，则「解析失败且兜底也失败」的那次
+        # 会被**同时计入两个桶**——实测 stepfun 12 题报 protocol_fail=248 且
+        # empty_reply=131，其中相当部分是重复计数，会让人误以为「模型大量不返回」。
+        # 现在：只有「本次调用并没有产生不可解析内容」时才算 empty_reply
+        # （即真的没回内容），两者互斥。
         try:
             _m = getattr(agent, "_llm_parse_metrics", None)
             if _m is not None:
-                _m["empty_reply"] += 1   # 走到这里说明 LLM 根本没返回内容
+                try:
+                    from llm.client import consume_last_unparsable
+                    _was_unparsable = consume_last_unparsable()
+                except Exception:  # noqa: BLE001
+                    _was_unparsable = False
+                if not _was_unparsable:
+                    _m["empty_reply"] += 1
         except Exception:  # noqa: BLE001 - 计量失败绝不影响主链路
             pass
         if has_attachment and not ctx._attachment_analyzed:

@@ -74,3 +74,100 @@ def test_ai_chat_json_async_with_usage_works(monkeypatch):
     obj, usage = asyncio.run(main())
     assert obj == {"action": "reason"}
     assert usage["total_tokens"] == 3
+
+
+# ── 2026-11-02：StepFun JSON 输出约束 + reasoning 超时 ──────────────────
+def test_stepfun_gets_json_object_response_format(monkeypatch):
+    """stepfun 请求必须带 response_format=json_object（治 protocol_fail）。
+
+    实测：stepfun 三档全是 reasoning 模型，倾向输出散文式推理，
+    12 题跑出 protocol_fail=248——框架靠代码围栏兜底才没崩，但结构化字段全丢。
+    这不是能力问题，是协议不遵守。该 provider 已实测支持此参数（200 + 纯 JSON）。
+    """
+    from llm import client as llm_client
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"choices": [{"message": {"content": '{"action":"think"}'}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1,
+                              "total_tokens": 2}}
+        text = ""
+
+    def fake_post(_url, **kw):
+        payload_in = kw.get('json')
+        captured["payload"] = payload_in
+        captured["url"] = _url
+        return _Resp()
+
+    monkeypatch.setattr(llm_client.httpx, "post", fake_post)
+    monkeypatch.delenv("CTF_AGENT_JSON_MODE", raising=False)
+
+    llm_client.ai_chat([{"role": "user", "content": "x"}],
+                       model="step-3.5-flash", provider="stepfun")
+    assert captured["payload"].get("response_format") == {"type": "json_object"}, \
+        "stepfun 未带上 response_format=json_object"
+
+
+def test_non_stepfun_does_not_get_json_mode(monkeypatch):
+    """其他 provider 不得被强行加 response_format（有的端点见未知字段直接 400）。"""
+    from llm import client as llm_client
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1,
+                              "total_tokens": 2}}
+        text = ""
+
+    def fake_post(_url, **kw):
+        payload_in = kw.get('json')
+        captured["payload"] = payload_in
+        return _Resp()
+
+    monkeypatch.setattr(llm_client.httpx, "post", fake_post)
+    llm_client.ai_chat([{"role": "user", "content": "x"}],
+                       model="deepseek-chat", provider="deepseek")
+    assert "response_format" not in captured["payload"]
+
+
+def test_json_mode_can_be_disabled(monkeypatch):
+    """CTF_AGENT_JSON_MODE=0 必须能关掉（A/B 对照与端点回归时要用）。"""
+    from llm import client as llm_client
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1,
+                              "total_tokens": 2}}
+        text = ""
+
+    def fake_post(_url, **kw):
+        payload_in = kw.get('json')
+        captured["payload"] = payload_in
+        return _Resp()
+
+    monkeypatch.setattr(llm_client.httpx, "post", fake_post)
+    monkeypatch.setenv("CTF_AGENT_JSON_MODE", "0")
+    llm_client.ai_chat([{"role": "user", "content": "x"}],
+                       model="step-3.5-flash", provider="stepfun")
+    assert "response_format" not in captured["payload"]
+
+
+def test_stepfun_reasoning_gets_extended_timeout():
+    """stepfun 全系 reasoning，必须放宽 read timeout 到 300s。
+
+    模型名里没有 reasoner/v4-pro/397b 关键词，靠既有关键词表会漏掉它，
+    落在默认超时上被掐断。判定改用 provider，避免新增 step-* 档位再漏一次。
+    """
+    from llm.client import _resolve_settings
+    s = _resolve_settings(None, provider="stepfun")
+    assert s["timeout"].read >= 300.0, s["timeout"]

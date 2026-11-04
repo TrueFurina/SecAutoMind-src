@@ -873,6 +873,13 @@ def _resolve_settings(model: Optional[str], provider: Optional[str] = None) -> d
         _ml = str(model).lower()
         if "reasoner" in _ml or "v4-pro" in _ml or "397b" in _ml:
             timeout_seconds = max(timeout_seconds, 300)
+        # 2026-11-02：stepfun 全系为 reasoning 模型（返回 reasoning_content），
+        # 但模型名里不含上列关键词（step-3.5-flash / step-3.7-flash / step-5-preview），
+        # 会落在默认超时上而被掐断。实测 12 题跑批里 stepfun 单次调用常见 30–90s，
+        # 深推理题更久；与上列同式放宽到 300s。
+        # 判定用 provider 而非模型名，避免以后新增 step-* 档位又漏一次。
+        if provider == "stepfun":
+            timeout_seconds = max(timeout_seconds, 300)
         # 环境显式覆盖口（最后生效）：跑批脚本/赛时可按通道直接钉超时，免改代码。
         # 非数字/<=0 视为未设（fail-closed 到既有值）。
         _env_to = os.getenv("CTF_AGENT_LLM_TIMEOUT_SECONDS", "").strip()
@@ -953,6 +960,23 @@ def _post_chat(
     if not _is_reasoner and (settings.get("provider") in ("deepseek", "mimo")
                              or _model_name.startswith("deepseek")):
         payload["thinking"] = {"type": "disabled"}
+
+    # ── JSON 输出约束（2026-11-02）────────────────────────────────────
+    # 为什么需要：主 Agent 的 plan/reason 步要求模型返回 JSON 动作协议，
+    # 但部分模型（实测 stepfun 三档全部如此）倾向输出**散文式推理**，
+    # 于是 12 题跑出 protocol_fail=248 / empty_reply=131 —— 框架靠代码围栏兜底
+    # 才没崩，但兜底只能救出 script 动作，其余结构化字段全丢，直接拖低解出率。
+    # 这不是能力不足，是协议不遵守。
+    #
+    # 处置：仅对**实测支持该参数的 provider** 显式开 json_object，
+    # 不动其他 provider（有的端点见到未知字段直接 400，不能一概而论）。
+    # 实测 stepfun：response_format={"type":"json_object"} 与 json_schema 均 200 且
+    # 正确返回纯 JSON（见 2026-11-02 接入记录）。
+    # 可用 CTF_AGENT_JSON_MODE=0 关掉（对照实验 / 端点回归时用）。
+    _json_mode_providers = {"stepfun"}
+    if (settings.get("provider") in _json_mode_providers
+            and os.getenv("CTF_AGENT_JSON_MODE", "1").strip() != "0"):
+        payload["response_format"] = {"type": "json_object"}
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {settings['api_key']}",
