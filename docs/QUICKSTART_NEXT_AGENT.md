@@ -225,7 +225,10 @@ node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全
 
 > 本附录只加指针，不改上文任何内容。跑 CTF 基准（S1–S5 切片）时先读这两处：
 
-1. **唯一入口**：`scripts/stepfun_batch_server.py`
+1. **统一入口（待入库）**：`stepfun_batch_server` —— 截至本附录追加时，该统一入口脚本**尚未提交到本仓**（`docs-lint` 因此不对它做路径存在性校验，这里也不写死链式路径）。
+   - 它规划的参数语义：只读体检；按会话切片跑批；按队列号续跑；处理闸门偶发重试。
+   - 内建**服务器守卫**意图：Windows 上打 `127.0.0.1:18086` 直接拒绝（退出码 3），符合 §0 服务器口径。
+   - 警示：当前仓库内已 track 的是接口**完全不同**的 `ctf_stepfun_orchestrator`（参数为 provider/benchmark/slice 等），它**不是**本附录描述的 `--doctor`/`--session` 入口，勿混淆；用前先 `--help` 自证。
    - `--doctor` 只读体检；`--session S3` 跑切片；`--queue-id` 续跑；`--retry-gate` 处理闸门偶发。
    - 内建**服务器守卫**：Windows 上打 `127.0.0.1:18086` 直接 `REFUSED`（退出码 3），符合 §0 服务器口径。
    - 取代此前 5 个自建脚本（其中两个是"本地直连 StepFun"的旁路，已标废弃）。
