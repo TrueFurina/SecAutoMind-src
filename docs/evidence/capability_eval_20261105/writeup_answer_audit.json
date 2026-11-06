@@ -1,0 +1,83 @@
+{
+  "tool": "scripts/audit_writeup_answer.py",
+  "generated_at": "2026-11-06T10:43:06+08:00",
+  "glob": "data\\ctf_benchmark\\*benchmark*.json",
+  "files_scanned": 29,
+  "problems_scanned": 390,
+  "answer_in_statement_total": 6,
+  "self_disclosing_wording_count": 5,
+  "by_pool": {
+    "real": 6
+  },
+  "files_with_hits": [
+    {
+      "file": "purellm_clean_benchmark.json",
+      "problems": 160,
+      "answer_in_statement": 6
+    }
+  ],
+  "hits": [
+    {
+      "id": "real_crypto_dnui_keyboard",
+      "pool": "real",
+      "answer_form": "wrapped",
+      "answer_form_sha8": "0629c8d6",
+      "answer_form_length": 15,
+      "self_disclosing_wording": false,
+      "reason": "题面 token 的 带壳 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_bruteforce_count",
+      "pool": "real",
+      "answer_form": "bare",
+      "answer_form_sha8": "be47addb",
+      "answer_form_length": 3,
+      "self_disclosing_wording": true,
+      "reason": "题面 token 的 裸内容 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_enable_pwd",
+      "pool": "real",
+      "answer_form": "bare",
+      "answer_form_sha8": "0fc5ec3e",
+      "answer_form_length": 8,
+      "self_disclosing_wording": true,
+      "reason": "题面 token 的 裸内容 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "pool": "real",
+      "answer_form": "bare",
+      "answer_form_sha8": "6b86b273",
+      "answer_form_length": 1,
+      "self_disclosing_wording": true,
+      "reason": "题面 token 的 裸内容 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_port",
+      "pool": "real",
+      "answer_form": "bare",
+      "answer_form_sha8": "48449a14",
+      "answer_form_length": 2,
+      "self_disclosing_wording": true,
+      "reason": "题面 token 的 裸内容 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_telnet_pwd",
+      "pool": "real",
+      "answer_form": "bare",
+      "answer_form_sha8": "cc0f6b52",
+      "answer_form_length": 5,
+      "self_disclosing_wording": true,
+      "reason": "题面 token 的 裸内容 形态 sha256 == 该题 flag_sha256",
+      "file": "purellm_clean_benchmark.json"
+    }
+  ],
+  "note": "证据不含明文答案，只有命中形态长度与 sha8；判分不读本文件，本审计只用于剔除题池/收紧门禁。",
+  "existing_gate_gap": "check_benchmark_plaintext_answer.py::answer_is_in_statement 只扫 word{content} 且 candidate_variants 不产生裸内容变体 ⇒ 自然语言自曝答案的题被判为零违规（空洞绿）"
+}

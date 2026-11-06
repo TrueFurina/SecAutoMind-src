@@ -40,6 +40,7 @@ from check_pure_llm_caliber import (EVIDENCE_KEYS, PURE_LLM_EVIDENCE_KEYS,  # no
                                    load_questions, load_trained_ids,
                                    prove_pure_llm_path, selftest)
 import audit_pool_prior  # noqa: E402
+import audit_writeup_answer  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POOL = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.json")
@@ -131,6 +132,20 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         scope["reason"] = "题源审计证据与代码重算不一致（指纹/计数/结论漂移）"
         return scope
 
+    # 题面自曝答案：现有明文门禁的空洞绿（只扫 word{} token 且不去壳），
+    # 这里用 sha256 反查重算，逐题列出 id（不含任何明文答案）。
+    try:
+        probs = json.load(open(pool_path, encoding="utf-8")).get("problems", {})
+        tainted = sorted(pid for pid, p in probs.items()
+                          if isinstance(p, dict)
+                          and audit_writeup_answer.inspect_problem(pid, p))
+        scope["statement_tainted_count"] = len(tainted)
+        scope["statement_tainted_ids"] = tainted
+    except Exception as exc:
+        scope["statement_tainted_count"] = None
+        scope["statement_tainted_ids"] = []
+        scope["statement_tainted_error"] = str(exc)
+
     if fresh["total"] > 0 and fresh["counts"]["private_proven"] == fresh["total"]:
         scope["claim_scope"] = "capability_rate_candidate"
         scope["reason"] = "全池题目可证明私有；仍须逐题满足其余判据"
@@ -138,6 +153,9 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         scope["claim_scope"] = "engineering_regression_only"
         scope["reason"] = "%d/%d 题公开或来源不明 ⇒ 模型先验无法排除，数值只能作工程回归读数" % (
             fresh["total"] - fresh["counts"]["private_proven"], fresh["total"])
+    if scope.get("statement_tainted_count"):
+        scope["reason"] += "；且分母含 %d 道题面自曝答案题，工程回归读数亦须打折" % \
+                           scope["statement_tainted_count"]
     return scope
 
 
@@ -356,6 +374,8 @@ def scope_selftest():
     # 1. 真实干净池（160 题全公开）→ 只能作工程回归读数
     check("公开池 → engineering_regression_only",
           claim_scope_for_pool()["claim_scope"], "engineering_regression_only")
+    check("干净池题面自曝答案题被重算出（门禁空洞绿）",
+          claim_scope_for_pool()["statement_tainted_count"] > 0, True)
     # 2. 绑定指纹不一致 → fail-closed
     check("结果绑定池指纹不一致 → unverified",
           claim_scope_for_pool(bound_pool_sha="0" * 64)["claim_scope"], "unverified")
@@ -477,6 +497,9 @@ def main():
         if kind != "capability_rate_candidate":
             print("[!] 本批次数值仅为工程回归读数，不得对外称为能力率；原因：%s"
                   % scope.get("reason", "作用域未验证"))
+        if scope.get("statement_tainted_count"):
+            print("[!] 分母含 %d 道题面自曝答案题（明文门禁空洞绿），题号见 verdict.claim_scope.statement_tainted_ids"
+                  % scope["statement_tainted_count"])
         return 0 if v["claimable"] else 1
 
     # 历史批次归因：不受前置失败阻挡 —— 判据的价值正是把不合格批次判成不可归因。
