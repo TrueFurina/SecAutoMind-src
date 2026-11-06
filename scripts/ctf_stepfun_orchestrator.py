@@ -225,7 +225,10 @@ def build_prompt(problem, artifact_info=None):
     if artifact_info:
         lines = ["", "【本题附件】工件已解压到你的工作目录，可用 run_python 打开读取。",
                  "读取限制：只能用**相对文件名**（例如 open(\"sample.bin\",\"rb\")）；"
-                 "禁止绝对路径、\"..\" 穿越、列目录(os.listdir/walk)、出网、启动子进程。"]
+                 "禁止绝对路径、\"..\" 穿越、列目录(os.listdir/walk)、出网、启动子进程。",
+                 "⚠️ 小文本文件的内容**已经内联在下面的文件清单之后**。"
+                 "如果某个文件的内容已经在上面出现过，就直接分析它，不要再反复 open 同一个文件"
+                 "（每道题的工具调用轮数有限，重复读文件会把轮数耗光而拿不到答案）。"]
         files = artifact_info.get("files") or []
         if files:
             lines.append("文件清单：")
@@ -467,10 +470,18 @@ _ARTIFACT_RUNTIME_GUARD = (
 )
 
 # 工件注入：哪些后缀算「小文本文件」可全文内联；单文件与总量上限（防 prompt 爆炸）
+# 2026-11-07 修：原集合缺 .dart/.go/.sage/.proto/.rs 等——而外部赛题池里恰恰是这些。
+# 实测 ext_gctf2021_story 的 server.dart（2104 B）没被内联，模型只能靠 run_python 读，
+# 又被 1900 字符的输出截断卡住，10 轮工具调用全在重复 open("server.dart")。
+# 这不是能力问题，是「文件根本喂不进去」。
 _ARTIFACT_TEXT_EXT = {".md", ".txt", ".json", ".csv", ".log", ".yaml", ".yml", ".xml",
-                      ".html", ".ini", ".conf", ".cfg", ".py", ".sh", ".c", ".h", ".js"}
-_ARTIFACT_INLINE_PER_FILE = 8000
-_ARTIFACT_INLINE_TOTAL = 16000
+                      ".html", ".ini", ".conf", ".cfg", ".py", ".sh", ".c", ".h", ".js",
+                      ".dart", ".go", ".sage", ".proto", ".rs", ".java", ".php", ".rb",
+                      ".lua", ".pl", ".r", ".m", ".sol", ".ts", ".toml", ".gradle",
+                      ".dockerfile", ".mk", ".sql", ".tex"}
+# 单文件 8000 恰好卡掉 8266 字节的 ext_gctf2025_underhanded/aes.py（差 266 B）
+_ARTIFACT_INLINE_PER_FILE = 24000
+_ARTIFACT_INLINE_TOTAL = 64000
 
 
 def _audit_code(code, artifact_mode=False):
@@ -523,9 +534,13 @@ def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False)
             out = "(no output)"
         # 头尾保留 + 中间省略：长 hex dump 会撑大上下文拖慢下一轮 LLM，
         # 但报错/traceback 在尾部，答案常在头部，故不能简单截前 N 字符。
-        if len(out) > 1900:
-            out = (out[:1200] + "\n...[中间省略 %d 字符]...\n" % (len(out) - 1800)
-                   + out[-600:])
+        # 2026-11-07 修：原上限 1900 字符（≈40 行）。实测模型读 8KB 的源文件时只能看到头尾，
+        # 于是反复 open() 同一文件分段看，10 轮工具预算全耗在"读文件"上 —— 见
+        # ext_gctf2025_underhanded（10 轮全是 open("aes.py")）、ext_gctf2021_story（同）。
+        # 抬到 8000 字符（≈2000 tokens），一次就能看完整份源码。
+        if len(out) > 8000:
+            out = (out[:5000] + "\n...[中间省略 %d 字符]...\n" % (len(out) - 6500)
+                   + out[-1500:])
         return out
     except subprocess.TimeoutExpired:
         return "(timeout: 代码执行超过 %ds)" % timeout
