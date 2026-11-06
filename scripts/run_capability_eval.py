@@ -25,7 +25,13 @@
       --prior-audit <题源证据> --result <r.json> -- <cmd...（--benchmark 须同池）>
   # 给已有 verdict 追加结论作用域与判分假阴性片段（只加字段、逐键校验不改判分）：
   python scripts/run_capability_eval.py --annotate <verdict.json> --gap-result <r.json>
+  # 私有性外部锚点契约（题面自证不采信；未达成时禁止发布能力率）：
+  python scripts/audit_private_proof.py --selftest | --check | --verify | --require-proof
 退出码：前置不通过 = 2；判分不可归因 = 1；全绿 = 0。
+
+§17：能力率的发布前提不是「池里写满了 private」，而是私有性有可复核的外部
+锚点（git 首次提交时间戳 + 内容指纹 + 公开真值排除）。claim_scope 由代码重算，
+无锚点时无论题面怎么标都强制 engineering_regression_only。
 """
 from __future__ import annotations
 
@@ -48,6 +54,7 @@ from check_pure_llm_caliber import (EVIDENCE_KEYS, PURE_LLM_EVIDENCE_KEYS,  # no
 import audit_pool_prior  # noqa: E402
 import audit_writeup_answer  # noqa: E402
 import audit_scoring_variant_gap  # noqa: E402
+import audit_private_proof  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POOL = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.json")
@@ -55,6 +62,8 @@ MANIFEST = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.
 POOL_V2 = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark_v2.json")
 MANIFEST_V2 = os.path.join(ROOT, "data", "ctf_benchmark",
                            "purellm_clean_benchmark_v2.manifest.json")
+PRIVATE_PROOF_REGISTRY = os.path.join(ROOT, "data", "ctf_benchmark",
+                                     "private_pool_registry.json")
 LEAK = os.path.join(ROOT, ".workbuddy", "tmp", "rev_leak.out")
 ORCH = os.path.join(ROOT, "scripts", "ctf_stepfun_orchestrator.py")
 WORKDIR = os.path.join(ROOT, ".workbuddy", "tmp", "capability_eval")
@@ -112,9 +121,16 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
     读数。本函数把这一区分写进 verdict，避免靠外围文档提醒（§13 三个假绿的教训）。
 
     作用域三值：
-      capability_rate_candidate  —— 全部题目可证明私有且审计证据一致（仍须其余判据）
-      engineering_regression_only—— 存在公开/来源不明题，数值不得对外称能力率
+      capability_rate_candidate  —— 全部题目可证明私有、审计证据一致，且私有性有
+                                    **外部锚点**（git 首次提交时间戳 + 内容指纹 +
+                                    公开真值排除，见 audit_private_proof.py）
+      engineering_regression_only—— 存在公开/来源不明题，或私有性仅靠题面自证
       unverified                 —— 题池或审计证据缺失/漂移/绑定指纹不一致，禁止引用
+
+    §17 修正（第六个偏差）：`audit_pool_prior.classify()` 的四条私有判据全部取自
+    题面字段。实测把 v2 的 154 道公开题只改 id/name/description/pool/source/
+    created_at（flag_sha256 不动）就能得到 private_proven=154/154 并让本函数
+    返回 capability_rate_candidate。故「题面自证」一律不作为放行依据。
     """
     scope = {
         "generated_by": "scripts/run_capability_eval.py::claim_scope_for_pool (代码重算)",
@@ -126,11 +142,29 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         "pool_sha256": None,
         "bound_pool_matches": None,
         "audit_evidence_consistent": False,
+        "private_proof_anchored": False,
+        "private_proof_anchored_count": 0,
+        "private_proof_reason": "",
+        "private_proof_contract": audit_private_proof.CONTRACT,
+        "private_proof_registry_path": os.path.relpath(
+            PRIVATE_PROOF_REGISTRY, ROOT).replace("\\", "/"),
         "reason": "",
     }
     if not os.path.isfile(pool_path):
         scope["reason"] = "题池不存在，fail-closed"
         return scope
+    # 私有性外部锚点：代码重算，fail-closed。异常也不许当成「已验证」。
+    try:
+        proof = audit_private_proof.assess(pool_path, PRIVATE_PROOF_REGISTRY,
+                                           require_tracked=True)
+    except Exception as exc:  # pragma: no cover - 环境异常必须降级而非崩溃
+        proof = {"anchored": False, "anchored_count": 0,
+                 "reasons": ["proof_assessment_error:%s" % type(exc).__name__]}
+    scope.update({
+        "private_proof_anchored": bool(proof["anchored"]),
+        "private_proof_anchored_count": proof["anchored_count"],
+        "private_proof_reason": "; ".join(proof["reasons"]) or "R0–R6 全过",
+    })
     fresh = audit_pool_prior.audit(pool_path)
     scope.update({
         "pool_sha256": fresh["pool_sha256"],
@@ -186,8 +220,15 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         scope["statement_tainted_error"] = str(exc)
 
     if fresh["total"] > 0 and fresh["counts"]["private_proven"] == fresh["total"]:
-        scope["claim_scope"] = "capability_rate_candidate"
-        scope["reason"] = "全池题目可证明私有；仍须逐题满足其余判据"
+        if scope["private_proof_anchored"]:
+            scope["claim_scope"] = "capability_rate_candidate"
+            scope["reason"] = ("全池题目可证明私有且私有性有外部锚点；"
+                               "仍须逐题满足其余判据")
+        else:
+            # §17：题面自证全私有 ≠ 题目私有。不给锚点就不采信。
+            scope["claim_scope"] = "engineering_regression_only"
+            scope["reason"] = ("题面自证全私有但缺外部锚点（%s）⇒ 不采信，"
+                               "数值只能作工程回归读数" % scope["private_proof_reason"])
     else:
         scope["claim_scope"] = "engineering_regression_only"
         scope["reason"] = "%d/%d 题公开或来源不明 ⇒ 模型先验无法排除，数值只能作工程回归读数" % (
@@ -422,6 +463,13 @@ def pipeline_selftest():
         {"id": ids[1], "solved": False, "hit_mode": "", "latency": 11.0, "error": ""},
     ]}
     leak, leak_ok = load_leak_ids(LEAK)
+    if not leak_ok:
+        # 自测必须自包含：真实泄漏集在未入库的本机产物 .workbuddy/tmp/rev_leak.out，
+        # CI checkout 拿不到。B 段验证的是「合规条件下代码能否给出正向结论」，
+        # 用一份可用但为空的合成泄漏集即可；生产判分 adjudicate() 仍读真实泄漏集，
+        # 缺失由 A 段变异用例「泄漏集不可用 => fail-closed」守住，两者不混淆。
+        leak, leak_ok = set(), True
+        print("  [i] 真实泄漏集不可用，B 段改用合成空泄漏集（生产判分仍 fail-closed）")
     trained, trained_ok = load_trained_ids(ROOT)
     v = judge_run(result, questions, ev, leak, leak_ok, trained, trained_ok)
     want = {"LLM_SOLVED": 1, "CLEAN_FAIL": 1, "NOT_ATTRIBUTABLE": 0}
@@ -494,10 +542,24 @@ def scope_selftest():
         json.dump(private, f, ensure_ascii=False)
     with open(audit_p, "w", encoding="utf-8") as f:
         json.dump(audit_pool_prior.audit(pool_p), f, ensure_ascii=False)
-    # 3. 全私有 + 证据一致 → 能力率候选
-    check("全私有池 → capability_rate_candidate",
-          claim_scope_for_pool(pool_p, audit_p)["claim_scope"],
-          "capability_rate_candidate")
+    # 3. §17：题面自证全私有 + 证据一致，但无外部锚点 ⇒ 不给能力率
+    s3 = claim_scope_for_pool(pool_p, audit_p)
+    check("仅题面自证全私有 → engineering_regression_only",
+          s3["claim_scope"], "engineering_regression_only")
+    check("无锚点时 private_proof_anchored=False",
+          s3["private_proof_anchored"], False)
+    # 3b. 证明 capability_rate_candidate 不是不可达红灯：注入一份合规锚点结论。
+    #     仅本自测局部打桩；生产调用路径没有任何注入参数。
+    from unittest import mock
+    with mock.patch.object(audit_private_proof, "assess",
+                            return_value={"anchored": True, "anchored_count": 2,
+                                         "reasons": [], "total": 2}):
+        s3b = claim_scope_for_pool(pool_p, audit_p)
+    check("外部锚点成立 → capability_rate_candidate（分支可达）",
+          s3b["claim_scope"], "capability_rate_candidate")
+    # 3c. 真实公开池同样不得被算成已锚定
+    check("真实公开池无外部锚点",
+          claim_scope_for_pool()["private_proof_anchored"], False)
     # 4. 证据漂移 → unverified
     drifted = audit_pool_prior.audit(pool_p)
     drifted["counts"]["private_proven"] = 0
@@ -618,6 +680,9 @@ def main():
                   % scope["statement_tainted_count"])
         for lim in scope.get("pool_known_limitations", []):
             print("[!] 池已知限制：%s" % lim)
+        if not scope.get("private_proof_anchored"):
+            print("[!] 私有性无外部锚点（%s）⇒ 题面自证全私有也不得称能力率"
+                  % scope.get("private_proof_reason", "未验证"))
         gap = v.get("scoring_variant_gap") or {}
         n_gap = gap.get("false_negative_count")
         if n_gap:

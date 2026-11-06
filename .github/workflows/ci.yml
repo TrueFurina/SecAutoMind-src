@@ -1087,6 +1087,26 @@ jobs:
       - name: Benchmark statements must not embed answers
         run: python scripts/check_benchmark_plaintext_answer.py --check
 
+  # 能力率口径门禁（2026-11-06）：判据链最上层「能不能叫能力率」必须有外部锚点，题面自证一律不采信。
+  # 背景：audit_pool_prior.classify() 的四条私有判据全取自题面字段；实测把 154 道公开题只改
+  # 元数据（flag_sha256 一字不动）即可骗出 capability_rate_candidate。此前
+  # run_capability_eval.py --selftest 与新增的 audit_private_proof.py --selftest 都没接 CI = 等于没锁。
+  # 变异验证覆盖：公开真值套私有壳洗白、伪造 git commit、自填日期、换池套用、缺锚点强制降级，
+  # 以及 candidate 分支可达（不是永远红灯）。自测已做成自包含，不依赖未入库的本机 tmp 产物。
+  capability-caliber-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 私有性锚点要查「题目首次入库的 commit 时间戳」，浅克隆不够
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Capability caliber + private-proof contract mutation self-test
+        run: python scripts/capability_caliber_test.py
+      - name: Private-pool proof evidence must match current pools
+        run: python scripts/audit_private_proof.py --verify
+
   arena-regression-gate:
     # 待接线产物落地（PR #72 收口后的 CI 接线）：把 ctf_ci_regression 的「逐实例退化分类」粒度
     # 接进流水线，与既有 merge_gate.py（解题数只升不降 + sha256 校验，管总量）互补 —— 本 job 管单题能力倒退。

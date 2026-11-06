@@ -1,0 +1,18 @@
+{
+  "anchored": false,
+  "anchored_count": 0,
+  "contract": "private-pool-proof/v1",
+  "per_problem_rejections": {},
+  "pool_path": "data/ctf_benchmark/purellm_clean_benchmark_v2.json",
+  "pool_sha256": "3bfb3a3922c9886c6c84c89a768924ba52c98a4fc04d000e6e096a031730210e",
+  "prior_cutoff": "2025-01-01",
+  "public_pools_missing": [],
+  "public_truth_hashes_loaded": 214,
+  "reasons": [
+    "no_registry: 私有性无外部锚点，题面自证一律不采信"
+  ],
+  "registry_path": "E:\\Program\\SecAutoMind\\data\\ctf_benchmark\\private_pool_registry.json",
+  "registry_sha256": null,
+  "tool": "scripts/audit_private_proof.py::assess",
+  "total": 154
+}
