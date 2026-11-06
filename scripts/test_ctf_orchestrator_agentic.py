@@ -114,10 +114,95 @@ def main():
 
     m._post_json, m.run_python_tool = orig_post, orig_tool
 
+    # ── 用例 3b：API 失败必须可见，不能被吞成「模型没答」─────────
+    # 2026-11-07 事故：qwen3.8-max 40 题里 29 题 HTTP 403（额度耗尽），
+    # 内层 except 只往文本里塞一行就 break，detail.error 是空的 ⇒
+    # 汇总把「额度用完」读成「模型不会」。这条用例钉住这个行为。
+    def boom(url, payload, key, timeout):
+        raise RuntimeError("HTTP Error 403: Forbidden")
+
+    m._post_json = boom
+    try:
+        stats = []
+        m.call_llm_agentic(cfg, "k", "m", "p", 30, max_iter=2, wall_budget=60, stats=stats)
+        ck("API 失败必须落进 stats（不得静默吞掉）", len(stats) == 1)
+        ck("API 失败的 finish_reason 标记为 error",
+           stats and stats[0].get("finish_reason") == "error")
+        ck("API 失败保留错误摘要", "403" in str(stats[0].get("error", "")) if stats else False)
+    except Exception as e:  # noqa: BLE001
+        ck("API 失败路径不向外抛（实际 %s）" % type(e).__name__, False)
+        ck("API 失败必须落进 stats（不得静默吞掉）", False)
+        ck("API 失败的 finish_reason 标记为 error", False)
+        ck("API 失败保留错误摘要", False)
+    m._post_json, m.run_python_tool = orig_post, orig_tool
+
     # ── 用例 4：4096 硬压已解除 ──────────────────────────────
     ck("非推理模型：max_tokens 不再被压到 4096",
        m._token_kwarg(cfg, 16384) == {"max_tokens": 16384})
     ck("默认预算 >= 16384", m.DEFAULT_MAX_TOKENS >= 16384)
+
+    # ── 用例 5：HTTP 错误必须带原因，且 4xx 不许重试 ──────────
+    # 2026-11-07 kimi-k3 八题全 "HTTP Error 400: Bad Request"，没有 body 就没有原因，
+    # 只能看出「挂了」看不出「为什么挂」。另外 400 重试 5 次纯属白等。
+    import io
+    import urllib.error
+
+    def mk_http_err(code, body):
+        return urllib.error.HTTPError("http://x", code, "Bad Request", {}, io.BytesIO(body))
+
+    n_calls = {"n": 0}
+
+    def fake_urlopen_400(req, timeout):
+        n_calls["n"] += 1
+        raise mk_http_err(400, b'{"error":{"message":"tool calls not supported"}}')
+
+    orig_open = m._urlopen_deadline
+    m._urlopen_deadline = fake_urlopen_400
+    try:
+        m._post_json("http://x", {}, "k", 5)
+        ck("HTTP 400 必须抛异常", False)
+    except RuntimeError as e:
+        ck("HTTP 400 错误文本带 body 原因", "tool calls not supported" in str(e))
+        ck("HTTP 400 不重试（只发一次）", n_calls["n"] == 1)
+    except Exception as e:  # noqa: BLE001
+        ck("HTTP 400 抛 RuntimeError（实际 %s）" % type(e).__name__, False)
+        ck("HTTP 400 不重试（只发一次）", False)
+    finally:
+        m._urlopen_deadline = orig_open
+
+    # 429 属于瞬态，必须仍然重试（否则会被上面那条误伤成"一律不重试"）
+    n_calls["n"] = 0
+
+    def fake_urlopen_429(req, timeout):
+        n_calls["n"] += 1
+        raise mk_http_err(429, b'{"error":{"message":"rate limited"}}')
+
+    m._urlopen_deadline = fake_urlopen_429
+    try:
+        m._post_json("http://x", {}, "k", 5)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        m._urlopen_deadline = orig_open
+    ck("HTTP 429 仍然重试", n_calls["n"] > 1)
+
+    # ── 用例 6：不接受 temperature 的模型不许多发这个字段 ──────
+    # 2026-11-07 kimi-k3 八题全 400，原因就是多塞了 temperature=0.2。
+    ck("kimi 系不发送 temperature", m._accepts_temperature("kimi-k3") is False)
+    ck("stepfun 系照常发送 temperature", m._accepts_temperature("step-3.5-flash") is True)
+    seen = {}
+
+    def fake_post_capture(url, payload, key, timeout):
+        seen.update(payload)
+        return _body(content="flag{x}", finish="stop")
+
+    m._post_json = fake_post_capture
+    m.call_llm_agentic(cfg, "k", "kimi-k3", "p", 30, max_iter=1, wall_budget=60, stats=[])
+    ck("kimi 请求体里没有 temperature", "temperature" not in seen)
+    seen.clear()
+    m.call_llm_agentic(cfg, "k", "step-3.5-flash", "p", 30, max_iter=1, wall_budget=60, stats=[])
+    ck("stepfun 请求体里有 temperature", seen.get("temperature") == 0.2)
+    m._post_json, m.run_python_tool = orig_post, orig_tool
 
     print("\nselftest %d/%d" % (ok, total))
     return 0 if ok == total else 1

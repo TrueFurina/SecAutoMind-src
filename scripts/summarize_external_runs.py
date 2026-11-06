@@ -29,9 +29,21 @@ def load_rows(path):
 
 
 def classify(r):
-    """未解原因分类。顺序重要：先判工程因素，再判模型行为。"""
+    """未解原因分类。顺序重要：先判工程因素，再判模型行为。
+
+    API_ERROR 必须排最前：额度耗尽 / 限流 / 403 不等于「不会」，
+    2026-11-07 qwen3.8-max 40 题里 29 题是 403，旧口径把它算成 EMPTY，
+    读出来就是一个假的 0 分解出率。
+    """
     if r.get("solved"):
         return "SOLVED"
+    if (r.get("api_error_rounds") or 0) > 0 or (r.get("timeout_rounds") or 0) > 0:
+        return "API_ERROR"
+    # 回退：2026-11-07 之前产生的结果没有 api_error_rounds 字段，
+    # 只能看 raw_head 里的标记（当时内层异常只往文本里塞了这一行）。
+    head = str(r.get("raw_head") or "")
+    if "(llm_error:" in head or "(llm_hard_deadline:" in head:
+        return "API_ERROR"
     rounds = r.get("llm_rounds") or []
     trunc = sum(1 for x in rounds if x.get("finish_reason") == "length")
     got = str(r.get("got") or "").strip()
@@ -87,6 +99,14 @@ def main():
         if unknown:
             print("题 id 不属于本池（判红）: %s -> %s" % (label, sorted(unknown)[:5]), file=sys.stderr)
             return 2
+        # 🔴 模型自证：--run 里声明的模型必须出现在结果文件自己记录的 models_used 里。
+        # 否则就是「表里写 A、文件里跑的是 B」的误标（2026-11-07 dashscope 下 --model
+        # 覆盖时日志头打默认值，正是这个坑）。宁可判红，不可出一张标错模型的对照表。
+        used = summ.get("models_used")
+        if used and model not in used:
+            print("模型误标（判红）: %s 声明 %r，结果文件 models_used=%s"
+                  % (label, model, used), file=sys.stderr)
+            return 2
         runs.append({"label": label, "model": model, "path": path, "summary": summ, "rows": rows})
 
     if not runs:
@@ -104,23 +124,38 @@ def main():
     # ── 总表 ─────────────────────────────────────────────
     w("## 一、总体")
     w("")
-    hdr = "| 轮次 | 模型 | 解出 | rate(全池) | rate(可计分) | 截断题 | 空答/无工具 | 平均耗时 |"
+    hdr = ("| 轮次 | 模型 | 解出 | rate(全池) | rate(可计分) | API失败 | 截断题 | 空答/无工具 | 平均耗时 |")
     w(hdr)
-    w("|" + "---|" * 8)
+    w("|" + "---|" * 9)
     tot = {}
+    # 全表统一的分类入口：先判「已解出」，再判「这题本来就不该计分」。
+    # NOT_ADMISSIBLE 是给污染/硬不可用题用的 —— 它们**不是**模型放弃，
+    # 混进 EMPTY 会让「模型空答」这种结论直接失真（F-13 同类：分母资格）。
+    def cls(x):
+        if x.get("solved"):
+            return "SOLVED"
+        if admissible is not None and x["id"] not in admissible:
+            return "NOT_ADMISSIBLE"
+        return classify(x)
+
     for r in runs:
         rows = r["rows"]
         solved = sum(1 for x in rows if x.get("solved"))
-        cls = [classify(x) for x in rows]
-        trunc = sum(1 for c in cls if c == "TRUNCATED")
-        empty = sum(1 for c in cls if c in ("EMPTY", "NO_TOOL", "NO_RESPONSE"))
+        cls_list = [cls(x) for x in rows]
+        trunc = sum(1 for c in cls_list if c == "TRUNCATED")
+        empty = sum(1 for c in cls_list if c in ("EMPTY", "NO_TOOL", "NO_RESPONSE"))
         lat = [x.get("latency") or 0 for x in rows]
-        adm_rows = [x for x in rows if admissible is None or x["id"] in admissible]
+        # 可计分分母：剔除（污染 + 硬不可用）与（API 失败题）。后者是本轮新增口径，
+        # 理由同 classify()：接口挂了不能算模型答错。
+        adm_rows = [x for x in rows
+                    if (admissible is None or x["id"] in admissible)
+                    and classify(x) != "API_ERROR"]
         adm_solved = sum(1 for x in adm_rows if x.get("solved"))
-        w("| %s | %s | %d/%d | %.3f | %s | %d | %d | %.0fs |" % (
+        api_err = sum(1 for c in cls_list if c == "API_ERROR")
+        w("| %s | %s | %d/%d | %.3f | %s | %d | %d | %d | %.0fs |" % (
             r["label"], r["model"], solved, len(rows), pct(solved, len(rows)),
             ("%.3f" % pct(adm_solved, len(adm_rows))) if adm_rows else "-",
-            trunc, empty, sum(lat) / len(lat) if lat else 0))
+            api_err, trunc, empty, sum(lat) / len(lat) if lat else 0))
         tot.setdefault(r["model"], [0, 0, 0])
         tot[r["model"]][0] += solved
         tot[r["model"]][1] += len(rows)
@@ -158,13 +193,13 @@ def main():
     w("")
     w("## 三、按类别")
     w("")
-    cats = sorted({str(x.get("category")) for r in runs for x in r["rows"]})
+    cats = sorted({str(x.get("category") or "unknown") for r in runs for x in r["rows"]})
     w("| 轮次 | " + " | ".join(cats) + " |")
     w("|" + "---|" * (1 + len(cats)))
     for r in runs:
         cells = []
         for c in cats:
-            g = [x for x in r["rows"] if str(x.get("category")) == c]
+            g = [x for x in r["rows"] if str(x.get("category") or "unknown") == c]
             cells.append("%d/%d" % (sum(1 for x in g if x.get("solved")), len(g)) if g else "-")
         w("| %s | %s |" % (r["label"], " | ".join(cells)))
 
@@ -175,13 +210,13 @@ def main():
     for r in runs:
         cnt = {}
         for x in r["rows"]:
-            c = classify(x)
+            c = cls(x)
             if c != "SOLVED":
                 cnt[c] = cnt.get(c, 0) + 1
         w("**%s**：%s" % (r["label"],
                           " / ".join("%s %d" % (k, v) for k, v in sorted(cnt.items())) or "全解出"))
         w("")
-        detail = [(x["id"], classify(x), x.get("tool_calls") or 0,
+        detail = [(x["id"], cls(x), x.get("tool_calls") or 0,
                    round(x.get("latency") or 0), x.get("truncated_rounds") or 0)
                   for x in r["rows"] if not x.get("solved")]
         if detail:

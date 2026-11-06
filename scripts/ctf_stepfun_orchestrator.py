@@ -344,11 +344,44 @@ def _urlopen_deadline(req, timeout):
     return result["resp"]
 
 
+# 有些模型**不接受** temperature 字段。2026-11-07 kimi-k3 八题全 400，查 body 才看到
+# `InvalidParameter: Parameter 'temperature'=0.2 is not supported`。这属于参数兼容性，
+# 不是能力问题；旧做法（把 400 当可重试异常重试 5 次）会把它伪装成「模型慢/不稳」。
+_NO_TEMPERATURE_PREFIXES = ("kimi-",)
+
+
+def _accepts_temperature(model):
+    return not str(model or "").lower().startswith(_NO_TEMPERATURE_PREFIXES)
+
+
+def _http_err_text(e):
+    """把 HTTPError 变成「带原因」的字符串。
+
+    只抛 `HTTP Error 400: Bad Request` 等于没说 —— 2026-11-07 kimi-k3 八题全 400，
+    结果文件里只有这九个字，根本看不出是「模型不支持工具调用」还是「参数不合法」。
+    body 里的 `message` 才是原因；header 含 key，绝不返回。
+    """
+    try:
+        body = e.read().decode("utf-8", "replace")
+    except Exception:
+        body = ""
+    m = re.search(r'"message"\s*:\s*"([^"]{0,240})"', body)
+    detail = m.group(1) if m else body[:240]
+    return "HTTP %d %s: %s" % (e.code, getattr(e, "reason", ""), detail.replace("\n", " ").strip())
+
+
+# 只有这些状态码值得重试。400/401/403/404 是「请求本身不对」，
+# 重试 5 次只是把同一句话再问 5 遍，白等 5 个 backoff。
+_RETRYABLE_HTTP = {408, 409, 425, 429, 500, 502, 503, 504}
+
+
 def call_llm(cfg, api_key, model, prompt, timeout, max_tokens=None):
     base = resolve_base_url(cfg)
     url = base.rstrip("/") + "/chat/completions"
     payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
-               "temperature": 0.2, "stream": False}
+               "stream": False}
+    if _accepts_temperature(model):
+        payload["temperature"] = 0.2
     payload.update(_token_kwarg(cfg, max_tokens))
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -364,8 +397,8 @@ def call_llm(cfg, api_key, model, prompt, timeout, max_tokens=None):
         except _HardDeadline:
             raise  # 连接挂死非瞬态故障，重试只会再挂满一个 timeout
         except urllib.error.HTTPError as e:
-            if attempt >= max_attempt:
-                raise
+            if e.code not in _RETRYABLE_HTTP or attempt >= max_attempt:
+                raise RuntimeError(_http_err_text(e))
             time.sleep(_backoff(e, attempt)); attempt += 1
         except Exception:
             if attempt >= max_attempt:
@@ -387,8 +420,8 @@ def _post_json(url, payload, api_key, timeout):
         except _HardDeadline:
             raise  # 连接挂死非瞬态故障，重试只会再挂满一个 timeout
         except urllib.error.HTTPError as e:
-            if attempt >= max_attempt:
-                raise
+            if e.code not in _RETRYABLE_HTTP or attempt >= max_attempt:
+                raise RuntimeError(_http_err_text(e))
             time.sleep(_backoff(e, attempt)); attempt += 1
         except Exception:
             if attempt >= max_attempt:
@@ -482,6 +515,14 @@ _ARTIFACT_TEXT_EXT = {".md", ".txt", ".json", ".csv", ".log", ".yaml", ".yml", "
 # 单文件 8000 恰好卡掉 8266 字节的 ext_gctf2025_underhanded/aes.py（差 266 B）
 _ARTIFACT_INLINE_PER_FILE = 24000
 _ARTIFACT_INLINE_TOTAL = 64000
+# run_python_tool 回给模型的输出上限（字符）。这个数直接决定模型能不能"一次看完整份源码"：
+# 太小（原 1900）会让模型反复 open 同一文件分段读，把轮数烧在 IO 上。
+_TOOL_OUTPUT_CHARS = 8000
+
+# 代码指纹：在 **import 时**算一次，不能等到写 summary 时再读文件。
+# 否则跑批途中改了脚本，结果文件会把「新版的 sha」写进「旧版跑出来的读数」里 ——
+# 一种看起来自证、实际伪证的情况。
+CODE_SHA256 = hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest()
 
 
 def _audit_code(code, artifact_mode=False):
@@ -538,8 +579,9 @@ def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False)
         # 于是反复 open() 同一文件分段看，10 轮工具预算全耗在"读文件"上 —— 见
         # ext_gctf2025_underhanded（10 轮全是 open("aes.py")）、ext_gctf2021_story（同）。
         # 抬到 8000 字符（≈2000 tokens），一次就能看完整份源码。
-        if len(out) > 8000:
-            out = (out[:5000] + "\n...[中间省略 %d 字符]...\n" % (len(out) - 6500)
+        if len(out) > _TOOL_OUTPUT_CHARS:
+            out = (out[:_TOOL_OUTPUT_CHARS - 3000]
+                   + "\n...[中间省略 %d 字符]...\n" % (len(out) - _TOOL_OUTPUT_CHARS + 1500)
                    + out[-1500:])
         return out
     except subprocess.TimeoutExpired:
@@ -584,8 +626,10 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
         # 单次请求超时不得超过剩余预算
         remain = wall_budget - (time.time() - _t_start)
         per_timeout = max(10, min(timeout, int(remain)))
-        payload = {"model": model, "messages": messages, "temperature": 0.2,
+        payload = {"model": model, "messages": messages,
                    "tools": [PYTHON_TOOL], "tool_choice": "auto", "stream": False}
+        if _accepts_temperature(model):
+            payload["temperature"] = 0.2
         payload.update(_token_kwarg(cfg, max_tokens))
         try:
             body = _post_json(url, payload, api_key, per_timeout)
@@ -594,6 +638,10 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
             # 不抛弃前面已积累的工具输出/推理（run4 实锤：整题 error 导致 raw 全丢）。
             # 连续 2 次才收口——单次长尾可能只是抖动。
             all_text.append("(llm_hard_deadline: %s)" % e)
+            if stats is not None:
+                stats.append({"finish_reason": "timeout", "error": str(e)[:200],
+                              "completion_tokens": 0, "prompt_tokens": 0,
+                              "reasoning_chars": 0, "content_chars": 0, "tool_calls": 0})
             attempt += 1
             hard_streak += 1
             if hard_streak >= 2:
@@ -601,7 +649,16 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
                 break
             continue
         except Exception as e:
+            # 2026-11-07：这里原本只往 all_text 里塞一行就 break，于是
+            # HTTP 403（额度耗尽）/ 429 / 连接失败 全部被吞成「模型没答题」，
+            # detail.error 是空字符串，summary 里只是一个 solved=0。
+            # 实测 qwen3.8-max 40 题里 29 题是 403，却被读成「模型不会」。
+            # 现在必须落进 stats，让上层能把它和「答错」分开计。
             all_text.append("(llm_error: %s)" % str(e)[:200])
+            if stats is not None:
+                stats.append({"finish_reason": "error", "error": str(e)[:200],
+                              "completion_tokens": 0, "prompt_tokens": 0,
+                              "reasoning_chars": 0, "content_chars": 0, "tool_calls": 0})
             break
         hard_streak = 0
         try:
@@ -682,8 +739,19 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
                 "audit": audit,
                 "llm_rounds": stats,
                 "truncated_rounds": sum(1 for x in stats if x.get("finish_reason") == "length"),
+                # API 层失败 ≠ 答错。有这些的题必须从"能力读数"里剔除，
+                # 否则额度耗尽/限流会伪装成 0 分解出率（2026-11-07 qwen 403 事故）。
+                "api_error_rounds": sum(1 for x in stats if x.get("finish_reason") == "error"),
+                "timeout_rounds": sum(1 for x in stats if x.get("finish_reason") == "timeout"),
+                "api_error_first": next((x.get("error") for x in stats
+                                         if x.get("finish_reason") == "error"), ""),
                 "prompt_tokens_total": sum((x.get("prompt_tokens") or 0) for x in stats),
                 "completion_tokens_total": sum((x.get("completion_tokens") or 0) for x in stats),
+                # 自证配置：附件到底喂了多少字符进 prompt。没有这个字段，事后无法区分
+                # 「模型不会」与「文件根本没进 prompt」（2026-11-07 s1 的 10 题重复读文件
+                # 就是这么产生的，而结果文件当时无法自证）。
+                "inline_chars": len(str((artifact_info or {}).get("inline") or "")),
+                "artifact_files": len((artifact_info or {}).get("files") or []),
             }
         except Exception as e:
             return {
@@ -767,7 +835,11 @@ def main():
     if args.only_ids:
         want = set(x.strip() for x in args.only_ids.split(",") if x.strip())
         items = [it for it in items if it[0] in want]
-    print(f"[orchestrator] provider={args.provider} model={cfg['default_model']} "
+    # 🔴 这里必须打**实际生效**的模型：2026-11-07 多模型对照时，dashscope 下换模型跑
+    # （--model deepseek-v4.1-flash）日志头仍然打 provider 默认值（qwen3.8-max-0902），
+    # 日志与结果文件都会把 deepseek 的读数标成 qwen 的（F-10 同类，属误标不是误算）。
+    _resolved = args.model or cfg["default_model"]
+    print(f"[orchestrator] provider={args.provider} model={_resolved} "
           f"题目数={len(items)} 并发={concurrency} 硬上限={cap} agentic={agentic}", file=sys.stderr)
     if concurrency >= 3:
         print("[warn] 并发=%d >=3：xfyun 实测会触发服务端排队长尾（首次调用即 180s 硬截止、"
@@ -810,6 +882,16 @@ def main():
         # 这里只**追加**字段、不改旧字段，保证历史读数的口径一字不变。
         "model_override": args.model,
         "models_used": sorted({str(r.get("model")) for r in results if r.get("model")}),
+        # 代码/配置指纹：结果文件必须能自证"是哪一版脚本、什么内联上限跑出来的"。
+        # 2026-11-07 的教训：s1 与 s2 是否同一套工具配置，事后只能靠猜（结果里没记），
+        # 于是没法说 s2 是"修完重跑"。这类无法自证的历史读数只能降级引用。
+        "code_sha256": CODE_SHA256,
+        "config_fingerprint": {
+            "artifact_inline_per_file": _ARTIFACT_INLINE_PER_FILE,
+            "artifact_inline_total": _ARTIFACT_INLINE_TOTAL,
+            "tool_output_chars": _TOOL_OUTPUT_CHARS,
+            "artifact_text_ext_count": len(_ARTIFACT_TEXT_EXT),
+        },
         "slice": args.slice,
         "artifact_dir": args.artifact_dir,
         "artifact_mode": bool(args.artifact_dir),

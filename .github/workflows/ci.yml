@@ -919,10 +919,14 @@ jobs:
         run: python scripts/experiments/flag_util.py
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
-      - name: Agentic loop offline test (12 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除)
+      - name: Agentic loop offline test (22 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除 / API失败落账 / HTTP 4xx 带原因且不重试 / kimi 不发 temperature)
         run: python scripts/test_ctf_orchestrator_agentic.py
       - name: External pool admission audit self-test (9 cases incl. mutation)
         run: python scripts/audit_external_pool_readiness.py --selftest
+      - name: External pool summary self-test (8 cases: API失败不算答错 / 模型误标判红 / 分母资格)
+        run: python scripts/test_summarize_external_runs.py
+      - name: External pool scorer positive control (官方 flag 必须判中，诱饵必须判不中)
+        run: python scripts/verify_flag_positive_control.py
 
   # flag 提取跨语言单一真值源契约（2026-10-30 建立）。
   # 防 10-29 冤案：Go internal/runnerl3/llm_solver.go::flagCandRe 与
