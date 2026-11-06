@@ -597,8 +597,11 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
         reasoning = msg.get("reasoning_content") or ""
         all_text.append(content)
         all_text.append(reasoning)
+        tcalls = msg.get("tool_calls") or []
         # 2026-11-07：记录每一轮的 finish_reason / usage。没有这两个字段，
         # 就无法区分「输出预算被截断」与「模型确实不会」——前者是工程上限，后者才是能力边界。
+        # 注意 tcalls 必须在上面先赋值：首版把它写在下面，导致 agentic 路径
+        # 每题都抛 UnboundLocalError 且被 except 吞成 error —— 跑批会静默变成全 0。
         if stats is not None:
             _u = body.get("usage") or {}
             stats.append({
@@ -608,7 +611,6 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
                 "reasoning_chars": len(reasoning), "content_chars": len(content),
                 "tool_calls": len(tcalls),
             })
-        tcalls = msg.get("tool_calls") or []
         if not tcalls:
             break
         tool_used = True
