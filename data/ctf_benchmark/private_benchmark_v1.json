@@ -1,0 +1,198 @@
+{
+ "benchmark": "private_pool_v1",
+ "denominator": 10,
+ "problems": {
+  "pp_v1_01_xor_single_byte": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "A short message was encrypted by XOR-ing every byte of the plaintext with the SAME single unknown byte key. The result is given below as lowercase hex. The plaintext is a flag that starts with the five characters `flag{` and ends with `}`; the inner part is 16 lowercase hex characters.\n\nciphertext_hex = 3c363b3d216d3e3f6968683f68683f69636339686f27\n\nRecover the plaintext flag. Submit it exactly, wrapped in flag{...}.",
+   "difficulty": "easy",
+   "flag_sha256": "f5061868d7c9e3c551e0b175c3636ff44ca3729595fb75e63648a6e272722373",
+   "id": "pp_v1_01_xor_single_byte",
+   "name": "pp_v1_01_xor_single_byte",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_02_rsa_low_exponent_cube": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "An RSA key uses a small public exponent and, crucially, no padding. You are given the modulus, the exponent and one ciphertext. The message integer m was small enough that m^e did not wrap around the modulus.\n\nn = 71452157763197317592333732103635479560623840255742592804197961701944226483533\ne = 3\nc = 143883482714523036559148117399459490747415092559826448500042612627718856\n\nRecover m. The flag is `flag{` + the lowercase hexadecimal representation of m (no leading zeros) + `}`.",
+   "difficulty": "easy",
+   "flag_sha256": "b05b4d18a6b45367bf3e6c943937944951cbedaaa3c6b4a6ef94815ca7da1f06",
+   "id": "pp_v1_02_rsa_low_exponent_cube",
+   "name": "pp_v1_02_rsa_low_exponent_cube",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_03_vigenere_known_key": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "The ciphertext below was produced with a repeating-key Vigenere cipher over ASCII letters. Non-letter characters were copied unchanged, and the key advances only on letters. The key is the uppercase word `SECAUTOMIND` and it restarts from the first letter for every new message.\n\nciphertext = xpcg{v6v37rp96k79}\n\nDecrypt it to obtain the flag (the plaintext already is in flag{...} form).",
+   "difficulty": "easy",
+   "flag_sha256": "4b846b3ab330c449585171a1474605175f8fdd208cb4d34a230c2b6babd6f7ce",
+   "id": "pp_v1_03_vigenere_known_key",
+   "name": "pp_v1_03_vigenere_known_key",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_04_lcg_predict_next": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "A service generates session identifiers with a linear congruential generator. The recurrence and modulus are public, only the initial state is secret:\n\n    x_{i+1} = (a * x_i + c) mod m\n    a = 48271\n    c = 11\n    m = 2147483647\n\nFour consecutive outputs (x_1 .. x_4) were observed:\n\n    x_1 = 1737261445\n    x_2 = 110796256\n    x_3 = 1011792357\n    x_4 = 8281037\n\nPredict x_5. The flag is `flag{` + the 8-digit lowercase hexadecimal representation of x_5, zero padded + `}`.",
+   "difficulty": "easy",
+   "flag_sha256": "fedfdd023111b2024eeae8a48f6a376037ad6978b114150c6147c619a6ccd994",
+   "id": "pp_v1_04_lcg_predict_next",
+   "name": "pp_v1_04_lcg_predict_next",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_05_weak_seed_prng": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "A token generator seeds Python's `random.Random(seed)` with a small integer seed in the range 0 <= seed <= 999999 and then emits `randrange(10**9)` values. Four consecutive outputs are known:\n\n    out_1 = 125869508\n    out_2 = 126662829\n    out_3 = 433115555\n    out_4 = 461148702\n\nFind the seed and report it as the flag: `flag{` + the decimal seed + `}`. (The fifth output is not needed; the seed alone is the answer.)",
+   "difficulty": "medium",
+   "flag_sha256": "d6dc3d0b613b91fd7fa5faf9e925a7f9e470c8bbc52d3f8ccffa61f7a9301fb4",
+   "id": "pp_v1_05_weak_seed_prng",
+   "name": "pp_v1_05_weak_seed_prng",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_06_encoding_nest": {
+   "category": "misc",
+   "created_at": "2026-11-07",
+   "description": "A challenge author encoded the flag with four layers applied in this exact order, each consuming the previous output as raw bytes:\n\n    1. ROT13 over lowercase ASCII letters only\n    2. hex encoding of the resulting bytes\n    3. Base32 (RFC 4648, standard alphabet, with padding)\n    4. Base64 (standard alphabet, with padding)\n\nThe final blob is:\n\nRzRaVE9PSldNVTNUSU4zQ0dNWVRHT0pUR01aVFFNWlVHTVpER09CVEdZWlRPTVpXRzVTQT09PT0=\n\nReverse the pipeline and submit the flag.",
+   "difficulty": "easy",
+   "flag_sha256": "641c0ff46e7ca6a0fda3c7f1c17eb1442c573ac61c24d69a366c513e8b1ff12f",
+   "id": "pp_v1_06_encoding_nest",
+   "name": "pp_v1_06_encoding_nest",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_07_licence_constraints": {
+   "category": "reverse",
+   "created_at": "2026-11-07",
+   "description": "A licence checker reads an 8 digit code d0 d1 d2 d3 d4 d5 d6 d7 (each a single decimal digit) and accepts it only when ALL of the following constraints hold:\n\n    d0 * d1 == 32\n    d0 + d1 == 12\n    d1 > d0\n    d2 * d3 == 14\n    d2 < d3\n    d4 + d5 == 6\n    d4 * 2 + d5 == 7\n    d6 + d7 == 9\n    d7 == 2 * d6\n\nThe system is consistent and has exactly one solution. Find the accepted code and submit it as `flag{` + the 8 digits + `}`.",
+   "difficulty": "medium",
+   "flag_sha256": "f20eca4759cbcb00a5a82b1a4f748c10c1bde07d64bc60295cc29577f887e737",
+   "id": "pp_v1_07_licence_constraints",
+   "name": "pp_v1_07_licence_constraints",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_08_discrete_log_small": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "A small Diffie-Hellman style parameter set leaked. You know the prime, the generator and one public value, and you need the private exponent.\n\n    p = 1000003\n    g = 5\n    y = g^x mod p = 979732\n\nThe exponent x is smaller than p. Recover x and submit it as `flag{` + the decimal value of x + `}`.",
+   "difficulty": "easy",
+   "flag_sha256": "fd1418258d0760d7ce62c98836e2d38be12669a09167aec7ffc74534cb05ac0f",
+   "id": "pp_v1_08_discrete_log_small",
+   "name": "pp_v1_08_discrete_log_small",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_09_ctr_nonce_reuse": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "An encryption service reuses the same AES-CTR keystream for two different plaintexts (the nonce was never incremented). You captured both ciphertexts, and you also know the exact content of the first plaintext from a debug log.\n\n    plaintext_A = session=guest;user=alice;role=viewer;ok=1\n    ciphertext_A = 58b31abe7b92b6cc5716df1bfd7164d8aa8419bb16bd3274fcd49bbb46ad21aa40d9028b1fcba385e3\n    ciphertext_B = 4dba08aa699cbbc70852d95bbd7829caff8b\n\nplaintext_B is the flag. Recover it. Note that ciphertext_B is shorter than ciphertext_A, so only part of the keystream was used for B.",
+   "difficulty": "medium",
+   "flag_sha256": "f43e1c732545fc47c4f8c21a2687648e563eb4d3b43581b076b1dfd1632d24f2",
+   "id": "pp_v1_09_ctr_nonce_reuse",
+   "name": "pp_v1_09_ctr_nonce_reuse",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  },
+  "pp_v1_10_rsa_common_modulus": {
+   "category": "crypto",
+   "created_at": "2026-11-07",
+   "description": "The same RSA message was encrypted twice under the same modulus but with two different public exponents, and both ciphertexts were captured. No padding was used.\n\n    n  = 1132034722156551006219009010019895241096472734450123623970333012472031681782736305773230200240617\n    e1 = 3\n    c1 = 43935304231313707758693396911770170562283853823543965629\n    e2 = 17\n    c2 = 1077559906443806114796833408779500725157824003840631793531165625841460260536775992012913300843188\n\nRecover m. The flag is `flag{` + the lowercase hexadecimal representation of m (no leading zeros) + `}`.",
+   "difficulty": "hard",
+   "flag_sha256": "22e4fcf1f884a67a8f90e4a361adc8719dbdca705e148a81a0b3ba7029d3b2f3",
+   "id": "pp_v1_10_rsa_common_modulus",
+   "name": "pp_v1_10_rsa_common_modulus",
+   "pool": "private_selfauthored",
+   "source": "self-authored / private internal benchmark (unreleased)"
+  }
+ },
+ "provenance": {
+  "attachment_dependency": "none",
+  "audit": [
+   {
+    "category": "crypto",
+    "design_note": "单字节 XOR 暴力（按 flag 形态剪枝）",
+    "difficulty": "easy",
+    "id": "pp_v1_01_xor_single_byte",
+    "statement_chars": 419
+   },
+   {
+    "category": "crypto",
+    "design_note": "RSA e=3 无填充小消息，整数立方根",
+    "difficulty": "easy",
+    "id": "pp_v1_02_rsa_low_exponent_cube",
+    "statement_chars": 480
+   },
+   {
+    "category": "crypto",
+    "design_note": "Vigenere 已知密钥，字母前进/非字母不变",
+    "difficulty": "easy",
+    "id": "pp_v1_03_vigenere_known_key",
+    "statement_chars": 388
+   },
+   {
+    "category": "crypto",
+    "design_note": "LCG 参数公开，迭代预测下一状态",
+    "difficulty": "easy",
+    "id": "pp_v1_04_lcg_predict_next",
+    "statement_chars": 476
+   },
+   {
+    "category": "crypto",
+    "design_note": "MT19937 小种子爆破（0..1e6）",
+    "difficulty": "medium",
+    "id": "pp_v1_05_weak_seed_prng",
+    "statement_chars": 420
+   },
+   {
+    "category": "misc",
+    "design_note": "ROT13 → hex → Base32 → Base64 四层逆序",
+    "difficulty": "easy",
+    "id": "pp_v1_06_encoding_nest",
+    "statement_chars": 468
+   },
+   {
+    "category": "reverse",
+    "design_note": "8 位校验码约束系统求解（唯一解）",
+    "difficulty": "medium",
+    "id": "pp_v1_07_licence_constraints",
+    "statement_chars": 434
+   },
+   {
+    "category": "crypto",
+    "design_note": "小素数离散对数（p≈1e6）",
+    "difficulty": "easy",
+    "id": "pp_v1_08_discrete_log_small",
+    "statement_chars": 297
+   },
+   {
+    "category": "crypto",
+    "design_note": "AES-CTR nonce 复用，两密文 XOR 消 keystream",
+    "difficulty": "medium",
+    "id": "pp_v1_09_ctr_nonce_reuse",
+    "statement_chars": 583
+   },
+   {
+    "category": "crypto",
+    "design_note": "RSA 共模攻击（e1=3, e2=17，扩展欧几里得）",
+    "difficulty": "hard",
+    "id": "pp_v1_10_rsa_common_modulus",
+    "statement_chars": 571
+   }
+  ],
+  "created_at": "2026-11-07",
+  "generated_by": "scripts/gen_private_pool_v1.py",
+  "known_limitations": [
+   "自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对公开赛题未见过题目的泛化能力",
+   "题目难度由出题方设定，非赛题分布抽样，不构成难度校准"
+  ],
+  "note": "10 道本项目原创私有题，材料 100%% 内嵌题面（零附件依赖），flag 明文不由任何文件保存（种子 sha256 派生），生成时逐题机验「仅凭题面可解」。"
+ }
+}

@@ -26,3 +26,10 @@
 *.cmd   text eol=crlf
 *.ps1   text eol=crlf
 *.psm1  text eol=crlf
+
+# ── 题池字节级哈希：禁用行尾转换（2026-11-07）────────────────────
+# 私有性锚点 R0 用 pool_sha256（文件原始字节）绑定注册表；Windows 工作树是
+# core.autocrlf=true，若不锁死行尾，同一份池在本地（CRLF）与 CI/服务器（LF）
+# 会得到不同哈希 → 本地 anchored=True、线上 False。故对池与 manifest 关闭转换。
+data/ctf_benchmark/private_benchmark_v1.json           -text
+data/ctf_benchmark/private_benchmark_v1.manifest.json  -text

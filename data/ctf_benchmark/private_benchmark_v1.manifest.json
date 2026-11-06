@@ -1,0 +1,13 @@
+{
+  "tool": "scripts/gen_private_pool_v1.py",
+  "out": "data/ctf_benchmark/private_benchmark_v1.json",
+  "out_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+  "total": 10,
+  "attachment_dependency": "none",
+  "solvability_verified_by": "scripts/gen_private_pool_v1.py --verify（逐题只读 description 重跑 solver）",
+  "note": "10 道本项目原创私有题。材料 100% 内嵌题面（pure_llm 路径禁附件），flag 明文不由任何文件保存（种子 sha256 派生），生成时逐题机验「仅凭题面可解」10/10。",
+  "known_limitations": [
+    "自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对未见过公开赛题的泛化能力",
+    "出题难度由出题方设定，非赛题分布抽样，不构成难度校准"
+  ]
+}

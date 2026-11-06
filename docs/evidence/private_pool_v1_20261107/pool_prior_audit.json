@@ -1,0 +1,31 @@
+{
+  "tool": "scripts/audit_pool_prior.py",
+  "generated_at": "2026-11-07T01:25:11+08:00",
+  "pool_path": "data/ctf_benchmark/private_benchmark_v1.json",
+  "pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+  "prior_cutoff": "2025-01-01",
+  "total": 10,
+  "counts": {
+    "private_proven": 10,
+    "public_named": 0,
+    "unknown": 0
+  },
+  "requires_airgap": 0,
+  "missing_criteria_histogram": {},
+  "public_by_pool": {},
+  "private_proven_ids": [
+    "pp_v1_01_xor_single_byte",
+    "pp_v1_02_rsa_low_exponent_cube",
+    "pp_v1_03_vigenere_known_key",
+    "pp_v1_04_lcg_predict_next",
+    "pp_v1_05_weak_seed_prng",
+    "pp_v1_06_encoding_nest",
+    "pp_v1_07_licence_constraints",
+    "pp_v1_08_discrete_log_small",
+    "pp_v1_09_ctr_nonce_reuse",
+    "pp_v1_10_rsa_common_modulus"
+  ],
+  "capability_rate_publishable": true,
+  "conclusion": "题池全部题目可证明为私有 ⇒ 本池跑批结果可作为能力率候选（仍需逐题排除模型先验与外网访问）",
+  "scope_note": "即使全为私有题，pure_llm 路径仍须逐题证明：无外网访问（本路径 N/A）、无题面明文、无训练白名单命中、通道归属单一；本脚本只裁「题源先验」一维。"
+}
