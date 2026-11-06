@@ -915,7 +915,7 @@ jobs:
           python-version: "3.12"
       - name: Unified flag evaluation口径 (no lowercase-only regex, no raw-sha compare)
         run: python scripts/check_flag_eval_regex.py
-      - name: flag_util self-test (7 cases incl. old-regex漏判反证)
+      - name: flag_util self-test (17 cases: 大小写/前缀/去壳 三类假阴性 + 反向变异 + 去壳反证)
         run: python scripts/experiments/flag_util.py
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
