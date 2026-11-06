@@ -154,6 +154,11 @@ jobs:
         run: python scripts/run_agentic_stepfun_test.py
       - name: Agentic isolation proof self-test (reachable port must NOT report blocked)
         run: python scripts/gen_agentic_isolation_proof.py --selftest
+      # 私有题池 v2 生成器自测（8 例）：40 题可解、v1 十题与父池逐字一致（防换池洗白）、
+      # 改旧题/改题面/泄题/少题/空池/改哈希 七种坏情况必须变红。
+      # 只读本地文件，不调 LLM、不联网。约 35s（含 MT19937 克隆与 BSGS 各两次）。
+      - name: Private pool v2 generator self-test (edited/missing/leaked problem must be red)
+        run: python scripts/gen_private_pool_v2.py --selftest
       - name: HITL failure-boundary check (deterministic modes)
         run: python scripts/run_hitl_boundary.py --check
       - name: Build
