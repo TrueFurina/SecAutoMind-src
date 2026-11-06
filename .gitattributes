@@ -31,8 +31,7 @@
 # 私有性锚点 R0 用 pool_sha256（文件原始字节）绑定注册表；Windows 工作树是
 # core.autocrlf=true，若不锁死行尾，同一份池在本地（CRLF）与 CI/服务器（LF）
 # 会得到不同哈希 → 本地 anchored=True、线上 False。故对池与 manifest 关闭转换。
-data/ctf_benchmark/private_benchmark_v1.json           -text
-data/ctf_benchmark/private_benchmark_v1.manifest.json  -text
+data/ctf_benchmark/private_benchmark_*.json           -text
 
 # ── 证据文件字节级稳定（2026-11-07）──────────────────────────────
 # verdict 里登记了 result_file_sha256 / pool_sha256 等文件哈希，作为证据链的一环。
