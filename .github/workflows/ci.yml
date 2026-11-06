@@ -919,6 +919,10 @@ jobs:
         run: python scripts/experiments/flag_util.py
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
+      - name: Agentic loop offline test (12 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除)
+        run: python scripts/test_ctf_orchestrator_agentic.py
+      - name: External pool admission audit self-test (9 cases incl. mutation)
+        run: python scripts/audit_external_pool_readiness.py --selftest
 
   # flag 提取跨语言单一真值源契约（2026-10-30 建立）。
   # 防 10-29 冤案：Go internal/runnerl3/llm_solver.go::flagCandRe 与

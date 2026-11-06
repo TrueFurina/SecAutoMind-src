@@ -1,0 +1,645 @@
+{
+ "pool": "data/questions_external_bench/external_bench.json",
+ "attachments": "data/questions_external_bench/_attachments",
+ "total": 40,
+ "counts": {
+  "contaminated": 0,
+  "hard_unavailable": 3,
+  "soft_constrained": 11,
+  "admissible": 37
+ },
+ "admissible_denominator": 37,
+ "tiers": {
+  "A_static_complete": [
+   "ext_gctf2021_h1",
+   "ext_gctf2021_tiramisu",
+   "ext_gctf2022_enigma",
+   "ext_gctf2023_least-common-genominator",
+   "ext_gctf2023_mhk2",
+   "ext_gctf2024_mceliece",
+   "ext_gctf2025_numerology",
+   "ext_gctf2022_appnote-txt"
+  ],
+  "B_needs_oracle": [
+   "ext_gctf2021_pythia",
+   "ext_gctf2021_story",
+   "ext_gctf2021_tonality",
+   "ext_gctf2022_custom-protocol",
+   "ext_gctf2022_cycling",
+   "ext_gctf2022_electric-mayhem-cls",
+   "ext_gctf2022_electric-mayhem-pqc",
+   "ext_gctf2022_maybe-someday",
+   "ext_gctf2023_cursved",
+   "ext_gctf2023_primes",
+   "ext_gctf2023_zip",
+   "ext_gctf2024_blinders",
+   "ext_gctf2024_desfunctional",
+   "ext_gctf2024_idea",
+   "ext_gctf2024_otp",
+   "ext_gctf2024_zkpok",
+   "ext_gctf2025_filtermaze",
+   "ext_gctf2025_merkurated",
+   "ext_gctf2025_underhanded",
+   "ext_gctf2021_david-and-the-tree",
+   "ext_gctf2021_filestore",
+   "ext_gctf2021_ican-tbelieveit-snotcrypto",
+   "ext_gctf2022_legit",
+   "ext_gctf2022_ocr",
+   "ext_gctf2023_papapapa",
+   "ext_gctf2023_totally-not-brute-force",
+   "ext_gctf2024_hwsim",
+   "ext_gctf2025_bpfbox",
+   "ext_gctf2025_hwsimv2"
+  ],
+  "C_contaminated": [],
+  "D_hard_unavailable": [
+   "ext_gctf2021_abc-arm-and-amd",
+   "ext_gctf2022_segfault-labyrinth",
+   "ext_gctf2024_auxin2"
+  ],
+  "E_soft_constrained": [
+   "ext_gctf2021_story",
+   "ext_gctf2021_tiramisu",
+   "ext_gctf2021_tonality",
+   "ext_gctf2023_mhk2",
+   "ext_gctf2023_primes",
+   "ext_gctf2023_zip",
+   "ext_gctf2024_mceliece",
+   "ext_gctf2025_numerology",
+   "ext_gctf2021_david-and-the-tree",
+   "ext_gctf2022_appnote-txt",
+   "ext_gctf2025_bpfbox"
+  ]
+ },
+ "details": [
+  {
+   "id": "ext_gctf2021_h1",
+   "category": "crypto",
+   "files": [
+    "chall.py",
+    "output.txt"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": true,
+   "flag_sha256_12": "c62e7c1804e2"
+  },
+  {
+   "id": "ext_gctf2021_pythia",
+   "category": "crypto",
+   "files": [
+    "server.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "57bbf5cf67e4"
+  },
+  {
+   "id": "ext_gctf2021_story",
+   "category": "crypto",
+   "files": [
+    "server.dart"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".dart(dart 缺失，可读源码分析协议)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "87103faa49dd"
+  },
+  {
+   "id": "ext_gctf2021_tiramisu",
+   "category": "crypto",
+   "files": [
+    "challenge.pb.go",
+    "challenge.proto",
+    "challenge_pb2.py",
+    "cipher.go",
+    "client_skel.py",
+    "pb_util.go",
+    "server.go",
+    "server_main.go"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".go(golang 缺失，可读源码分析协议)"
+   ],
+   "has_data_file": true,
+   "flag_sha256_12": "e84aa3467a49"
+  },
+  {
+   "id": "ext_gctf2021_tonality",
+   "category": "crypto",
+   "files": [
+    "challenge.pb.go",
+    "challenge.proto",
+    "challenge_pb2.py",
+    "challenger.go",
+    "client_skel.py",
+    "server.go"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".go(golang 缺失，可读源码分析协议)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "f45b85bb3e94"
+  },
+  {
+   "id": "ext_gctf2022_custom-protocol",
+   "category": "crypto",
+   "files": [
+    "msgs.proto",
+    "msgs_pb2.py",
+    "server.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "2eb85cf5344b"
+  },
+  {
+   "id": "ext_gctf2022_cycling",
+   "category": "crypto",
+   "files": [
+    "chall.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "acbe3fcecd1f"
+  },
+  {
+   "id": "ext_gctf2022_electric-mayhem-cls",
+   "category": "crypto",
+   "files": [
+    "elmo.tgz",
+    "firmware.tgz",
+    "stm32f0_aes.json.gz"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "408e722c601b"
+  },
+  {
+   "id": "ext_gctf2022_electric-mayhem-pqc",
+   "category": "crypto",
+   "files": [
+    "elmo.tgz",
+    "firmware.tgz",
+    "stm32f0_kyber512.json.gz"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "726be233db05"
+  },
+  {
+   "id": "ext_gctf2022_enigma",
+   "category": "crypto",
+   "files": [
+    ".bazelrc",
+    "README.md",
+    "WORKSPACE",
+    "encode.py",
+    "encrypt_modern.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": true,
+   "flag_sha256_12": "1f65f4b59f24"
+  },
+  {
+   "id": "ext_gctf2022_maybe-someday",
+   "category": "crypto",
+   "files": [
+    "chall.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "119b199b2399"
+  },
+  {
+   "id": "ext_gctf2023_cursved",
+   "category": "crypto",
+   "files": [
+    "chal.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "8185f0adaafb"
+  },
+  {
+   "id": "ext_gctf2023_least-common-genominator",
+   "category": "crypto",
+   "files": [
+    "dump.txt",
+    "flag.txt",
+    "generate.py",
+    "public.pem"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": true,
+   "flag_sha256_12": "69981daf9abd"
+  },
+  {
+   "id": "ext_gctf2023_mhk2",
+   "category": "crypto",
+   "files": [
+    "MHK2.sage",
+    "output.txt"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".sage(sagemath 缺失，数学可纯 Python 复现)"
+   ],
+   "has_data_file": true,
+   "flag_sha256_12": "57fadd46d139"
+  },
+  {
+   "id": "ext_gctf2023_primes",
+   "category": "crypto",
+   "files": [
+    "chal.sage"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".sage(sagemath 缺失，数学可纯 Python 复现)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "df18e59de015"
+  },
+  {
+   "id": "ext_gctf2023_zip",
+   "category": "crypto",
+   "files": [
+    "hard.py",
+    "hard.zip"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".zip(需 zipfile 解压（标准库可做）)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "d3109ddee29b"
+  },
+  {
+   "id": "ext_gctf2024_blinders",
+   "category": "crypto",
+   "files": [
+    "chall.py",
+    "client.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "099cc26a39b5"
+  },
+  {
+   "id": "ext_gctf2024_desfunctional",
+   "category": "crypto",
+   "files": [
+    "chall.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "c1dcdcf4ec34"
+  },
+  {
+   "id": "ext_gctf2024_idea",
+   "category": "crypto",
+   "files": [
+    "chall.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "3b17e7f55d09"
+  },
+  {
+   "id": "ext_gctf2024_mceliece",
+   "category": "crypto",
+   "files": [
+    "chall.sage",
+    "flag_enc.sobj",
+    "params.sobj",
+    "pubkey.sobj"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".sage(sagemath 缺失，数学可纯 Python 复现)"
+   ],
+   "has_data_file": true,
+   "flag_sha256_12": "c8353fcb0d25"
+  },
+  {
+   "id": "ext_gctf2024_otp",
+   "category": "crypto",
+   "files": [
+    "otp.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "fd7e6ace45e9"
+  },
+  {
+   "id": "ext_gctf2024_zkpok",
+   "category": "crypto",
+   "files": [
+    "chall.py",
+    "generate.py",
+    "param.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "b2b94d189a30"
+  },
+  {
+   "id": "ext_gctf2025_filtermaze",
+   "category": "crypto",
+   "files": [
+    "filtermaze.py",
+    "flag",
+    "graph.json",
+    "lwe_pub_params.json"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "2a4fdc4b4f30"
+  },
+  {
+   "id": "ext_gctf2025_merkurated",
+   "category": "crypto",
+   "files": [
+    "chall.py",
+    "requirements.txt"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "5a1c3a795a9d"
+  },
+  {
+   "id": "ext_gctf2025_numerology",
+   "category": "crypto",
+   "files": [
+    "crypto_numerology.cpython-312.pyc",
+    "ctf_challenge_package.json",
+    "flag.txt",
+    "init.sh",
+    "readme.md"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".pyc(需 marshal/dis 反编译（标准库可做）)"
+   ],
+   "has_data_file": true,
+   "flag_sha256_12": "6e1f6526c3d9"
+  },
+  {
+   "id": "ext_gctf2025_underhanded",
+   "category": "crypto",
+   "files": [
+    "aes.py",
+    "chall.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "090f21dbb33b"
+  },
+  {
+   "id": "ext_gctf2021_abc-arm-and-amd",
+   "category": "misc",
+   "files": [
+    "chal-aarch64",
+    "chal-x86-64",
+    "libc-aarch64.so",
+    "libc-x86-64.so"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [
+    ".so(需原生动态加载)",
+    "chal-aarch64(原生二进制，需执行才能观察行为)",
+    "chal-x86-64(原生二进制，需执行才能观察行为)"
+   ],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "6d0457f9be5c"
+  },
+  {
+   "id": "ext_gctf2021_david-and-the-tree",
+   "category": "misc",
+   "files": [
+    "challenge.zip"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".zip(需 zipfile 解压（标准库可做）)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "b05a30c36ed8"
+  },
+  {
+   "id": "ext_gctf2021_filestore",
+   "category": "misc",
+   "files": [
+    "filestore.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "dd86ea90cce4"
+  },
+  {
+   "id": "ext_gctf2021_ican-tbelieveit-snotcrypto",
+   "category": "misc",
+   "files": [
+    "chal.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "acee0feec010"
+  },
+  {
+   "id": "ext_gctf2022_appnote-txt",
+   "category": "misc",
+   "files": [
+    "dump.zip"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".zip(需 zipfile 解压（标准库可做）)"
+   ],
+   "has_data_file": true,
+   "flag_sha256_12": "08c49a6674c6"
+  },
+  {
+   "id": "ext_gctf2022_legit",
+   "category": "misc",
+   "files": [
+    "Dockerfile",
+    "nsjail.cfg",
+    "server.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "765bffcabc23"
+  },
+  {
+   "id": "ext_gctf2022_ocr",
+   "category": "misc",
+   "files": [
+    "00.png",
+    "01.png",
+    "02.png",
+    "03.png",
+    "server.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "3ead8d846f12"
+  },
+  {
+   "id": "ext_gctf2022_segfault-labyrinth",
+   "category": "misc",
+   "files": [
+    "challenge"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [
+    "challenge(原生二进制，需执行才能观察行为)"
+   ],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "4e3952722770"
+  },
+  {
+   "id": "ext_gctf2023_papapapa",
+   "category": "misc",
+   "files": [
+    "white.jpg"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "7f0a7016faa5"
+  },
+  {
+   "id": "ext_gctf2023_totally-not-brute-force",
+   "category": "misc",
+   "files": [
+    "Makefile"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "0f5332246937"
+  },
+  {
+   "id": "ext_gctf2024_auxin2",
+   "category": "misc",
+   "files": [
+    "auxin2.rom",
+    "run.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [
+    ".rom(需模拟器执行（禁 subprocess）)"
+   ],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "36bd44fae041"
+  },
+  {
+   "id": "ext_gctf2024_hwsim",
+   "category": "misc",
+   "files": [
+    "hwsim.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "a8665b054e21"
+  },
+  {
+   "id": "ext_gctf2025_bpfbox",
+   "category": "misc",
+   "files": [
+    "Dockerfile",
+    "flag.txt",
+    "flake.lock",
+    "flake.nix",
+    "go.mod",
+    "main.go",
+    "run_qemu"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [
+    ".go(golang 缺失，可读源码分析协议)"
+   ],
+   "has_data_file": false,
+   "flag_sha256_12": "f47d97b0da61"
+  },
+  {
+   "id": "ext_gctf2025_hwsimv2",
+   "category": "misc",
+   "files": [
+    "chal.py"
+   ],
+   "contaminated": null,
+   "hard_unavailable": [],
+   "soft_constrained": [],
+   "has_data_file": false,
+   "flag_sha256_12": "0fa13375b6c6"
+  }
+ ]
+}
