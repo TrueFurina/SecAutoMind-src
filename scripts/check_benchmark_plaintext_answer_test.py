@@ -172,6 +172,41 @@ rc = subprocess.call([sys.executable, SCRIPT],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 case("报数模式 rc=0（--check 才是判定入口）", rc == 0, "rc=%d" % rc)
 
+# ---- 第二判据：题面自然语言自曝答案（2026-11-06 第四个假绿）----
+# 该假绿的形态：真值登记为 sha256(裸内容)，题面写「writeup 明确给出 X」，
+# 旧判据只扫 word{} token 且 candidate_variants 不去壳 ⇒ plaintext_answer=0。
+# 这组用例锁死「新判据命中 + 防误伤 + 门禁对未登记池零容忍」三件事。
+print()
+print("[第二判据：题面自然语言自曝答案]")
+
+synth = "ZZ_synthetic_bare_answer_0001"
+bare_prob = {"description": "writeup 明确给出 %s。flag{端口}。" % synth,
+             "flag_sha256": sha(synth)}
+case("裸内容真值 + 自然语言自曝 → 命中（旧判据扫不到）",
+     gate.self_disclosure_in_statement(bare_prob) is not None
+     and not gate.answer_is_in_statement(bare_prob)[0])
+case("证据不含明文答案（项目红线）",
+     synth not in json.dumps(gate.self_disclosure_in_statement(bare_prob), ensure_ascii=False))
+case("题面有同形词但真值不同 → 不命中【防误伤】",
+     gate.self_disclosure_in_statement(
+         {"description": "writeup 明确给出 %s。" % synth,
+          "flag_sha256": sha("flag{totally_different_value}")}) is None)
+case("无合法 flag_sha256 → 不裁定",
+     gate.self_disclosure_in_statement(
+         {"description": "writeup 明确给出 %s。" % synth, "flag_sha256": None}) is None)
+
+tmp = tempfile.mkdtemp()
+try:
+    make_bench(tmp, "purellm_new_benchmark.json",
+               {"n1": {"description": "writeup 明确给出 %s。flag{答案}。" % synth,
+                       "flag_sha256": sha(synth)}})
+    fill(tmp, 22)
+    bad = gate.violations(gate.analyze(tmp))
+    case("未登记能力池带自然语言自曝 → 门禁报红（零容忍）",
+         any("purellm_new_benchmark.json" in b and "自曝" in b for b in bad), str(bad[:1]))
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
 # 8 真实仓库当前状态：违规数应与登记基线一致（回归锁定）
 # 2026-10-28：基线从 15/4 改为 0/0 —— 题干内嵌的答案已由
 # `scripts/redact_prompt_answers.py` 脱敏（real 4 道 / benchmark 15 道）。

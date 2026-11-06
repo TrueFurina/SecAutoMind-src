@@ -1,0 +1,1128 @@
+{
+  "tool": "scripts/build_clean_benchmark_v2.py",
+  "out": "data/ctf_benchmark/purellm_clean_benchmark_v2.json",
+  "out_sha256": "3bfb3a3922c9886c6c84c89a768924ba52c98a4fc04d000e6e096a031730210e",
+  "parent": "data/ctf_benchmark/purellm_clean_benchmark.json",
+  "parent_sha256": "0835c1f274c79ba070b31860e15b4c89d1d74f3957928153b1918b761dedabf9",
+  "parent_bound_verdicts": [
+    "docs/evidence/capability_eval_20261105/verdict_smoke3.json",
+    "docs/evidence/capability_eval_20261105/verdict_smoke3_closed.json",
+    "docs/evidence/capability_eval_20261105/verdict_full160.json"
+  ],
+  "total_in": 160,
+  "total_out": 154,
+  "dropped": 6,
+  "drop_detail": [
+    {
+      "id": "real_crypto_dnui_keyboard",
+      "action": "DROP",
+      "pool": "real",
+      "category": "crypto",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "wrapped",
+      "answer_form_length": 15,
+      "answer_form_sha8": "0629c8d6",
+      "self_disclosing_wording": false
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_bruteforce_count",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 3,
+      "answer_form_sha8": "be47addb",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_enable_pwd",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 8,
+      "answer_form_sha8": "0fc5ec3e",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 1,
+      "answer_form_sha8": "6b86b273",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_port",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 2,
+      "answer_form_sha8": "48449a14",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_telnet_pwd",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 5,
+      "answer_form_sha8": "cc0f6b52",
+      "self_disclosing_wording": true
+    }
+  ],
+  "requires_airgap_ids": [
+    "ext_gctf2021_abc-arm-and-amd",
+    "ext_gctf2021_h1",
+    "ext_gctf2021_ican-tbelieveit-snotcrypto",
+    "ext_gctf2021_pythia",
+    "ext_gctf2021_story",
+    "ext_gctf2021_tiramisu",
+    "ext_gctf2021_tonality",
+    "ext_gctf2022_custom-protocol",
+    "ext_gctf2022_electric-mayhem-cls",
+    "ext_gctf2022_electric-mayhem-pqc",
+    "ext_gctf2022_legit",
+    "ext_gctf2022_maybe-someday",
+    "ext_gctf2022_segfault-labyrinth",
+    "ext_gctf2024_auxin2",
+    "ext_gctf2024_blinders",
+    "ext_gctf2024_desfunctional",
+    "ext_gctf2024_idea",
+    "ext_gctf2024_mceliece",
+    "ext_gctf2025_bpfbox",
+    "ext_gctf2025_filtermaze",
+    "ext_gctf2025_merkurated",
+    "ext_gctf2025_numerology",
+    "ext_gctf2025_underhanded"
+  ],
+  "actions": [
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_hard_permuted",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_very_easy_dynastic",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_medium_data_siege",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_urgent",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware",
+      "action": "KEEP",
+      "pool": "cybench",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2021_abc-arm-and-amd",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_david-and-the-tree",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2021_filestore",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2021_h1",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_ican-tbelieveit-snotcrypto",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_pythia",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_story",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_tiramisu",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2021_tonality",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_appnote-txt",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2022_custom-protocol",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_cycling",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2022_electric-mayhem-cls",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_electric-mayhem-pqc",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_enigma",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2022_legit",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_maybe-someday",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2022_segfault-labyrinth",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2023_cursved",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_least-common-genominator",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_mhk2",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_papapapa",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_primes",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_totally-not-brute-force",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2023_zip",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2024_auxin2",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2024_blinders",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2024_desfunctional",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2024_hwsim",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2024_idea",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2024_mceliece",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2024_otp",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2024_zkpok",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2025_bpfbox",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2025_filtermaze",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2025_hwsimv2",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_gctf2025_merkurated",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2025_numerology",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_gctf2025_underhanded",
+      "action": "KEEP",
+      "pool": "external",
+      "requires_airgap": true
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_cry_ecxor",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_for_thoroughlystripped",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_rev_rabbithole",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_cry_almost_xor",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_cry_another_xor",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_for_missed_registration",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_bananascript",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_realism",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_tablez",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_1nsayne",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_bdos",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_babycrypto",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_collusion",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_lowe",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_for_simple_recovery",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_for_whyos",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_msc_short_circuit",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_rev_kvm",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019f_rev_steady_counting",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_cry_des2bites",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_rev_beleaf",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_rev_halfpike",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2022f_msc_farmlang",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_emoji",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_floating_points",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_hypokrinesthai",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_for_1black0white",
+      "action": "KEEP",
+      "pool": "heldout",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_baby_s_third",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_rox",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_whataxor",
+      "action": "KEEP",
+      "pool": "ext88",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_anxun2020_BeCare4",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_anxun2020_depressed",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_anxun2020_easyzip",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_anxun2020_love_letter",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_anxun2020_coolboy",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_changan2021_checkin",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_changan2021_easyrsa",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_changan2021_ezpy",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_dnui_keyboard",
+      "action": "DROP",
+      "pool": "real",
+      "category": "crypto",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "wrapped",
+      "answer_form_length": 15,
+      "answer_form_sha8": "0629c8d6",
+      "self_disclosing_wording": false
+    },
+    {
+      "id": "real_crypto_gaoxiao2024_z3",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_gkctf2020_che11y",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_gkctf2020_rsa",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_isctf2024_decrypt",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_longjian2023_hd1",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_udomctf2022_aes",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_crypto_umdctf2022_vigenere",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_anxun2020_722b6d",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_bytectf_flag",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_chunqiu2022_checkin",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_chunqiu2022_tiger",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gaoxiao2024_cve41773",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gaoxiao2024_file_extract",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gaoxiao2024_phish_link",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gaoxiao2024_phish_sender",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gaoxiao2024_xiandian",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_gkctf2020_pokemon",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_hws2022_badpdf",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_isctf2024_checkin02",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_isctf2024_park2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_isctf2024_pixel",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_isctf2024_sstv",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_isctf2024_win_rar",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2023_baby_forensics3",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2023_bf",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2023_smallsword3",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2024_smallsword1",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2024_smallsword2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2024_smallsword3",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2024_ssw_redis",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2024_telnet",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2025_app_part2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2025_data_security1",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_longjian2025_siem",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_mjuctf_speak",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_mjuctf_this_is_the_flag",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_nactf2020_zip_madness",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_qiangwang2020_cefang",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_qiangwang2020_upload",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_bruteforce_count",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 3,
+      "answer_form_sha8": "be47addb",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_enable_pwd",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 8,
+      "answer_form_sha8": "0fc5ec3e",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 1,
+      "answer_form_sha8": "6b86b273",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_port",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 2,
+      "answer_form_sha8": "48449a14",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_telnet_pwd",
+      "action": "DROP",
+      "pool": "real",
+      "category": "misc",
+      "requires_airgap": false,
+      "rule": "V1",
+      "reason": "题面自然语言自曝答案（sha256 反查命中）",
+      "answer_form": "bare",
+      "answer_form_length": 5,
+      "answer_form_sha8": "cc0f6b52",
+      "self_disclosing_wording": true
+    },
+    {
+      "id": "real_misc_udomctf2022_morse",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_vnctf_strangeflag",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_misc_vnctf_vnloan",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_pwn_changan2021_pwn3",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_pwn_hws2022_peach",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_reverse_anxun2020_easycm",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_reverse_gaoxiao2024_upx",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_reverse_js",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_reverse_vnctf_babymaze",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_reverse_vnctf_timeflies",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_anxun2020_welcome",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_changan2021_soeasy",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_dicectf2022_knockknock",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_dicectf2022_point",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_gongye_web2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_hacktheboo2022_spookifier",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_linectf2022_ssti_jwt",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_longjian2023_hard_web1",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_longjian2023_hard_web2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_longjian2025_which_sql",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_udomctf2022_cmdinj",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_wgmy2022_christmas_wishlist",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    },
+    {
+      "id": "real_web_wgmy2022_christmas_wishlist2",
+      "action": "KEEP",
+      "pool": "real",
+      "requires_airgap": false
+    }
+  ],
+  "gate_after_build": {
+    "self_disclosure_in_statement": 0,
+    "answer_is_in_statement": 0
+  }
+}

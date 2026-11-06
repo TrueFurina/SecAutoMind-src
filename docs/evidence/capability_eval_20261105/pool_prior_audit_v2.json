@@ -1,0 +1,30 @@
+{
+  "tool": "scripts/audit_pool_prior.py",
+  "generated_at": "2026-11-06T10:52:33+08:00",
+  "pool_path": "data/ctf_benchmark/purellm_clean_benchmark_v2.json",
+  "pool_sha256": "3bfb3a3922c9886c6c84c89a768924ba52c98a4fc04d000e6e096a031730210e",
+  "prior_cutoff": "2025-01-01",
+  "total": 154,
+  "counts": {
+    "private_proven": 0,
+    "public_named": 154,
+    "unknown": 0
+  },
+  "requires_airgap": 23,
+  "missing_criteria_histogram": {
+    "no_post_cutoff_timestamp": 154,
+    "no_source_field": 154,
+    "public_identifier_present": 154
+  },
+  "public_by_pool": {
+    "real": 70,
+    "external": 39,
+    "ext88": 23,
+    "cybench": 11,
+    "heldout": 11
+  },
+  "private_proven_ids": [],
+  "capability_rate_publishable": false,
+  "conclusion": "题池存在 154/154 题「公开或来源不明」⇒ 全量跑批只能作工程回归读数，不得对外称为能力率",
+  "scope_note": "即使全为私有题，pure_llm 路径仍须逐题证明：无外网访问（本路径 N/A）、无题面明文、无训练白名单命中、通道归属单一；本脚本只裁「题源先验」一维。"
+}

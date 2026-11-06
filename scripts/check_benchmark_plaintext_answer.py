@@ -68,6 +68,20 @@ _fu_sys.path.insert(0, _fu_os.path.join(
 from flag_util import candidate_variants  # noqa: E402
 FLAG_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}]{3,}\}", re.IGNORECASE)
 
+# ── 第二判据：题面「自然语言自曝答案」（2026-11-06 第四个假绿）─────────────
+# 动机：answer_is_in_statement() 只把 word{content} token 过 candidate_variants，
+# 而 candidate_variants("flag{<X>}") 不产生裸内容变体 ⇒ 当真值登记为
+# sha256(<X>)（裸内容）时，题面写着「writeup 明确给出 <X>。flag{端口}。」
+# 这类句子永远扫不到，门禁对干净池实报 plaintext_answer=0 = 空洞绿。
+# 本判据纯 sha256 反查题面 token 的裸/带壳形态，无明文输出（项目红线）。
+SD_TOKEN_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}")
+SD_WORDING_RE = re.compile(
+    r"writeup|题解|明确给出|答案(?:是|为|明确)|直接给出|flag\{[^}]*\}。|给出(?:密码|次数|端口|答案)",
+    re.I)
+SD_PREFIXES = ("flag", "FLAG", "DASCTF", "picoCTF", "ctf", "CTF", "sdctf",
+               "BZHCTF", "NSSCTF", "GWHT", "moectf", "flag{")
+SD_TEXT_FIELDS = ("description", "desc", "content", "name", "title", "statement")
+
 # 题面字段：只从"给选手看的文本"里提取，不含 attachments 等工件路径。
 TEXT_FIELDS = ("description", "prompt", "hint", "hints", "note", "summary")
 
@@ -76,6 +90,16 @@ TEXT_FIELDS = ("description", "prompt", "hint", "hints", "note", "summary")
 BASELINE = {
     "benchmark.json": 15,        # 自研 72 题集：15 题题面即答案，真求解器 55/72 = 76.4%
     "real_benchmark.json": 4,    # 真题 55 题集：4 题，真求解器 16/55 = 29.1%
+}
+
+# 第二判据（自然语言自曝答案）的登记契约：**未登记集一律按 0**。
+# v1 干净池的 6 题是 2026-11-06 全量跑批后查实的历史遗留（见
+# docs/evidence/capability_eval_20261105/全量160题_20261106.md），已有三份
+# verdict 的 claim_scope.statement_tainted_ids 逐题标注。这里登记 6 只是让 CI
+# 不为已知历史池常红；**评测入口另有前置守卫拒绝再用 v1 起新跑批**，且 v1 的
+# 指纹已被三份 verdict 绑定，禁止改一字节来「洗白」。新池（v2 及以后）按 0。
+SELF_DISCLOSURE_BASELINE = {
+    "purellm_clean_benchmark.json": 6,
 }
 
 # 覆盖度下限：低于此值说明扫描范围被意外缩小，判 FAIL（fail-closed）。
@@ -117,6 +141,52 @@ def answer_is_in_statement(prob):
     return False, None
 
 
+def _sd_forms(token, outer_prefixes):
+    """题面 token 的全部可判分形态（裸内容 + 常见赛事外壳）。"""
+    out = [token]
+    for p in SD_PREFIXES:
+        if p.endswith("{"):
+            continue
+        out.append("%s{%s}" % (p, token))
+    for p in outer_prefixes:
+        out.append("%s{%s}" % (p, token))
+    out.extend(("flag{%s}" % token, "FLAG{%s}" % token))
+    return list(dict.fromkeys(out))
+
+
+def self_disclosure_in_statement(prob):
+    """第二判据：题面 token 的任一形态 sha256 == flag_sha256 ⇒ 答案自曝。
+
+    与 answer_is_in_statement() 互补：后者只认花括号 token 且不去壳，
+    本函数覆盖「自然语言自曝裸内容」。返回证据 dict（**绝不含明文答案**，
+    只给形态类别 / 长度 / sha8），未命中返回 None。无合法指纹不裁定。
+    本函数是 scripts/audit_writeup_answer.py 与门禁共用的唯一真值源。
+    """
+    if not isinstance(prob, dict):
+        return None
+    want = str(prob.get("flag_sha256") or "").lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", want):
+        return None
+    text = " ".join(str(prob.get(k, "")) for k in SD_TEXT_FIELDS)
+    if not text.strip():
+        return None
+    outer_prefixes = {m.group(1) for m in
+                      re.finditer(r"([A-Za-z0-9_]+)\{", text)}
+    for token in SD_TOKEN_RE.findall(text):
+        for form in _sd_forms(token, outer_prefixes):
+            if hashlib.sha256(form.encode("utf-8")).hexdigest() == want:
+                return {
+                    "pool": prob.get("pool", "?"),
+                    "answer_form": "bare" if form == token else "wrapped",
+                    "answer_form_sha8": hashlib.sha256(form.encode("utf-8")).hexdigest()[:8],
+                    "answer_form_length": len(form),
+                    "self_disclosing_wording": bool(SD_WORDING_RE.search(text)),
+                    "reason": "题面 token 的 %s 形态 sha256 == 该题 flag_sha256" %
+                              ("裸内容" if form == token else "带壳"),
+                }
+    return None
+
+
 def analyze(repo_root=REPO_ROOT):
     """纯函数：扫描全部基准集，统计题面即答案。供主流程与变异用例共用同一判据。"""
     per_file = []
@@ -132,18 +202,26 @@ def analyze(repo_root=REPO_ROOT):
         if not isinstance(probs, dict):
             continue
         offenders = []
+        sd_ids = []
         for pid, prob in probs.items():
             if not isinstance(prob, dict):
                 continue
             leak, plain = answer_is_in_statement(prob)
             if leak:
                 offenders.append({"id": pid, "plain": plain})
+            # 第二判据单独计数字段，不并入 offenders —— 保持 plaintext_answer /
+            # real_solver_caliber 的历史语义不变，避免口径漂移。
+            if self_disclosure_in_statement(prob):
+                sd_ids.append(pid)
         per_file.append({
             "file": name,
             "problems": len(probs),
             "plaintext_answer": len(offenders),
             "baseline": BASELINE.get(name, 0),
             "offenders": offenders,
+            "self_disclosure_answer": len(sd_ids),
+            "self_disclosure_baseline": SELF_DISCLOSURE_BASELINE.get(name, 0),
+            "self_disclosure_ids": sd_ids,
         })
     return per_file
 
@@ -207,6 +285,14 @@ def violations(per_file):
                 "靠 flag_scan 读出即算命中，不构成解题能力"
                 % (tag, p["file"], n, base,
                    ", ".join(o["id"] for o in p["offenders"][:6])))
+        sd = p.get("self_disclosure_answer", 0)
+        sd_base = p.get("self_disclosure_baseline", 0)
+        if sd > sd_base:
+            bad.append(
+                "%s：题面自然语言自曝答案 %d 题 > 基线 %d（%s）。"
+                "真值登记为裸内容哈希时旧判据扫不到（candidate_variants 不去壳），"
+                "这些题的答案已写在题面，禁止进入任何能力评测分母"
+                % (p["file"], sd, sd_base, ", ".join(p["self_disclosure_ids"][:6])))
     return bad
 
 
@@ -234,6 +320,18 @@ def main():
     tot_leak = sum(p["plaintext_answer"] for p in per_file)
     print("合计 %d 集 / %d 题，题面即答案 %d 题" % (len(per_file), tot_p, tot_leak))
     print()
+    tot_sd = sum(p.get("self_disclosure_answer", 0) for p in per_file)
+    print("=== 第二判据：题面自然语言自曝答案（sha256 反查裸/带壳形态）===")
+    print("合计 %d 题；登记基线内 %d 题；未登记集一律零容忍" %
+          (tot_sd, sum(p.get("self_disclosure_baseline", 0) for p in per_file)))
+    for p in per_file:
+        if p.get("self_disclosure_answer"):
+            print("  %-46s %d 题（基线 %d）%s" %
+                  (p["file"], p["self_disclosure_answer"],
+                   p.get("self_disclosure_baseline", 0),
+                   "  <-- 已知历史池，禁止用于新跑批" if p["file"] in SELF_DISCLOSURE_BASELINE
+                   else "  <-- 超标"))
+    print()
     if per_file:
         print("注：crc32 / lcg / ecdsa / execution 等集的 flag 明文经 sha256 比对"
               "与答案指纹不等（那些 flag 是已知输入，如 CRC32 伪造给定原文），故不计入。")
@@ -256,7 +354,9 @@ def main():
         for b in bad:
             print("  · %s" % b)
         return 1
-    print("✅ PASS —— %d 集 / %d 题全部在登记基线内" % (len(per_file), tot_p))
+    print("✅ PASS —— %d 集 / %d 题，两个判据均在登记基线内"
+          "（花括号明文 %d / 自然语言自曝 %d）"
+          % (len(per_file), tot_p, tot_leak, tot_sd))
     return 0
 
 

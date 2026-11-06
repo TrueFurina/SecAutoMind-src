@@ -34,7 +34,8 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from check_benchmark_plaintext_answer import analyze, violations  # noqa: E402
+from check_benchmark_plaintext_answer import (analyze, violations,  # noqa: E402
+                                              self_disclosure_in_statement)
 from check_pure_llm_caliber import (EVIDENCE_KEYS, PURE_LLM_EVIDENCE_KEYS,  # noqa: E402
                                    evidence_keys, judge_run, load_leak_ids,
                                    load_questions, load_trained_ids,
@@ -45,12 +46,17 @@ import audit_writeup_answer  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POOL = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.json")
 MANIFEST = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.manifest.json")
+POOL_V2 = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark_v2.json")
+MANIFEST_V2 = os.path.join(ROOT, "data", "ctf_benchmark",
+                           "purellm_clean_benchmark_v2.manifest.json")
 LEAK = os.path.join(ROOT, ".workbuddy", "tmp", "rev_leak.out")
 ORCH = os.path.join(ROOT, "scripts", "ctf_stepfun_orchestrator.py")
 WORKDIR = os.path.join(ROOT, ".workbuddy", "tmp", "capability_eval")
 EVIDENCE_PATH = os.path.join(WORKDIR, "evidence.auto.json")
 PRIOR_AUDIT = os.path.join(ROOT, "docs", "evidence", "capability_eval_20261105",
                            "pool_prior_audit.json")
+PRIOR_AUDIT_V2 = os.path.join(ROOT, "docs", "evidence", "capability_eval_20261105",
+                              "pool_prior_audit_v2.json")
 
 
 def _sha256(path):
@@ -109,6 +115,13 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         "prior_cutoff": fresh["prior_cutoff"],
         "capability_rate_publishable": fresh["capability_rate_publishable"],
     })
+    # 池自带的结构性限制随 verdict 一起走，避免「结论边界只写在外围文档里」。
+    try:
+        scope["pool_known_limitations"] = list(
+            json.load(open(pool_path, encoding="utf-8"))
+            .get("provenance", {}).get("known_limitations", []))
+    except Exception:
+        scope["pool_known_limitations"] = []
     if bound_pool_sha and bound_pool_sha != fresh["pool_sha256"]:
         scope["bound_pool_matches"] = False
         scope["reason"] = "结果绑定的题池指纹与审计池不一致（防洗白）"
@@ -205,18 +218,52 @@ def preflight(args):
             "N/A：pure_llm 无解题子进程，seccomp 拦的是 Go 侧 python_session", na=True)
         proof_ok = True
 
+    pool_path, manifest_path = args.pool, args.manifest
     pool_ok, pool_sha = False, ""
-    if os.path.isfile(POOL) and os.path.isfile(MANIFEST):
-        mf = json.load(open(MANIFEST, encoding="utf-8"))
-        pool_sha = _sha256(POOL)
+    if os.path.isfile(pool_path) and os.path.isfile(manifest_path):
+        mf = json.load(open(manifest_path, encoding="utf-8"))
+        pool_sha = _sha256(pool_path)
         pool_ok = pool_sha == mf.get("out_sha256")
-    chk("题池指纹与 manifest 一致", pool_ok, "actual=%s" % pool_sha[:16])
+    chk("题池指纹与 manifest 一致", pool_ok,
+        "pool=%s actual=%s" % (os.path.basename(pool_path), pool_sha[:16]))
 
     rows = analyze(ROOT)
-    scanned = any(r["file"] == os.path.basename(POOL) for r in rows)
+    scanned = any(r["file"] == os.path.basename(pool_path) for r in rows)
     gate_ok = scanned and not violations(rows)
     chk("明文答案门禁覆盖新池且零违规", gate_ok,
         "扫到 %d 集，新池在扫描内=%s，violations=%d" % (len(rows), scanned, len(violations(rows))))
+
+    # 守卫 A：本批次题池「自然语言自曝答案」必须为 0，由代码逐题重算。
+    # 明文门禁对 v1 的 6 题因登记基线放行（CI 不常红），但**评测入口不接受
+    # v1 起新跑批** —— 这才是真正拦住历史脏池的锁，而不是一句文档提醒。
+    tainted, sd_error = -1, ""
+    try:
+        sel_probs = json.load(open(pool_path, encoding="utf-8")).get("problems", {})
+        tainted = sum(1 for p in sel_probs.values()
+                      if isinstance(p, dict) and self_disclosure_in_statement(p))
+    except Exception as exc:
+        sd_error = str(exc)
+    chk("本批次题池无题面自曝答案（代码重算）", tainted == 0,
+        "tainted=%d %s；v1=6 应被拒，v2=0 才放行" % (tainted, sd_error))
+
+    # 守卫 B：--run 时命令里实际使用的 --benchmark 必须与 --pool 同指纹。
+    # 否则「用 v2 过前置、命令却指向 v1」会把脏池结果洗白。
+    cmd_args = [x for x in args.command if x != "--"]
+    bench = None
+    for i, x in enumerate(cmd_args):
+        if x == "--benchmark" and i + 1 < len(cmd_args):
+            bench = cmd_args[i + 1]
+            break
+    if cmd_args:
+        bp = bench and (bench if os.path.isabs(bench) else os.path.join(ROOT, bench))
+        bench_sha = _sha256(bp) if bp and os.path.isfile(bp) else None
+        chk("跑批命令题池与 --pool 同指纹（防洗白）",
+            bench_sha is not None and bench_sha == pool_sha,
+            "cmd_benchmark=%s cmd_sha=%s pool_sha=%s"
+            % (bench, str(bench_sha)[:16], pool_sha[:16]))
+    else:
+        chk("跑批命令题池与 --pool 同指纹（防洗白）", True,
+            "N/A：--preflight/--adjudicate 无跑批命令；--run 时强制校验", na=True)
 
     temp_ok, temp_note = _fixed_temperature_proven()
     chk("随机源代码级固定", temp_ok, temp_note)
@@ -241,7 +288,7 @@ def preflight(args):
     tracked = False
     try:
         r = subprocess.run(["git", "log", "-1", "--format=%H", "--",
-                            os.path.relpath(POOL, ROOT).replace("\\", "/")],
+                            os.path.relpath(pool_path, ROOT).replace("\\", "/")],
                            cwd=ROOT, capture_output=True, text=True, timeout=10)
         tracked = r.returncode == 0 and bool(r.stdout.strip())
     except Exception:
@@ -264,7 +311,8 @@ def preflight(args):
         "pool_fingerprint_ok": pool_ok,
         "pool_gate_ok": gate_ok,
         "pool_sha256": pool_sha,
-        "pool_path": os.path.relpath(POOL, ROOT).replace("\\", "/"),
+        "pool_path": os.path.relpath(pool_path, ROOT).replace("\\", "/"),
+        "statement_tainted_in_selected_pool": tainted,
         "pool_in_version_control": pool_tracked,
         "caveats": [
             "pool_tracked_and_clean 只证明「指纹一致+门禁覆盖」，不等于题池入库；对外引用前须入库",
@@ -297,7 +345,8 @@ def preflight(args):
     return ok, checks, ev
 
 
-def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None, auto_prove=True):
+def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
+               auto_prove=True, pool=POOL, prior_audit=PRIOR_AUDIT):
     result = json.load(open(result_path, encoding="utf-8"))
     os.makedirs(WORKDIR, exist_ok=True)
     if mode == "pure_llm" and auto_prove:
@@ -312,12 +361,13 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None, auto_pr
         with open(proof_path, "w", encoding="utf-8") as f:
             json.dump(proof, f, ensure_ascii=False, indent=2)
         ev["proof_report_path"] = os.path.relpath(proof_path, ROOT).replace("\\", "/")
-    questions, _ = load_questions(POOL)
+    questions, _ = load_questions(pool)
     leak_ids, leak_ok = load_leak_ids(LEAK)
     trained, trained_ok = load_trained_ids(ROOT)
     v = judge_run(result, questions, ev, leak_ids, leak_ok, trained, trained_ok)
     # 结论作用域由代码重算，不读人工声明；绑定指纹不一致直接 fail-closed。
-    v["claim_scope"] = claim_scope_for_pool(bound_pool_sha=ev.get("result_pool_sha256"))
+    v["claim_scope"] = claim_scope_for_pool(pool_path=pool, audit_path=prior_audit,
+                                             bound_pool_sha=ev.get("result_pool_sha256"))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(v, f, ensure_ascii=False, indent=2)
@@ -376,6 +426,15 @@ def scope_selftest():
           claim_scope_for_pool()["claim_scope"], "engineering_regression_only")
     check("干净池题面自曝答案题被重算出（门禁空洞绿）",
           claim_scope_for_pool()["statement_tainted_count"] > 0, True)
+    # 1b. v2 交付件必须存在且干净（缺件即红，fail-closed）
+    if not (os.path.isfile(POOL_V2) and os.path.isfile(PRIOR_AUDIT_V2)):
+        print("  FAIL v2 池/题源证据缺失（fail-closed）")
+        results.append(False)
+    else:
+        s2 = claim_scope_for_pool(POOL_V2, PRIOR_AUDIT_V2)
+        check("v2 池自曝题=0", s2["statement_tainted_count"], 0)
+        check("v2 仍为工程回归读数", s2["claim_scope"], "engineering_regression_only")
+        check("v2 题源证据一致", s2["audit_evidence_consistent"], True)
     # 2. 绑定指纹不一致 → fail-closed
     check("结果绑定池指纹不一致 → unverified",
           claim_scope_for_pool(bound_pool_sha="0" * 64)["claim_scope"], "unverified")
@@ -427,6 +486,11 @@ def main():
     ap.add_argument("--result", help="跑批输出路径（--run 时用于判分）")
     ap.add_argument("--airgap-proof", help="IP 直连探测结果 json")
     ap.add_argument("--legacy-evidence", help="历史批次自带证据（归因旧结果时用，不冒充新评测）")
+    ap.add_argument("--pool", default=POOL,
+                    help="本批次题池（默认 v1；v1 含 6 道自曝题，前置守卫会拒绝新跑批）")
+    ap.add_argument("--manifest", default=MANIFEST, help="题池指纹 manifest")
+    ap.add_argument("--prior-audit", default=PRIOR_AUDIT,
+                    help="题源先验审计证据（换池必须同步换，否则 claim_scope=unverified）")
     ap.add_argument("--out", default=os.path.join(WORKDIR, "verdict.auto.json"))
     ap.add_argument("--selftest", action="store_true",
                     help="链路自测：判据变异验证 + 合成合规批次的正向结论（不是评测结果）")
@@ -447,7 +511,8 @@ def main():
         before = {k: x for k, x in v.items() if k != "claim_scope"}
         ev = v.get("evidence")
         bound = ev.get("result_pool_sha256") if isinstance(ev, dict) else None
-        scope = claim_scope_for_pool(bound_pool_sha=bound)
+        scope = claim_scope_for_pool(pool_path=args.pool, audit_path=args.prior_audit,
+                                    bound_pool_sha=bound)
         v["claim_scope"] = scope
         after = {k: x for k, x in v.items() if k != "claim_scope"}
         if before != after:
@@ -500,6 +565,8 @@ def main():
         if scope.get("statement_tainted_count"):
             print("[!] 分母含 %d 道题面自曝答案题（明文门禁空洞绿），题号见 verdict.claim_scope.statement_tainted_ids"
                   % scope["statement_tainted_count"])
+        for lim in scope.get("pool_known_limitations", []):
+            print("[!] 池已知限制：%s" % lim)
         return 0 if v["claimable"] else 1
 
     # 历史批次归因：不受前置失败阻挡 —— 判据的价值正是把不合格批次判成不可归因。
@@ -512,7 +579,8 @@ def main():
         else:
             ev_use["_mode"] = "auto_evidence(preflight_passed=%s)" % ok
         return report(adjudicate(args.adjudicate, ev_use, args.out, args.mode,
-                                 auto_prove=not args.legacy_evidence))
+                                 auto_prove=not args.legacy_evidence,
+                                 pool=args.pool, prior_audit=args.prior_audit))
 
     if not ok:
         print("前置未通过 → 拒绝跑批（fail-closed）。缺项必须先补齐，不放行任何能力率。")
@@ -536,7 +604,8 @@ def main():
         print("跑批 rc=%d" % rc)
         if not args.result:
             return rc
-        return report(adjudicate(args.result, ev, args.out, args.mode, cmd))
+        return report(adjudicate(args.result, ev, args.out, args.mode, cmd,
+                                  pool=args.pool, prior_audit=args.prior_audit))
     return 0
 
 

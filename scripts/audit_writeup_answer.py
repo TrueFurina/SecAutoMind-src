@@ -39,67 +39,26 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from check_benchmark_plaintext_answer import GLOB, SKIP_FILES, REPO_ROOT  # noqa: E402
+from check_benchmark_plaintext_answer import (GLOB, SKIP_FILES, REPO_ROOT,  # noqa: E402
+                                              self_disclosure_in_statement)
 
 EVIDENCE = os.path.join(REPO_ROOT, "docs", "evidence", "capability_eval_20261105",
                         "writeup_answer_audit.json")
 
-TOKEN_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}")
-OUTER_RE = re.compile(r"[A-Za-z0-9_]+\{[^{}]{0,200}\}")
-SELF_DISCLOSE_RE = re.compile(
-    r"writeup|题解|明确给出|答案(?:是|为|明确)|直接给出|flag\{[^}]*\}。|给出(?:密码|次数|端口|答案)",
-    re.I)
-# 常见赛事外壳；真值登记可能是 sha256(带壳形态)。
-PREFIXES = ("flag", "FLAG", "DASCTF", "picoCTF", "ctf", "CTF", "sdctf",
-            "BZHCTF", "NSSCTF", "GWHT", "moectf", "flag{")
-
-
-def _sha8(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:8]
-
-
-def _forms(token: str, outer_prefixes) -> list[str]:
-    """一个题面 token 的所有可判分形态（不含明文输出）。"""
-    out = [token]
-    for p in PREFIXES:
-        if p.endswith("{"):
-            continue
-        out.append("%s{%s}" % (p, token))
-    for p in outer_prefixes:
-        out.append("%s{%s}" % (p, token))
-    for c in ("flag{%s}" % token, "FLAG{%s}" % token):
-        out.append(c)
-    return list(dict.fromkeys(out))
-
 
 def inspect_problem(pid: str, prob: dict) -> dict | None:
-    """命中返回证据（无明文）；未命中返回 None。"""
-    # 部分题库的 problems 是 {id: 字符串} 形态，没有答案指纹可裁定。
-    if not isinstance(prob, dict):
+    """命中返回证据（无明文）；未命中返回 None。
+
+    判据单一真值源 = check_benchmark_plaintext_answer.self_disclosure_in_statement
+    （2026-11-06 收紧门禁时迁移）。本函数只负责补上题号，**不另实现判据**，
+    避免「门禁一套、审计一套」再次产生口径漂移。
+    """
+    ev = self_disclosure_in_statement(prob)
+    if ev is None:
         return None
-    want = str(prob.get("flag_sha256") or "").lower()
-    if not re.fullmatch(r"[0-9a-f]{64}", want):
-        return None
-    text = " ".join(str(prob.get(k, "")) for k in
-                    ("description", "desc", "content", "name", "title", "statement"))
-    if not text.strip():
-        return None
-    outer_prefixes = {m.group(0).split("{", 1)[0] for m in
-                      re.finditer(r"([A-Za-z0-9_]+)\{", text)}
-    for token in TOKEN_RE.findall(text):
-        for form in _forms(token, outer_prefixes):
-            if hashlib.sha256(form.encode("utf-8")).hexdigest() == want:
-                return {
-                    "id": pid,
-                    "pool": prob.get("pool", "?"),
-                    "answer_form": "bare" if form == token else "wrapped",
-                    "answer_form_sha8": _sha8(form),
-                    "answer_form_length": len(form),
-                    "self_disclosing_wording": bool(SELF_DISCLOSE_RE.search(text)),
-                    "reason": "题面 token 的 %s 形态 sha256 == 该题 flag_sha256" %
-                              ("裸内容" if form == token else "带壳"),
-                }
-    return None
+    out = {"id": pid}
+    out.update(ev)
+    return out
 
 
 def _iter_pool_files():
