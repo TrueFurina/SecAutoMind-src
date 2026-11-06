@@ -39,6 +39,7 @@ from check_pure_llm_caliber import (EVIDENCE_KEYS, PURE_LLM_EVIDENCE_KEYS,  # no
                                    evidence_keys, judge_run, load_leak_ids,
                                    load_questions, load_trained_ids,
                                    prove_pure_llm_path, selftest)
+import audit_pool_prior  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POOL = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.json")
@@ -47,6 +48,8 @@ LEAK = os.path.join(ROOT, ".workbuddy", "tmp", "rev_leak.out")
 ORCH = os.path.join(ROOT, "scripts", "ctf_stepfun_orchestrator.py")
 WORKDIR = os.path.join(ROOT, ".workbuddy", "tmp", "capability_eval")
 EVIDENCE_PATH = os.path.join(WORKDIR, "evidence.auto.json")
+PRIOR_AUDIT = os.path.join(ROOT, "docs", "evidence", "capability_eval_20261105",
+                           "pool_prior_audit.json")
 
 
 def _sha256(path):
@@ -66,6 +69,76 @@ def _fixed_temperature_proven():
     if len(vals) >= 2 and len(set(vals)) == 1:
         return True, "请求体显式固定 temperature=%s（%d 处），非 provider 默认" % (vals[0], len(vals))
     return False, "请求体未显式固定 temperature（vals=%r）" % vals
+
+
+def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=None):
+    """题源先验 → 本批次「结论作用域」，代码重算、fail-closed。
+
+    `claimable=True` 只说明链路合规、格式可引用；它**不代表**这个数值可以叫
+    「能力率」。公开题池的命中数无法排除模型记忆 / 公开 writeup，只能作工程回归
+    读数。本函数把这一区分写进 verdict，避免靠外围文档提醒（§13 三个假绿的教训）。
+
+    作用域三值：
+      capability_rate_candidate  —— 全部题目可证明私有且审计证据一致（仍须其余判据）
+      engineering_regression_only—— 存在公开/来源不明题，数值不得对外称能力率
+      unverified                 —— 题池或审计证据缺失/漂移/绑定指纹不一致，禁止引用
+    """
+    scope = {
+        "generated_by": "scripts/run_capability_eval.py::claim_scope_for_pool (代码重算)",
+        "pool_path": os.path.relpath(pool_path, ROOT).replace("\\", "/"),
+        "audit_evidence_path": os.path.relpath(audit_path, ROOT).replace("\\", "/"),
+        "claim_scope": "unverified",
+        "private_proven": 0,
+        "total": 0,
+        "pool_sha256": None,
+        "bound_pool_matches": None,
+        "audit_evidence_consistent": False,
+        "reason": "",
+    }
+    if not os.path.isfile(pool_path):
+        scope["reason"] = "题池不存在，fail-closed"
+        return scope
+    fresh = audit_pool_prior.audit(pool_path)
+    scope.update({
+        "pool_sha256": fresh["pool_sha256"],
+        "private_proven": fresh["counts"]["private_proven"],
+        "total": fresh["total"],
+        "public_named": fresh["counts"]["public_named"],
+        "requires_airgap": fresh["requires_airgap"],
+        "prior_cutoff": fresh["prior_cutoff"],
+        "capability_rate_publishable": fresh["capability_rate_publishable"],
+    })
+    if bound_pool_sha and bound_pool_sha != fresh["pool_sha256"]:
+        scope["bound_pool_matches"] = False
+        scope["reason"] = "结果绑定的题池指纹与审计池不一致（防洗白）"
+        return scope
+    scope["bound_pool_matches"] = True if bound_pool_sha else None
+
+    if not os.path.isfile(audit_path):
+        scope["reason"] = "题源审计证据不存在；请先跑 audit_pool_prior.py"
+        return scope
+    try:
+        saved = json.load(open(audit_path, encoding="utf-8"))
+    except Exception as exc:
+        scope["reason"] = "题源审计证据解析失败: %s" % exc
+        return scope
+    consistent = (saved.get("pool_sha256") == fresh["pool_sha256"]
+                  and saved.get("counts") == fresh["counts"]
+                  and saved.get("capability_rate_publishable")
+                  == fresh["capability_rate_publishable"])
+    scope["audit_evidence_consistent"] = consistent
+    if not consistent:
+        scope["reason"] = "题源审计证据与代码重算不一致（指纹/计数/结论漂移）"
+        return scope
+
+    if fresh["total"] > 0 and fresh["counts"]["private_proven"] == fresh["total"]:
+        scope["claim_scope"] = "capability_rate_candidate"
+        scope["reason"] = "全池题目可证明私有；仍须逐题满足其余判据"
+    else:
+        scope["claim_scope"] = "engineering_regression_only"
+        scope["reason"] = "%d/%d 题公开或来源不明 ⇒ 模型先验无法排除，数值只能作工程回归读数" % (
+            fresh["total"] - fresh["counts"]["private_proven"], fresh["total"])
+    return scope
 
 
 def preflight(args):
@@ -225,6 +298,8 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None, auto_pr
     leak_ids, leak_ok = load_leak_ids(LEAK)
     trained, trained_ok = load_trained_ids(ROOT)
     v = judge_run(result, questions, ev, leak_ids, leak_ok, trained, trained_ok)
+    # 结论作用域由代码重算，不读人工声明；绑定指纹不一致直接 fail-closed。
+    v["claim_scope"] = claim_scope_for_pool(bound_pool_sha=ev.get("result_pool_sha256"))
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(v, f, ensure_ascii=False, indent=2)
@@ -258,8 +333,68 @@ def pipeline_selftest():
     ok = (v["verdicts"] == want and v["capability_rate"] == 0.5 and v["claimable"])
     print("  %s 合成 2 题：verdicts=%s rate=%s claimable=%s（期望 %s / 0.5 / True）"
           % ("PASS" if ok else "FAIL", v["verdicts"], v["capability_rate"], v["claimable"], want))
-    print("链路自测：%s" % ("PASS" if rc == 0 and ok else "FAIL"))
-    return 0 if rc == 0 and ok else 1
+    print("=== C. 结论作用域（题源先验）变异验证 ===")
+    scope_rc = scope_selftest()
+    print("链路自测：%s" % ("PASS" if rc == 0 and ok and scope_rc == 0 else "FAIL"))
+    return 0 if rc == 0 and ok and scope_rc == 0 else 1
+
+
+def scope_selftest():
+    """合成数据验证 claim_scope 的三值判定（不是评测结果）。"""
+    tmpdir = os.path.join(WORKDIR, "_scope_selftest")
+    os.makedirs(tmpdir, exist_ok=True)
+    pool_p = os.path.join(tmpdir, "private_pool.json")
+    audit_p = os.path.join(tmpdir, "private_audit.json")
+    results = []
+
+    def check(name, got, want):
+        good = got == want
+        results.append(good)
+        print("  %s %-40s got=%-30s want=%s" %
+              ("PASS" if good else "FAIL", name, got, want))
+
+    # 1. 真实干净池（160 题全公开）→ 只能作工程回归读数
+    check("公开池 → engineering_regression_only",
+          claim_scope_for_pool()["claim_scope"], "engineering_regression_only")
+    # 2. 绑定指纹不一致 → fail-closed
+    check("结果绑定池指纹不一致 → unverified",
+          claim_scope_for_pool(bound_pool_sha="0" * 64)["claim_scope"], "unverified")
+
+    private = {"benchmark": "synthetic", "problems": {
+        "q1": {"id": "q1", "name": "q1", "pool": "mine",
+               "description": "一道本地生成的数学题",
+               "source": "private self-authored", "created_at": "2026-10-01"},
+        "q2": {"id": "q2", "name": "q2", "pool": "mine",
+               "description": "另一道本地生成的数学题",
+               "source": "private self-authored", "created_at": "2026-10-02"},
+    }}
+    with open(pool_p, "w", encoding="utf-8") as f:
+        json.dump(private, f, ensure_ascii=False)
+    with open(audit_p, "w", encoding="utf-8") as f:
+        json.dump(audit_pool_prior.audit(pool_p), f, ensure_ascii=False)
+    # 3. 全私有 + 证据一致 → 能力率候选
+    check("全私有池 → capability_rate_candidate",
+          claim_scope_for_pool(pool_p, audit_p)["claim_scope"],
+          "capability_rate_candidate")
+    # 4. 证据漂移 → unverified
+    drifted = audit_pool_prior.audit(pool_p)
+    drifted["counts"]["private_proven"] = 0
+    with open(audit_p, "w", encoding="utf-8") as f:
+        json.dump(drifted, f, ensure_ascii=False)
+    check("审计证据漂移 → unverified",
+          claim_scope_for_pool(pool_p, audit_p)["claim_scope"], "unverified")
+    # 5. 证据缺失 → unverified
+    os.remove(audit_p)
+    check("审计证据缺失 → unverified",
+          claim_scope_for_pool(pool_p, audit_p)["claim_scope"], "unverified")
+
+    os.remove(pool_p)
+    try:
+        os.rmdir(tmpdir)
+    except OSError:
+        pass
+    print("  作用域自测 %d/%d" % (sum(results), len(results)))
+    return 0 if all(results) else 1
 
 
 def main():
@@ -275,11 +410,38 @@ def main():
     ap.add_argument("--out", default=os.path.join(WORKDIR, "verdict.auto.json"))
     ap.add_argument("--selftest", action="store_true",
                     help="链路自测：判据变异验证 + 合成合规批次的正向结论（不是评测结果）")
+    ap.add_argument("--annotate", metavar="VERDICT_JSON",
+                    help="给已有 verdict 追加题源先验作用域（只加字段，不重判、不改原有字段）")
     ap.add_argument("command", nargs=argparse.REMAINDER, help="-- 之后的跑批命令")
     args = ap.parse_args()
 
     if args.selftest:
         return pipeline_selftest()
+
+    if args.annotate:
+        if not os.path.isfile(args.annotate):
+            print("verdict 不存在: %s" % args.annotate, file=sys.stderr)
+            return 2
+        with open(args.annotate, encoding="utf-8") as f:
+            v = json.load(f)
+        before = {k: x for k, x in v.items() if k != "claim_scope"}
+        ev = v.get("evidence")
+        bound = ev.get("result_pool_sha256") if isinstance(ev, dict) else None
+        scope = claim_scope_for_pool(bound_pool_sha=bound)
+        v["claim_scope"] = scope
+        after = {k: x for k, x in v.items() if k != "claim_scope"}
+        if before != after:
+            print("拒绝写回：原有判分字段被改动", file=sys.stderr)
+            return 2
+        with open(args.annotate, "w", encoding="utf-8") as f:
+            json.dump(v, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print("已追加结论作用域（原有判分字段逐键比对未变）：%s" %
+              os.path.relpath(args.annotate, ROOT))
+        print("  claim_scope=%s  private_proven=%s/%s  reason=%s" %
+              (scope["claim_scope"], scope["private_proven"], scope["total"],
+               scope["reason"]))
+        return 0
 
     ok, checks, ev = preflight(args)
     print("=== 前置守卫 ===")
@@ -305,8 +467,16 @@ def main():
         print("有效开跑 %d / 原始命中 %d / LLM_SOLVED %d / CLEAN_FAIL %d / NOT_ATTRIBUTABLE %d"
               % (v["effective_runs"], v["raw_solved_hits"], v["verdicts"]["LLM_SOLVED"],
                  v["verdicts"]["CLEAN_FAIL"], v["verdicts"]["NOT_ATTRIBUTABLE"]))
-        print("可引用=%s 能力率=%s 逐题明细=%s"
+        print("可引用=%s 链路读数=%s 逐题明细=%s"
               % (v["claimable"], v["capability_rate"], os.path.relpath(args.out, ROOT)))
+        scope = v.get("claim_scope") or {}
+        kind = scope.get("claim_scope", "unverified")
+        print("结论作用域=%s 私有题=%s/%s 审计证据一致=%s"
+              % (kind, scope.get("private_proven"), scope.get("total"),
+                 scope.get("audit_evidence_consistent")))
+        if kind != "capability_rate_candidate":
+            print("[!] 本批次数值仅为工程回归读数，不得对外称为能力率；原因：%s"
+                  % scope.get("reason", "作用域未验证"))
         return 0 if v["claimable"] else 1
 
     # 历史批次归因：不受前置失败阻挡 —— 判据的价值正是把不合格批次判成不可归因。
