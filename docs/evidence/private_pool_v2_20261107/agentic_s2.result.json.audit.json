@@ -1,0 +1,311 @@
+{
+  "summary": {
+    "tool_calls_total": 43,
+    "blocked": 1
+  },
+  "calls": [
+    {
+      "id": "pp_v1_02_rsa_low_exponent_cube",
+      "code": "import math\n\nn = 71452157763197317592333732103635479560623840255742592804197961701944226483533\ne = 3\nc = 143883482714523036559148117399459490747415092559826448500042612627718856\n\n# Since m^e < n (no wrap around), we can compute the integer cube root of c\n# m = c^(1/e) = c^(1/3)\n\n# Compute integer cube root\nm = round(c ** (1/3))\nprint(f\"Approximate cube root: {m}\")\nprint(f\"m^3 = {m**3}\")\nprint(f\"c = {c}\")\nprint(f\"Match: {m**3 == c}\")\n\n# Verify by computing m^3\nif m**3 == c:\n    print(f\"\\nm = {m}\")\n    print(f\"m in hex (lowercase, no leading zeros): {hex(m)[2:]}\")\n    print(f\"flag: flag{{{hex(m)[2:]}}}\")\nelse:\n    # Try nearby values\n    for i in range(m-5, m+6):\n        if i**3 == c:\n            print(f\"Found exact m = {i}\")\n            print(f\"m in hex: {hex(i)[2:]}\")\n            print(f\"flag: flag{{{hex(i)[2:]}}}\")\n            break",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_02_rsa_low_exponent_cube",
+      "code": "import math\n\nn = 71452157763197317592333732103635479560623840255742592804197961701944226483533\ne = 3\nc = 143883482714523036559148117399459490747415092559826448500042612627718856\n\n# Binary search for integer cube root\nlow = 0\nhigh = c\n\nwhile low <= high:\n    mid = (low + high) // 2\n    cube = mid ** 3\n    if cube == c:\n        m = mid\n        break\n    elif cube < c:\n        low = mid + 1\n    else:\n        high = mid - 1\nelse:\n    m = high  # floor cube root\n\nprint(f\"m = {m}\")\nprint(f\"m^3 = {m**3}\")\nprint(f\"c = {c}\")\nprint(f\"Difference: {c - m**3}\")\n\n# Check if m^e < n\nprint(f\"\\nm^e = {m**e}\")\nprint(f\"n = {n}\")\nprint(f\"m^e < n: {m**e < n}\")\n\nprint(f\"\\nm in hex (lowercase, no leading zeros): {hex(m)[2:]}\")\nprint(f\"flag: flag{{{hex(m)[2:]}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_03_vigenere_known_key",
+      "code": "ciphertext = \"xpcg{v6v37rp96k79}\"\nkey = \"SECAUTOMIND\"\nkey_len = len(key)\nkey_idx = 0\nplaintext = []\n\nfor c in ciphertext:\n    if c.isalpha():\n        # 转成小写，a=0\n        c_val = ord(c.lower()) - ord('a')\n        k_val = ord(key[key_idx].lower()) - ord('a')\n        # 解密：m = (c - k) mod 26\n        m_val = (c_val - k_val) % 26\n        m_char = chr(m_val + ord('a'))\n        plaintext.append(m_char)\n        key_idx = (key_idx + 1) % key_len\n    else:\n        plaintext.append(c)\n\nprint(''.join(plaintext))",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_04_lcg_predict_next",
+      "code": "a = 48271\nc = 11\nm = 2147483647\n\nx1 = 1737261445\nx2 = 110796256\nx3 = 1011792357\nx4 = 8281037\n\n# Verify the given values\ncalc_x2 = (a * x1 + c) % m\ncalc_x3 = (a * x2 + c) % m\ncalc_x4 = (a * x3 + c) % m\n\nprint(f\"Given x2: {x2}, Calculated x2: {calc_x2}, Match: {x2 == calc_x2}\")\nprint(f\"Given x3: {x3}, Calculated x3: {calc_x3}, Match: {x3 == calc_x3}\")\nprint(f\"Given x4: {x4}, Calculated x4: {calc_x4}, Match: {x4 == calc_x4}\")\n\n# Compute x5\nx5 = (a * x4 + c) % m\nprint(f\"\\nx5 = {x5}\")\nprint(f\"x5 in hex (8-digit, zero-padded): {x5:08x}\")\nprint(f\"flag: flag{{{x5:08x}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "code": "import base64\n\n# Step 1: Reverse Base64 encoding\nblob = \"RzRaVE9PSldNVTNUSU4zQ0dNWVRHT0pUR01aVFFNWlVHTVpER09CVEdZWlRPTVpXRzVTQT09PT0=\"\nstep1 = base64.b64decode(blob)\nprint(\"Step 1 (Base64 decode):\", step1)\nprint(\"Step 1 hex:\", step1.hex())\n",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "code": "import base64\n\n# Step 1: Reverse Base64 encoding\nblob = \"RzRaVE9PSldNVTNUSU4zQ0dNWVRHT0pUR01aVFFNWlVHTVpER09CVEdZWlRPTVpXRzVTQT09PT0=\"\nstep1 = base64.b64decode(blob)\nprint(\"Step 1 (Base64 decode):\", step1)\n\n# Step 2: Reverse Base32 encoding\nstep2 = base64.b32decode(step1)\nprint(\"Step 2 (Base32 decode):\", step2)\nprint(\"Step 2 hex:\", step2.hex())\n",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "code": "# Step 3: Reverse hex encoding\nhex_str = \"73796e747b313933383432383637367d\"\nstep3 = bytes.fromhex(hex_str)\nprint(\"Step 3 (hex decode):\", step3)\n\n# Step 4: Reverse ROT13 on lowercase ASCII letters only\ndef rot13_char(c):\n    if 'a' <= c <= 'z':\n        return chr((ord(c) - ord('a') + 13) % 26 + ord('a'))\n    elif 'A' <= c <= 'Z':\n        return c  # ROT13 only applies to lowercase\n    else:\n        return c\n\nresult = ''.join(rot13_char(chr(b)) for b in step3)\nprint(\"Step 4 (ROT13 decode):\", result)\n",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_07_licence_constraints",
+      "code": "# Verify the solution\nd0, d1, d2, d3, d4, d5, d6, d7 = 4, 8, 2, 7, 1, 5, 3, 6\n\nprint(f\"d0 * d1 == 32: {d0 * d1 == 32}\")\nprint(f\"d0 + d1 == 12: {d0 + d1 == 12}\")\nprint(f\"d1 > d0: {d1 > d0}\")\nprint(f\"d2 * d3 == 14: {d2 * d3 == 14}\")\nprint(f\"d2 < d3: {d2 < d3}\")\nprint(f\"d4 + d5 == 6: {d4 + d5 == 6}\")\nprint(f\"d4 * 2 + d5 == 7: {d4 * 2 + d5 == 7}\")\nprint(f\"d6 + d7 == 9: {d6 + d7 == 9}\")\nprint(f\"d7 == 2 * d6: {d7 == 2 * d6}\")\n\ncode = f\"{d0}{d1}{d2}{d3}{d4}{d5}{d6}{d7}\"\nprint(f\"\\nCode: {code}\")\nprint(f\"flag{{{code}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_08_discrete_log_small",
+      "code": "import math\n\np = 1000003\ng = 5\ny = 979732\n\n# Baby-step giant-step algorithm\ndef discrete_log(g, y, p):\n    m = math.isqrt(p) + 1\n    # Baby steps: g^j for j = 0, 1, ..., m-1\n    baby_steps = {}\n    gj = 1\n    for j in range(m):\n        if gj not in baby_steps:\n            baby_steps[gj] = j\n        gj = (gj * g) % p\n    \n    # Giant steps: y * g^(-im) for i = 0, 1, ..., m-1\n    g_inv_m = pow(g, -m, p)  # g^(-m) mod p\n    cur = y\n    for i in range(m):\n        if cur in baby_steps:\n            return i * m + baby_steps[cur]\n        cur = (cur * g_inv_m) % p\n    \n    return None\n\nx = discrete_log(g, y, p)\nprint(f\"x = {x}\")\n\n# Verify\nresult = pow(g, x, p)\nprint(f\"Verification: 5^{x} mod {p} = {result}\")\nprint(f\"Expected: {y}\")\nprint(f\"Match: {result == y}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_09_ctr_nonce_reuse",
+      "code": "import binascii\n\n# Given data\nplaintext_A = b\"session=guest;user=alice;role=viewer;ok=1\"\nciphertext_A_hex = \"58b31abe7b92b6cc5716df1bfd7164d8aa8419bb16bd3274fcd49bbb46ad21aa40d9028b1fcba385e3\"\nciphertext_B_hex = \"4dba08aa699cbbc70852d95bbd7829caff8b\"\n\n# Convert hex to bytes\nciphertext_A = binascii.unhexlify(ciphertext_A_hex)\nciphertext_B = binascii.unhexlify(ciphertext_B_hex)\n\nprint(f\"plaintext_A length: {len(plaintext_A)}\")\nprint(f\"ciphertext_A length: {len(ciphertext_A)}\")\nprint(f\"ciphertext_B length: {len(ciphertext_B)}\")\n\n# Step 1: Recover the keystream\n# Keystream = Plaintext_A XOR Ciphertext_A\nkeystream = bytes(a ^ b for a, b in zip(plaintext_A, ciphertext_A))\nprint(f\"\\nKeystream (hex): {keystream.hex()}\")\nprint(f\"Keystream length: {len(keystream)}\")\n\n# Step 2: Recover plaintext_B\n# Plaintext_B = Ciphertext_B XOR Keystream (only up to len(ciphertext_B))\nplaintext_B = bytes(a ^ b for a, b in zip(ciphertext_B, keystream))\nprint(f\"\\nPlaintext_B (hex): {plaintext_B.hex()}\")\nprint(f\"Plaintext_B: {plaintext_B}\")\nprint(f\"Plaintext_B (decoded): {plaintext_B.decode('utf-8', errors='replace')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v1_10_rsa_common_modulus",
+      "code": "n = 1132034722156551006219009010019895241096472734450123623970333012472031681782736305773230200240617\ne1 = 3\nc1 = 43935304231313707758693396911770170562283853823543965629\ne2 = 17\nc2 = 1077559906443806114796833408779500725157824003840631793531165625841460260536775992012913300843188\n\n# Extended Euclidean Algorithm to find a, b such that a*e1 + b*e2 = 1\ndef extended_gcd(a, b):\n    if a == 0:\n        return b, 0, 1\n    else:\n        gcd, x, y = extended_gcd(b % a, a)\n        return gcd, y - (b // a) * x, x\n\ngcd, a, b = extended_gcd(e1, e2)\nprint(f\"gcd(e1, e2) = {gcd}\")\nprint(f\"a = {a}, b = {b}\")\nprint(f\"Verification: {a}*{e1} + {b}*{e2} = {a*e1 + b*e2}\")\n\n# Since b is negative, we need to compute c2^(-1) mod n\n# m = c1^a * c2^b mod n = c1^a * (c2^(-1))^(-b) mod n\n# Actually: m = c1^a * c2^b mod n where b is negative\n# So m = c1^a * pow(c2, b, n) mod n\n\nm = pow(c1, a, n) * pow(c2, b, n) % n\nprint(f\"m = {m}\")\nprint(f\"m in hex (lowercase, no leading zeros) = {hex(m)[2:]}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_11_rsa_wiener_small_d",
+      "code": "import math\nfrom fractions import Fraction\n\ndef continued_fraction(x, y):\n    \"\"\"Generate continued fraction expansion of x/y\"\"\"\n    cf = []\n    while y:\n        cf.append(x // y)\n        x, y = y, x % y\n    return cf\n\ndef convergents(cf):\n    \"\"\"Generate convergents from continued fraction\"\"\"\n    if not cf:\n        return []\n    numers = [0, 1]\n    denoms = [1, 0]\n    for a in cf:\n        numers.append(a * numers[-1] + numers[-2])\n        denoms.append(a * denoms[-1] + denoms[-2])\n    return list(zip(numers[2:], denoms[2:]))\n\ndef wiener_attack(n, e):\n    \"\"\"Wiener's attack to recover private exponent d\"\"\"\n    cf = continued_fraction(e, n)\n    convs = convergents(cf)\n    \n    for k, d in convs:\n        if k == 0:\n            continue\n        # Check if ed ≡ 1 (mod k)\n        if (e * d) % k == 1:\n            # Verify d is the correct private exponent\n            # Check if d is small enough (Wiener's condition)\n            if d < n:\n                # Try to factor n using d\n                # From ed ≡ 1 mod φ(n), we have ed - 1 = kφ(n)\n                # φ(n) = (p-1)(q-1) = pq - p - q + 1 = n - (p+q) + 1\n                # So p+q = n - φ(n) + 1\n                phi = (e * d - 1) // k\n                s = n - phi + 1\n                # p+q = s, pq = n\n                # p and q are roots of x^2 - sx + n = 0\n                discriminant = s * s - 4 * n\n                if discriminant >= 0:\n                    sqrt_d = int(math.isqrt(discriminant))\n                    if sqrt_d * sqrt_",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_12_rsa_fermat_close_primes",
+      "code": "import math\nn = 1051350975622005816866177384005667538122802393068909523138299833864498932138997996898448634016713\na = math.isqrt(n)\nif a*a < n:\n    a += 1\nb2 = a*a - n\nprint('Starting a:', a)\nprint('b2:', b2)\n# We'll limit iterations to maybe 10 million to avoid infinite loop\nmax_iter = 10000000\nfor i in range(max_iter):\n    b = math.isqrt(b2)\n    if b*b == b2:\n        p = a - b\n        q = a + b\n        print('Found factors:', p, q)\n        print('p*q:', p*q)\n        break\n    # update\n    b2 += 2*a + 1\n    a += 1\nelse:\n    print('Not found within', max_iter, 'iterations')",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_12_rsa_fermat_close_primes",
+      "code": "p = 1025354073294686734900860491475873578192697472477\nh = hex(p)[2:]  # remove '0x'\nprint('hex length:', len(h))\nprint('hex:', h)\n# zero pad to 40 digits\nh40 = h.zfill(40)\nprint('padded:', h40)\nprint('flag: flag{' + h40 + '}')",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_13_rsa_hastad_broadcast_e3",
+      "code": "from Crypto.Util.number import long_to_bytes\nimport gmpy2\n\n# Given values\nn1 = 1177641646157692911282334319742210839510141791563551023480154051651272105150675970349454411424291\nc1 = 1136321059350824713051721243030355757165535975762767953102505120135606006417702832258980939923244\nn2 = 1238189315881844780965493332995184106263797645557130970257928170487524949482255161093498742800999\nc2 = 322118249811625571976854377971916773227302942582307679183873051860562815806004480001292357970169\nn3 = 689452349001421430666185878387156554481731406429612032298288351194449851783706812836147444366257\nc3 = 94097546330488826333122839155835347582027502636680326126901358094835988516403858001365017714695\n\n# Step 1: Use Chinese Remainder Theorem to find x = m^3 mod (n1*n2*n3)\n# We need to find x such that:\n# x ≡ c1 (mod n1)\n# x ≡ c2 (mod n2)\n# x ≡ c3 (mod n3)\n\nN = n1 * n2 * n3\nprint(f\"N = n1*n2*n3 = {N}\")\n\n# CRT implementation\ndef crt(c1, n1, c2, n2, c3, n3):\n    # Compute N = n1*n2*n3\n    N = n1 * n2 * n3\n    \n    # Compute Ni = N/ni\n    N1 = N // n1\n    N2 = N // n2\n    N3 = N // n3\n    \n    # Compute modular inverses\n    inv1 = pow(N1, -1, n1)\n    inv2 = pow(N2, -1, n2)\n    inv3 = pow(N3, -1, n3)\n    \n    # Compute result\n    x = (c1 * N1 * inv1 + c2 * N2 * inv2 + c3 * N3 * inv3) % N\n    return x, N\n\nx, N = crt(c1, n1, c2, n2, c3, n3)\nprint(f\"x = m^3 mod N = {x}\")\nprint(f\"N = {N}\")\n\n# Check if x < N (which it should be by definition of mod)\nprint(f\"x < N: {x < N}\")\n\n# Step 2: Check if m^3 < N, then ",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_13_rsa_hastad_broadcast_e3",
+      "code": "import gmpy2\n\n# Given values\nn1 = 1177641646157692911282334319742210839510141791563551023480154051651272105150675970349454411424291\nc1 = 1136321059350824713051721243030355757165535975762767953102505120135606006417702832258980939923244\nn2 = 1238189315881844780965493332995184106263797645557130970257928170487524949482255161093498742800999\nc2 = 322118249811625571976854377971916773227302942582307679183873051860562815806004480001292357970169\nn3 = 689452349001421430666185878387156554481731406429612032298288351194449851783706812836147444366257\nc3 = 94097546330488826333122839155835347582027502636680326126901358094835988516403858001365017714695\n\n# Step 1: Use Chinese Remainder Theorem to find x = m^3 mod (n1*n2*n3)\n# We need to find x such that:\n# x ≡ c1 (mod n1)\n# x ≡ c2 (mod n2)\n# x ≡ c3 (mod n3)\n\nN = n1 * n2 * n3\nprint(f\"N = n1*n2*n3 = {N}\")\n\n# CRT implementation\ndef crt(c1, n1, c2, n2, c3, n3):\n    # Compute N = n1*n2*n3\n    N = n1 * n2 * n3\n    \n    # Compute Ni = N/ni\n    N1 = N // n1\n    N2 = N // n2\n    N3 = N // n3\n    \n    # Compute modular inverses\n    inv1 = pow(N1, -1, n1)\n    inv2 = pow(N2, -1, n2)\n    inv3 = pow(N3, -1, n3)\n    \n    # Compute result\n    x = (c1 * N1 * inv1 + c2 * N2 * inv2 + c3 * N3 * inv3) % N\n    return x, N\n\nx, N = crt(c1, n1, c2, n2, c3, n3)\nprint(f\"x = m^3 mod N = {x}\")\nprint(f\"N = {N}\")\n\n# Check if x < N (which it should be by definition of mod)\nprint(f\"x < N: {x < N}\")\n\n# Step 2: Check if m^3 < N, then x = m^3 exactly\n# We need to verify this cond",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_13_rsa_hastad_broadcast_e3",
+      "code": "# Given values\nn1 = 1177641646157692911282334319742210839510141791563551023480154051651272105150675970349454411424291\nc1 = 1136321059350824713051721243030355757165535975762767953102505120135606006417702832258980939923244\nn2 = 1238189315881844780965493332995184106263797645557130970257928170487524949482255161093498742800999\nc2 = 322118249811625571976854377971916773227302942582307679183873051860562815806004480001292357970169\nn3 = 689452349001421430666185878387156554481731406429612032298288351194449851783706812836147444366257\nc3 = 94097546330488826333122839155835347582027502636680326126901358094835988516403858001365017714695\n\n# Step 1: Use Chinese Remainder Theorem to find x = m^3 mod (n1*n2*n3)\nN = n1 * n2 * n3\nprint(f\"N = n1*n2*n3 = {N}\")\n\n# CRT implementation\nN1 = N // n1\nN2 = N // n2\nN3 = N // n3\n\ninv1 = pow(N1, -1, n1)\ninv2 = pow(N2, -1, n2)\ninv3 = pow(N3, -1, n3)\n\nx = (c1 * N1 * inv1 + c2 * N2 * inv2 + c3 * N3 * inv3) % N\nprint(f\"x = m^3 mod N = {x}\")\n\n# Step 2: Take integer cube root of x\n# Binary search for cube root\ndef integer_cuberoot(n):\n    if n < 0:\n        raise ValueError(\"Cube root not defined for negative numbers\")\n    if n == 0:\n        return 0\n    \n    low = 0\n    high = n\n    \n    while low <= high:\n        mid = (low + high) // 2\n        mid_cubed = mid * mid * mid\n        \n        if mid_cubed == n:\n            return mid\n        elif mid_cubed < n:\n            low = mid + 1\n        else:\n            high = mid - 1\n    \n    return high  # Return floor of c",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_14_rsa_shared_prime_gcd",
+      "code": "import math\n\nn1 = 6587630615618457908800208112079290725975277737573933052832061968906092668390659140742208739924034121146237902213964516088464441485345472676806081426677883\nn2 = 4096430604468826680739222634624161721761494692336242836814350082174990384307746404066022386739166081210652973376537026745859688032097156438526962058747183\n\nshared_factor = math.gcd(n1, n2)\nprint(f\"Shared factor: {shared_factor}\")\nprint(f\"Hex (64-digit, zero-padded): {shared_factor:064x}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_15_rsa_small_factor_rho",
+      "code": "import math\nimport random\n\nn = 28144039916014824229176012435612155411241979957910512683644422846141104424094106232421\n\n# Try trial division up to some limit first\n# Since the small factor is around 2^32, let's try Pollard's Rho\n\ndef pollards_rho(n):\n    if n % 2 == 0:\n        return 2\n    if n % 3 == 0:\n        return 3\n    \n    while True:\n        c = random.randrange(1, n)\n        f = lambda x: (pow(x, 2, n) + c) % n\n        \n        x = random.randrange(2, n)\n        y = x\n        d = 1\n        \n        while d == 1:\n            x = f(x)\n            y = f(f(y))\n            d = math.gcd(abs(x - y), n)\n        \n        if d != n:\n            return d\n\n# Try Pollard's Rho\nfactor = pollards_rho(n)\nprint(f\"Found factor: {factor}\")\nprint(f\"Factor in hex: {hex(factor)}\")\nprint(f\"Factor hex length: {len(hex(factor)[2:])}\")\n\n# Verify\nprint(f\"n // factor = {n // factor}\")\nprint(f\"factor * (n // factor) = {factor * (n // factor)}\")\nprint(f\"n = {n}\")\nprint(f\"Match: {factor * (n // factor) == n}\")\n",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_16_cbc_iv_bitflip",
+      "code": "# Convert strings to bytes\noriginal_plaintext = b'role=guest;pad=0'\ndesired_plaintext = b'role=admin;pad=0'\n\n# Verify lengths\nprint(f\"Original plaintext length: {len(original_plaintext)}\")\nprint(f\"Desired plaintext length: {len(desired_plaintext)}\")\n\n# Convert IV and ciphertext from hex\niv = bytes.fromhex('f8f6a571dc1c3516477b4fbdd451c7db')\nciphertext_block_1 = bytes.fromhex('c47cb0d79eaf927e11188e6bbab126ff')\n\nprint(f\"IV: {iv.hex()}\")\nprint(f\"Ciphertext block 1: {ciphertext_block_1.hex()}\")\n\n# In CBC decryption: plaintext = AES_decrypt(ciphertext) XOR IV\n# So: AES_decrypt(ciphertext) = plaintext XOR IV\n\n# Compute the intermediate value (AES decryption output)\nintermediate = bytes(a ^ b for a, b in zip(original_plaintext, iv))\nprint(f\"Intermediate (AES_decrypt output): {intermediate.hex()}\")\n\n# For the desired plaintext: desired_IV = AES_decrypt(ciphertext) XOR desired_plaintext\n# desired_IV = intermediate XOR desired_plaintext\ndesired_iv = bytes(a ^ b for a, b in zip(intermediate, desired_plaintext))\nprint(f\"Desired IV: {desired_iv.hex()}\")\n\n# Alternative calculation: desired_IV = iv XOR original_plaintext XOR desired_plaintext\ndesired_iv_alt = bytes(iv[i] ^ original_plaintext[i] ^ desired_plaintext[i] for i in range(16))\nprint(f\"Desired IV (alternative): {desired_iv_alt.hex()}\")\n\n# Verify: decrypt with desired IV should give desired plaintext\nverify_plaintext = bytes(a ^ b for a, b in zip(intermediate, desired_iv))\nprint(f\"Verification plaintext: {verify_plaintext}\")\nprint(",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_17_dsa_nonce_reuse",
+      "code": "p = 6703903964971298549787012499102923063739682910296196688861780721860882015036773488400937149083451713845115311204581526857081010886708082745702719039929897\nq = 730750818665451459101842416358141509828089010293\ng = 454521630871517049063417292380003936668884799045899313069563494400510807783600909577028174797315320939118930733823173760494513624369546817730186687066085\ny = 4219783866977274177035504641707280144495886514535031007254167481181638262715878168893235248258427827009090683067761405690898568205086424083007193090784634\n\nz1 = 406971681856\nr = 15960815090131226076246380654202996004065593459\ns1 = 58936083337816667615847792098635652139310847760\n\nz2 = 736455481079\ns2 = 168223445005695664335669186990311898791156270919\n\n# Step 1: Compute k\n# k = (z1 - z2) * (s1 - s2)^-1 mod q\ndelta_z = (z1 - z2) % q\ndelta_s = (s1 - s2) % q\n\nprint(f\"delta_z = {delta_z}\")\nprint(f\"delta_s = {delta_s}\")\n\n# Compute modular inverse of delta_s mod q\ndelta_s_inv = pow(delta_s, -1, q)\nprint(f\"delta_s_inv = {delta_s_inv}\")\n\nk = (delta_z * delta_s_inv) % q\nprint(f\"k = {k}\")\n\n# Step 2: Compute x\n# x = (s1 * k - z1) * r^-1 mod q\nr_inv = pow(r, -1, q)\nprint(f\"r_inv = {r_inv}\")\n\nx = ((s1 * k - z1) % q) * r_inv % q\nprint(f\"x = {x}\")\nprint(f\"x (hex) = {hex(x)}\")\nprint(f\"x length: {len(hex(x)[2:])}\")\n\n# Format as flag\nx_hex = format(x, 'x').zfill(40)\nprint(f\"flag{{ {x_hex} }}\")\nprint(f\"flag{{{x_hex}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_18_lcg_unknown_params",
+      "code": "m = 2305843009213693951\nx1 = 2061594941873472188\nx2 = 984121417944716776\nx3 = 1306286328181573137\n\n# Compute a = (x3 - x2) * inv(x2 - x1) mod m\ndiff1 = (x2 - x1) % m\ndiff2 = (x3 - x2) % m\nprint(\"diff1:\", diff1)\nprint(\"diff2:\", diff2)\n\n# Compute modular inverse of diff1 mod m\ninv_diff1 = pow(diff1, -1, m)\nprint(\"inv_diff1:\", inv_diff1)\n\na = (diff2 * inv_diff1) % m\nprint(\"a:\", a)\n\n# Compute c = (x2 - a*x1) mod m\nc = (x2 - a * x1) % m\nprint(\"c:\", c)\n\n# Compute x4 = (a*x3 + c) mod m\nx4 = (a * x3 + c) % m\nprint(\"x4:\", x4)\n\n# Format as 16-digit lowercase hex, zero-padded\nhex_x4 = format(x4, '016x')\nprint(\"hex_x4:\", hex_x4)\nprint(\"flag{\", hex_x4, \"}\", sep='')",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_20_affine_bruteforce",
+      "code": "ciphertext = \"uklb{z0z3us15snz8n04n}\"\n\n# Values of a coprime to 26\na_values = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25]\n\ndef mod_inverse(a, m):\n    for i in range(1, m):\n        if (a * i) % m == 1:\n            return i\n    return None\n\ndef decrypt_affine(ciphertext, a, b):\n    a_inv = mod_inverse(a, 26)\n    if a_inv is None:\n        return None\n    \n    result = []\n    for ch in ciphertext:\n        if ch.islower():\n            c = ord(ch) - ord('a')\n            p = (a_inv * (c - b)) % 26\n            result.append(chr(p + ord('a')))\n        else:\n            result.append(ch)\n    return ''.join(result)\n\n# Try all combinations\nfor a in a_values:\n    for b in range(26):\n        plaintext = decrypt_affine(ciphertext, a, b)\n        if plaintext and plaintext.startswith('flag{'):\n            print(f\"a={a}, b={b}: {plaintext}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_21_crt_three_moduli",
+      "code": "from sympy.ntheory.modular import crt\n\nm1 = 140741303928167\na1 = 107322582129032\n\nm2 = 140738556431789\na2 = 91591923450716\n\nm3 = 140738324018869\na3 = 130400883417475\n\n# Use CRT\nx, M = crt([m1, m2, m3], [a1, a2, a3])\nprint(f\"x = {x}\")\nprint(f\"M = {M}\")\n\n# Convert to hex, zero-padded to 32 digits\nhex_str = format(x, '032x')\nprint(f\"hex = {hex_str}\")\nprint(f\"flag{{ {hex_str} }}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_21_crt_three_moduli",
+      "code": "# Manual CRT implementation\nm1 = 140741303928167\na1 = 107322582129032\n\nm2 = 140738556431789\na2 = 91591923450716\n\nm3 = 140738324018869\na3 = 130400883417475\n\n# Step 1: Combine first two congruences\n# x = a1 (mod m1)\n# x = a2 (mod m2)\n# M12 = m1 * m2\nM12 = m1 * m2\n\n# inv_m1 = m1^{-1} mod m2\ninv_m1_mod_m2 = pow(m1, -1, m2)\n# inv_m2 = m2^{-1} mod m1\ninv_m2_mod_m1 = pow(m2, -1, m1)\n\nx12 = (a1 * m2 * inv_m2_mod_m1 + a2 * m1 * inv_m1_mod_m2) % M12\nprint(f\"x12 = {x12}\")\n\n# Step 2: Combine with third congruence\n# x = x12 (mod M12)\n# x = a3 (mod m3)\nM = M12 * m3\n\ninv_M12_mod_m3 = pow(M12, -1, m3)\ninv_m3_mod_M12 = pow(m3, -1, M12)\n\nx = (x12 * m3 * inv_m3_mod_M12 + a3 * M12 * inv_M12_mod_m3) % M\nprint(f\"x = {x}\")\nprint(f\"M = {M}\")\n\n# Verify\nprint(f\"x mod m1 = {x % m1} (expected {a1})\")\nprint(f\"x mod m2 = {x % m2} (expected {a2})\")\nprint(f\"x mod m3 = {x % m3} (expected {a3})\")\n\n# Convert to hex, zero-padded to 32 digits\nhex_str = format(x, '032x')\nprint(f\"hex = {hex_str}\")\nprint(f\"flag{{{hex_str}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_22_dlog_bsgs_2e40",
+      "code": "import math\n\np = 1578226564139\ng = 5\ny = 1004808163004\n\n# Baby-step giant-step algorithm\nm = math.isqrt(p) + 1\n\n# Baby steps: store g^j mod p for j = 0..m\nbaby = {}\ngj = 1\nfor j in range(m):\n    if gj not in baby:\n        baby[gj] = j\n    gj = (gj * g) % p\n\n# Giant steps: compute y * (g^{-m})^i mod p\ng_m = pow(g, m, p)\ng_m_inv = pow(g_m, -1, p)  # modular inverse\n\ngi = y\nfor i in range(m):\n    if gi in baby:\n        x = i * m + baby[gi]\n        print(f\"Found x = {x}\")\n        print(f\"Verify: {pow(g, x, p)} == {y}: {pow(g, x, p) == y}\")\n        print(f\"Hex: {x:016x}\")\n        break\n    gi = (gi * g_m_inv) % p\nelse:\n    print(\"Not found\")\n",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_23_jwt_hs256_forge",
+      "code": "import hmac\nimport hashlib\n\nheader_b64url  = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\"\npayload_b64url = \"eyJzdWIiOiJndWVzdCIsInJvbGUiOiJ1c2VyIiwiZXhwIjoxNzk5OTk5OTk5fQ\"\nsigning_secret = \"fb8bbed94afb85fe64fc3f2f\"\n\ndata = f\"{header_b64url}.{payload_b64url}\"\ndigest = hmac.new(signing_secret.encode(), data.encode(), hashlib.sha256).hexdigest()\nprint(f\"flag{{{digest}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_24_sql_blind_inference",
+      "code": "alphabet = '0123456789abcdef'\n# Given sets for each position (as strings of characters)\nsets = [\n    set(),  # pos1\n    set('0123456'),  # pos2\n    set('0123'),  # pos3\n    set('0123456789abcde'),  # pos4\n    set('012'),  # pos5\n    set('0123456789a'),  # pos6\n    set('0123456789ab'),  # pos7\n    set('0123456789abcd'),  # pos8\n]\n\nsecret = []\nfor i, s in enumerate(sets, start=1):\n    # Find the smallest character not in s (the first missing in alphabet order)\n    # Actually we need the character that is > all in s and <= all not in s.\n    # Since s is a prefix of alphabet (as given), the character is the next after max(s) if s nonempty,\n    # else the first character '0' if s empty.\n    if not s:\n        ch = alphabet[0]\n    else:\n        # max character in s according to alphabet order\n        max_in_s = max(s, key=lambda c: alphabet.index(c))\n        # find the character that comes after max_in_s in alphabet\n        idx = alphabet.index(max_in_s) + 1\n        ch = alphabet[idx]\n    secret.append(ch)\nprint(''.join(secret))",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_25_pwn_stack_offset",
+      "code": "# Verify the stack layout calculation\n# Stack frame after prologue:\n# push rbp\n# mov rbp, rsp\n# sub rsp, 0x50\n\n# Stack layout (higher addresses at top):\n# [RBP+0x8]  = saved return address (8 bytes)\n# [RBP]      = saved RBP (8 bytes)\n# [RBP-0x8]  = stack canary (8 bytes)\n# [RBP-0x48] = start of buf\n\nbuf_start = 0x48   # offset from RBP\ncanary = 0x8       # offset from RBP\nsaved_ret = 0x8    # offset from RBP (positive = above RBP)\n\n# Distance from buf to saved return address\ndistance = buf_start + saved_ret\nprint(f\"Distance from buf to saved return address: {distance} bytes\")\nprint(f\"In hex: 0x{distance:02x}\")\n\n# Format as 16-digit zero-padded hex\nhex_str = f\"{distance:016x}\"\nprint(f\"16-digit hex: {hex_str}\")\n\nflag = f\"flag{{{hex_str}}}\"\nprint(f\"Flag: {flag}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_26_fmt_arg_index",
+      "code": "# Parse the output and find which %p conversion leaked the marker AAAA (0x41414141)\noutput = \"AAAA.eb1f172f.7e674ad0.f80703b4.bbd85c0c.996bc049.b9cff271.41414141.b769f95c.c0022207.ffe24ec3.7cb2980a.2b9b2372\"\n\n# Split by '.' to get the parts\nparts = output.split('.')\nprint(\"Parts:\", parts)\n\n# The first part is the literal \"AAAA\" marker\n# The remaining 12 parts are the outputs of %p conversions\nmarker = parts[0]\nprint(f\"Marker: {marker}\")\n\n# Check each %p output (parts[1] through parts[12])\nfor i, part in enumerate(parts[1:], start=1):\n    # Convert hex to bytes and check if it matches the marker\n    try:\n        hex_bytes = bytes.fromhex(part)\n        if hex_bytes == marker.encode():\n            print(f\"%p conversion #{i} leaked the marker! Value: {part}\")\n            print(f\"Index: {i}\")\n            print(f\"Flag: flag{{{i:016x}}}\")\n    except:\n        pass",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_28_fmt_hn_wrap",
+      "code": "# Let's analyze this format string bug problem step by step\n\ntarget = 0x1f3a6550\nprint(f\"Target value: 0x{target:08x}\")\n\n# In little-endian, split into low and high 16 bits\nlow_16 = target & 0xffff\nhigh_16 = (target >> 16) & 0xffff\n\nprint(f\"Low 16 bits (first %hn):  0x{low_16:04x} = {low_16}\")\nprint(f\"High 16 bits (second %hn): 0x{high_16:04x} = {high_16}\")\n\n# The first %hn writes the number of chars printed so far = low_16\n# The counter only grows, so if high_16 < low_16, we must wrap by adding 0x10000\n\nif high_16 < low_16:\n    wrapped_high = high_16 + 0x10000\n    print(f\"\\nSince {high_16} < {low_16}, we must wrap!\")\n    print(f\"Wrapped high value: 0x{wrapped_high:05x} = {wrapped_high}\")\n    print(f\"\\nThe second %hn must fire when the printed-character count reaches {wrapped_high} (0x{wrapped_high:05x})\")\nelse:\n    print(f\"\\nNo wrap needed. Second %hn fires at count = {high_16}\")\n\n# Verify: format string would be something like:\n# \"%25904x%8$hn%47626x%10$hn\"\n# First %hn: counter = 25904 = 0x6550 ✓\n# Second %hn: counter = 25904 + 47626 = 73530 = 0x11f3a ✓\n# 0x11f3a truncated to 16 bits = 0x1f3a ✓\n\nprint(f\"\\nVerification:\")\nprint(f\"Second %hn count: {low_16} + 47626 = {low_16 + 47626}\")\nprint(f\"0x{low_16 + 47626:05x} truncated to 16 bits = 0x{(low_16 + 47626) & 0xffff:04x}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_28_fmt_hn_wrap",
+      "code": "# Final answer calculation\ntarget = 0x1f3a6550\nlow_16 = target & 0xffff\nhigh_16 = (target >> 16) & 0xffff\n\nprint(f\"Target: 0x{target:08x}\")\nprint(f\"Low 16 bits: 0x{low_16:04x} ({low_16})\")\nprint(f\"High 16 bits: 0x{high_16:04x} ({high_16})\")\n\n# Since high_16 < low_16, wrap by adding 0x10000\nwrapped_high = high_16 + 0x10000\nprint(f\"\\nWrapped high value: 0x{wrapped_high:05x} ({wrapped_high})\")\n\n# Verify the format string construction\n# First %hn writes low_16 = 25936\n# Need to print (wrapped_high - low_16) more chars before second %hn\nchars_between = wrapped_high - low_16\nprint(f\"Chars to print between %hn's: {chars_between}\")\n\n# Verify second %hn writes correct value\nsecond_write = wrapped_high & 0xffff\nprint(f\"Second %hn writes: {wrapped_high} & 0xffff = 0x{second_write:04x} ({second_write})\")\nprint(f\"Expected: 0x{high_16:04x} ({high_16})\")\nprint(f\"Match: {second_write == high_16}\")\n\n# The flag is the 16-digit hex of wrapped_high\nflag_value = f\"{wrapped_high:016x}\"\nprint(f\"\\nFlag value (16-digit hex): {flag_value}\")\nprint(f\"flag{{{flag_value}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_29_licence_xor_table",
+      "code": "table_hex = \"27242e3126515e4b4eb7b6bfadf9c19e858cdafff9a9\"\ntable = bytes.fromhex(table_hex)\nprint(f\"Table length: {len(table)}\")\n\nresult = bytearray()\nfor i in range(len(table)):\n    key = (0x41 + 7 * i) & 0xff\n    input_byte = table[i] ^ key\n    result.append(input_byte)\n    print(f\"i={i}: table=0x{table[i]:02x}, key=0x{key:02x}, input=0x{input_byte:02x} ('{chr(input_byte) if 32 <= input_byte < 127 else '?'}')\")\n\nprint(f\"\\nRecovered input: {result}\")\nprint(f\"As string: {result.decode('ascii', errors='replace')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_30_vm_bytecode_trace",
+      "code": "bytecode = bytes.fromhex('01d504ea028b030205c706c504860271033e061f')\n\nacc = 0\ni = 0\nwhile i < len(bytecode):\n    opcode = bytecode[i]\n    imm = bytecode[i+1]\n    if opcode == 0x01:  # PUSH\n        acc = imm\n    elif opcode == 0x02:  # ADD\n        acc = (acc + imm) % 65536\n    elif opcode == 0x03:  # XOR\n        acc = (acc ^ imm) % 65536\n    elif opcode == 0x04:  # MUL\n        acc = (acc * imm) % 65536\n    elif opcode == 0x05:  # ROL\n        shift = imm % 16\n        acc = ((acc << shift) | (acc >> (16 - shift))) & 0xFFFF\n    elif opcode == 0x06:  # SUB\n        acc = (acc - imm) % 65536\n    i += 2\n    print(f\"After opcode 0x{opcode:02x} imm 0x{imm:02x}: acc = 0x{acc:04x} ({acc})\")\n\nprint(f\"\\nFinal accumulator: 0x{acc:04x}\")\nprint(f\"Flag: flag{{{acc:04x}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_31_xtea_decrypt",
+      "code": "import struct\n\ndef xtea_decrypt(block, key, rounds=32, delta=0x9E3779B9):\n    \"\"\"Decrypt a single 64-bit block using XTEA\"\"\"\n    v0, v1 = struct.unpack('>II', block)  # big-endian\n    k0, k1, k2, k3 = key\n    \n    sum_val = (delta * rounds) & 0xFFFFFFFF\n    \n    for i in range(rounds):\n        # Decrypt v1 first (reverse order)\n        v1 = (v1 - ((((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum_val + key[sum_val & 3]))) & 0xFFFFFFFF\n        sum_val = (sum_val - delta) & 0xFFFFFFFF\n        # Then decrypt v0\n        v0 = (v0 - ((((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum_val + key[(sum_val >> 11) & 3]))) & 0xFFFFFFFF\n    \n    return struct.pack('>II', v0, v1)\n\n# Given data\nkey = [0xd0ef70d1, 0x73994e4f, 0x9501a036, 0x7d3e85e4]\nciphertext_hex = \"9c762f8a50ba8b740dde2bf0c4a6366dbdd0ac54d957d85baca373604f0c8a72\"\nciphertext = bytes.fromhex(ciphertext_hex)\n\nprint(f\"Ciphertext length: {len(ciphertext)} bytes\")\nprint(f\"Number of blocks: {len(ciphertext) // 8}\")\n\n# Decrypt each block\nplaintext = b''\nfor i in range(0, len(ciphertext), 8):\n    block = ciphertext[i:i+8]\n    decrypted = xtea_decrypt(block, key)\n    plaintext += decrypted\n    print(f\"Block {i//8}: {block.hex()} -> {decrypted.hex()} -> {decrypted}\")\n\nprint(f\"\\nFull plaintext (hex): {plaintext.hex()}\")\nprint(f\"Full plaintext (raw): {plaintext}\")\nprint(f\"Full plaintext (repr): {repr(plaintext)}\")\n\n# Extract flag (strip NUL padding)\nflag = plaintext.rstrip(b'\\x00')\nprint(f\"\\nFlag: {flag.decode('ascii', errors='replace')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_31_xtea_decrypt",
+      "code": "import struct\n\ndef xtea_decrypt(block, key, rounds=32, delta=0x9E3779B9):\n    \"\"\"Decrypt a single 64-bit block using XTEA - corrected version\"\"\"\n    v0, v1 = struct.unpack('>II', block)  # big-endian\n    k0, k1, k2, k3 = key\n    \n    sum_val = (delta * rounds) & 0xFFFFFFFF\n    \n    for i in range(rounds):\n        # Decrypt v1 first (undo the last operation from encryption)\n        v1 = (v1 - ((((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum_val + key[(sum_val >> 11) & 3]))) & 0xFFFFFFFF\n        sum_val = (sum_val - delta) & 0xFFFFFFFF\n        # Then decrypt v0\n        v0 = (v0 - ((((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum_val + key[sum_val & 3]))) & 0xFFFFFFFF\n    \n    return struct.pack('>II', v0, v1)\n\n# Given data\nkey = [0xd0ef70d1, 0x73994e4f, 0x9501a036, 0x7d3e85e4]\nciphertext_hex = \"9c762f8a50ba8b740dde2bf0c4a6366dbdd0ac54d957d85baca373604f0c8a72\"\nciphertext = bytes.fromhex(ciphertext_hex)\n\nprint(f\"Ciphertext length: {len(ciphertext)} bytes\")\nprint(f\"Number of blocks: {len(ciphertext) // 8}\")\n\n# Decrypt each block\nplaintext = b''\nfor i in range(0, len(ciphertext), 8):\n    block = ciphertext[i:i+8]\n    decrypted = xtea_decrypt(block, key)\n    plaintext += decrypted\n    print(f\"Block {i//8}: {block.hex()} -> {decrypted.hex()} -> {repr(decrypted)}\")\n\nprint(f\"\\nFull plaintext (hex): {plaintext.hex()}\")\nprint(f\"Full plaintext (raw): {repr(plaintext)}\")\n\n# Extract flag (strip NUL padding)\nflag = plaintext.rstrip(b'\\x00')\nprint(f\"\\nFlag: {flag.decode('ascii', errors='replace')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_32_rc4_decrypt",
+      "code": "def rc4_ksa(key):\n    \"\"\"Key Scheduling Algorithm\"\"\"\n    S = list(range(256))\n    j = 0\n    for i in range(256):\n        j = (j + S[i] + key[i % len(key)]) % 256\n        S[i], S[j] = S[j], S[i]\n    return S\n\ndef rc4_prga(S, length):\n    \"\"\"Pseudo-Random Generation Algorithm\"\"\"\n    i = 0\n    j = 0\n    keystream = []\n    for _ in range(length):\n        i = (i + 1) % 256\n        j = (j + S[i]) % 256\n        S[i], S[j] = S[j], S[i]\n        keystream.append(S[(S[i] + S[j]) % 256])\n    return keystream\n\ndef rc4_decrypt(key, ciphertext):\n    S = rc4_ksa(key)\n    keystream = rc4_prga(S, len(ciphertext))\n    plaintext = bytes([c ^ k for c, k in zip(ciphertext, keystream)])\n    return plaintext\n\n# Key is 10-byte ASCII string \"10624f1de4\"\nkey_str = \"10624f1de4\"\nkey = key_str.encode('ascii')\nprint(f\"Key (ASCII): {key}\")\nprint(f\"Key length: {len(key)} bytes\")\n\n# Ciphertext is hex\nciphertext_hex = \"3836e75b5f0a3687211895667eb8d728b99b82d70de7\"\nciphertext = bytes.fromhex(ciphertext_hex)\nprint(f\"Ciphertext length: {len(ciphertext)} bytes\")\n\n# Decrypt\nplaintext = rc4_decrypt(key, ciphertext)\nprint(f\"Plaintext (hex): {plaintext.hex()}\")\nprint(f\"Plaintext (raw bytes): {plaintext}\")\nprint(f\"Plaintext (ASCII if printable): {plaintext.decode('ascii', errors='replace')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_33_custom_base64",
+      "code": "import base64\n\n# Standard Base64 alphabet\nstandard_alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/\"\n\n# Custom alphabet\ncustom_alphabet = \"G50aOsHSD+vQw6ydM4bXBUr2ARu/hTnVL7WCNKtYjEgq8ix3mZcJPoFIzpfk9e1l\"\n\n# Create reverse mapping: custom_char -> standard_char\nreverse_map = {}\nfor i, c in enumerate(custom_alphabet):\n    reverse_map[c] = standard_alphabet[i]\n\nprint(\"Reverse mapping (first 10):\", {k: reverse_map[k] for k in list(reverse_map.keys())[:10]})\n\n# Encoded string\nencoded = \"RtZ7RIiKAXGcwHsWAJKtwFAZ6a6NVM==\"\n\n# Convert encoded string from custom base64 to standard base64\nstandard_encoded = \"\"\nfor ch in encoded:\n    if ch == '=':\n        standard_encoded += '='\n    else:\n        standard_encoded += reverse_map[ch]\n\nprint(\"Standard Base64:\", standard_encoded)\n\n# Decode\ndecoded = base64.b64decode(standard_encoded)\nprint(\"Decoded:\", decoded)\nprint(\"As ASCII:\", decoded.decode('ascii'))",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_34_png_ihdr_crc",
+      "code": "import zlib\n\n# The given hex string\nhex_str = \"0000000d494844520000b32a000011510806000000\"\n\n# Parse the chunk\nlength_hex = hex_str[:8]  # 4 bytes\ntype_hex = hex_str[8:16]  # 4 bytes\ndata_hex = hex_str[16:]   # remaining bytes\n\nprint(f\"Length (hex): {length_hex}\")\nprint(f\"Type (hex): {type_hex}\")\nprint(f\"Type (ASCII): {bytes.fromhex(type_hex).decode('ascii')}\")\nprint(f\"Data (hex): {data_hex}\")\nprint(f\"Data length: {len(data_hex)//2} bytes\")\n\n# CRC-32 is computed over type + data (NOT over length)\ncrc_input = type_hex + data_hex\ncrc_bytes = bytes.fromhex(crc_input)\n\nprint(f\"\\nCRC input (hex): {crc_input}\")\nprint(f\"CRC input length: {len(crc_bytes)} bytes\")\n\n# Compute CRC-32 using zlib (standard CRC-32/ISO-HDLC)\ncrc = zlib.crc32(crc_bytes) & 0xffffffff\nprint(f\"\\nCRC-32: {crc:#010x}\")\nprint(f\"CRC-32 (16-digit lowercase hex, zero-padded): {crc:016x}\")\n\nflag = f\"flag{{{crc:016x}}}\"\nprint(f\"\\nFlag: {flag}\")",
+      "allowed": false,
+      "reasons": [
+        "fs-access"
+      ],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_34_png_ihdr_crc",
+      "code": "import zlib\n\nhex_str = \"0000000d494844520000b32a000011510806000000\"\ntype_hex = hex_str[8:16]\ndata_hex = hex_str[16:]\ncrc_bytes = bytes.fromhex(type_hex + data_hex)\ncrc = zlib.crc32(crc_bytes) & 0xffffffff\nprint(f\"flag{{{crc:016x}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_36_gzip_b64_nest",
+      "code": "import gzip\nimport base64\n\nblob_hex = \"1f8b08000000000002ff8bcaadc888322eaef4cd0aca8cccf5ac880cf1caf6350acaf2770f2d4f0bb4b50500ac205a8a20000000\"\n\n# Step 1: Convert hex to bytes\nblob_bytes = bytes.fromhex(blob_hex)\nprint(f\"Blob bytes length: {len(blob_bytes)}\")\nprint(f\"First bytes: {blob_bytes[:4].hex()}\")\n\n# Step 2: Decompress gzip\ndecompressed = gzip.decompress(blob_bytes)\nprint(f\"Decompressed bytes: {decompressed}\")\nprint(f\"Decompressed as ASCII: {decompressed.decode('ascii')}\")\n\n# Step 3: The decompressed text is a Base64 string, decode it\nb64_string = decompressed.decode('ascii')\nflag_bytes = base64.b64decode(b64_string)\nprint(f\"Flag bytes: {flag_bytes}\")\nprint(f\"Flag: {flag_bytes.decode('ascii')}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_38_posix_time_delta",
+      "code": "from datetime import datetime, timezone\n\n# Parse event A (ISO 8601)\nevent_a = datetime.fromisoformat(\"2026-11-06T12:43:31Z\")\nevent_a_unix = int(event_a.timestamp())\nprint(f\"Event A (UNIX seconds): {event_a_unix}\")\n\n# Event B (UNIX seconds)\nevent_b = 1794055463\nprint(f\"Event B (UNIX seconds): {event_b}\")\n\n# Calculate delta (B - A)\ndelta = event_b - event_a_unix\nprint(f\"Delta (B - A) in seconds: {delta}\")\n\n# Convert to 16-digit lowercase hex, zero-padded\nhex_result = format(delta, '016x')\nprint(f\"16-digit hex: {hex_result}\")\n\n# Final flag\nflag = f\"flag{{{hex_result}}}\"\nprint(f\"Flag: {flag}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    },
+    {
+      "id": "pp_v2_40_ecb_block_detect",
+      "code": "import hashlib\n\n# The repeated 16-byte block from blob 2 (ECB mode)\nblock_hex = \"c8c68f73a0b9e0973f6f9c36061a3f88\"\nblock_bytes = bytes.fromhex(block_hex)\n\n# Hash with SHA-256\ndigest = hashlib.sha256(block_bytes).hexdigest()\nprint(f\"SHA-256 digest: {digest}\")\nprint(f\"First 32 hex chars: {digest[:32]}\")\nprint(f\"Flag: flag{{{digest[:32]}}}\")",
+      "allowed": true,
+      "reasons": [],
+      "artifact_mode": false
+    }
+  ]
+}

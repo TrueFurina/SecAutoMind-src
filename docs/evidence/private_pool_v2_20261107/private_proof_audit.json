@@ -1,0 +1,16 @@
+{
+  "anchored": true,
+  "anchored_count": 40,
+  "contract": "private-pool-proof/v1",
+  "per_problem_rejections": {},
+  "pool_path": "data/ctf_benchmark/private_benchmark_v2.json",
+  "pool_sha256": "bce2478826cd828086ca8c1ba9cae2cce289428ee5b35a3296f6fc778ac1f056",
+  "prior_cutoff": "2025-01-01",
+  "public_pools_missing": [],
+  "public_truth_hashes_loaded": 214,
+  "reasons": [],
+  "registry_path": "data/ctf_benchmark/private_pool_registry_v2.json",
+  "registry_sha256": "7499e21b97baf03bca47fd4c1e5d14d1cb5377610165c77a953cfd33bf6406b6",
+  "tool": "scripts/audit_private_proof.py::assess",
+  "total": 40
+}
