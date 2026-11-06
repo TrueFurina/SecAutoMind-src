@@ -81,11 +81,13 @@ def verify_flag(search_text, expected_sha):
 # provider 配置：key 一律从环境变量 / HKCU\Environment 读取，绝不硬编码。
 PROVIDERS = {
     "stepfun": {
-        "api_base": "https://api.stepfun.com/step_plan/v1",
-        "key_env": "STEPFUN_API_KEY",
-        "base_url_env": None,
-        "models_by_category": {"crypto": "step-3.5-flash", "web": "step-3.7-flash", "misc": "step-3.7-flash"},
-        "default_model": "step-3.7-flash",
+        # 2026-11-04 实测：旧端点 step_plan/v1 与旧 key_env 已不匹配当前环境。
+        # 现网 base/key 走 STEP_BASE_URL + STEP_API_KEY（与 docs/evidence/stepfun_jsonmode_AB 预注册口径一致）。
+        "api_base": "https://api.stepfun.com/v1",
+        "key_env": "STEP_API_KEY",
+        "base_url_env": "STEP_BASE_URL",
+        "models_by_category": {"crypto": "step-3.5-flash", "web": "step-3.5-flash", "misc": "step-3.5-flash"},
+        "default_model": "step-3.5-flash",
         "concurrency_cap": 5,
         "supports_tools": False,
         "reasoning_model": False,
@@ -110,6 +112,21 @@ PROVIDERS = {
         "concurrency_cap": 5,          # 账号级并发池 = 5（换机器不扩容）
         "supports_tools": True,
         "reasoning_model": True,       # 必须用 max_completion_tokens
+    },
+    "dashscope": {
+        # 阿里云百炼 OpenAI 兼容端点。2026-11-07 实测 /models 182 个模型、
+        # 候选 10 个里 9 个能正常返回 finish_reason=tool_calls
+        # （qwen3.7-flash 报 403 Free quota exhausted）。
+        # 同一 key 下还托管 deepseek-v4.1-flash / kimi-k3 / MiniMax-M2.5 等第三方模型，
+        # 故可用一个 provider 做跨模型对照，--model 逐次覆盖即可。
+        "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "key_env": "DASHSCOPE_API_KEY",
+        "base_url_env": "DASHSCOPE_BASE_URL",
+        "models_by_category": {},
+        "default_model": "qwen3.8-max-0902",
+        "concurrency_cap": 6,
+        "supports_tools": True,
+        "reasoning_model": False,
     },
 }
 
@@ -739,6 +756,12 @@ def main():
     summary = {
         "provider": args.provider,
         "model": cfg["default_model"],
+        # 实际生效的模型：--model 覆盖时 details 里逐行是覆盖值，而上面 "model" 恒为
+        # provider 默认值。2026-11-07 做多模型对照时发现：同一 provider 换模型跑，
+        # summary.model 会全部写成同一个默认名，结果文件无法自证用了哪个模型（F-10 同类）。
+        # 这里只**追加**字段、不改旧字段，保证历史读数的口径一字不变。
+        "model_override": args.model,
+        "models_used": sorted({str(r.get("model")) for r in results if r.get("model")}),
         "slice": args.slice,
         "artifact_dir": args.artifact_dir,
         "artifact_mode": bool(args.artifact_dir),
