@@ -143,6 +143,17 @@ jobs:
       # 模式矩阵全绿而验证覆盖为 0。现从 -v 输出回读每个测试名的判定行，缺一即红。
       - name: HITL boundary gate self-test (no-tests-to-run must NOT pass)
         run: python scripts/run_hitl_boundary_test.py
+      # agentic 对照的**前提**自测（2026-11-07）。这两个脚本产出/保证「同模型只切换
+      # agentic/pure_llm」这个对照成立；任一静默失效，跑批会退化或给出未被隔离的成绩：
+      #   1) wrapper：patch 必须生效且幂等、源码内对 PROVIDERS 的赋値恰 1 处
+      #      （上游键改名会让 --agentic 静默退化成 pure_llm，而日志仍写 --agentic）
+      #   2) 隔离证据：解析层 4 例 + 真实探测 1 例（可达端口不得误报 BLOCKED，
+      #      否则脚本会把「能连」写成「已隔离」，整套证据不可信）
+      # 两者均只连 127.0.0.1，不需要外网/密钥。
+      - name: Agentic wrapper self-test (patch must apply, be idempotent, single write)
+        run: python scripts/run_agentic_stepfun_test.py
+      - name: Agentic isolation proof self-test (reachable port must NOT report blocked)
+        run: python scripts/gen_agentic_isolation_proof.py --selftest
       - name: HITL failure-boundary check (deterministic modes)
         run: python scripts/run_hitl_boundary.py --check
       - name: Build

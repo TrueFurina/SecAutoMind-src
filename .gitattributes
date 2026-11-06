@@ -33,3 +33,11 @@
 # 会得到不同哈希 → 本地 anchored=True、线上 False。故对池与 manifest 关闭转换。
 data/ctf_benchmark/private_benchmark_v1.json           -text
 data/ctf_benchmark/private_benchmark_v1.manifest.json  -text
+
+# ── 证据文件字节级稳定（2026-11-07）──────────────────────────────
+# verdict 里登记了 result_file_sha256 / pool_sha256 等文件哈希，作为证据链的一环。
+# Windows 工作树是 core.autocrlf=true，若不锁死行尾，同一份证据在本地（CRLF）与
+# CI/Linux（LF）会算出不同哈希 → 复现者 check-out 后「哈希对不上」，误判证据被篡改。
+# 证据面一律 -text：入库即字节，不做任何行尾转换。
+docs/evidence/**/*.json  -text
+docs/evidence/**/*.log   -text

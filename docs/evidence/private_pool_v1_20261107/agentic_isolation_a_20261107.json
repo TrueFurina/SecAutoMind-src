@@ -1,0 +1,70 @@
+{
+  "af_unix_ok": true,
+  "caveats": [
+    "本证据只对同 UID 的跑批成立；以其他 UID 执行跑批时规则不覆盖，须重新生成。",
+    "证明的是「该 UID 下所有 TCP 目的（除放行的 API IP:443）被 REJECT」，不证明模型不会用 DNS/ICMP 等其它通道（本项目模型代码路径不提供这些出口）。",
+    "REJECT 而非 DROP 是刻意选择：拒绝必须可判定（errno=111），不允许退化成 supertimeout 那种「看起来没连上」的不可判定状态。"
+  ],
+  "created_at": "2026-11-07T01:59:51+0800",
+  "ip_direct_blocked": true,
+  "mechanism": "iptables owner(uid) 匹配 + REJECT --reject-with icmp-port-unreachable",
+  "note": "private_benchmark_v1 agentic 对照跑批（同模型 step-3.5-flash，只切换 agentic/pure_llm）",
+  "probe": {
+    "af_unix": {
+      "ok": true,
+      "raw": "AF_UNIX_OK"
+    },
+    "child_launch_form": [
+      "python",
+      "-I",
+      "-c",
+      "<code>"
+    ],
+    "internal": {
+      "blocked": true,
+      "err": "ConnectionRefusedError",
+      "errno": 111,
+      "raw": "BLOCKED|ConnectionRefusedError|111",
+      "target": "172.16.222.99:22",
+      "verdict": "BLOCKED"
+    },
+    "public": {
+      "blocked": true,
+      "err": "ConnectionRefusedError",
+      "errno": 111,
+      "raw": "BLOCKED|ConnectionRefusedError|111",
+      "target": "1.1.1.1:443",
+      "verdict": "BLOCKED"
+    },
+    "topology": "AF_UNIX 跨进程收发 2 字节；IP 直连两个目的（内网 + 公网）"
+  },
+  "problems": [],
+  "run_binding": {
+    "command": [
+      "python3",
+      "scripts/run_agentic_stepfun.py",
+      "--benchmark",
+      "data/ctf_benchmark/private_benchmark_v1.json",
+      "--provider",
+      "stepfun",
+      "--agentic",
+      "--concurrency",
+      "1",
+      "--timeout",
+      "150",
+      "--max-iter",
+      "8",
+      "--wall-budget",
+      "600",
+      "--out",
+      "/tmp/ag10.result.json"
+    ],
+    "command_sha256": "1b2a172a5ea0c29bdf3c41a8c0f907daffe300af3b436b10e0b807491288d3ac",
+    "probed_at": "2026-11-07T01:59:51+0800",
+    "subprocess_ip_direct_blocked": true
+  },
+  "schema": "agentic_isolation_proof/v1",
+  "scope": "本次跑批的解题子进程（subprocess [python,-I,-c]），不是 Go 探测二进制；覆盖条件是「跑批以同一 UID 执行」",
+  "uid": 995,
+  "user": "ctfsbx"
+}
