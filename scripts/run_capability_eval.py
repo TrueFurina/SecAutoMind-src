@@ -268,7 +268,8 @@ def _fixed_temperature_proven():
     return False, "请求体未显式固定 temperature（vals=%r）" % vals
 
 
-def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=None):
+def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=None,
+                         registry_path=PRIVATE_PROOF_REGISTRY):
     """题源先验 → 本批次「结论作用域」，代码重算、fail-closed。
 
     `claimable=True` 只说明链路合规、格式可引用；它**不代表**这个数值可以叫
@@ -302,7 +303,7 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         "private_proof_reason": "",
         "private_proof_contract": audit_private_proof.CONTRACT,
         "private_proof_registry_path": os.path.relpath(
-            PRIVATE_PROOF_REGISTRY, ROOT).replace("\\", "/"),
+            registry_path, ROOT).replace("\\", "/"),
         "reason": "",
     }
     if not os.path.isfile(pool_path):
@@ -310,7 +311,7 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
         return scope
     # 私有性外部锚点：代码重算，fail-closed。异常也不许当成「已验证」。
     try:
-        proof = audit_private_proof.assess(pool_path, PRIVATE_PROOF_REGISTRY,
+        proof = audit_private_proof.assess(pool_path, registry_path,
                                            require_tracked=True)
     except Exception as exc:  # pragma: no cover - 环境异常必须降级而非崩溃
         proof = {"anchored": False, "anchored_count": 0,
@@ -656,7 +657,8 @@ def preflight(args):
 
 
 def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
-               auto_prove=True, pool=POOL, prior_audit=PRIOR_AUDIT):
+               auto_prove=True, pool=POOL, prior_audit=PRIOR_AUDIT,
+               registry=PRIVATE_PROOF_REGISTRY):
     result = json.load(open(result_path, encoding="utf-8"))
     os.makedirs(WORKDIR, exist_ok=True)
     if mode == "pure_llm" and auto_prove:
@@ -677,7 +679,8 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
     v = judge_run(result, questions, ev, leak_ids, leak_ok, trained, trained_ok)
     # 结论作用域由代码重算，不读人工声明；绑定指纹不一致直接 fail-closed。
     v["claim_scope"] = claim_scope_for_pool(pool_path=pool, audit_path=prior_audit,
-                                             bound_pool_sha=ev.get("result_pool_sha256"))
+                                             bound_pool_sha=ev.get("result_pool_sha256"),
+                                             registry_path=registry)
     v["scoring_variant_gap"] = scoring_gap_fragment(result_path)
     # §19：只标注结构不可解题，不改判分/不重算 rate/不剔分母。
     v["attachment_dependency"] = attachment_dependency_fragment(result_path, pool, command)
@@ -872,6 +875,16 @@ def scope_selftest():
           s3["claim_scope"], "engineering_regression_only")
     check("无锚点时 private_proof_anchored=False",
           s3["private_proof_anchored"], False)
+    # 3c. registry 路径必须是可覆盖的显式参数：扩池后若沿用默认注册表，
+    #     R0 的 pool_sha256 会对不上。覆盖后"没有可用锚点"必须降级，
+    #     而不是悄悄沿用上一个池的 anchored=True（换池洗白的另一条路径）。
+    miss_reg = os.path.join(tmpdir, "registry_missing.json")
+    s3c = claim_scope_for_pool(pool_p, audit_p, registry_path=miss_reg)
+    check("registry 路径可覆盖（作用域如实记录）",
+          s3c["private_proof_registry_path"],
+          os.path.relpath(miss_reg, ROOT).replace("\\", "/"))
+    check("覆盖到缺失注册表 ⇒ anchored=False",
+          s3c["private_proof_anchored"], False)
     # 3b. 证明 capability_rate_candidate 不是不可达红灯：注入一份合规锚点结论。
     #     仅本自测局部打桩；生产调用路径没有任何注入参数。
     from unittest import mock
@@ -920,6 +933,9 @@ def main():
     ap.add_argument("--manifest", default=MANIFEST, help="题池指纹 manifest")
     ap.add_argument("--prior-audit", default=PRIOR_AUDIT,
                     help="题源先验审计证据（换池必须同步换，否则 claim_scope=unverified）")
+    ap.add_argument("--registry", default=PRIVATE_PROOF_REGISTRY,
+                    help=("私有性外部锚点注册表（默认 v1；扩池后必须指向与 --pool 同源的"
+                          "注册表，否则 R0 的 pool_sha256 对不上 ⇒ anchored=False）"))
     ap.add_argument("--out", default=os.path.join(WORKDIR, "verdict.auto.json"))
     ap.add_argument("--selftest", action="store_true",
                     help="链路自测：判据变异验证 + 合成合规批次的正向结论（不是评测结果）")
@@ -944,7 +960,8 @@ def main():
         ev = v.get("evidence")
         bound = ev.get("result_pool_sha256") if isinstance(ev, dict) else None
         scope = claim_scope_for_pool(pool_path=args.pool, audit_path=args.prior_audit,
-                                    bound_pool_sha=bound)
+                                    bound_pool_sha=bound,
+                                    registry_path=args.registry)
         v["claim_scope"] = scope
         if args.gap_result:
             v["scoring_variant_gap"] = scoring_gap_fragment(args.gap_result)
@@ -1039,7 +1056,8 @@ def main():
             ev_use["_mode"] = "auto_evidence(preflight_passed=%s)" % ok
         return report(adjudicate(args.adjudicate, ev_use, args.out, args.mode,
                                  auto_prove=not args.legacy_evidence,
-                                 pool=args.pool, prior_audit=args.prior_audit))
+                                 pool=args.pool, prior_audit=args.prior_audit,
+                                 registry=args.registry))
 
     if not ok:
         print("前置未通过 → 拒绝跑批（fail-closed）。缺项必须先补齐，不放行任何能力率。")
