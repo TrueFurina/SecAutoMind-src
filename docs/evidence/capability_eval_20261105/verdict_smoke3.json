@@ -169,5 +169,37 @@
         "missing_evidence:pool_tracked_and_clean(题池入库且经质量门禁背书)"
       ]
     }
-  ]
+  ],
+  "claim_scope": {
+    "generated_by": "scripts/run_capability_eval.py::claim_scope_for_pool (代码重算)",
+    "pool_path": "data/ctf_benchmark/purellm_clean_benchmark.json",
+    "audit_evidence_path": "docs/evidence/capability_eval_20261105/pool_prior_audit.json",
+    "claim_scope": "engineering_regression_only",
+    "private_proven": 0,
+    "total": 160,
+    "pool_sha256": "0835c1f274c79ba070b31860e15b4c89d1d74f3957928153b1918b761dedabf9",
+    "bound_pool_matches": true,
+    "audit_evidence_consistent": true,
+    "reason": "160/160 题公开或来源不明 ⇒ 模型先验无法排除，数值只能作工程回归读数；且分母含 6 道题面自曝答案题，工程回归读数亦须打折",
+    "public_named": 160,
+    "requires_airgap": 23,
+    "prior_cutoff": "2025-01-01",
+    "capability_rate_publishable": false,
+    "pool_known_limitations": [],
+    "statement_tainted_count": 6,
+    "statement_tainted_ids": [
+      "real_crypto_dnui_keyboard",
+      "real_misc_sheng2022_traffic_bruteforce_count",
+      "real_misc_sheng2022_traffic_enable_pwd",
+      "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "real_misc_sheng2022_traffic_ftp_port",
+      "real_misc_sheng2022_traffic_telnet_pwd"
+    ]
+  },
+  "scoring_variant_gap": {
+    "false_negative_count": 0,
+    "false_negative_ids": [],
+    "result_sha256": "b81cb1307bc0cdca0c60b246a3cbf43709290132b8ef17b9083272d07e963256",
+    "note": "只量化假阴性，不改判分、不重算分数；verify_flag 位于他人 WIP orchestrator、candidate_variants 位于共享 flag_util，均未修"
+  }
 }

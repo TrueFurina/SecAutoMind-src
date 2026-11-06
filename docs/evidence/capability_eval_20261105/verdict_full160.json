@@ -1165,6 +1165,7 @@
     "requires_airgap": 23,
     "prior_cutoff": "2025-01-01",
     "capability_rate_publishable": false,
+    "pool_known_limitations": [],
     "statement_tainted_count": 6,
     "statement_tainted_ids": [
       "real_crypto_dnui_keyboard",
@@ -1174,5 +1175,17 @@
       "real_misc_sheng2022_traffic_ftp_port",
       "real_misc_sheng2022_traffic_telnet_pwd"
     ]
+  },
+  "scoring_variant_gap": {
+    "false_negative_count": 5,
+    "false_negative_ids": [
+      "real_misc_sheng2022_traffic_bruteforce_count",
+      "real_misc_sheng2022_traffic_enable_pwd",
+      "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "real_misc_sheng2022_traffic_ftp_port",
+      "real_misc_sheng2022_traffic_telnet_pwd"
+    ],
+    "result_sha256": "53def00fa084aee7a23478f7a84db77fcfb782ed96cde5d6874e3de11ec08154",
+    "note": "只量化假阴性，不改判分、不重算分数；verify_flag 位于他人 WIP orchestrator、candidate_variants 位于共享 flag_util，均未修"
   }
 }

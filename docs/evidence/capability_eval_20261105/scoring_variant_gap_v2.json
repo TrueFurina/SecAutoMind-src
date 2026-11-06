@@ -1,0 +1,12 @@
+{
+  "tool": "scripts/audit_scoring_variant_gap.py",
+  "result_path": ".workbuddy/tmp/capability_eval/full154_v2.result.json",
+  "result_sha256": "940daca6b1f840dd06a98a0431d59432da548226aef2e6098f417ef1fac1c0ee",
+  "rows": 154,
+  "originally_solved": 0,
+  "false_negative_count": 0,
+  "false_negative_ids": [],
+  "hits": [],
+  "note": "证据不含明文答案；本审计只量化假阴性，不改判分、不重算分数。",
+  "root_cause": "scripts/experiments/flag_util.py::candidate_variants 不产生裸内容变体；verify_flag 位于他人在途 WIP 的 ctf_stepfun_orchestrator.py，本轮未修"
+}

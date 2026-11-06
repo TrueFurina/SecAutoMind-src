@@ -20,6 +20,11 @@
   python scripts/run_capability_eval.py --preflight
   python scripts/run_capability_eval.py --adjudicate <result.json>
   python scripts/run_capability_eval.py --run --result <result.json> -- <cmd...>
+  # 换池必须三个参数同步换，否则 claim_scope=unverified / 前置守卫拒绝：
+  python scripts/run_capability_eval.py --run --pool <池> --manifest <manifest> \
+      --prior-audit <题源证据> --result <r.json> -- <cmd...（--benchmark 须同池）>
+  # 给已有 verdict 追加结论作用域与判分假阴性片段（只加字段、逐键校验不改判分）：
+  python scripts/run_capability_eval.py --annotate <verdict.json> --gap-result <r.json>
 退出码：前置不通过 = 2；判分不可归因 = 1；全绿 = 0。
 """
 from __future__ import annotations
@@ -42,6 +47,7 @@ from check_pure_llm_caliber import (EVIDENCE_KEYS, PURE_LLM_EVIDENCE_KEYS,  # no
                                    prove_pure_llm_path, selftest)
 import audit_pool_prior  # noqa: E402
 import audit_writeup_answer  # noqa: E402
+import audit_scoring_variant_gap  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POOL = os.path.join(ROOT, "data", "ctf_benchmark", "purellm_clean_benchmark.json")
@@ -65,6 +71,26 @@ def _sha256(path):
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def scoring_gap_fragment(result_path):
+    """判分「不去壳」假阴性片段：随 verdict 一起走，不靠外围文档提醒。
+
+    只量化，不改判分、不重算分数。审计失败时 false_negative_count=None，
+    报告层会明确警告，不得把该批次读数当成无偏差。
+    """
+    try:
+        gap = audit_scoring_variant_gap.audit(result_path)
+        return {
+            "false_negative_count": gap["false_negative_count"],
+            "false_negative_ids": gap["false_negative_ids"],
+            "result_sha256": gap["result_sha256"],
+            "note": ("只量化假阴性，不改判分、不重算分数；"
+                     "verify_flag 位于他人 WIP orchestrator、candidate_variants 位于共享 flag_util，均未修"),
+        }
+    except Exception as exc:
+        return {"false_negative_count": None, "error": str(exc),
+                "note": "假阴性审计失败（fail-closed：不得把本批次读数当作无偏差）"}
 
 
 def _fixed_temperature_proven():
@@ -368,6 +394,7 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
     # 结论作用域由代码重算，不读人工声明；绑定指纹不一致直接 fail-closed。
     v["claim_scope"] = claim_scope_for_pool(pool_path=pool, audit_path=prior_audit,
                                              bound_pool_sha=ev.get("result_pool_sha256"))
+    v["scoring_variant_gap"] = scoring_gap_fragment(result_path)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(v, f, ensure_ascii=False, indent=2)
@@ -403,8 +430,24 @@ def pipeline_selftest():
           % ("PASS" if ok else "FAIL", v["verdicts"], v["capability_rate"], v["claimable"], want))
     print("=== C. 结论作用域（题源先验）变异验证 ===")
     scope_rc = scope_selftest()
-    print("链路自测：%s" % ("PASS" if rc == 0 and ok and scope_rc == 0 else "FAIL"))
-    return 0 if rc == 0 and ok and scope_rc == 0 else 1
+    print("=== D. 判分假阴性接线（合成结果，非评测）===")
+    os.makedirs(WORKDIR, exist_ok=True)
+    gap_path = os.path.join(WORKDIR, "_gap_selftest.result.json")
+    secret = "zz_gap_selftest_0001"
+    with open(gap_path, "w", encoding="utf-8") as f:
+        json.dump({"details": [{
+            "id": "g1", "solved": False, "got": "flag{%s}" % secret,
+            "expected_sha256": hashlib.sha256(secret.encode()).hexdigest(),
+            "raw_head": "",
+        }]}, f)
+    frag = scoring_gap_fragment(gap_path)
+    gap_ok = frag.get("false_negative_count") == 1
+    print("  %s 合成 1 题：false_negative_count=%s（期望 1）"
+          % ("PASS" if gap_ok else "FAIL", frag.get("false_negative_count")))
+    os.remove(gap_path)
+    all_ok = rc == 0 and ok and scope_rc == 0 and gap_ok
+    print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
+    return 0 if all_ok else 1
 
 
 def scope_selftest():
@@ -496,6 +539,8 @@ def main():
                     help="链路自测：判据变异验证 + 合成合规批次的正向结论（不是评测结果）")
     ap.add_argument("--annotate", metavar="VERDICT_JSON",
                     help="给已有 verdict 追加题源先验作用域（只加字段，不重判、不改原有字段）")
+    ap.add_argument("--gap-result", metavar="RESULT_JSON",
+                    help="--annotate 时连同判分假阴性片段一起追加（从该跑批结果重算）")
     ap.add_argument("command", nargs=argparse.REMAINDER, help="-- 之后的跑批命令")
     args = ap.parse_args()
 
@@ -508,13 +553,16 @@ def main():
             return 2
         with open(args.annotate, encoding="utf-8") as f:
             v = json.load(f)
-        before = {k: x for k, x in v.items() if k != "claim_scope"}
+        mutable = ("claim_scope", "scoring_variant_gap")
+        before = {k: x for k, x in v.items() if k not in mutable}
         ev = v.get("evidence")
         bound = ev.get("result_pool_sha256") if isinstance(ev, dict) else None
         scope = claim_scope_for_pool(pool_path=args.pool, audit_path=args.prior_audit,
                                     bound_pool_sha=bound)
         v["claim_scope"] = scope
-        after = {k: x for k, x in v.items() if k != "claim_scope"}
+        if args.gap_result:
+            v["scoring_variant_gap"] = scoring_gap_fragment(args.gap_result)
+        after = {k: x for k, x in v.items() if k not in mutable}
         if before != after:
             print("拒绝写回：原有判分字段被改动", file=sys.stderr)
             return 2
@@ -526,6 +574,9 @@ def main():
         print("  claim_scope=%s  private_proven=%s/%s  reason=%s" %
               (scope["claim_scope"], scope["private_proven"], scope["total"],
                scope["reason"]))
+        if "scoring_variant_gap" in v:
+            print("  判分不去壳假阴性=%s 题" %
+                  v["scoring_variant_gap"].get("false_negative_count"))
         return 0
 
     ok, checks, ev = preflight(args)
@@ -567,6 +618,13 @@ def main():
                   % scope["statement_tainted_count"])
         for lim in scope.get("pool_known_limitations", []):
             print("[!] 池已知限制：%s" % lim)
+        gap = v.get("scoring_variant_gap") or {}
+        n_gap = gap.get("false_negative_count")
+        if n_gap:
+            print("[!] 判分不去壳假阴性 %d 题（模型答对却判不中）；题号见 verdict.scoring_variant_gap"
+                  % n_gap)
+        elif n_gap is None:
+            print("[!] 判分假阴性审计失败/缺失：本批次读数不得视为无偏差")
         return 0 if v["claimable"] else 1
 
     # 历史批次归因：不受前置失败阻挡 —— 判据的价值正是把不合格批次判成不可归因。

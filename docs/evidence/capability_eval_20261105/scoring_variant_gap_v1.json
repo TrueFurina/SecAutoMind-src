@@ -1,0 +1,59 @@
+{
+  "tool": "scripts/audit_scoring_variant_gap.py",
+  "result_path": ".workbuddy/tmp/capability_eval/full160.result.json",
+  "result_sha256": "53def00fa084aee7a23478f7a84db77fcfb782ed96cde5d6874e3de11ec08154",
+  "rows": 160,
+  "originally_solved": 0,
+  "false_negative_count": 5,
+  "false_negative_ids": [
+    "real_misc_sheng2022_traffic_bruteforce_count",
+    "real_misc_sheng2022_traffic_enable_pwd",
+    "real_misc_sheng2022_traffic_ftp_dataconn_count",
+    "real_misc_sheng2022_traffic_ftp_port",
+    "real_misc_sheng2022_traffic_telnet_pwd"
+  ],
+  "hits": [
+    {
+      "id": "real_misc_sheng2022_traffic_bruteforce_count",
+      "candidate_form": "wrapped",
+      "candidate_length": 9,
+      "matched_form_length": 3,
+      "matched_form_sha8": "be47addb",
+      "reason": "去壳变体 sha256 == 本题 expected_sha256，但 verify_flag 原判未命中"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_enable_pwd",
+      "candidate_form": "wrapped",
+      "candidate_length": 14,
+      "matched_form_length": 8,
+      "matched_form_sha8": "0fc5ec3e",
+      "reason": "去壳变体 sha256 == 本题 expected_sha256，但 verify_flag 原判未命中"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_dataconn_count",
+      "candidate_form": "wrapped",
+      "candidate_length": 7,
+      "matched_form_length": 1,
+      "matched_form_sha8": "6b86b273",
+      "reason": "去壳变体 sha256 == 本题 expected_sha256，但 verify_flag 原判未命中"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_ftp_port",
+      "candidate_form": "wrapped",
+      "candidate_length": 8,
+      "matched_form_length": 2,
+      "matched_form_sha8": "48449a14",
+      "reason": "去壳变体 sha256 == 本题 expected_sha256，但 verify_flag 原判未命中"
+    },
+    {
+      "id": "real_misc_sheng2022_traffic_telnet_pwd",
+      "candidate_form": "wrapped",
+      "candidate_length": 11,
+      "matched_form_length": 5,
+      "matched_form_sha8": "cc0f6b52",
+      "reason": "去壳变体 sha256 == 本题 expected_sha256，但 verify_flag 原判未命中"
+    }
+  ],
+  "note": "证据不含明文答案；本审计只量化假阴性，不改判分、不重算分数。",
+  "root_cause": "scripts/experiments/flag_util.py::candidate_variants 不产生裸内容变体；verify_flag 位于他人在途 WIP 的 ctf_stepfun_orchestrator.py，本轮未修"
+}
