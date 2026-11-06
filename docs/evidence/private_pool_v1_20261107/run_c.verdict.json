@@ -1,0 +1,284 @@
+{
+  "run_id": "capability_eval_20261107T013919",
+  "contract": "fail-closed / sha256命中仅为候选 / 不可归因时rate为null",
+  "eval_path": "pure_llm",
+  "evidence_contract": [
+    "no_model_egress_proven",
+    "single_channel_proven",
+    "channel_attribution_proven",
+    "no_presolve_proven",
+    "temperature_fixed",
+    "pool_tracked_and_clean",
+    "result_pool_matches_proven"
+  ],
+  "total": 10,
+  "effective_runs": 10,
+  "verdicts": {
+    "LLM_SOLVED": 3,
+    "CLEAN_FAIL": 7,
+    "NOT_ATTRIBUTABLE": 0
+  },
+  "raw_solved_hits": 3,
+  "hits": [
+    {
+      "id": "pp_v1_01_xor_single_byte",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_04_lcg_predict_next",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_07_licence_constraints",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    }
+  ],
+  "claimable": true,
+  "claimable_denominator": 10,
+  "attributable_runs": 10,
+  "excluded_not_attributable": 0,
+  "capability_rate": 0.3,
+  "blocking_reasons": [],
+  "evidence": {
+    "run_id": "capability_eval_20261107T013919",
+    "generated_by": "scripts/run_capability_eval.py (自动生成，非人工填写)",
+    "generated_at": "2026-11-07T01:39:19",
+    "eval_path": "pure_llm",
+    "evidence_contract": [
+      "no_model_egress_proven",
+      "single_channel_proven",
+      "channel_attribution_proven",
+      "no_presolve_proven",
+      "temperature_fixed",
+      "pool_tracked_and_clean",
+      "result_pool_matches_proven"
+    ],
+    "temperature_fixed": true,
+    "temperature_basis": "请求体显式固定 temperature=0.2（2 处），非 provider 默认",
+    "pool_fingerprint_ok": true,
+    "pool_gate_ok": true,
+    "pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+    "pool_path": "data/ctf_benchmark/private_benchmark_v1.json",
+    "statement_tainted_in_selected_pool": 0,
+    "pool_in_version_control": true,
+    "caveats": [
+      "pool_tracked_and_clean 只证明「指纹一致+门禁覆盖」，不等于题池入库；对外引用前须入库",
+      "temperature 显式固定 ≠ 逐位可复现；provider 采样与版本仍会带来方差",
+      "pure_llm 无工具出口 ≠ 无先验知识，模型记忆与公开 writeup 无法由本链路排除",
+      "pure_llm 路径排除不了模型记忆与公开 writeup：无工具出口 ≠ 无先验知识",
+      "channel_attribution 为代码级单通道证明，非网络层抓包；不覆盖 DNS/代理劫持",
+      "airgap/seccomp 属 Go runner 路径，本路径 N/A；混用会让证据自相矛盾"
+    ],
+    "preflight_passed": true,
+    "_usage": "preflight_passed=false 时本证据只能用于「把历史批次判为不可归因」，禁止用于放行任何新跑批",
+    "preflight_checks": [
+      {
+        "item": "CTF_AIRGAP=1",
+        "ok": true,
+        "note": "N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质",
+        "na": true,
+        "warn": false
+      },
+      {
+        "item": "RUNNER_LLM_NO_FALLBACK=1",
+        "ok": true,
+        "note": "N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质",
+        "na": true,
+        "warn": false
+      },
+      {
+        "item": "CTF_AGENT_INTERNAL_PRESOLVE=off",
+        "ok": true,
+        "note": "N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质",
+        "na": true,
+        "warn": false
+      },
+      {
+        "item": "airgap IP 直连证据（机制层）",
+        "ok": true,
+        "note": "N/A：pure_llm 无解题子进程，seccomp 拦的是 Go 侧 python_session",
+        "na": true,
+        "warn": false
+      },
+      {
+        "item": "题池指纹与 manifest 一致",
+        "ok": true,
+        "note": "pool=private_benchmark_v1.json actual=26dd0dee59fb6ccb",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "明文答案门禁覆盖新池且零违规",
+        "ok": true,
+        "note": "扫到 33 集，新池在扫描内=True，violations=0",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "本批次题池无题面自曝答案（代码重算）",
+        "ok": true,
+        "note": "tainted=0 ；v1=6 应被拒，v2=0 才放行",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "跑批命令题池与 --pool 同指纹（防洗白）",
+        "ok": true,
+        "note": "cmd_benchmark=data/ctf_benchmark/private_benchmark_v1.json cmd_sha=26dd0dee59fb6ccb pool_sha=26dd0dee59fb6ccb",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "随机源代码级固定",
+        "ok": true,
+        "note": "请求体显式固定 temperature=0.2（2 处），非 provider 默认",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "源码：非 agentic 分支写死 tool_calls=0 且工具受门控",
+        "ok": true,
+        "note": "orchestrator 源码正则形状（完整 AST 证明在判分时由 prove_pure_llm_path 补齐）",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "跑批命令未启用 --agentic / --artifact-dir",
+        "ok": true,
+        "note": "command='python3 scripts/ctf_stepfun_orchestrator.py --benchmark data/ctf_benchmark/private_benchmark_v1.json --provider stepfun --concurrency 1 --timeout 150 '",
+        "na": false,
+        "warn": false
+      },
+      {
+        "item": "题池已纳入 git 历史（对外可引用性）",
+        "ok": true,
+        "note": "in_history=True；须显式 git add -f 且 commit，仅 staged 不算",
+        "na": false,
+        "warn": true
+      }
+    ],
+    "not_applicable_switches": {
+      "CTF_AIRGAP / RUNNER_LLM_NO_FALLBACK / CTF_AGENT_INTERNAL_PRESOLVE / IP直连proof": "消费者全在 Go 侧（cmd/llmbench/cmd/runner/internal/airgap/py_session.go），pure_llm 路径无解题子进程；改用 prove_pure_llm_path 的结果+源码内生证据"
+    },
+    "_pending": "结果级内生证据在 --adjudicate 时自动生成并覆盖本证据",
+    "result_pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+    "result_file_sha256": "f0ea22b857b44c2631e4d5b0323809f70e75b9973be5729267f81efe4ee71c0b",
+    "result_written_by_this_run": true,
+    "result_ids_in_pool_proven": true,
+    "no_model_egress_proven": true,
+    "single_channel_proven": true,
+    "channel_attribution_proven": true,
+    "no_presolve_proven": true,
+    "proof_report_path": ".workbuddy/tmp/capability_eval/capability_eval_20261107T013919.proof.json",
+    "result_pool_matches_proven": true,
+    "pool_tracked_and_clean": true
+  },
+  "rows": [
+    {
+      "id": "pp_v1_01_xor_single_byte",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_02_rsa_low_exponent_cube",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_03_vigenere_known_key",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_04_lcg_predict_next",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_05_weak_seed_prng",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_07_licence_constraints",
+      "solved_raw": true,
+      "verdict": "LLM_SOLVED",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_08_discrete_log_small",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_09_ctr_nonce_reuse",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    },
+    {
+      "id": "pp_v1_10_rsa_common_modulus",
+      "solved_raw": false,
+      "verdict": "CLEAN_FAIL",
+      "reasons": []
+    }
+  ],
+  "claim_scope": {
+    "generated_by": "scripts/run_capability_eval.py::claim_scope_for_pool (代码重算)",
+    "pool_path": "data/ctf_benchmark/private_benchmark_v1.json",
+    "audit_evidence_path": "docs/evidence/private_pool_v1_20261107/pool_prior_audit.json",
+    "claim_scope": "capability_rate_candidate",
+    "private_proven": 10,
+    "total": 10,
+    "pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+    "bound_pool_matches": true,
+    "audit_evidence_consistent": true,
+    "private_proof_anchored": true,
+    "private_proof_anchored_count": 10,
+    "private_proof_reason": "R0–R6 全过",
+    "private_proof_contract": "private-pool-proof/v1",
+    "private_proof_registry_path": "data/ctf_benchmark/private_pool_registry.json",
+    "reason": "全池题目可证明私有且私有性有外部锚点；仍须逐题满足其余判据",
+    "public_named": 0,
+    "requires_airgap": 0,
+    "prior_cutoff": "2025-01-01",
+    "capability_rate_publishable": true,
+    "pool_known_limitations": [
+      "自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对公开赛题未见过题目的泛化能力",
+      "题目难度由出题方设定，非赛题分布抽样，不构成难度校准"
+    ],
+    "statement_tainted_count": 0,
+    "statement_tainted_ids": []
+  },
+  "scoring_variant_gap": {
+    "false_negative_count": 0,
+    "false_negative_ids": [],
+    "result_sha256": "f0ea22b857b44c2631e4d5b0323809f70e75b9973be5729267f81efe4ee71c0b",
+    "note": "只量化假阴性，不改判分、不重算分数；verify_flag 位于他人 WIP orchestrator、candidate_variants 位于共享 flag_util，均未修"
+  },
+  "attachment_dependency": {
+    "attachment_dependent_count": 0,
+    "attachment_dependent_ids": [],
+    "artifact_dir_supplied": false,
+    "batch_size": 10,
+    "note": "题面引用外部文件且本批次未提供 --artifact-dir ⇒ 该路径下结构不可解；真实跑批 3/3 模型明确回复缺文件。只标注，不改判分/不剔分母/不改题池（池指纹钉死）"
+  }
+}

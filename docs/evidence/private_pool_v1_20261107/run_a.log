@@ -1,0 +1,218 @@
+[orchestrator] provider=stepfun model=step-3.5-flash 题目数=10 并发=1 硬上限=5 agentic=False
+[progress] 5/10 solved=2
+[progress] 10/10 solved=3
+{
+  "summary": {
+    "provider": "stepfun",
+    "model": "step-3.5-flash",
+    "slice": "xfyun-55",
+    "artifact_dir": null,
+    "artifact_mode": false,
+    "max_iter": 6,
+    "wall_budget": 420,
+    "total": 10,
+    "solved": 3,
+    "coverage": 0.3,
+    "exact": 3,
+    "prefix": 0,
+    "max_in_flight_observed": 1,
+    "concurrency_cap": 5,
+    "agentic": false,
+    "sandbox": "run_python fail-closed guard + full code audit",
+    "tool_calls_total": 0,
+    "tool_calls_blocked": 0,
+    "by_category": {
+      "crypto": {
+        "total": 8,
+        "solved": 2
+      },
+      "misc": {
+        "total": 1,
+        "solved": 0
+      },
+      "reverse": {
+        "total": 1,
+        "solved": 1
+      }
+    }
+  },
+  "details": [
+    {
+      "id": "pp_v1_01_xor_single_byte",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f5061868d7c9e3c551e0b175c3636ff44ca3729595fb75e63648a6e272722373",
+      "got": "flag{7de322e22e399c25}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "flag{7de322e22e399c25}",
+      "latency": 19.15,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_02_rsa_low_exponent_cube",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "b05b4d18a6b45367bf3e6c943937944951cbedaaa3c6b4a6ef94815ca7da1f06",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个RSA低指数的问题，首先题目说e是3，而且m^e没有绕回模数n，也就是说m³ < n，那这样的话m其实就是c的立方根啊？因为c = m³ mod n，但是m³ < n，所以c就是等于m³的，不需要模n，直接开立方就行？\n首先先确认一下，首先RSA的加密是c = m^e mod n，这里题目说m^e没有wrap around modulus，也就是m^e < n，所以c = m^e，因为模n的话如果m^e比n小，结果就是本身。那e是3，所以m = c的立方根？\n那现在先算c的立方根？先看c的数值：c是14388348271452303655914811739945949074",
+      "latency": 20.56,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_03_vigenere_known_key",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "4b846b3ab330c449585171a1474605175f8fdd208cb4d34a230c2b6babd6f7ce",
+      "got": "flag{b6c37dd96c79}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "flag{b6c37dd96c79}",
+      "latency": 20.32,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_04_lcg_predict_next",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "fedfdd023111b2024eeae8a48f6a376037ad6978b114150c6147c619a6ccd994",
+      "got": "x_{i+1}",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个LCG预测下一个数的问题，首先先回忆一下LCG的公式是x_{i+1} = (a*x_i +c) mod m，这里a、c、m都是已知的，而且给了x1到x4，那其实直接算x5不就行吗？因为x4已经有了，直接代入公式算x5=(a*x4 +c) mod m就行？等下先确认一下参数：a是48271，c是11，m是2147483647，x4是8281037，那先算a*x4是多少？48271乘以8281037，先算这个乘积，然后加11，再mod m就行？\n等下先算一下：48271 * 8281037，先算这个数。先算48271*8281037，我们可以分步算：8281037 * 4827",
+      "latency": 25.41,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_05_weak_seed_prng",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "d6dc3d0b613b91fd7fa5faf9e925a7f9e470c8bbc52d3f8ccffa61f7a9301fb4",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF题，是关于Python的random模块的弱种子PRNG，已知四个连续的输出，找种子，种子是0到999999之间的整数。首先我得回忆一下Python的random模块的实现，特别是Random类的内部状态，还有randrange(10**9)是怎么生成的。\n首先，Python的random模块用的是Mersenne Twister算法，也就是MT19937，它的内部状态是624个32位的整数，还有一个索引。不过这里是用seed初始化，然后生成randrange(1e9)的值。首先，randrange(n)的实现是啥来着？哦对，Python的random.randint",
+      "latency": 27.67,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "category": "misc",
+      "model": "step-3.5-flash",
+      "expected_sha256": "641c0ff46e7ca6a0fda3c7f1c17eb1442c573ac61c24d69a366c513e8b1ff12f",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF题，是四层编码反向解的问题，首先得理清楚顺序，题目说四层的顺序是1到4，所以反向的话要从第4层开始往回解，也就是先解Base64，然后解Base32，然后解hex，最后解ROT13，对，因为正向是1→2→3→4，所以逆向是4→3→2→1，一步步来。\n首先先看给定的最终blob是RzRaVE9PSldNVTNUSU4zQ0dNWVRHT0pUR01aVFFNWlVHTVpER09CVEdZWlRPTVpXRzVTQT09PT0=，首先第一步是解Base64，因为第四层是Base64编码，所以先对这个字符串做Base64解码。\n先回忆Base64的标准解码，先处理这个字符",
+      "latency": 25.81,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_07_licence_constraints",
+      "category": "reverse",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f20eca4759cbcb00a5a82b1a4f748c10c1bde07d64bc60295cc29577f887e737",
+      "got": "flag{48271536}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "flag{48271536}",
+      "latency": 6.18,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_08_discrete_log_small",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "fd1418258d0760d7ce62c98836e2d38be12669a09167aec7ffc74534cb05ac0f",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个离散对数的问题，题目里给了p是1000003，g是5，y是979732，求x也就是5^x mod 1000003等于979732的x，而且x比p小。首先，首先得看p是不是素数？哦对，1000003是不是素数？等下，1000003，先确认下，比如1000003除以小的素数，比如3的话，1+0+0+0+0+0+3=4，不能被3整除，5的话末位是3不行，7的话，7*142857=999999，1000003-999999=4，所以7*142857+4=1000003，所以7不行？11的话，1-0+0-0+0-0+3=4，不能被11整除。哦对，1000003其实是素数吗？等下，或者",
+      "latency": 26.02,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_09_ctr_nonce_reuse",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f43e1c732545fc47c4f8c21a2687648e563eb4d3b43581b076b1dfd1632d24f2",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF的AES-CTR nonce重用的题目，首先得回忆一下AES-CTR的原理。CTR模式的话，加密是用明文和keystream异或得到密文，也就是C = P XOR K，其中K是keystream，因为nonce重用的话，两个明文的keystream是完全一样的，所以K = P_A XOR C_A，然后P_B就是C_B XOR K的前面对应长度的部分，因为C_B更短嘛。\n首先，先把所有的字符串都转成字节，然后逐字节异或就行。首先先处理plaintext_A和ciphertext_A，先算keystream的前面部分，因为ciphertext_B的长度比ciphertex",
+      "latency": 21.98,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_10_rsa_common_modulus",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "22e4fcf1f884a67a8f90e4a361adc8719dbdca705e148a81a0b3ba7029d3b2f3",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个RSA共模攻击的问题，首先得回忆一下共模攻击的原理。首先，题目说同一个模数n，两个不同的公钥指数e1和e2，加密同一个消息m，没有填充，所以c1 = m^e1 mod n，c2 = m^e2 mod n。而且这里e1是3，e2是17，首先得看这两个是不是互质的，3和17的最大公约数肯定是1啊，所以可以用扩展欧几里得算法找到x和y，使得e1*x + e2*y = 1，这样的话，m = c1^x * c2^y mod n，不过这里要注意x或者y可能是负数，所以负指数的话就是求模逆嘛。\n首先第一步，先算gcd(e1,e2)，也就是gcd(3,17)，确实是1，所以存在整数a和b，",
+      "latency": 27.56,
+      "error": "",
+      "audit": []
+    }
+  ]
+}[audit] tool_calls=0 blocked=0 -> /tmp/full10.result.json.audit.json
+
+=== 前置守卫 ===
+  N/A  CTF_AIRGAP=1                           N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  RUNNER_LLM_NO_FALLBACK=1               N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  CTF_AGENT_INTERNAL_PRESOLVE=off        N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  airgap IP 直连证据（机制层）                    N/A：pure_llm 无解题子进程，seccomp 拦的是 Go 侧 python_session
+  OK  题池指纹与 manifest 一致                      pool=private_benchmark_v1.json actual=26dd0dee59fb6ccb
+  OK  明文答案门禁覆盖新池且零违规                         扫到 33 集，新池在扫描内=True，violations=0
+  OK  本批次题池无题面自曝答案（代码重算）                     tainted=0 ；v1=6 应被拒，v2=0 才放行
+  OK  跑批命令题池与 --pool 同指纹（防洗白）                cmd_benchmark=data/ctf_benchmark/private_benchmark_v1.json cmd_sha=26dd0dee59fb6ccb pool_sha=26dd0dee59fb6ccb
+  OK  随机源代码级固定                               请求体显式固定 temperature=0.2（2 处），非 provider 默认
+  OK  源码：非 agentic 分支写死 tool_calls=0 且工具受门控  orchestrator 源码正则形状（完整 AST 证明在判分时由 prove_pure_llm_path 补齐）
+  OK  跑批命令未启用 --agentic / --artifact-dir     command='python3 scripts/ctf_stepfun_orchestrator.py --benchmark data/ctf_benchmark/private_benchmark_v1.json --provider stepfun --concurrency 1 --timeout 150 '
+  WARN 题池已纳入 git 历史（对外可引用性）                   in_history=False；须显式 git add -f 且 commit，仅 staged 不算
+自动证据：.workbuddy/tmp/capability_eval/evidence.auto.json
+命令参数题池：data/ctf_benchmark/private_benchmark_v1.json sha=26dd0dee59fb6ccb（仅参数，非结果级证明）
+执行跑批：python3 scripts/ctf_stepfun_orchestrator.py --benchmark data/ctf_benchmark/private_benchmark_v1.json --provider stepfun --concurrency 1 --timeout 150 --out /tmp/full10.result.json
+跑批 rc=0
+结果级绑定：OK（本次写入 sha=73a4fd2848d8070d，题 id 全在本批次池内）
+=== 判分仲裁 ===
+有效开跑 10 / 原始命中 3 / LLM_SOLVED 0 / CLEAN_FAIL 0 / NOT_ATTRIBUTABLE 10
+可引用=False 链路读数=None 逐题明细=../../../tmp/full10.verdict.json
+结论作用域=engineering_regression_only 私有题=10/10 审计证据一致=True
+[!] 本批次数值仅为工程回归读数，不得对外称为能力率；原因：题面自证全私有但缺外部锚点（registry_not_in_git_history）⇒ 不采信，数值只能作工程回归读数
+[!] 池已知限制：自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对公开赛题未见过题目的泛化能力
+[!] 池已知限制：题目难度由出题方设定，非赛题分布抽样，不构成难度校准
+[!] 私有性无外部锚点（registry_not_in_git_history）⇒ 题面自证全私有也不得称能力率

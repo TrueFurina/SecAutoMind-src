@@ -1,0 +1,216 @@
+[orchestrator] provider=stepfun model=step-3.5-flash 题目数=10 并发=1 硬上限=5 agentic=False
+[progress] 5/10 solved=2
+[progress] 10/10 solved=3
+{
+  "summary": {
+    "provider": "stepfun",
+    "model": "step-3.5-flash",
+    "slice": "xfyun-55",
+    "artifact_dir": null,
+    "artifact_mode": false,
+    "max_iter": 6,
+    "wall_budget": 420,
+    "total": 10,
+    "solved": 3,
+    "coverage": 0.3,
+    "exact": 3,
+    "prefix": 0,
+    "max_in_flight_observed": 1,
+    "concurrency_cap": 5,
+    "agentic": false,
+    "sandbox": "run_python fail-closed guard + full code audit",
+    "tool_calls_total": 0,
+    "tool_calls_blocked": 0,
+    "by_category": {
+      "crypto": {
+        "total": 8,
+        "solved": 2
+      },
+      "misc": {
+        "total": 1,
+        "solved": 0
+      },
+      "reverse": {
+        "total": 1,
+        "solved": 1
+      }
+    }
+  },
+  "details": [
+    {
+      "id": "pp_v1_01_xor_single_byte",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f5061868d7c9e3c551e0b175c3636ff44ca3729595fb75e63648a6e272722373",
+      "got": "flag{7de322e22e399c25}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个单字节XOR的CTF题，首先得理清楚已知条件。首先，明文是flag格式，开头是flag{，结尾是}，中间是16个小写十六进制字符。密文是给定的十六进制串，每个字节和同一个单字节密钥异或得到的。\n首先，先把密文转成字节吧？先看密文hex：3c363b3d216d3e3f6968683f68683f69636339686f27，先数一下长度，每个hex字符是4位，所以两个是一个字节，数一下字符数：3c 36 3b 3d 21 6d 3e 3f 69 68 68 3f 68 68 3f 69 63 63 39 68 6f 27，哦，一共22个字节？对，因为flag{是5个字符，中",
+      "latency": 25.43,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_02_rsa_low_exponent_cube",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "b05b4d18a6b45367bf3e6c943937944951cbedaaa3c6b4a6ef94815ca7da1f06",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个RSA低指数的问题，首先题目说e是3，而且m^e没有绕回模数n，也就是m³ < n，那这样的话m其实就是c的立方根啊，因为c = m³ mod n，但是m³ < n，所以直接开立方就行？对，因为如果m³比n小的话，模n之后还是它本身，所以c就是m³，那直接求c的立方根就行。\n首先先确认一下，n是那个大数，e=3，c是密文，而且题目明确说m^e没有wrap around modulus，也就是m³ < n，所以m = c^(1/3)，直接算立方根就行。\n那现在计算c的立方根。先算一下c是多少，c是1438834827145230365591481173994594907474",
+      "latency": 21.44,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_03_vigenere_known_key",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "4b846b3ab330c449585171a1474605175f8fdd208cb4d34a230c2b6babd6f7ce",
+      "got": "xpcg{v6v37rp96k79}",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个维吉尼亚密码的题，首先先理清楚题目给的条件。首先密钥是SECAUTOMIND，是重复密钥的维吉尼亚，而且只对ASCII字母（这里应该是大小写？不过看密文里的都是小写？哦对，题目说密钥是大写的SECAUTOMIND，然后对字母加密，非字母不变，密钥每遇到一个字母就推进一位，新消息从头开始。首先先回忆维吉尼亚的解密方法，就是每个字母用对应的密钥字母来解密，维吉尼亚的解密是密文字母减去密钥字母（模26），因为加密是明文字母加密钥字母模26嘛。\n首先先先列出来密钥的每个字母对应的位移，因为维吉尼亚的密钥字母对应的位移是A=0，B=1，...Z=25，所以先算SECAUTOMIND每",
+      "latency": 26.08,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_04_lcg_predict_next",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "fedfdd023111b2024eeae8a48f6a376037ad6978b114150c6147c619a6ccd994",
+      "got": "flag{11ffd448}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个LCG预测x5的问题，首先先回忆一下LCG的公式是x_{i+1} = (a*x_i +c) mod m，这里a、c、m都是已知的，而且已经给了x1到x4，那直接算x5不就行了吗？哦对，因为x4是已知的，所以x5就是(a*x4 +c) mod m，那直接代入数值计算就行。\n首先先确认各个参数：a是48271，c是11，m是2147483647，x4是8281037。那先算a*x4是多少？48271乘以8281037，先算这个乘积。然后加c，再mod m就行。\n先算48271 * 8281037：先算一下，48271 * 8281037，我们可以分步算？或者直接算：48271 ",
+      "latency": 24.44,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_05_weak_seed_prng",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "d6dc3d0b613b91fd7fa5faf9e925a7f9e470c8bbc52d3f8ccffa61f7a9301fb4",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF题，是关于Python的random模块的种子恢复问题，已知四个连续的输出，种子是0到999999之间的整数，用的是random.Random(seed)，然后输出是randrange(10**9)的结果。首先我得回忆一下Python的random模块的实现，特别是Mersenne Twister（MT19937）的相关知识，还有怎么从输出反推种子。\n首先，先理清楚步骤：首先，Python的random.Random(seed)初始化的时候，是用seed来初始化MT19937的状态的，然后每次调用randrange(10**9)的时候，是怎么生成随机数的？首先，ran",
+      "latency": 28.36,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_06_encoding_nest",
+      "category": "misc",
+      "model": "step-3.5-flash",
+      "expected_sha256": "641c0ff46e7ca6a0fda3c7f1c17eb1442c573ac61c24d69a366c513e8b1ff12f",
+      "got": "fit{rot13_nest_layer_excellent_jumple_flag}",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF题，是四层编码，要反向解。首先得理清楚四层的顺序，题目说四层是依次应用的，所以反向的话就要从最后一层开始，一层一层往回解，顺序是反过来的：先解Base64，然后解Base32，然后解hex，最后解ROT13（只针对小写字母）。首先先看给的最终blob是RzRaVE9PSldNVTNUSU4zQ0dNWVRHT0pUR01aVFFNWlVHTVpER09CVEdZWlRPTVpXRzVTQT09PT0=，首先第一步先解Base64，因为第四层是Base64，所以先对这个字符串做Base64解码。\n首先先处理Base64解码。先回忆Base64的标准，带padding的，",
+      "latency": 27.29,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_07_licence_constraints",
+      "category": "reverse",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f20eca4759cbcb00a5a82b1a4f748c10c1bde07d64bc60295cc29577f887e737",
+      "got": "flag{48271536}",
+      "solved": true,
+      "hit_mode": "exact",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "flag{48271536}",
+      "latency": 6.93,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_08_discrete_log_small",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "fd1418258d0760d7ce62c98836e2d38be12669a09167aec7ffc74534cb05ac0f",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个离散对数的问题，题目里给了p是1000003，g是5，y是979732，求x使得5^x mod 1000003等于979732，而且x比p小。首先，首先得看p是不是质数？哦1000003是不是质数？对，1000003是质数，因为比如1000000是10^6，加3，查一下的话，1000003确实是质数，所以模p的乘法群是循环群，阶是p-1=1000002。那离散对数的问题，这里p不大，1000003才一百万，所以可以用什么方法？比如大步小步算法（BSGS）？或者因为p很小，直接暴力枚举？不过暴力的话x最多到1000002，也就是一百万次，其实也可以？不过还是用BSGS更高效吧",
+      "latency": 24.99,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_09_ctr_nonce_reuse",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "f43e1c732545fc47c4f8c21a2687648e563eb4d3b43581b076b1dfd1632d24f2",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个CTF的AES-CTR nonce重用的题目，首先得回忆一下AES-CTR的原理。CTR模式的话，加密是用明文和keystream异或得到密文，也就是C = P ^ K，其中K是keystream，而且如果nonce重用的话，两个不同的明文用同一个keystream的话，那C1 ^ C2 = P1 ^ P2，因为K异或两次就抵消了，这个是对的。\n首先，先理清楚已知的东西：plaintext_A是已知的，ciphertext_A和ciphertext_B都是已知的，而且B的密文更短，所以B用的keystream是A用的keystream的前面部分，因为nonce没变，所以ke",
+      "latency": 21.98,
+      "error": "",
+      "audit": []
+    },
+    {
+      "id": "pp_v1_10_rsa_common_modulus",
+      "category": "crypto",
+      "model": "step-3.5-flash",
+      "expected_sha256": "22e4fcf1f884a67a8f90e4a361adc8719dbdca705e148a81a0b3ba7029d3b2f3",
+      "got": "",
+      "solved": false,
+      "hit_mode": "",
+      "tool_calls": 0,
+      "blocked_calls": 0,
+      "raw_head": "用户现在需要解决这个RSA共模攻击的问题，首先得回忆一下共模攻击的原理。首先，题目说同一个模数n，两个不同的公钥指数e1和e2，加密同一个明文m，没有填充，所以c1 = m^e1 mod n，c2 = m^e2 mod n。而且这里e1是3，e2是17，首先得看这两个是不是互质的，3和17的最大公约数肯定是1啊，因为17是质数，3不是17的倍数，所以gcd(3,17)=1，那就可以用扩展欧几里得算法找到a和b，使得a*e1 + b*e2 = 1，而且这里a和b应该是一个正一个负吧？因为e1和e2都大于1，所以比如3a +17b=1，那肯定a是正的，b是负的，或者反过来？对，比如我们可以找a和b",
+      "latency": 24.67,
+      "error": "",
+      "audit": []
+    }
+  ]
+}[audit] tool_calls=0 blocked=0 -> /tmp/full10c.result.json.audit.json
+
+=== 前置守卫 ===
+  N/A  CTF_AIRGAP=1                           N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  RUNNER_LLM_NO_FALLBACK=1               N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  CTF_AGENT_INTERNAL_PRESOLVE=off        N/A：该开关的消费者全在 Go 侧（cmd/llmbench / cmd/runner / internal/airgap / py_session.go），ctf_stepfun_orchestrator.py 无消费者；设了也不证明本路径任何性质
+  N/A  airgap IP 直连证据（机制层）                    N/A：pure_llm 无解题子进程，seccomp 拦的是 Go 侧 python_session
+  OK  题池指纹与 manifest 一致                      pool=private_benchmark_v1.json actual=26dd0dee59fb6ccb
+  OK  明文答案门禁覆盖新池且零违规                         扫到 33 集，新池在扫描内=True，violations=0
+  OK  本批次题池无题面自曝答案（代码重算）                     tainted=0 ；v1=6 应被拒，v2=0 才放行
+  OK  跑批命令题池与 --pool 同指纹（防洗白）                cmd_benchmark=data/ctf_benchmark/private_benchmark_v1.json cmd_sha=26dd0dee59fb6ccb pool_sha=26dd0dee59fb6ccb
+  OK  随机源代码级固定                               请求体显式固定 temperature=0.2（2 处），非 provider 默认
+  OK  源码：非 agentic 分支写死 tool_calls=0 且工具受门控  orchestrator 源码正则形状（完整 AST 证明在判分时由 prove_pure_llm_path 补齐）
+  OK  跑批命令未启用 --agentic / --artifact-dir     command='python3 scripts/ctf_stepfun_orchestrator.py --benchmark data/ctf_benchmark/private_benchmark_v1.json --provider stepfun --concurrency 1 --timeout 150 '
+  OK  题池已纳入 git 历史（对外可引用性）                   in_history=True；须显式 git add -f 且 commit，仅 staged 不算
+自动证据：.workbuddy/tmp/capability_eval/evidence.auto.json
+命令参数题池：data/ctf_benchmark/private_benchmark_v1.json sha=26dd0dee59fb6ccb（仅参数，非结果级证明）
+执行跑批：python3 scripts/ctf_stepfun_orchestrator.py --benchmark data/ctf_benchmark/private_benchmark_v1.json --provider stepfun --concurrency 1 --timeout 150 --out /tmp/full10c.result.json
+跑批 rc=0
+结果级绑定：OK（本次写入 sha=f0ea22b857b44c26，题 id 全在本批次池内）
+=== 判分仲裁 ===
+有效开跑 10 / 原始命中 3 / LLM_SOLVED 3 / CLEAN_FAIL 7 / NOT_ATTRIBUTABLE 0
+可引用=True 链路读数=0.3 逐题明细=../../../tmp/full10c.verdict.json
+结论作用域=capability_rate_candidate 私有题=10/10 审计证据一致=True
+[!] 池已知限制：自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对公开赛题未见过题目的泛化能力
+[!] 池已知限制：题目难度由出题方设定，非赛题分布抽样，不构成难度校准
