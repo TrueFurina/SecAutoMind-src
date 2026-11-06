@@ -1,0 +1,22 @@
+{
+ "attachment_dependency": "none",
+ "difficulty_mix": {
+  "easy": 17,
+  "hard": 7,
+  "medium": 16
+ },
+ "known_limitations": [
+  "自造题只证明「链路可解 + 系统能解出结构完整的题」，不能外推为对公开赛题未见过题目的泛化能力",
+  "题目难度由出题方设定，非赛题分布抽样，不构成难度校准",
+  "v1 十题与 v2 新增三十题不是同分布：v2 刻意加大算术与算法深度"
+ ],
+ "note": "40 道本项目原创私有题，材料 100% 内嵌题面（零附件依赖），flag 明文不由任何文件保存（种子 sha256 派生），生成时逐题机验「仅凭题面可解」。其中 10 道与 v1 池逐字相同，构成跨池对照组。",
+ "out": "data/ctf_benchmark/private_benchmark_v2.json",
+ "out_sha256": "bce2478826cd828086ca8c1ba9cae2cce289428ee5b35a3296f6fc778ac1f056",
+ "parent_pool": "data/ctf_benchmark/private_benchmark_v1.json",
+ "parent_pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+ "parent_problem_count": 10,
+ "solvability_verified_by": "scripts/gen_private_pool_v2.py --verify（逐题只读 description 重跑 solver）",
+ "tool": "scripts/gen_private_pool_v2.py",
+ "total": 40
+}
