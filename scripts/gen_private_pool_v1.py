@@ -39,7 +39,14 @@ POOL_OUT = os.path.join(ROOT, "data", "ctf_benchmark",
                         "private_benchmark_v1.json")
 
 SEED = "secautomind/private-pool/v1"
-FLAG_RE = re.compile(r"flag\{[0-9a-z_]+\}")
+
+# 🔴 2026-11-07 修：本文件此前自带一份 `FLAG_RE = re.compile(r"flag\{...\}")`
+# 并用 sha256 直接比原文候选 —— 被 `check_flag_eval_regex.py` 判
+# `B:no-normalization`（CI 因此红了两个提交未察觉）。这等于仓库里第 10 份
+# 判分正则副本，且只认小写 flag：题面若被改成 FLAG{...} 就漏判。
+# 正解不是给门禁加豁免，而是**不再维护副本**：统一从判分口径取。
+sys.path.insert(0, os.path.join(ROOT, "scripts", "experiments"))
+from flag_util import FLAG_RE  # noqa: E402
 
 
 def _h(tag: str, n: int = 16) -> str:
