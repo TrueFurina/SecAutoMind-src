@@ -16,11 +16,21 @@
 * `scoring_variant_gap_v1/v2.json` 没有 verify（原始 result 不入 git，CI 无法
   重算），只能做内部自洽 + 与 verdict 的交叉一致性。
 
-本脚本**不新增判据、不改任何现有脚本**，只做三件事：
+本脚本**不新增判据、不改任何现有断言脚本**，只做三件事：
 
-1. 统一转发 11 条现成断言入口（subprocess，任一非 0 ⇒ 红）；
-2. 交叉一致性：verdict ↔ gap 证据、verdict ↔ 题源证据池指纹、gap 证据内部自洽；
+1. 统一转发 12 条现成断言入口（subprocess，任一非 0 ⇒ 红）；
+2. 交叉一致性：verdict ↔ gap 证据、verdict ↔ 题源证据池指纹、gap 证据内部自洽、
+   IP 直连证据字段、入库结果的 sha256 命中必须被 verdict 归因；
 3. 必需证据文件完整性（缺一即红，防「删件让门禁恒绿」）。
+
+第 11 轮补充两项（同一形态，不新开脚本）：
+* `prove_airgap_ip_direct.py --check`：断网闸 IP 直连证据（基线有外网 → 开闸
+  EPERM errno=1 → AF_UNIX 未误伤），从原始 stdout 重算，纯本地不联网。
+* **第十个偏差**：`ctf_stepfun_orchestrator.py` 的 `summary.coverage = solved/total`
+  完全由 sha256 命中算，判据链是可选旁路 —— 直接读 result.json 就能拿到一个
+  看起来像能力率的数（历史 `purellm_full176.result.json` 的 0.0057 正是题面抄写）。
+  因此要求：入库结果里任何 `solved=True` 的题，必须被某份 verdict 的 rows 归因；
+  否则判红。注意这只锁「入库结果」，未入库本机文件不在扫描范围（见证据文档）。
 
   python scripts/verify_capability_evidence.py --check
   python scripts/verify_capability_evidence.py --selftest   # 变异攻击自证会变红
@@ -56,6 +66,7 @@ REQUIRED = [
     "private_proof_audit.json",
     "scoring_variant_gap_v1.json", "scoring_variant_gap_v2.json",
     "smoke3.result.json", "writeup_answer_audit.json",
+    "airgap_ip_direct_proof_20261106.json",
 ]
 
 # 全量 verdict → 判分假阴性证据的绑定契约。smoke* 是 3 题子集，不与全量
@@ -79,6 +90,8 @@ EXTERNAL_GATES = [
     ("v1 干净池 manifest", ["scripts/build_clean_benchmark.py", "--verify"]),
     ("v2 干净池 manifest", ["scripts/build_clean_benchmark_v2.py", "--verify"]),
     ("私有性外部锚点证据", ["scripts/audit_private_proof.py", "--verify"]),
+    ("断网闸 IP 直连证据（原始输出重算）",
+     ["scripts/prove_airgap_ip_direct.py", "--check"]),
 ]
 
 
@@ -144,6 +157,29 @@ def cross_check(ev_dir=EV, verdict_paths=None):
         if g.get("rows") != v.get("total"):
             errs.append("%s：gap 证据 rows=%r != verdict total=%r"
                         % (bound, g.get("rows"), v.get("total")))
+
+    # 第十个偏差：入库结果里的 sha256 命中必须被 verdict 归因。否则
+    # summary.coverage 会作为「看起来像能力率」的数被直接消费。
+    covered = {}
+    for vp in verdict_paths:
+        for row in (_load(vp).get("rows") or []):
+            covered[str(row.get("id", ""))] = row.get("verdict")
+    for rp in sorted(glob.glob(os.path.join(ev_dir, "*.result.json"))):
+        r = _load(rp)
+        for d in (r.get("details") or []):
+            if isinstance(d, dict) and d.get("solved"):
+                pid = str(d.get("id", ""))
+                if pid not in covered:
+                    errs.append("%s：sha256 命中题 %s 未被任何 verdict 归因"
+                                "（summary.coverage 会成为伪能力率）"
+                                % (os.path.basename(rp), pid))
+
+    # IP 直连证据字段级最低校验；从原始 stdout 重算由外部入口 --check 完成。
+    p = _load(os.path.join(ev_dir, "airgap_ip_direct_proof_20261106.json"))
+    if p.get("verdict") != "PROVEN" or any(
+            p.get(k) is not True for k in
+            ("baseline_egress_proven", "ip_direct_blocked", "af_unix_ok", "udp_blocked")):
+        errs.append("IP 直连证据字段不成立（verdict/基线外网/EPERM/AF_UNIX/UDP）")
     return errs
 
 
@@ -216,6 +252,16 @@ def selftest():
             os.path.join(d, "writeup_answer_audit.json")), True)
         probe("删除一份 verdict（证据集缩小）", lambda d: os.remove(
             os.path.join(d, "verdict_smoke3.json")), True)
+        probe("结果里注入未被 verdict 归因的 sha256 命中",
+              edit("smoke3.result.json", lambda d: (
+                  d["summary"].__setitem__("solved", 1),
+                  d["details"][0].__setitem__("solved", True),
+                  d["details"][0].__setitem__("id", "zz_unattributed_hit"))), True)
+        probe("篡改 IP 直连证据 ip_direct_blocked",
+              edit("airgap_ip_direct_proof_20261106.json",
+                   lambda d: d.__setitem__("ip_direct_blocked", False)), True)
+        probe("删除 IP 直连证据", lambda d: os.remove(
+            os.path.join(d, "airgap_ip_direct_proof_20261106.json")), True)
 
     passed = 0
     for label, blocked, want, errs in cases:

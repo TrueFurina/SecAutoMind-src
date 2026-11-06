@@ -1,0 +1,49 @@
+{
+  "schema": "airgap_ip_direct_proof_v1",
+  "generated_by": "scripts/prove_airgap_ip_direct.py --run (自动生成，非人工填写)",
+  "generated_at": "2026-11-06T12:11:17+08:00",
+  "host": "user@172.16.222.99",
+  "go_bin": "/home/user/go1.25.4/bin",
+  "probe": "cmd/airgaptest (IP 直连 1.1.1.1/2606:4700:4700::1111:80，绕开 DNS)",
+  "airgap_scope": "解题子进程 python_session/skill/流式 shell；LLM API 通道必须联网，不在隔离范围",
+  "baseline_output_raw": "[airgaptest] CTF_AIRGAP=\"\" Enabled=false IsChild=false\nAF_INET CONNECTED-NOT-BLOCKED\nAF_INET6 OSError 101 [Errno 101] Network is unreachable\nAF_UNIX OK\nAF_INET-UDP OK",
+  "gated_output_raw": "[airgaptest] CTF_AIRGAP=\"1\" Enabled=true IsChild=false\nAF_INET PermissionError 1 [Errno 1] Operation not permitted\nAF_INET6 PermissionError 1 [Errno 1] Operation not permitted\nAF_UNIX OK\nAF_INET-UDP PermissionError 1 [Errno 1] Operation not permitted",
+  "baseline_probes": {
+    "AF_INET": "CONNECTED-NOT-BLOCKED",
+    "AF_INET6": "OSError 101 [Errno 101] Network is unreachable",
+    "AF_UNIX": "OK",
+    "AF_INET-UDP": "OK"
+  },
+  "gated_probes": {
+    "AF_INET": "PermissionError 1 [Errno 1] Operation not permitted",
+    "AF_INET6": "PermissionError 1 [Errno 1] Operation not permitted",
+    "AF_UNIX": "OK",
+    "AF_INET-UDP": "PermissionError 1 [Errno 1] Operation not permitted"
+  },
+  "baseline_egress_proven": true,
+  "ip_direct_blocked": true,
+  "af_unix_ok": true,
+  "udp_blocked": true,
+  "verdict": "PROVEN",
+  "reasons": [],
+  "local_source_sha256": {
+    "cmd/airgaptest/main.go": "5577544f745fad4244a9c3b7dd6ea835d187e62d3ef1b248f386a65a32fa0d8d",
+    "internal/airgap/airgap.go": "f1940ed18c8b44352d4b675f312954416359afc999f1bc89d8a0ad4630cddc27",
+    "internal/airgap/seccomp_linux.go": "591740f917dfce692cfdd14dee689fef8464f68de3cf4d30eea94257212a94f8",
+    "internal/airgap/seccomp_other.go": "26ee42d42bcbaaae370dcd559be74c21de6e61ce4109cad6ec60bdcb9c7a4180"
+  },
+  "server_source_sha256": {
+    "cmd/airgaptest/main.go": "5577544f745fad4244a9c3b7dd6ea835d187e62d3ef1b248f386a65a32fa0d8d",
+    "internal/airgap/airgap.go": "f1940ed18c8b44352d4b675f312954416359afc999f1bc89d8a0ad4630cddc27",
+    "internal/airgap/seccomp_linux.go": "591740f917dfce692cfdd14dee689fef8464f68de3cf4d30eea94257212a94f8",
+    "internal/airgap/seccomp_other.go": "26ee42d42bcbaaae370dcd559be74c21de6e61ce4109cad6ec60bdcb9c7a4180"
+  },
+  "binary_sha256": "6dc5591d841c05f51788f5552c2d5e0c39008796f464f546f5d1305f4f138354",
+  "server_stderr": "",
+  "consumer": "run_capability_eval.py --preflight --mode agentic --airgap-proof (要求 ip_direct_blocked && af_unix_ok)",
+  "caveats": [
+    "只证明 seccomp 闸门在该服务器该二进制上生效，不证明任何一次跑批真的开了闸",
+    "pure_llm 路径无解题子进程，本证据在 --mode pure_llm 下为 N/A，不参与放行",
+    "题源仍全公开、私有性锚点未建立；本证据不构成可引用能力率"
+  ]
+}
