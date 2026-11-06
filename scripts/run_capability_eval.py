@@ -171,6 +171,92 @@ def scoring_gap_fragment(result_path):
                 "note": "假阴性审计失败（fail-closed：不得把本批次读数当作无偏差）"}
 
 
+# 题面引用的外部文件名（附件/工件）。只用于「结构可解性」标注，不参与判分。
+_FILE_REF_RE = re.compile(
+    r"\b[\w\-]+\.(?:py|txt|json|csv|pcap|png|jpg|bin|zip|enc|log|sage|c|cpp|go|js|wasm)\b",
+    re.I)
+
+
+def attachment_dependency_fragment(result_path, pool_path, command=None):
+    """§19 结构可解性标注：题面引用外部文件，但 pure_llm 路径不给附件。
+
+    2026-11-06 首次真实端到端跑批实证：v2 池前 3 题的 description 都写着
+    「you are given two files: source.py, output.txt」，模型 3/3 明确回复
+    「你未提供这两个文件的具体内容，缺少必要信息无法完成推导」，`got` 全空。
+    全池 154 题里 17 题引用外部文件名，`_attachments` 下 0/17 有对应目录，
+    且这 17 题与 23 道 `requires_airgap` 题零交集 ⇒ 标注维度没覆盖附件缺失。
+
+    判据只认**代码级事实**：跑批命令是否提供 `--artifact-dir`。pure_llm 前置
+    守卫本来就禁止该参数，所以此类题在此路径下不具备解题所需输入。
+    不查附件目录（被 gitignore，CI checkout 里可能不存在，会造成假阴性）。
+
+    **只量化标注**：不改判分、不重算 rate、不从分母剔除（题池指纹已钉死，
+    剔题会让历史 verdict 的池绑定失效）。结论作用域仍是工程回归读数。
+    """
+    cmd = [x for x in (command or []) if x != "--"]
+    supplied = "--artifact-dir" in cmd
+    try:
+        result = json.load(open(result_path, encoding="utf-8"))
+        problems = json.load(open(pool_path, encoding="utf-8")).get("problems", {})
+        ids = [d.get("id") for d in result.get("details", [])]
+        bad = [i for i in ids
+               if isinstance(problems.get(i), dict)
+               and _FILE_REF_RE.search(str(problems[i].get("description") or ""))]
+        return {
+            "attachment_dependent_count": len(bad) if not supplied else 0,
+            "attachment_dependent_ids": [] if supplied else bad,
+            "artifact_dir_supplied": supplied,
+            "batch_size": len(ids),
+            "note": ("题面引用外部文件且本批次未提供 --artifact-dir ⇒ 该路径下"
+                     "结构不可解；真实跑批 3/3 模型明确回复缺文件。只标注，"
+                     "不改判分/不剔分母/不改题池（池指纹钉死）"),
+        }
+    except Exception as exc:
+        return {"attachment_dependent_count": None,
+                "artifact_dir_supplied": supplied, "error": str(exc),
+                "note": "结构可解性审计失败（fail-closed：不得把本批次读数当作模型能力结论）"}
+
+
+def attachment_dependency_selftest():
+    """G 段：结构可解性标注变异验证（合成池/合成结果，非评测）。"""
+    import tempfile
+
+    tmp = tempfile.mkdtemp(prefix="wb_attdep_")
+    cases = []
+    try:
+        pool_p = os.path.join(tmp, "pool.json")
+        res_p = os.path.join(tmp, "result.json")
+        json.dump({"problems": {
+            "needs_file": {"description": "You are given two files: source.py and output.txt."},
+            "self_contained": {"description": "Compute 2+2 and report the result."},
+        }}, open(pool_p, "w", encoding="utf-8"))
+        json.dump({"details": [{"id": "needs_file"}, {"id": "self_contained"},
+                               {"id": "not_in_pool"}]},
+                  open(res_p, "w", encoding="utf-8"))
+
+        def case(label, cmd, want, pool=pool_p):
+            frag = attachment_dependency_fragment(res_p, pool, cmd)
+            got = frag.get("attachment_dependent_count")
+            cases.append((label, got, want))
+
+        case("未给附件 ⇒ 只标 1 题", ["python", "orch.py"], 1)
+        case("带 --artifact-dir ⇒ 归零", ["python", "orch.py", "--artifact-dir", "d"], 0)
+        case("池损坏 ⇒ fail-closed None", ["python", "orch.py"], None,
+             pool=os.path.join(tmp, "missing.json"))
+    finally:
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    passed = 0
+    for label, got, want in cases:
+        good = got == want
+        passed += int(good)
+        print("  %s %-34s got=%s want=%s"
+              % ("PASS" if good else "FAIL", label, got, want))
+    print("结构可解性标注变异验证：%d/%d" % (passed, len(cases)))
+    return passed == len(cases)
+
+
 def _fixed_temperature_proven():
     """代码级证据：orchestrator 请求体是否显式固定 temperature。"""
     if not os.path.isfile(ORCH):
@@ -593,6 +679,8 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
     v["claim_scope"] = claim_scope_for_pool(pool_path=pool, audit_path=prior_audit,
                                              bound_pool_sha=ev.get("result_pool_sha256"))
     v["scoring_variant_gap"] = scoring_gap_fragment(result_path)
+    # §19：只标注结构不可解题，不改判分/不重算 rate/不剔分母。
+    v["attachment_dependency"] = attachment_dependency_fragment(result_path, pool, command)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(v, f, ensure_ascii=False, indent=2)
@@ -726,8 +814,10 @@ def pipeline_selftest():
     runbind_ok = runbind_selftest()
     print("=== F. agentic 跨层作用域绑定变异验证（合成，非评测）===")
     airgap_scope_ok = airgap_scope_selftest()
+    print("=== G. 结构可解性标注变异验证（合成，非评测）===")
+    attdep_ok = attachment_dependency_selftest()
     all_ok = (rc == 0 and ok and scope_rc == 0 and gap_ok
-              and runbind_ok and airgap_scope_ok)
+              and runbind_ok and airgap_scope_ok and attdep_ok)
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
@@ -928,6 +1018,14 @@ def main():
                   % n_gap)
         elif n_gap is None:
             print("[!] 判分假阴性审计失败/缺失：本批次读数不得视为无偏差")
+        dep = v.get("attachment_dependency") or {}
+        n_dep = dep.get("attachment_dependent_count")
+        if n_dep:
+            print("[!] 结构不可解 %d/%s 题（题面引用外部文件、本路径未提供附件）⇒ "
+                  "0 命中不等于模型不会；题号见 verdict.attachment_dependency"
+                  % (n_dep, dep.get("batch_size")))
+        elif n_dep is None:
+            print("[!] 结构可解性审计失败/缺失：本批次读数不得视为模型能力结论")
         return 0 if v["claimable"] else 1
 
     # 历史批次归因：不受前置失败阻挡 —— 判据的价值正是把不合格批次判成不可归因。
