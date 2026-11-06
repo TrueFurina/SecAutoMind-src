@@ -122,3 +122,25 @@ python3 scripts/run_capability_eval.py --run --mode pure_llm \
 
 这不代表能力很强。它代表**从今天起「解出多少」是一个可以被追问的数字**，
 而不再是一个「无法测量」。
+
+## 八、代码版本声明（必读，别让这一条变成隐患）
+
+三轮跑批所用的 `scripts/ctf_stepfun_orchestrator.py` 是**工作树版本**，含一处
+他人未提交的在途改动（`git status` 显示 `M`，7 行增 / 5 行删）。差异**仅在
+`PROVIDERS["stepfun"]` 配置**：
+
+| 项 | 已提交版本 | 跑批所用工作树版本 |
+|---|---|---|
+| `api_base` | `https://api.stepfun.com/step_plan/v1` | `https://api.stepfun.com/v1` |
+| `key_env` | `STEPFUN_API_KEY` | `STEP_API_KEY` |
+| `default_model` | `step-3.7-flash` | `step-3.5-flash` |
+
+**`verify_flag()` 与判分相关代码零改动**（`git diff scripts/ctf_stepfun_orchestrator.py` 可复核）。
+因此：
+
+- 判分口径与本仓库提交版本一致，读数不受影响；
+- 但「跑批实际用的代码」不等于 `4a6670b` 的代码。第三方要逐位复现，必须先取该 WIP
+  （或等它入库），否则端点 / 模型名对不上，跑不出同一批请求。
+
+未提交该 WIP 是刻意的：它属他人负责中的改动（记忆里连续三轮都记录了「未碰
+`ctf_stepfun_orchestrator.py`」），本轮不越权代为提交。
