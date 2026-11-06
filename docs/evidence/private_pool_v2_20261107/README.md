@@ -141,14 +141,31 @@ s1 的跑批**本身合规**（注册表 40/40 锚定、且注册表在跑批前
 | DNS | `/etc/hosts` 钉死 `14.103.2.83 api.stepfun.com`，跑批不依赖 DNS | 见下方风险说明 |
 | 绑定 | proof 里 `run_binding.command_sha256=314ca567…` 与本次跑批命令逐字绑定 | `agentic_s*.verdict.json` → `evidence.airgap_scope_binding.proven=true` |
 
-🔴 **风险（本轮实测发现，必须记住）**：**iptables 规则不持久**。
+🔴 **风险（本轮实测发现，必须记住）**：**隔离规则是会话级的，不会自己留着**。
 本轮开始前 `iptables -S OUTPUT` 只剩 `-P OUTPUT ACCEPT` —— 上一轮（v1 的 10/10）
-加的规则在重启/重置后**已不存在**，即那之后任何「已隔离」的说法都只是历史状态。
+的规则**已被它自带的 900s 自动拆除**（`/tmp/sbx_net.sh setup` 会顺手 `sleep 900`
+后删链，设计如此），不是「重启丢失」。也就是说：**v1 那轮跑完之后、到本轮重施规则
+之前，这台机器上任何 uid 都能出网**。那段时间没有跑批，不影响读数；但它说明
+「已隔离」是有时效的状态，不是机器的属性。
 
-本轮是**重新施加规则后**才生成 proof 的，所以 s1–s3 的隔离成立。但这条规则的
-生命周期不跨重启：**每次跑批前都必须重施并重新生成 proof**。
-`gen_agentic_isolation_proof.py` 的 fail-closed 正好挡住这件事——没有规则时探针
-能连上，脚本 RC=1 且不产出证据，前置守卫随即拒绝跑批。
+本轮实际施加的（手工，幂等，均为 `-A OUTPUT ... --uid-owner 995`）：
+
+```
+-A OUTPUT -m owner --uid-owner 995 -o lo -d 127.0.0.0/8 -j ACCEPT
+-A OUTPUT -m owner --uid-owner 995 -d 14.103.2.83/32 -p tcp --dport 443 -j ACCEPT
+-A OUTPUT -m owner --uid-owner 995 -j REJECT --reject-with icmp-port-unreachable
+```
+
+仓内既有的规范脚本是服务器上的 `/tmp/sbx_net.sh setup|teardown|status`
+（独立链 `CTFSBX` + 900s 自动拆除）。本轮手工规则与它语义等价，差别只是
+「直接挂 OUTPUT」而非「挂专用链」，以及放行目标写死为本轮解析到的
+`14.103.2.83:443`。证据里能机验的是**行为**（`probe.internal/public` 均
+`BLOCKED errno=111`），不是规则文本，所以两种挂法都成立；但**下一轮请直接用
+`sbx_net.sh`**，别再手打。
+
+跑完已按逆序 `-D` 拆除三条规则，当前 `iptables -S OUTPUT` 只剩默认策略。
+fail-closed 保护仍然有效：没有规则时探针能连上，`gen_agentic_isolation_proof.py`
+RC=1 且不产出证据，前置守卫随即拒绝跑批 —— 本轮正是靠它在开跑前确认「规则确实在位」。
 
 另一条同源盲点（本轮顺手确认）：`api.stepfun.com` 的 AAAA 记录存在，但本机
 **没有 global IPv6 地址**（`ip -6 addr show scope global` 为空），因此 IPv4-only
@@ -168,9 +185,11 @@ s1 的跑批**本身合规**（注册表 40/40 锚定、且注册表在跑批前
 
 ```bash
 cd ~/sam
-# 0) 先确认隔离规则在位（重启后必须重施），再生成 proof
+# 0) 先建隔离（规范脚本：独立链 + 900s 自动拆除），再生成 proof
+sudo /tmp/sbx_net.sh setup          # 或 teardown / status
 sudo -u ctfsbx env HOME=/tmp python3 scripts/gen_agentic_isolation_proof.py \
   --out /tmp/proof.json --command "<与下面 -- 之后完全一致的命令>"
+# RC=0 且 probe 两路都是 BLOCKED errno=111 才继续；否则前置会拒绝跑批
 
 # 1) 跑批 + 判分（一条命令完成前置守卫/结果级绑定/仲裁）
 sudo -u ctfsbx env HOME=/tmp CTF_AIRGAP=1 RUNNER_LLM_NO_FALLBACK=1 \
