@@ -1,0 +1,79 @@
+{
+ "contract": "private-pool-proof/v1",
+ "entries": {
+  "pp_v1_01_xor_single_byte": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "f5061868d7c9e3c551e0b175c3636ff44ca3729595fb75e63648a6e272722373",
+   "problem_fingerprint": "722480e26d7b17ed136ccfe79e40760c0dedb7228a922ade24e08dc96f381aff"
+  },
+  "pp_v1_02_rsa_low_exponent_cube": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "b05b4d18a6b45367bf3e6c943937944951cbedaaa3c6b4a6ef94815ca7da1f06",
+   "problem_fingerprint": "4d348719ddaa90ee439a9dd5a2e1a79bf9ee933ebb925b7a0343f87a89d2fd9b"
+  },
+  "pp_v1_03_vigenere_known_key": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "4b846b3ab330c449585171a1474605175f8fdd208cb4d34a230c2b6babd6f7ce",
+   "problem_fingerprint": "afee0baa8c9c28ebe54d08c93800a7c6a05c00217fc47afa953609dc76b46b90"
+  },
+  "pp_v1_04_lcg_predict_next": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "fedfdd023111b2024eeae8a48f6a376037ad6978b114150c6147c619a6ccd994",
+   "problem_fingerprint": "f1f58180dead93598299cf946a992131626dd3adf8189a8e48c2a4361d0a4bf2"
+  },
+  "pp_v1_05_weak_seed_prng": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "d6dc3d0b613b91fd7fa5faf9e925a7f9e470c8bbc52d3f8ccffa61f7a9301fb4",
+   "problem_fingerprint": "beae65292a73ce691d9afbf84b92994fd00eefc5c91003ec41bbecb7401a2b1d"
+  },
+  "pp_v1_06_encoding_nest": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "641c0ff46e7ca6a0fda3c7f1c17eb1442c573ac61c24d69a366c513e8b1ff12f",
+   "problem_fingerprint": "94f7294976248adf4acf38a439b08beb26b60d181dd56e7d40ef4eb674ece21e"
+  },
+  "pp_v1_07_licence_constraints": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "f20eca4759cbcb00a5a82b1a4f748c10c1bde07d64bc60295cc29577f887e737",
+   "problem_fingerprint": "3e72d5229a59cc0e54665cff440395e6487913465b89e6b21795d26708e78b52"
+  },
+  "pp_v1_08_discrete_log_small": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "fd1418258d0760d7ce62c98836e2d38be12669a09167aec7ffc74534cb05ac0f",
+   "problem_fingerprint": "5af1b25993b4f6606ed6175d49365c58b1940fc89767d227f70f7af73c2d263e"
+  },
+  "pp_v1_09_ctr_nonce_reuse": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "f43e1c732545fc47c4f8c21a2687648e563eb4d3b43581b076b1dfd1632d24f2",
+   "problem_fingerprint": "6bd581d7356acb5164a59c2a2f3c9ce948b417d3e93929b393136d39b29ed91f"
+  },
+  "pp_v1_10_rsa_common_modulus": {
+   "declared_unreleased": true,
+   "first_commit": "1fab53ef1e767094c547f57e9348f66d44a56101",
+   "first_commit_date": "2026-11-07",
+   "flag_sha256": "22e4fcf1f884a67a8f90e4a361adc8719dbdca705e148a81a0b3ba7029d3b2f3",
+   "problem_fingerprint": "c9712e42be41622bc96ffd8d3bd025497e79c77613682262ba88f125bd9b37f3"
+  }
+ },
+ "note": "每题的 first_commit 指向该题首次进入 git 的提交；日期由 git 读出，不接受自填。flag_sha256 与公开池真值集合无交集（R4 由 audit_private_proof 逐题重算）。",
+ "pool_path": "data/ctf_benchmark/private_benchmark_v1.json",
+ "pool_sha256": "26dd0dee59fb6ccb71e669a4dfbffb891cb3ec0d911c29ddd1417f746ee4d6f5",
+ "tool": "scripts/gen_private_pool_v1.py --registry"
+}

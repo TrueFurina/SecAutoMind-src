@@ -638,15 +638,82 @@ def selftest() -> int:
     return 0 if passed == len(cases) else 1
 
 
+def build_registry(pool_path: str, commit: str) -> dict:
+    """生成私有性外部锚点注册表（R0–R6 的输入）。
+
+    为什么由脚本生成而不是手写：R3 的 `problem_fingerprint` 必须与
+    `audit_private_proof.problem_fingerprint()` 逐字一致，手写一次就会漂。
+    `first_commit_date` 也从 git 读，不接受自填（R5 会二次核对）。
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import audit_private_proof as app  # noqa: E402
+
+    if not os.path.isfile(pool_path):
+        raise SystemExit("池不存在：%s" % pool_path)
+    pool = json.load(open(pool_path, encoding="utf-8"))
+    probs = pool.get("problems", {})
+    if not probs:
+        raise SystemExit("池为空，注册表拒绝生成（fail-closed）")
+
+    rc, out = app._git("cat-file", "-e", "%s^{commit}" % commit)
+    if rc != 0:
+        raise SystemExit("commit 不存在：%s" % commit)
+    d = app._commit_date(commit)
+    if d is None:
+        raise SystemExit("无法从 git 读取提交日期（fail-closed）")
+    if d <= app.PRIOR_CUTOFF:
+        raise SystemExit("提交日期 %s 不晚于训练截止 %s，私有性不成立"
+                         % (d, app.PRIOR_CUTOFF))
+
+    entries = {}
+    for pid, p in probs.items():
+        if not p.get("flag_sha256"):
+            raise SystemExit("%s 缺 flag_sha256（不可判分，拒绝入锚点）" % pid)
+        entries[pid] = {
+            "problem_fingerprint": app.problem_fingerprint(p),
+            "flag_sha256": str(p["flag_sha256"]).lower(),
+            "first_commit": commit,
+            "first_commit_date": d.isoformat(),
+            "declared_unreleased": True,
+        }
+    return {
+        "contract": app.CONTRACT,
+        "tool": "scripts/gen_private_pool_v1.py --registry",
+        "pool_path": os.path.relpath(pool_path, ROOT).replace("\\", "/"),
+        "pool_sha256": app._sha256_file(pool_path),
+        "entries": entries,
+        "note": ("每题的 first_commit 指向该题首次进入 git 的提交；日期由 git 读出，"
+                 "不接受自填。flag_sha256 与公开池真值集合无交集（R4 由 "
+                 "audit_private_proof 逐题重算）。"),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=POOL_OUT)
     ap.add_argument("--verify", default=None, help="复验已有池的可解性")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--registry", default=None,
+                    help="生成私有性注册表到该路径（需配合 --commit）")
+    ap.add_argument("--commit", default=None, help="题目首次提交的 commit sha")
+    ap.add_argument("--pool-for-registry", default=POOL_OUT)
     args = ap.parse_args()
 
     if args.selftest:
         return selftest()
+    if args.registry:
+        if not args.commit:
+            raise SystemExit("--registry 必须配 --commit（日期与存在性都要从 git 读）")
+        reg = build_registry(args.pool_for_registry, args.commit)
+        os.makedirs(os.path.dirname(args.registry), exist_ok=True)
+        with open(args.registry, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(reg, fh, ensure_ascii=False, indent=1, sort_keys=True)
+            fh.write("\n")
+        print("写出注册表 %s（%d 题，commit=%s，date=%s）"
+              % (os.path.relpath(args.registry, ROOT), len(reg["entries"]),
+                 args.commit[:12], reg["entries"][sorted(reg["entries"])[0]]["first_commit_date"]))
+        print("pool_sha256 = %s" % reg["pool_sha256"])
+        return 0
     if args.verify:
         return verify_pool(args.verify)
 

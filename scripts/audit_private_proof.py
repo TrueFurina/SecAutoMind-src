@@ -374,6 +374,9 @@ def main() -> int:
     ap.add_argument("--check", action="store_true", help="重算结论并写证据 JSON")
     ap.add_argument("--verify", action="store_true", help="复核证据与当前重算一致")
     ap.add_argument("--require-proof", action="store_true", help="未达成时 RC=2")
+    ap.add_argument("--out", default=EVIDENCE,
+                    help="证据落地路径（默认 v2 池的证据；换池检查必须指定，"
+                         "否则会覆盖既有池的证据文件）")
     args = ap.parse_args()
 
     if args.selftest:
@@ -381,10 +384,10 @@ def main() -> int:
 
     result = assess(args.pool, args.registry, require_tracked=True)
     if args.verify:
-        if not os.path.isfile(EVIDENCE):
-            print("FAIL: 证据文件不存在 %s" % EVIDENCE)
+        if not os.path.isfile(args.out):
+            print("FAIL: 证据文件不存在 %s" % args.out)
             return 1
-        saved = json.load(open(EVIDENCE, encoding="utf-8"))
+        saved = json.load(open(args.out, encoding="utf-8"))
         # 只比结论性字段与「公开池清单健康度」。真值总数会随公开题库增补变化，
         # 但那不改变 anchored 结论；把它排除可避免环境差异造成假红。
         keys = ("pool_sha256", "registry_sha256", "anchored", "anchored_count",
@@ -398,10 +401,12 @@ def main() -> int:
           (result["anchored"], result["anchored_count"], result["total"]))
     print("理由：%s" % ("; ".join(result["reasons"]) or "R0–R6 全过"))
     if args.check:
-        os.makedirs(os.path.dirname(EVIDENCE), exist_ok=True)
-        json.dump(result, open(EVIDENCE, "w", encoding="utf-8"),
+        d = os.path.dirname(args.out)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        json.dump(result, open(args.out, "w", encoding="utf-8"),
                   ensure_ascii=False, indent=2, sort_keys=True)
-        print("证据已写：%s" % os.path.relpath(EVIDENCE, ROOT))
+        print("证据已写：%s" % os.path.relpath(args.out, ROOT))
     if args.require_proof and not result["anchored"]:
         print("FAIL: 未达成私有性外部锚点，禁止发布能力率")
         return 2
