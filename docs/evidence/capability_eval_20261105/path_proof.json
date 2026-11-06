@@ -1,0 +1,64 @@
+{
+  "generated_by": "prove_pure_llm_path (result+AST，无人工布尔)",
+  "checks": [
+    {
+      "check": "summary.agentic is False",
+      "ok": true,
+      "basis": "summary.agentic=False"
+    },
+    {
+      "check": "summary.tool_calls_total == 0",
+      "ok": true,
+      "basis": "tool_calls_total=0"
+    },
+    {
+      "check": "每题 tool_calls 显式为 0",
+      "ok": true,
+      "basis": "异常题=[]"
+    },
+    {
+      "check": "每题 audit 留痕为空",
+      "ok": true,
+      "basis": "有审计留痕题=[]"
+    },
+    {
+      "check": "跑批命令未启用 --agentic / 未挂工件目录",
+      "ok": true,
+      "basis": "command='D:/miniconda3_new/python.exe scripts/ctf_stepfun_orchestrator.py --provider stepfun --benchmark data/ctf_benchmark/purellm_clean_benchmark.json --limit 3 --conc'"
+    },
+    {
+      "check": "源码：工具执行仅在 agentic 分支可达",
+      "ok": true,
+      "basis": "{\"functions_present\": true, \"run_python_tool_callers\": {\"solve_one\": 0, \"call_llm_agentic\": 1}, \"non_agentic_writes_tool_calls_0\": true, \"agentic_gate_present\": true, \"load_key_call_sites\": 1, \"resolve_fallback_call_sites\": 0, \"presolve_in_"
+    },
+    {
+      "check": "源码：单一 provider 且无自动降级链",
+      "ok": true,
+      "basis": "provider='stepfun' load_key=1 Resolve=0"
+    },
+    {
+      "check": "判分不含 presolve 路径",
+      "ok": true,
+      "basis": "verify_flag含presolve=False 结果presolve命中=[]"
+    }
+  ],
+  "code_structure": {
+    "functions_present": true,
+    "run_python_tool_callers": {
+      "solve_one": 0,
+      "call_llm_agentic": 1
+    },
+    "non_agentic_writes_tool_calls_0": true,
+    "agentic_gate_present": true,
+    "load_key_call_sites": 1,
+    "resolve_fallback_call_sites": 0,
+    "presolve_in_verify_flag": false,
+    "presolve_hits_in_result": []
+  },
+  "verdict": {
+    "no_model_egress_proven": true,
+    "single_channel_proven": true,
+    "channel_attribution_proven": true,
+    "no_presolve_proven": true
+  }
+}
