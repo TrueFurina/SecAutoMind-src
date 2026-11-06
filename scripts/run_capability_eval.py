@@ -13,6 +13,11 @@
     syscall 隔离；**LLM API 通道本身必须联网**，不在隔离范围内，否则无法调用模型。
   - 判闸门是否生效**只能用 IP 直连证明**（DNS 失败与没配 DNS 同形），所以要求
     `--airgap-proof` 里 ip_direct_blocked=true 且 af_unix_ok=true。
+  - §18：上面两条只是**机制层**证据。proof 自身 caveats 声明「只证明闸门在探测
+    二进制生效，不证明任何一次跑批真的开了闸」，且作用域是 Go 侧 python_session；
+    Python orchestrator 的 run_python_tool 是另一条未隔离子进程（实测 CTF_AIRGAP=1
+    下仍可 IP 直连）。故 agentic 额外要求 `run_binding` 把证据绑定到本次跑批命令
+    及其解题子进程，缺则 fail-closed。
   - temperature：orchestrator 两处请求体硬编码 0.2 ⇒ 随机源「显式固定」代码级可证；
     但这**不等于逐位可复现**（provider 采样/版本会变），判据只要求显式固定值。
 
@@ -303,6 +308,85 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
     return scope
 
 
+def agentic_run_binding(proof, command):
+    """§18 跨层绑定：机制证据 ≠ 本次跑批的解题子进程被隔离。
+
+    实证（2026-11-06）：`CTF_AIRGAP=1` + 三个开关全开 + 已生成的 IP 直连 proof，
+    仍可从 `ctf_stepfun_orchestrator.run_python_tool` 用
+    `importlib.import_module('so'+'cket')` 绕过源码正则，IP 直连
+    172.16.222.99:22 成功（CONNECTED）。原因是 seccomp 由 Go 二进制自 re-exec 安装，
+    而 Python 子进程是 `subprocess.run([python, '-I', '-c', code])`，两者不同层。
+
+    proof 自己已声明这一点：caveats[0]「不证明任何一次跑批真的开了闸」，
+    airgap_scope 是 Go 侧 python_session。因此放行需要第二条件：
+    `run_binding.command_sha256` == 本次跑批命令指纹，且
+    `subprocess_ip_direct_blocked` is True（本次子进程内实跑 A/B）。
+    当前证据没有该字段 ⇒ agentic 一律 fail-closed。
+    """
+    if not isinstance(proof, dict) or proof.get("parse_error"):
+        return False, "IP 直连证据缺失或不可解析"
+    if proof.get("ip_direct_blocked") is not True or proof.get("af_unix_ok") is not True:
+        return False, "机制层 IP 直连 A/B 未成立"
+    cmd = [x for x in (command or []) if x != "--"]
+    if not cmd:
+        return False, ("无跑批命令可绑定；按 proof.caveats，该证据只证明闸门在探测"
+                       "二进制上生效，不证明任何一次跑批开了闸")
+    bound = proof.get("run_binding")
+    if not isinstance(bound, dict):
+        return False, ("证据缺 run_binding：作用域是 Go 二进制 seccomp 探测，"
+                       "本次跑批解题子进程未独立证明（实测 CTF_AIRGAP=1 下仍可出网）")
+    fp = hashlib.sha256(" ".join(cmd).encode("utf-8")).hexdigest()
+    if bound.get("command_sha256") != fp:
+        return False, "run_binding.command_sha256 与本次跑批命令指纹不符"
+    if bound.get("subprocess_ip_direct_blocked") is not True:
+        return False, "本次跑批解题子进程无 IP 直连拦截证据"
+    return True, "机制证据 + 本次跑批子进程隔离绑定均成立"
+
+
+def airgap_scope_selftest():
+    """F 段：agentic 跨层绑定变异验证（合成证据，不调 LLM、不产出分数）。"""
+    import copy
+
+    cmd = ["python", "scripts/ctf_stepfun_orchestrator.py", "--agentic",
+           "--benchmark", "pool.json"]
+    fp = hashlib.sha256(" ".join(cmd).encode("utf-8")).hexdigest()
+    good = {
+        "ip_direct_blocked": True, "af_unix_ok": True,
+        "run_binding": {"command_sha256": fp,
+                         "subprocess_ip_direct_blocked": True},
+    }
+    cases = []
+
+    def case(label, proof, command, want):
+        got, why = agentic_run_binding(proof, command)
+        cases.append((label, got, want, why))
+
+    case("无证据 ⇒ 拒绝", {}, cmd, False)
+    case("机制 A/B 不成立 ⇒ 拒绝",
+         {**good, "ip_direct_blocked": False}, cmd, False)
+    case("只有机制证据、无跑批命令 ⇒ 拒绝", good, [], False)
+    p = copy.deepcopy(good)
+    p.pop("run_binding")
+    case("有跑批命令但缺 run_binding ⇒ 拒绝", p, cmd, False)
+    case("命令指纹不匹配 ⇒ 拒绝",
+         {**good, "run_binding": {**good["run_binding"], "command_sha256": "0" * 64}},
+         cmd, False)
+    case("子进程未证明拦截 ⇒ 拒绝",
+         {**good, "run_binding": {**good["run_binding"],
+                                 "subprocess_ip_direct_blocked": False}}, cmd, False)
+    case("双条件齐备 ⇒ 放行", good, cmd, True)
+
+    passed = 0
+    for label, got, want, why in cases:
+        good_case = got is want
+        passed += int(good_case)
+        print("  %s %-36s got=%s want=%s %s"
+              % ("PASS" if good_case else "FAIL", label, got, want,
+                 "" if good_case else why[:70]))
+    print("agentic 跨层绑定变异验证：%d/%d" % (passed, len(cases)))
+    return passed == len(cases)
+
+
 def preflight(args):
     """真实检查，不模拟、不伪造。返回 (ok, checks, evidence)。
 
@@ -335,6 +419,7 @@ def preflight(args):
 
     proof = {}
     proof_ok = False
+    bound_ok, bound_note = False, "N/A：pure_llm 路径无解题子进程"
     if args.airgap_proof and os.path.isfile(args.airgap_proof):
         try:
             proof = json.load(open(args.airgap_proof, encoding="utf-8"))
@@ -342,10 +427,15 @@ def preflight(args):
         except Exception as exc:
             proof = {"parse_error": str(exc)}
     if mode == "agentic":
-        chk("airgap IP 直连证据", proof_ok,
+        chk("airgap IP 直连证据（机制层）", proof_ok,
             "需 ip_direct_blocked=true 且 af_unix_ok=true；实得 %s" % json.dumps(proof, ensure_ascii=False)[:180])
+        # §18：机制层 proof 的作用域是 Go 探测二进制。必须再证明「本次跑批的
+        # 解题子进程」被隔离，否则上一轮那种「前置全绿但 Python 子进程可出网」
+        # 的跨层假绿会重演。当前证据无 run_binding ⇒ 恒拒（fail-closed）。
+        bound_ok, bound_note = agentic_run_binding(proof, [x for x in args.command if x != "--"])
+        chk("本次跑批解题子进程隔离绑定", bound_ok, bound_note)
     else:
-        chk("airgap IP 直连证据", True,
+        chk("airgap IP 直连证据（机制层）", True,
             "N/A：pure_llm 无解题子进程，seccomp 拦的是 Go 侧 python_session", na=True)
         proof_ok = True
 
@@ -457,8 +547,11 @@ def preflight(args):
     if mode == "agentic":
         ev.update({
             "airgap_active": os.environ.get("CTF_AIRGAP") == "1",
-            "airgap_zero_egress_proven": proof_ok,
+            # §18：判据层读的就是这个键。只给机制层 proof 就写 True 会让
+            # judge_one 把未隔离子进程的命中也归因成解出 ⇒ 必须与绑定同为 True。
+            "airgap_zero_egress_proven": proof_ok and bound_ok,
             "airgap_scope": "解题子进程 python_session/skill/流式shell；LLM API 通道不在隔离范围（否则无法调用模型）",
+            "airgap_scope_binding": {"proven": bound_ok, "reason": bound_note},
             "airgap_proof": proof,
             "no_fallback_proven": os.environ.get("RUNNER_LLM_NO_FALLBACK") == "1",
             "channel_attribution_proven": os.environ.get("RUNNER_LLM_NO_FALLBACK") == "1",
@@ -631,7 +724,10 @@ def pipeline_selftest():
     os.remove(gap_path)
     print("=== E. --run 结果级绑定变异验证（合成，非评测）===")
     runbind_ok = runbind_selftest()
-    all_ok = rc == 0 and ok and scope_rc == 0 and gap_ok and runbind_ok
+    print("=== F. agentic 跨层作用域绑定变异验证（合成，非评测）===")
+    airgap_scope_ok = airgap_scope_selftest()
+    all_ok = (rc == 0 and ok and scope_rc == 0 and gap_ok
+              and runbind_ok and airgap_scope_ok)
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
