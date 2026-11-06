@@ -218,6 +218,43 @@ case("真实仓库：benchmark.json=0 / real_benchmark.json=0（题干已脱敏�
      leaks.get("benchmark.json", 0) == 0 and leaks.get("real_benchmark.json", 0) == 0, str(leaks))
 case("真实仓库：当前全部在基线内（登记契约成立）", not bad, str(bad[:1]))
 
+# 9 扫描集覆盖：改个文件名就绕过门禁（2026-11-06 第七个偏差）
+print()
+print("[扫描集覆盖（命名绕过变异）]")
+cov_real = gate.coverage_violations(gate.REPO_ROOT, per_file=res)
+case("真实仓库：入库题集全部在明文门禁扫描集内",
+     cov_real == [], str(cov_real))
+
+cov_tmp = tempfile.mkdtemp()
+try:
+    d = os.path.join(cov_tmp, "data", "ctf_benchmark")
+    os.makedirs(d, exist_ok=True)
+    rogue = "zz_rogue_pool.json"      # 文件名里故意不含 benchmark
+    with open(os.path.join(d, rogue), "w", encoding="utf-8") as f:
+        json.dump({"problems": {"r1": {"description": "正常题面",
+                                        "flag_sha256": sha("answer_r1")}}}, f)
+    per = gate.analyze(cov_tmp)
+    case("改名题池确实不在 GLOB 扫描结果内（洞真实存在）",
+         rogue not in {p["file"] for p in per})
+    bad_cov = gate.coverage_violations(
+        cov_tmp, per_file=per, tracked=["data/ctf_benchmark/" + rogue])
+    case("改名题池被覆盖断言抓到（门禁会红）",
+         bad_cov == [rogue], str(bad_cov))
+    rep = "zz_report.json"
+    with open(os.path.join(d, rep), "w", encoding="utf-8") as f:
+        json.dump({"summary": {"n": 3}, "generated_at": "2026-11-06"}, f)
+    bad_rep = gate.coverage_violations(
+        cov_tmp, per_file=per, tracked=["data/ctf_benchmark/" + rep])
+    case("报告类 json 不误伤（防误报）", bad_rep == [], str(bad_rep))
+    case("空入库清单 ⇒ 无违规（不恒红）",
+         gate.coverage_violations(cov_tmp, per_file=per, tracked=[]) == [])
+finally:
+    shutil.rmtree(cov_tmp, ignore_errors=True)
+
+case("git 清单不可得 ⇒ fail-closed（None）",
+     gate.tracked_top_level_json(
+         os.path.join(tempfile.gettempdir(), "wb_no_such_repo_9f3a")) is None)
+
 print()
 print("=== 通过 %d / 失败 %d ===" % (_pass, fail))
 sys.exit(1 if fail else 0)

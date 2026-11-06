@@ -52,6 +52,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -264,6 +265,71 @@ def real_solver_caliber(repo_root=REPO_ROOT, per_file=None):
     return out
 
 
+# ── 扫描集覆盖契约（2026-11-06 第七个偏差：命名绕过）──────────────────────
+# GLOB 只按「文件名含 benchmark」匹配。把题池改个名字（本机实证：
+# data/ctf_benchmark/purellm_full188.json 是 176 题池，名字里没有 benchmark，
+# 两个明文判据一次都没扫到它）就完全绕过，「新池零容忍」只在「被扫到」的
+# 前提下才成立 = 空洞绿。故对 git 已入库的顶层 json 再做一次覆盖断言：
+# 长得像题集（problems 非空 dict 且至少一题带 flag_sha256）却没进 analyze()
+# 结果 ⇒ 判红，强制改名或显式登记，绝不静默放过。
+TRACKED_TOP_DIR = "data/ctf_benchmark"
+
+
+def looks_like_pool(doc):
+    """题集形状：problems 为非空 dict，且至少一题带可判分的 flag_sha256。"""
+    if not isinstance(doc, dict):
+        return False
+    probs = doc.get("problems", doc)
+    if not isinstance(probs, dict) or not probs:
+        return False
+    return any(isinstance(v, dict) and v.get("flag_sha256")
+               for v in probs.values())
+
+
+def tracked_top_level_json(repo_root):
+    """git 已入库的 benchmark 目录顶层 json；拿不到清单 ⇒ None（fail-closed）。"""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--", "data/ctf_benchmark/*.json"],
+            cwd=repo_root, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    prefix = TRACKED_TOP_DIR + "/"
+    got = []
+    for line in out.stdout.splitlines():
+        rel = line.strip().replace("\\", "/")
+        if rel.startswith(prefix) and "/" not in rel[len(prefix):]:
+            got.append(rel)
+    return got
+
+
+def coverage_violations(repo_root=REPO_ROOT, per_file=None, tracked=None):
+    """返回「已入库但未被扫描的题集」文件名列表；None = 环境不可判定。
+
+    per_file / tracked 可注入，供自测用合成数据验证门禁两端都灵（生产由
+    git ls-files 提供，自测不依赖 git 也不写工作树）。
+    """
+    per_file = analyze(repo_root) if per_file is None else per_file
+    scanned = {p["file"] for p in per_file}
+    tracked = tracked_top_level_json(repo_root) if tracked is None else tracked
+    if tracked is None:
+        return None
+    bad = []
+    for rel in tracked:
+        name = os.path.basename(rel)
+        if name in SKIP_FILES or name in scanned:
+            continue
+        try:
+            doc = _load(os.path.join(repo_root, rel))
+        except (ValueError, OSError):
+            continue
+        if looks_like_pool(doc):
+            bad.append(name)
+    return sorted(bad)
+
+
 def violations(per_file):
     """门禁判据。返回违规描述列表（空 = 通过）。"""
     bad = []
@@ -342,7 +408,23 @@ def main():
         print("真求解器 %s: %d/%d = %.1f%%（全量命中 %d，伪解 %d）"
               % (fname, real, total, pct, hit, fake))
 
+    print()
+    print("=== 扫描集覆盖（防「改个文件名就绕过门禁」）===")
+    cov = coverage_violations(REPO_ROOT, per_file)
+    if cov is None:
+        print("  🔴 无法取得 git 入库文件清单 ⇒ fail-closed")
+    elif cov:
+        print("  🔴 %d 个入库题集未被扫描：%s" % (len(cov), ", ".join(cov)))
+    else:
+        print("  ✅ 入库题集全部在明文门禁扫描集内")
+    print()
+
     bad = violations(per_file)
+    if cov is None:
+        bad.append("无法取得 git 入库文件清单，扫描集覆盖不可判定（fail-closed）")
+    elif cov:
+        bad.append("以下入库题集含可判分题目却未被明文门禁扫描"
+                   "（禁止靠命名绕过）：%s" % ", ".join(cov))
     if not args.check:
         print()
         print("报数模式：不判定（--check 才是门禁入口）。当前违规 %d 条" % len(bad))
@@ -355,7 +437,7 @@ def main():
             print("  · %s" % b)
         return 1
     print("✅ PASS —— %d 集 / %d 题，两个判据均在登记基线内"
-          "（花括号明文 %d / 自然语言自曝 %d）"
+          "（花括号明文 %d / 自然语言自曝 %d），扫描集覆盖校验通过"
           % (len(per_file), tot_p, tot_leak, tot_sd))
     return 0
 
