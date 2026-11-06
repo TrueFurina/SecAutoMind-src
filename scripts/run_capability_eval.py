@@ -762,6 +762,41 @@ def runbind_selftest():
     return passed == len(cases)
 
 
+def _registry_threaded_proven():
+    """源码级不变量：所有 adjudicate(...) 调用都必须显式透传 registry。
+
+    实证（2026-11-07 扩池 40 题）：`--registry` 只接进了 `--adjudicate` 与
+    `--annotate` 两条路径，`--run` 路径漏了。后果不是报错，而是那一次 40 题
+    跑批（注册表 40/40 全锚定、且注册表在跑批前就已入库）被判成
+    `engineering_regression_only`，日志只留一句 registry_pool_sha256_mismatch。
+    参数漏接会**静默降级结论作用域**，所以这里用源码形状把它顶回来 ——
+    加一个调用点忘了透传，CI 就红。
+    """
+    path = os.path.join(ROOT, "scripts", "run_capability_eval.py")
+    try:
+        src = open(path, encoding="utf-8").read()
+    except OSError as exc:
+        return False, "源码不可读: %s" % exc
+    import ast
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as exc:
+        return False, "源码不可解析: %s（判据失效 ⇒ fail-closed）" % exc
+    # 用 AST 而不是正则：字符串/注释里出现 adjudicate( 会误判（实测 3 例假阳性），
+    # 而漏掉一个真实调用点就等于这条不变量失效。
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "adjudicate"]
+    if not calls:
+        return False, "未找到任何 adjudicate 调用（形状变化 ⇒ 判据失效，fail-closed）"
+    bad = [n for n in calls
+           if not any(k.arg == "registry" for k in n.keywords)]
+    return (not bad), ("%d 个调用点，缺 registry= 的 %d 个%s"
+                       % (len(calls), len(bad),
+                          "" if not bad else
+                          "（行 %s）" % ",".join(str(n.lineno) for n in bad)))
+
+
 def pipeline_selftest():
     """链路自测：判据层 + 入口层都能在合规条件下给出正向结论。
 
@@ -819,8 +854,12 @@ def pipeline_selftest():
     airgap_scope_ok = airgap_scope_selftest()
     print("=== G. 结构可解性标注变异验证（合成，非评测）===")
     attdep_ok = attachment_dependency_selftest()
+    print("=== H. 参数透传不变量（源码形状，非评测）===")
+    reg_ok, reg_why = _registry_threaded_proven()
+    print("  %s adjudicate 调用全部透传 registry（%s）"
+          % ("PASS" if reg_ok else "FAIL", reg_why))
     all_ok = (rc == 0 and ok and scope_rc == 0 and gap_ok
-              and runbind_ok and airgap_scope_ok and attdep_ok)
+              and runbind_ok and airgap_scope_ok and attdep_ok and reg_ok)
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
@@ -1106,7 +1145,8 @@ def main():
         print("结果级绑定：OK（本次写入 sha=%s，题 id 全在本批次池内）"
               % ev["result_file_sha256"][:16])
         return report(adjudicate(result_path, ev, args.out, args.mode, cmd,
-                                  pool=args.pool, prior_audit=args.prior_audit))
+                                  pool=args.pool, prior_audit=args.prior_audit,
+                                  registry=args.registry))
     return 0
 
 
