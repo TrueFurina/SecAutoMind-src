@@ -43,6 +43,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from check_benchmark_plaintext_answer import (analyze, violations,  # noqa: E402
@@ -80,6 +81,69 @@ def _sha256(path):
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def snapshot_result(path):
+    """跑批前给结果文件拍一份字节级快照（不存在也记录为快照，不算失败）。"""
+    if not path or not os.path.isfile(path):
+        return {"exists": False, "sha256": None, "mtime_ns": None}
+    st = os.stat(path)
+    return {"exists": True, "sha256": _sha256(path), "mtime_ns": st.st_mtime_ns}
+
+
+def verify_run_result(result_path, snapshot, pool_path, rc, started_ns):
+    """跑批后**结果级**绑定校验（纯函数，只读文件，便于变异验证）。
+
+    2026-11-06 第十一个偏差：旧实现把命令里的 `--benchmark` 池指纹抄进
+    `ev["result_pool_sha256"]` 就算「结果池绑定」，但那是**参数自证**——
+    与结果文件内容毫无关系。实测两个攻击形态都能产出 verdict：
+      · 跑批命令 rc=0 却根本不写结果文件 ⇒ 判分读的是上一次的旧结果；
+      · 跑批命令 rc=7 明确失败 ⇒ rc 被忽略，照样判分。
+    因此这里要求三件事同时成立，任一不满足即 fail-closed 拒绝判分：
+      1. 命令 rc=0 且结果文件存在、可解析、details 非空；
+      2. 结果文件确实被本次跑批重写（内容/mtime 未变 ⇒ 旧结果洗白）；
+      3. 结果里的题 id 全部属于本批次题池（旧池结果不能套新池指纹）。
+    """
+    reasons = []
+    if rc != 0:
+        reasons.append("跑批命令 rc=%d ≠ 0（旧实现会忽略并继续判分）" % rc)
+    if not result_path or not os.path.isfile(result_path):
+        reasons.append("结果文件不存在：本次跑批未产出结果")
+        return False, reasons
+
+    after_sha = _sha256(result_path)
+    try:
+        st = os.stat(result_path)
+    except OSError as exc:
+        reasons.append("结果文件 stat 失败: %s" % exc)
+        return False, reasons
+    if snapshot.get("exists"):
+        same_bytes = snapshot.get("sha256") == after_sha
+        mtime_unchanged = st.st_mtime_ns <= (snapshot.get("mtime_ns") or 0)
+        if same_bytes and mtime_unchanged:
+            reasons.append("结果文件字节与 mtime 均未变 ⇒ 旧结果被当成本次批次（洗白）")
+    if st.st_mtime_ns < started_ns:
+        reasons.append("结果文件 mtime 早于本次跑批开始 ⇒ 未被本次跑批写入")
+
+    try:
+        with open(result_path, encoding="utf-8") as f:
+            doc = json.load(f)
+        details = doc.get("details") or []
+    except Exception as exc:
+        reasons.append("结果文件无法解析为 JSON: %s" % exc)
+        return False, reasons
+    if not details:
+        reasons.append("结果文件 details 为空（空跑批次）")
+    ids = {str(d.get("id", "")) for d in details if isinstance(d, dict)}
+    questions, pool_ok = load_questions(pool_path)
+    pool_ids = set(questions.keys())
+    if not pool_ok or not pool_ids:
+        reasons.append("本批次题池为空或读取失败")
+    outside = sorted(ids - pool_ids)
+    if outside:
+        reasons.append("结果含 %d 道不属于本批次题池的题（疑似旧池结果）: %s"
+                       % (len(outside), ", ".join(outside[:3])))
+    return (not reasons), reasons
 
 
 def scoring_gap_fragment(result_path):
@@ -442,6 +506,78 @@ def adjudicate(result_path, ev, out_path, mode="pure_llm", command=None,
     return v
 
 
+def runbind_selftest():
+    """--run 结果级绑定的变异验证（合成文件，不调 LLM、不产出分数）。"""
+    import shutil
+    import tempfile
+
+    tmpdir = tempfile.mkdtemp(prefix="wb_runbind_")
+    cases = []
+    try:
+        pool_p = os.path.join(tmpdir, "pool.json")
+        res_p = os.path.join(tmpdir, "result.json")
+        with open(pool_p, "w", encoding="utf-8") as f:
+            json.dump({"problems": {
+                "p1": {"id": "p1", "description": "合成题"},
+                "p2": {"id": "p2", "description": "合成题"},
+            }}, f)
+
+        def write(ids):
+            with open(res_p, "w", encoding="utf-8") as f:
+                json.dump({"details": [
+                    {"id": i, "solved": False, "latency": 1.0, "error": ""}
+                    for i in ids]}, f)
+
+        # 正向：首次跑批，结果文件原本不存在，本次写出。
+        if os.path.isfile(res_p):
+            os.remove(res_p)
+        snap = snapshot_result(res_p)
+        write(["p1", "p2"])
+        ok, why = verify_run_result(res_p, snap, pool_p, 0, 1)
+        cases.append(("首次跑批正常产出结果", ok, True, why))
+
+        # 攻击 1：命令失败，但旧结果仍在 ⇒ 必须拒绝（旧实现忽略 rc）。
+        ok, why = verify_run_result(res_p, snap, pool_p, 7, 1)
+        cases.append(("跑批命令 rc=7", ok, False, why))
+
+        # 攻击 2：结果文件字节与 mtime 都没变 ⇒ 旧结果洗白。
+        snap_old = snapshot_result(res_p)
+        ok, why = verify_run_result(res_p, snap_old, pool_p, 0, 1)
+        cases.append(("结果文件未被本次跑批重写", ok, False, why))
+
+        # 攻击 3：文件存在但 mtime 早于跑批开始 ⇒ 未被本次写入。
+        ok, why = verify_run_result(
+            res_p, {"exists": False, "sha256": None, "mtime_ns": None},
+            pool_p, 0, 10 ** 20)
+        cases.append(("结果 mtime 早于本次跑批开始", ok, False, why))
+
+        # 攻击 4：旧池结果套新池指纹（题 id 不在本批次池内）。
+        write(["zz_other_pool"])
+        ok, why = verify_run_result(
+            res_p, {"exists": False, "sha256": None, "mtime_ns": None},
+            pool_p, 0, 1)
+        cases.append(("结果含非本批次池的题", ok, False, why))
+
+        # 正向：内容确实变化、题 id 全在池内 ⇒ 允许判分。
+        write(["p1"])
+        ok, why = verify_run_result(
+            res_p, {"exists": True, "sha256": "0" * 64, "mtime_ns": 1},
+            pool_p, 0, 1)
+        cases.append(("重写结果且题全在本批次池内", ok, True, why))
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    passed = 0
+    for label, got, want, why in cases:
+        good = got is want
+        passed += int(good)
+        print("  %s %-38s got=%s want=%s %s"
+              % ("PASS" if good else "FAIL", label, got, want,
+                 "" if good else str(why[:1])[:76]))
+    print("--run 结果级绑定变异验证：%d/%d" % (passed, len(cases)))
+    return passed == len(cases)
+
+
 def pipeline_selftest():
     """链路自测：判据层 + 入口层都能在合规条件下给出正向结论。
 
@@ -493,7 +629,9 @@ def pipeline_selftest():
     print("  %s 合成 1 题：false_negative_count=%s（期望 1）"
           % ("PASS" if gap_ok else "FAIL", frag.get("false_negative_count")))
     os.remove(gap_path)
-    all_ok = rc == 0 and ok and scope_rc == 0 and gap_ok
+    print("=== E. --run 结果级绑定变异验证（合成，非评测）===")
+    runbind_ok = runbind_selftest()
+    all_ok = rc == 0 and ok and scope_rc == 0 and gap_ok and runbind_ok
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
@@ -665,8 +803,12 @@ def main():
         print("有效开跑 %d / 原始命中 %d / LLM_SOLVED %d / CLEAN_FAIL %d / NOT_ATTRIBUTABLE %d"
               % (v["effective_runs"], v["raw_solved_hits"], v["verdicts"]["LLM_SOLVED"],
                  v["verdicts"]["CLEAN_FAIL"], v["verdicts"]["NOT_ATTRIBUTABLE"]))
+        try:
+            out_disp = os.path.relpath(args.out, ROOT)
+        except ValueError:  # Windows 跨盘绝对路径（如 C:\tmp 与 E:\repo）
+            out_disp = args.out
         print("可引用=%s 链路读数=%s 逐题明细=%s"
-              % (v["claimable"], v["capability_rate"], os.path.relpath(args.out, ROOT)))
+              % (v["claimable"], v["capability_rate"], out_disp))
         scope = v.get("claim_scope") or {}
         kind = scope.get("claim_scope", "unverified")
         print("结论作用域=%s 私有题=%s/%s 审计证据一致=%s"
@@ -713,7 +855,10 @@ def main():
         if not cmd:
             print("--run 需要 -- 之后的命令", file=sys.stderr)
             return 2
-        # 防洗白：把本批次实际使用的题池指纹写进证据，判分时由判据内部比对重算。
+        # 注意：下面这个键只证明「命令参数里的 --benchmark 池」，
+        # **不证明结果文件内容**。第十一个偏差实测：命令 rc=0 却不写结果、
+        # 或 rc=7 失败，旧实现都照样拿旧结果判分并让该指纹自证成立。
+        # 真正的绑定在跑批后由 verify_run_result() 做结果级校验。
         bench = None
         for i, x in enumerate(cmd):
             if x == "--benchmark" and i + 1 < len(cmd):
@@ -721,13 +866,34 @@ def main():
                 break
         bp = bench and (bench if os.path.isabs(bench) else os.path.join(ROOT, bench))
         ev["result_pool_sha256"] = _sha256(bp) if bp and os.path.isfile(bp) else None
-        print("绑定结果题池：%s sha=%s" % (bench, str(ev["result_pool_sha256"])[:16]))
+        print("命令参数题池：%s sha=%s（仅参数，非结果级证明）"
+              % (bench, str(ev["result_pool_sha256"])[:16]))
+        # 路径规范化：跑批子进程 cwd=ROOT，主进程 cwd 未必是 ROOT；
+        # 相对路径在两侧会指向不同文件 ⇒ 判分读不到本次结果。
+        result_path = args.result
+        if result_path and not os.path.isabs(result_path):
+            result_path = os.path.join(ROOT, result_path)
+        before = snapshot_result(result_path)
+        started_ns = time.time_ns()
         print("执行跑批：%s" % " ".join(cmd))
         rc = subprocess.call(cmd, cwd=ROOT)
         print("跑批 rc=%d" % rc)
         if not args.result:
             return rc
-        return report(adjudicate(args.result, ev, args.out, args.mode, cmd,
+        ok_run, why = verify_run_result(result_path, before, args.pool, rc, started_ns)
+        if not ok_run:
+            print("[FAIL] 拒绝判分：本次跑批结果不成立（fail-closed）", file=sys.stderr)
+            for reason in why:
+                print("  - %s" % reason, file=sys.stderr)
+            print("  旧实现会把命令参数指纹当成结果池绑定，读旧结果继续判分。",
+                  file=sys.stderr)
+            return 2
+        ev["result_file_sha256"] = _sha256(result_path)
+        ev["result_written_by_this_run"] = True
+        ev["result_ids_in_pool_proven"] = True
+        print("结果级绑定：OK（本次写入 sha=%s，题 id 全在本批次池内）"
+              % ev["result_file_sha256"][:16])
+        return report(adjudicate(result_path, ev, args.out, args.mode, cmd,
                                   pool=args.pool, prior_audit=args.prior_audit))
     return 0
 
