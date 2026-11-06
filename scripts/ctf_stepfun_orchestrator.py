@@ -182,11 +182,22 @@ def resolve_base_url(cfg):
     return cfg["api_base"]
 
 
-def _token_kwarg(cfg, n=16384):
-    """推理模型用 max_completion_tokens（max_tokens 会被 reasoning 吃光）；否则 max_tokens。"""
+DEFAULT_MAX_TOKENS = 16384
+
+
+def _token_kwarg(cfg, n=None):
+    """输出预算。推理模型用 max_completion_tokens（max_tokens 会被 reasoning 吃光）。
+
+    2026-11-07 修：原实现非推理模型恒 `min(n, 4096)`，把 n=16384 的请求悄悄压回 4096。
+    实测后果是**输出被硬截断**——step-3.5-flash 解 ext_gctf2021_h1 时 25.7s、0 次工具调用、
+    正文停在 "which is slightly larger than n (" 半句，然后被判未解。
+    第 17 轮 10 次「空答」（0 tool call + 18–25s 结束 + 文本原地重复）也是同一病理：
+    那是**输出预算耗尽**，不是能力边界。预算不抬起来，跑出来的率就是预算上限。
+    """
+    n = int(n or DEFAULT_MAX_TOKENS)
     if cfg.get("reasoning_model"):
         return {"max_completion_tokens": n}
-    return {"max_tokens": min(n, 4096)}
+    return {"max_tokens": n}
 
 
 def load_benchmark(path):
@@ -330,12 +341,12 @@ def _urlopen_deadline(req, timeout):
     return result["resp"]
 
 
-def call_llm(cfg, api_key, model, prompt, timeout):
+def call_llm(cfg, api_key, model, prompt, timeout, max_tokens=None):
     base = resolve_base_url(cfg)
     url = base.rstrip("/") + "/chat/completions"
     payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
                "temperature": 0.2, "stream": False}
-    payload.update(_token_kwarg(cfg))
+    payload.update(_token_kwarg(cfg, max_tokens))
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url, data=data,
@@ -523,7 +534,7 @@ def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False)
 
 
 def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=None, wall_budget=420,
-                     artifact_cwd=None, artifact_mode=False):
+                     artifact_cwd=None, artifact_mode=False, max_tokens=None, stats=None):
     """多轮工具调用循环：模型可调用 run_python 真正计算；返回 (搜索文本, tool_used)。
     wall_budget: 单题墙钟预算秒（防个别题无限循环烧 token，来自 wolvctf2024_xor 事故）。
     artifact_cwd/artifact_mode: 工件模式（见 prepare_artifacts），仅显式启用时生效。"""
@@ -560,7 +571,7 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
         per_timeout = max(10, min(timeout, int(remain)))
         payload = {"model": model, "messages": messages, "temperature": 0.2,
                    "tools": [PYTHON_TOOL], "tool_choice": "auto", "stream": False}
-        payload.update(_token_kwarg(cfg))
+        payload.update(_token_kwarg(cfg, max_tokens))
         try:
             body = _post_json(url, payload, api_key, per_timeout)
         except _HardDeadline as e:
@@ -586,6 +597,17 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
         reasoning = msg.get("reasoning_content") or ""
         all_text.append(content)
         all_text.append(reasoning)
+        # 2026-11-07：记录每一轮的 finish_reason / usage。没有这两个字段，
+        # 就无法区分「输出预算被截断」与「模型确实不会」——前者是工程上限，后者才是能力边界。
+        if stats is not None:
+            _u = body.get("usage") or {}
+            stats.append({
+                "finish_reason": (body.get("choices") or [{}])[0].get("finish_reason"),
+                "completion_tokens": _u.get("completion_tokens"),
+                "prompt_tokens": _u.get("prompt_tokens"),
+                "reasoning_chars": len(reasoning), "content_chars": len(content),
+                "tool_calls": len(tcalls),
+            })
         tcalls = msg.get("tool_calls") or []
         if not tcalls:
             break
@@ -614,7 +636,7 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
 
 
 def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, artifact_dir=None,
-              max_iter=6, wall_budget=420):
+              max_iter=6, wall_budget=420, max_tokens=None):
     pid, problem = item
     category = (problem.get("category") or "").lower()
     mbc = cfg.get("models_by_category") or {}
@@ -625,13 +647,14 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
         artifact_cwd, artifact_info = prepare_artifacts(artifact_dir, pid, problem.get("zip"))
     prompt = build_prompt(problem, artifact_info)
     audit = []
+    stats = []
     if agentic and cfg.get("supports_tools"):
         _inc(); t0 = time.time()
         try:
             search_text, tool_used = call_llm_agentic(
                 cfg, api_key, model, prompt, timeout, audit=audit,
                 artifact_cwd=artifact_cwd, artifact_mode=bool(artifact_cwd), max_iter=max_iter,
-                wall_budget=wall_budget)
+                wall_budget=wall_budget, max_tokens=max_tokens, stats=stats)
             got, solved, mode = verify_flag(search_text, expected_sha)
             blocked = sum(1 for a in audit if not a["allowed"])
             return {
@@ -640,6 +663,10 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
                 "tool_calls": len(audit), "blocked_calls": blocked,
                 "raw_head": search_text[-800:], "latency": round(time.time() - t0, 2), "error": "",
                 "audit": audit,
+                "llm_rounds": stats,
+                "truncated_rounds": sum(1 for x in stats if x.get("finish_reason") == "length"),
+                "prompt_tokens_total": sum((x.get("prompt_tokens") or 0) for x in stats),
+                "completion_tokens_total": sum((x.get("completion_tokens") or 0) for x in stats),
             }
         except Exception as e:
             return {
@@ -647,13 +674,13 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
                 "expected_sha256": expected_sha, "got": "", "solved": False, "hit_mode": "",
                 "tool_calls": len(audit), "blocked_calls": sum(1 for a in audit if not a["allowed"]),
                 "raw_head": "", "latency": round(time.time() - t0, 2), "error": str(e)[:200],
-                "audit": audit,
+                "audit": audit, "llm_rounds": stats,
             }
         finally:
             _dec()
     _inc(); t0 = time.time()
     try:
-        body = call_llm(cfg, api_key, model, prompt, timeout)
+        body = call_llm(cfg, api_key, model, prompt, timeout, max_tokens=max_tokens)
         text = ""; reasoning = ""
         try:
             msg = body["choices"][0]["message"]
@@ -706,6 +733,9 @@ def main():
     ap.add_argument("--wall-budget", type=int, default=420,
                     help="单题墙钟预算秒(默认 420)。推理模型每轮可达 25s+，高轮数工件题需相应调大"
                          "(如 --wall-budget 900)，否则 budget 先于轮数耗尽、被提前收口")
+    ap.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS,
+                    help="单次响应输出预算(默认 %d)。原先硬压 4096，长推理题会被截断在半句，"
+                         "表现为 0 tool call + 20s 收口 —— 那是预算耗尽不是能力边界" % DEFAULT_MAX_TOKENS)
     ap.add_argument("--slice", default="xfyun-55", help="占位切片名（写入结果元数据）")
     args = ap.parse_args()
 
@@ -729,7 +759,8 @@ def main():
     results = []
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         futs = {ex.submit(solve_one, cfg, api_key, it, args.timeout, args.model, agentic,
-                          args.artifact_dir, args.max_iter, args.wall_budget): it for it in items}
+                          args.artifact_dir, args.max_iter, args.wall_budget,
+                          args.max_tokens): it for it in items}
         done = 0
         for fut in as_completed(futs):
             r = fut.result(); results.append(r); done += 1
@@ -766,6 +797,7 @@ def main():
         "artifact_dir": args.artifact_dir,
         "artifact_mode": bool(args.artifact_dir),
         "max_iter": args.max_iter,
+        "max_tokens": args.max_tokens,
         "wall_budget": args.wall_budget,
         "total": len(results),
         "solved": solved,
