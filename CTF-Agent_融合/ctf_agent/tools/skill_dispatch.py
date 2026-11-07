@@ -110,13 +110,18 @@ def resolve_attachment_path(a: Any) -> Optional[str]:
     所以：统一正斜杠 + 依次试 (原样, ctf_agent, 仓库根)。
     """
     raw = str(a)
-    p = raw.replace("\\", "/").lstrip("/")
-    if os.path.isabs(p):
-        return p if os.path.isfile(p) else None
+    norm = raw.replace("\\", "/")
+    # 先判绝对路径，再剥前导斜杠 —— 顺序反了会把 /tmp/x 变成 tmp/x，
+    # 于是「绝对路径且真实存在」的附件被判成不存在（2026-11-08 自测当场抓到）。
+    # 返回一律 native 形态（normpath）：调用方拿到的路径要与题面/临时目录同形，
+    # 否则 Windows 上 "/tmp/x" 与 "\\tmp\\x" 字符串比对会假失败。
+    if os.path.isabs(norm):
+        return os.path.normpath(norm) if os.path.isfile(norm) else None
+    p = norm.lstrip("/")
     for base in ("", _CTF_ROOT, _REPO_ROOT):
         cand = os.path.join(base, p) if base else p
         if os.path.isfile(cand):
-            return cand
+            return os.path.normpath(cand)
     return None
 
 
