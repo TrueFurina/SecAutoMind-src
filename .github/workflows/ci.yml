@@ -15,7 +15,9 @@ on:
     # 2026-11-02 补：只认 main 时，实际开发分支 `docs/race-day-card` 的 555 个提交
     # 一次 CI 都没跑过（最后一次成功是 10-24，10-29 那次 failure 后彻底停摆）。
     # 代价是 Actions 分钟数上升，但「没有 CI」比「多花额度」贵得多。
-    branches: [main, docs/race-day-card]
+    # 2026-11-07 再补：开发已切到 feat/private-pool-v1-20261107，它照样不在触发范围——
+    # 而脱敏门禁的 R9/R10/R11/R12 只在干净检出里才验得准，本地绿证明不了任何事。
+    branches: [main, docs/race-day-card, feat/private-pool-v1-20261107]
   # 手动触发：需要在不 push 的情况下验证某个 HEAD（额度紧张时用它代替连推）。
   workflow_dispatch:
 
