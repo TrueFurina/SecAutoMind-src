@@ -822,9 +822,12 @@ def debt_kind(rel: str) -> str:
     if "/tests/" in p or name.startswith("test_") or name.endswith("_test.py") \
             or name.endswith("_test.go"):
         return "test_fixture"
-    if "live_target/" in p or name.startswith("gen_") or name.startswith("_gen_") \
-            or name.startswith("judge_") or "crypto_attack_params" in p:
+    if ("/execution/" in p or "_attachments/" in p or "live_target/" in p
+            or name.startswith("gen_") or name.startswith("_gen_")
+            or name.startswith("judge_") or "crypto_attack_params" in p):
         return "target_artifact"
+    if name.endswith(".py"):
+        return "source_literal"   # 自写的分析/复盘脚本里写死真值，不算题库
     if "questions_real/" in p or "questions_external/" in p:
         return "external_public_question"
     return "source_literal"
