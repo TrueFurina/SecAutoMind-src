@@ -45,6 +45,7 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
 import sys
 
 try:
@@ -198,6 +199,67 @@ def _is_absolute_ref(token):
     return t.startswith("~") or t.startswith("/") or (len(t) > 1 and t[1] == ":")
 
 
+_TRACKED_CACHE = {"files": None}
+
+# 未入仓引用的债：文档里点了一个**只在开发机磁盘上**的文件（CI 干净检出里没有它）。
+# 允许存在，但必须写 owner + 到期日，且线上逐条打印 —— 过期即红。
+# 现有这一条的来由（2026-11-07）：另一个会话把「重算后的判分读数」写进证据 README，
+# 而它引用的结果文件含 189 处明文答案、README 又写明「一律不回写」：
+# 既不能入仓（会把答案公开发布），也不能脱敏（等于改写历史产物）。
+# 正确收口在那一侧的文档措辞，本门禁只负责把这件事变得可见、可到期、不可静默。
+DOC_REF_DEBT = {
+    "scripts/purellm_full176.result.json": {
+        "owner": "agent",
+        "expires": "2026-11-21",
+        "reason": "含 189 处明文答案不得入仓；引用方在 f04 证据 README，待其改写措辞",
+    },
+}
+DEBT_NOTES: list = []
+
+# 自测专用钩子：DOCSLINT_DEBT_OVERRIDE="token|expires" 注入一条临时债。
+# 只允许注入，不允许删除既有登记 —— 否则一个环境变量就能把整张债表掏空。
+_ov = os.environ.get("DOCSLINT_DEBT_OVERRIDE", "").strip()
+if _ov and "|" in _ov:
+    _t, _e = _ov.split("|", 1)
+    DOC_REF_DEBT[_t.strip()] = {"owner": "agent", "expires": _e.strip(),
+                                "reason": "自测注入"}
+
+
+def _debt_expired(expires: str) -> bool:
+    """到期即判红；日期缺失/非法一律当过期（fail-closed，不许静默放过）。"""
+    try:
+        y, m, d = (int(x) for x in (expires or "").split("-"))
+        import datetime
+        return datetime.date.today() > datetime.date(y, m, d)
+    except (ValueError, TypeError):
+        return True
+
+
+def _is_tracked(root, abs_path):
+    """该文件是否在**入仓**内容里。非 git 环境（自测夹具）一律视为已入仓。"""
+    if _TRACKED_CACHE["files"] is None:
+        try:
+            out = subprocess.run(["git", "ls-files", "-z"], cwd=str(root),
+                                 capture_output=True, text=True, encoding="utf-8")
+            if out.returncode == 0:
+                _TRACKED_CACHE["files"] = set(out.stdout.split("\0"))
+            else:
+                _TRACKED_CACHE["files"] = set()
+                _TRACKED_CACHE["nongit"] = True
+        except OSError:
+            _TRACKED_CACHE["files"] = set()
+            _TRACKED_CACHE["nongit"] = True
+    if _TRACKED_CACHE.get("nongit"):
+        return True
+    try:
+        rel = os.path.relpath(abs_path, root).replace(os.sep, "/")
+    except ValueError:
+        return True
+    if rel.startswith("../"):
+        return True          # 仓库外的路径不是本门禁的判据
+    return rel in _TRACKED_CACHE["files"]
+
+
 def _resolve_script_ref(token, root):
     """把 `scripts/x.py` 这类引用解析成真实路径；解析不到返回 None。
 
@@ -251,9 +313,25 @@ def check_script_refs(text, root):
         token = token.rstrip(".,);:、。")
         if _is_absolute_ref(token):
             continue
-        if _resolve_script_ref(token, root) is None:
-            line_no = text[:m.start()].count("\n") + 1
+        resolved = _resolve_script_ref(token, root)
+        line_no = text[:m.start()].count("\n") + 1
+        if resolved is None:
             problems.append((line_no, f"引用了不存在的脚本：`{token}`"))
+        elif not _is_tracked(root, resolved):
+            # 文件在开发机磁盘上、但没入仓：CI 干净检出里没有它 → 这里必须红。
+            # 否则本门禁「本地绿 / CI 红」，是同一份文档在两处得出相反结论的老病根。
+            if token in DOC_REF_DEBT:
+                d = DOC_REF_DEBT[token]
+                if _debt_expired(d.get("expires")):
+                    problems.append((line_no,
+                                     f"未入仓引用已过期（owner=%s，expires=%s）：`%s`"
+                                     % (d.get("owner"), d.get("expires"), token)))
+                else:
+                    DEBT_NOTES.append("  [DEBT] 未入仓引用 line %d `%s` ｜ owner=%s ｜ expires=%s"
+                                      " ｜ %s" % (line_no, token, d.get("owner"),
+                                                  d.get("expires"), d.get("reason", "")))
+            else:
+                problems.append((line_no, f"引用了未入仓的文件（CI 干净检出里不存在）：`{token}`"))
     return problems
 
 
@@ -322,11 +400,14 @@ def main():
 
     if args.json:
         print(json.dumps({"ok": not findings, "count": len(findings),
-                          "findings": findings}, ensure_ascii=False, indent=2))
+                          "findings": findings, "debt": DEBT_NOTES},
+                         ensure_ascii=False, indent=2))
     else:
         print("=" * 70)
         print("文档静态检查（代码块闭合 / 本地链接 / scripts 引用 / 双语对应）")
         print("=" * 70)
+        for n in DEBT_NOTES:
+            print(n)
         if not findings:
             print("  [PASS] 未发现不闭合代码块、断裂本地链接、不存在的脚本引用或缺失的中文对应")
         else:

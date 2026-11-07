@@ -48,10 +48,14 @@ def _write(root, relpath, content):
         fh.write(content)
 
 
-def _run(root):
+def _run(root, extra=None):
+    """extra=(token, expires) 时，通过环境变量临时注入一条未入仓引用债（仅自测用）。"""
+    env = dict(os.environ)
+    if extra:
+        env["DOCSLINT_DEBT_OVERRIDE"] = "%s|%s" % extra
     proc = subprocess.run(
         [sys.executable, CHECKER, "--root", root],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
@@ -229,6 +233,33 @@ def main():
         rc, out = _run(r)
         check("T16 变异：git show 形式引用缺失脚本 → exit 1 且点名",
               rc == 1 and "ghost_tool.py" in out, f"rc={rc} {out[-200:]}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
+
+    # T17/T18 未入仓引用（2026-11-07）：文件在磁盘上、但没进仓库。
+    # 这是「本地绿 / CI 红」的源头——本地能过、干净检出必然没有它。
+    r = _mkroot()
+    try:
+        _compliant(r)
+        _write(r, "scripts/untracked_tool.py", "print('hi')\n")
+        _write(r, "docs/ref_untracked.md", "# 引用\n\n跑 `scripts/untracked_tool.py`。\n")
+        subprocess.run(["git", "init", "-q"], cwd=r, check=False)
+        subprocess.run(["git", "add", "-A"], cwd=r, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "reset", "-q", "--", "scripts/untracked_tool.py"], cwd=r,
+                       check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        rc, out = _run(r)
+        check("T17 未登记的未入仓引用 → exit 1 且点名「未入仓」",
+              rc == 1 and "未入仓" in out and "untracked_tool.py" in out,
+              f"rc={rc} {out[-200:]}")
+        # 同一份夹具，把这条登记进债 → 允许通过，但必须打印 [DEBT] 行（不许静默）
+        rc, out = _run(r, extra=("scripts/untracked_tool.py", "2099-01-01"))
+        check("T18 已登记的未入仓引用 → exit 0 且仍打印 [DEBT] 行",
+              rc == 0 and "[DEBT]" in out, f"rc={rc} {out[-200:]}")
+        # 变异：到期日已过 → 必须红（债不是永久豁免）
+        rc, out = _run(r, extra=("scripts/untracked_tool.py", "2020-01-01"))
+        check("T19 变异：未入仓引用债已过期 → exit 1",
+              rc == 1 and "已过期" in out, f"rc={rc} {out[-200:]}")
     finally:
         shutil.rmtree(r, ignore_errors=True)
 
