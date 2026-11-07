@@ -222,6 +222,41 @@ def main():
         got_v = m.resolve_agentic(req, noa, sup)
         ck("%s（got=%s）" % (desc, got_v), got_v is exp)
 
+    # ── 用例：纯 LLM 分支也必须落账（2026-11-07 缺陷）───────────
+    # 现象：step 纯 LLM 全池 40 题跑完，prompt=0k/completion=0k、截断=0、接口失败=0，
+    # 34 题交错答案 + 6 题空答 —— 「答不出」与「被切断」在结果文件里无法区分。
+    import hashlib
+    flag = "CTF{pure_branch_ok}"
+    item = ("q_pure", {"category": "crypto",
+                       "flag_sha256": hashlib.sha256(flag.encode()).hexdigest(),
+                       "description": "d"})
+    cfg_pure = {"default_model": "m", "models_by_category": {}, "supports_tools": False,
+                "reasoning_model": False, "concurrency_cap": 4, "key_env": "X"}
+
+    orig_call = m.call_llm
+    m.call_llm = lambda *a, **k: _body(content=flag, finish="stop",
+                                       usage={"prompt_tokens": 1234, "completion_tokens": 56})
+    r = m.solve_one(cfg_pure, "k", item, 30, agentic=False)
+    ck("纯分支：解出被判中", r["solved"] is True)
+    ck("纯分支：记录 prompt_tokens（got=%s）" % r.get("prompt_tokens_total"), r.get("prompt_tokens_total") == 1234)
+    ck("纯分支：记录 completion_tokens", r.get("completion_tokens_total") == 56)
+    ck("纯分支：llm_rounds 非空", len(r.get("llm_rounds") or []) == 1)
+    ck("纯分支：finish_reason 落账", (r.get("llm_rounds") or [{}])[0].get("finish_reason") == "stop")
+
+    m.call_llm = lambda *a, **k: _body(content="答到一半", finish="length")
+    r = m.solve_one(cfg_pure, "k", item, 30, agentic=False)
+    ck("纯分支：finish_reason=length 计入 truncated_rounds（got=%s）" % r.get("truncated_rounds"),
+       r.get("truncated_rounds") == 1)
+
+    def _boom(*a, **k):
+        raise RuntimeError("HTTP 403 Forbidden: Free quota exhausted")
+    m.call_llm = _boom
+    r = m.solve_one(cfg_pure, "k", item, 30, agentic=False)
+    ck("纯分支：接口失败计入 api_error_rounds 而不是当成空答（got=%s）" % r.get("api_error_rounds"),
+       r.get("api_error_rounds") == 1)
+    ck("纯分支：接口失败保留原因", "403" in (r.get("api_error_first") or ""))
+    m.call_llm = orig_call
+
     print("\nselftest %d/%d" % (ok, total))
     return 0 if ok == total else 1
 

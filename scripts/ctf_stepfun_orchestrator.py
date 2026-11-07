@@ -779,12 +779,25 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
     try:
         body = call_llm(cfg, api_key, model, prompt, timeout, max_tokens=max_tokens)
         text = ""; reasoning = ""
+        finish = ""; usage = {}
         try:
-            msg = body["choices"][0]["message"]
+            choice = body["choices"][0]
+            msg = choice["message"]
             text = msg.get("content") or ""
             reasoning = msg.get("reasoning_content") or ""
+            finish = choice.get("finish_reason") or ""
+            usage = body.get("usage") or {}
         except Exception:
             text = json.dumps(body, ensure_ascii=False)
+        # 纯 LLM 分支过去完全不记 stats，导致：①接口失败被当成「空答」；
+        # ②finish_reason=length 的截断看不见；③token 成本无从核算。
+        # 2026-11-07 跑 step 纯 LLM 全池基线时 40 题全是 prompt=0k/completion=0k 才暴露。
+        pstats = [{
+            "round": 1,
+            "finish_reason": finish or "stop",
+            "prompt_tokens": usage.get("prompt_tokens") or 0,
+            "completion_tokens": usage.get("completion_tokens") or 0,
+        }]
         search_text = text + "\n" + reasoning
         got, solved, mode = verify_flag(search_text, expected_sha)
         return {
@@ -793,14 +806,37 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
             "tool_calls": 0, "blocked_calls": 0,
             "raw_head": (text or reasoning)[:300], "latency": round(time.time() - t0, 2), "error": "",
             "audit": [],
+            "llm_rounds": pstats,
+            "truncated_rounds": sum(1 for x in pstats if x.get("finish_reason") == "length"),
+            "api_error_rounds": 0,
+            "timeout_rounds": 0,
+            "api_error_first": "",
+            "prompt_tokens_total": sum((x.get("prompt_tokens") or 0) for x in pstats),
+            "completion_tokens_total": sum((x.get("completion_tokens") or 0) for x in pstats),
+            "inline_chars": len(str((artifact_info or {}).get("inline") or "")),
+            "artifact_files": len((artifact_info or {}).get("files") or []),
         }
     except Exception as e:
+        # 纯分支的异常同样必须落账，否则 403/超时会被读成「模型答了空」
+        is_timeout = isinstance(e, (_HardDeadline, TimeoutError))
+        estats = [{"round": 1,
+                   "finish_reason": "timeout" if is_timeout else "error",
+                   "error": str(e)[:300]}]
         return {
             "id": pid, "category": category, "model": model,
             "expected_sha256": expected_sha, "got": "", "solved": False, "hit_mode": "",
             "tool_calls": 0, "blocked_calls": 0,
             "raw_head": "", "latency": round(time.time() - t0, 2), "error": str(e)[:200],
             "audit": [],
+            "llm_rounds": estats,
+            "truncated_rounds": 0,
+            "api_error_rounds": 0 if is_timeout else 1,
+            "timeout_rounds": 1 if is_timeout else 0,
+            "api_error_first": "" if is_timeout else str(e)[:300],
+            "prompt_tokens_total": 0,
+            "completion_tokens_total": 0,
+            "inline_chars": len(str((artifact_info or {}).get("inline") or "")),
+            "artifact_files": len((artifact_info or {}).get("files") or []),
         }
     finally:
         _dec()

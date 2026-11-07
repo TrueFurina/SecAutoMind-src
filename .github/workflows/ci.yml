@@ -919,7 +919,7 @@ jobs:
         run: python scripts/experiments/flag_util.py
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
-      - name: Agentic loop offline test (30 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除 / API失败落账 / HTTP 4xx 带原因且不重试 / kimi 不发 temperature)
+      - name: Agentic loop offline test (38 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除 / API失败落账 / HTTP 4xx 带原因且不重试 / kimi 不发 temperature)
         run: python scripts/test_ctf_orchestrator_agentic.py
       - name: External pool admission audit self-test (9 cases incl. mutation)
         run: python scripts/audit_external_pool_readiness.py --selftest
