@@ -4,16 +4,15 @@
   "owner": "agent",
   "expires": "2027-11-07",
   "note": "明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。不在本表里的明文一律判红。生成器/靶场/测试夹具需要真值才能产出与断言，属于要单独决策的类别（要么改成不落真值，要么进豁免表并写明理由）。",
-  "head": "c761e96",
-  "total_hits": 266,
-  "raw_hits": 277,
+  "head": "0d6a3e6",
+  "total_hits": 247,
+  "raw_hits": 258,
   "entries": [
     {
       "file": "CTF-Agent_融合/ctf_agent/tests/test_sha256_arbitration.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 8
     },
@@ -22,8 +21,7 @@
       "flag_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_js"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js"
       ],
       "hits": 4
     },
@@ -32,8 +30,7 @@
       "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_cycling"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
       ],
       "hits": 4
     },
@@ -42,8 +39,7 @@
       "flag_sha256": "6500f523032de8dfe05f75d2109ce72a48188f02115807fd6ff5c8294ef15b2e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_floating_points",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_floating_points",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023f_for_floating_points"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_floating_points"
       ],
       "hits": 4
     },
@@ -52,8 +48,7 @@
       "flag_sha256": "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_collusion"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion"
       ],
       "hits": 3
     },
@@ -62,8 +57,7 @@
       "flag_sha256": "ce5aff49a6411c3ded733575a1f4dc6f419039baf3bd04501beb04b1091cae87",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023f_for_emoji"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji"
       ],
       "hits": 3
     },
@@ -72,8 +66,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 3
     },
@@ -81,16 +74,7 @@
       "file": "CTF-Agent_融合/ctf_agent/heldout_evidence/runA_e3off_ext5_20260927_1328/progress_A.jsonl",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/scripts/_gen_local_text_20260827.py",
-      "flag_sha256": "c6027195acce72e061439a8da8dc6121bf4579c25eaa53f743473b9ae9e6aebc",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_anxun2020_aes"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 2
     },
@@ -98,8 +82,7 @@
       "file": "CTF-Agent_融合/ctf_agent/tests/test_leak_provenance.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 2
     },
@@ -108,16 +91,7 @@
       "flag_sha256": "b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_presolve_answer_check.py",
-      "flag_sha256": "2e9f80ef4619805caf4ae07ee11c4bc3d71e8563fa8ab0131fe8028273fcda0d",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_anwang_crypto1"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
       ],
       "hits": 2
     },
@@ -126,8 +100,7 @@
       "flag_sha256": "7799cc74e49f7e4ea7c7b215bfc6241426362fc3168696e8e3a3d79f7dd7a10d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_easyzip"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip"
       ],
       "hits": 2
     },
@@ -136,8 +109,7 @@
       "flag_sha256": "d02cc7d165021ac275773ffc743880968716f0474c6aece8a6071084296d967d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_1black0white"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white"
       ],
       "hits": 2
     },
@@ -146,8 +118,7 @@
       "flag_sha256": "637b377493441132e12eb8712731c6983f8f234f461e0245fb43983a4b933737",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third"
       ],
       "hits": 2
     },
@@ -156,8 +127,7 @@
       "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_cycling"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
       ],
       "hits": 2
     },
@@ -166,8 +136,7 @@
       "flag_sha256": "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_collusion"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion"
       ],
       "hits": 2
     },
@@ -176,8 +145,7 @@
       "flag_sha256": "b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
       ],
       "hits": 2
     },
@@ -186,8 +154,7 @@
       "flag_sha256": "b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
       ],
       "hits": 2
     },
@@ -196,8 +163,7 @@
       "flag_sha256": "f8d5f4db80f8eaa50ef0e926bb0c99dbd69d663c8a24c27e7a582c4ee74d58df",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_babycrypto",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_babycrypto",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_babycrypto"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_babycrypto"
       ],
       "hits": 2
     },
@@ -206,8 +172,7 @@
       "flag_sha256": "d8a4684a12d7182136191470091ddc3176893255231ae30ff5483939f75b50f7",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_another_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_another_xor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_cry_another_xor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_another_xor"
       ],
       "hits": 2
     },
@@ -264,8 +229,7 @@
       "flag_sha256": "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
       ],
       "hits": 2
     },
@@ -282,8 +246,7 @@
       "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_cycling"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
       ],
       "hits": 1
     },
@@ -291,8 +254,7 @@
       "file": "CTF-Agent_融合/ctf_agent/core/presolve.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -301,8 +263,7 @@
       "flag_sha256": "d02cc7d165021ac275773ffc743880968716f0474c6aece8a6071084296d967d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_1black0white"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white"
       ],
       "hits": 1
     },
@@ -311,8 +272,7 @@
       "flag_sha256": "6500f523032de8dfe05f75d2109ce72a48188f02115807fd6ff5c8294ef15b2e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_floating_points",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_floating_points",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023f_for_floating_points"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_floating_points"
       ],
       "hits": 1
     },
@@ -321,8 +281,7 @@
       "flag_sha256": "b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
       ],
       "hits": 1
     },
@@ -331,8 +290,7 @@
       "flag_sha256": "2819d24b75a686324e1d7222101999def0e6a99ffe3bde0e8ebf7388a128653f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_rev_bananascript",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_bananascript",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_rev_bananascript"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_bananascript"
       ],
       "hits": 1
     },
@@ -341,8 +299,7 @@
       "flag_sha256": "ce5aff49a6411c3ded733575a1f4dc6f419039baf3bd04501beb04b1091cae87",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023f_for_emoji"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji"
       ],
       "hits": 1
     },
@@ -351,8 +308,7 @@
       "flag_sha256": "98af532276d02fe4953b5211da114933d7aafc1e8fe00c13488b6207b7162c00",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_rox",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_rox",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_rev_rox"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_rox"
       ],
       "hits": 1
     },
@@ -361,8 +317,7 @@
       "flag_sha256": "b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
       ],
       "hits": 1
     },
@@ -371,8 +326,7 @@
       "flag_sha256": "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
       ],
       "hits": 1
     },
@@ -381,8 +335,7 @@
       "flag_sha256": "0e063f15a4c24ca6e9d9277225fdf5f8ff7b9ea61d66e0a111eae4919d6a489f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
       ],
       "hits": 1
     },
@@ -391,8 +344,7 @@
       "flag_sha256": "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_collusion"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion"
       ],
       "hits": 1
     },
@@ -401,8 +353,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -411,8 +362,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -421,8 +371,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -431,8 +380,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -441,8 +389,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -451,8 +398,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -461,8 +407,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -471,8 +416,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -481,8 +425,7 @@
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_papapapa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
       ],
       "hits": 1
     },
@@ -491,16 +434,7 @@
       "flag_sha256": "888adf3fcf54ae54a11afa86b3056261ab32ce769791b519f0c78fe9ba6100b3",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_anxun2020_easycm",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_anxun2020_easycm",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_anxun2020_easycm"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_real/crypto/real_crypto_anxun2020_aes.json",
-      "flag_sha256": "c6027195acce72e061439a8da8dc6121bf4579c25eaa53f743473b9ae9e6aebc",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_anxun2020_aes"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_anxun2020_easycm"
       ],
       "hits": 1
     },
@@ -509,8 +443,7 @@
       "flag_sha256": "cc52e2806a885fb89d542ea9dd04a4e6cea5960f503d0a4984da2d79ca2dcffa",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_BeCare4",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_BeCare4",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_BeCare4"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_BeCare4"
       ],
       "hits": 1
     },
@@ -519,8 +452,7 @@
       "flag_sha256": "c0e60525cb10c10ed6ed1b117ad8924787d225addb9c1ff9b7bea9c5128246ac",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_depressed",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_depressed",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_depressed"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_depressed"
       ],
       "hits": 1
     },
@@ -529,8 +461,7 @@
       "flag_sha256": "7799cc74e49f7e4ea7c7b215bfc6241426362fc3168696e8e3a3d79f7dd7a10d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_easyzip"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip"
       ],
       "hits": 1
     },
@@ -539,16 +470,7 @@
       "flag_sha256": "962e66806ec1256e18b41885875d5551e0413f198305099425ad5337ceaa1a88",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_love_letter",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_love_letter",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_love_letter"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_real/reverse/real_reverse_anxun2020_notright.json",
-      "flag_sha256": "fae681a2f211c54a8cd1e626f8876fc659789c0825eee0ce7066c61227208d75",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_anxun2020_notright"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_love_letter"
       ],
       "hits": 1
     },
@@ -557,8 +479,7 @@
       "flag_sha256": "6061e023561587c02d9f63e4e24df3626370623691871ed330506042e15de376",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_full188.json#real_web_gongye_web2"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2"
       ],
       "hits": 1
     },
@@ -566,8 +487,7 @@
       "file": "CTF-Agent_融合/ctf_agent/run.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -576,8 +496,7 @@
       "flag_sha256": "7f9fa04fd358b5b669b3f1967e6da36feafd52b53e2620eabdcd447ccc06319b",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_umdctf2022_vigenere",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_umdctf2022_vigenere",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_umdctf2022_vigenere"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_umdctf2022_vigenere"
       ],
       "hits": 1
     },
@@ -586,8 +505,7 @@
       "flag_sha256": "b29a018aa481672de9367f4e293656f31e847f7cb59912ae312bbe6d19a0a11f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_dicectf2022_knockknock",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_dicectf2022_knockknock",
-        "data/ctf_benchmark/purellm_full188.json#real_web_dicectf2022_knockknock"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_dicectf2022_knockknock"
       ],
       "hits": 1
     },
@@ -596,8 +514,7 @@
       "flag_sha256": "fc993d4940162b339b6ad8904cbc895ef1d1d2dccbc48b106c3b05036d9f5fac",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_dicectf2022_point",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_dicectf2022_point",
-        "data/ctf_benchmark/purellm_full188.json#real_web_dicectf2022_point"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_dicectf2022_point"
       ],
       "hits": 1
     },
@@ -606,8 +523,7 @@
       "flag_sha256": "73c07e35e026f5c31a6ac90e9c38b3e57bc8b2407cd87a57e6505440ac438c54",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_udomctf2022_cmdinj",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_udomctf2022_cmdinj",
-        "data/ctf_benchmark/purellm_full188.json#real_web_udomctf2022_cmdinj"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_udomctf2022_cmdinj"
       ],
       "hits": 1
     },
@@ -616,8 +532,7 @@
       "flag_sha256": "bb0e2397592f15c502441031d136805d580f77a33ba3f0a42da5cacd30b9d0ab",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_udomctf2022_morse",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_udomctf2022_morse",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_udomctf2022_morse"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_udomctf2022_morse"
       ],
       "hits": 1
     },
@@ -626,8 +541,7 @@
       "flag_sha256": "bf9462ee7b04f567d925e0e10c7dfd81b1c5f42ba20273083f7802f49f2c38dd",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_udomctf2022_aes",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_udomctf2022_aes",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_udomctf2022_aes"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_udomctf2022_aes"
       ],
       "hits": 1
     },
@@ -636,8 +550,7 @@
       "flag_sha256": "81dd6bd94dde9d9c78c99c7489bffc718516ea4ac809ef45827d46a76c3bea41",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_vnctf_timeflies",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_vnctf_timeflies",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_vnctf_timeflies"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_vnctf_timeflies"
       ],
       "hits": 1
     },
@@ -646,8 +559,7 @@
       "flag_sha256": "68fb5e5275a1c05d404c9a6922f400953aa8caf1b7f6db0c3fba75996e0e1ae3",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_vnctf_vnloan",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_vnctf_vnloan",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_vnctf_vnloan"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_vnctf_vnloan"
       ],
       "hits": 1
     },
@@ -656,8 +568,7 @@
       "flag_sha256": "92b80a26ebabb2d3d3fe9615891d65d5cdb7cf5535a0c93a12484bb81af2e3c7",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_pwn_changan2021_pwn3",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_pwn_changan2021_pwn3",
-        "data/ctf_benchmark/purellm_full188.json#real_pwn_changan2021_pwn3"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_pwn_changan2021_pwn3"
       ],
       "hits": 1
     },
@@ -668,9 +579,7 @@
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2023_smallsword3",
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2024_smallsword3",
         "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2023_smallsword3",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2024_smallsword3",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2023_smallsword3",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2024_smallsword3"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2024_smallsword3"
       ],
       "hits": 1
     },
@@ -679,8 +588,7 @@
       "flag_sha256": "d7e730c091c76a810dd18ea5f150b4f22fe5bd9df96d95c8d50fa5c5cdcd0c5a",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2025_data_security1",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_data_security1",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2025_data_security1"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_data_security1"
       ],
       "hits": 1
     },
@@ -689,8 +597,7 @@
       "flag_sha256": "3038d6fe45d417582fabf6218644d30b8b1c4909e4361047e64a32b42629eed0",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_longjian2025_which_sql",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_longjian2025_which_sql",
-        "data/ctf_benchmark/purellm_full188.json#real_web_longjian2025_which_sql"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_longjian2025_which_sql"
       ],
       "hits": 1
     },
@@ -699,8 +606,7 @@
       "flag_sha256": "e93f142a43a43511deec4a20e3865d975aa6f2d366e12fce18e1dd4d88da0070",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2025_app_part2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_app_part2",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2025_app_part2"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_app_part2"
       ],
       "hits": 1
     },
@@ -709,8 +615,7 @@
       "flag_sha256": "ced419973bb619c029e6eaa4967bb8037e5c01c5e8f056f3ac0209a3c153d219",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2025_siem",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_siem",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2025_siem"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2025_siem"
       ],
       "hits": 1
     },
@@ -719,8 +624,7 @@
       "flag_sha256": "76add0f3b533b3e6d79998587353bb0e1379073584d541e17878b633e7cbc2fe",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_wgmy2022_christmas_wishlist",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_wgmy2022_christmas_wishlist",
-        "data/ctf_benchmark/purellm_full188.json#real_web_wgmy2022_christmas_wishlist"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_wgmy2022_christmas_wishlist"
       ],
       "hits": 1
     },
@@ -729,8 +633,7 @@
       "flag_sha256": "a47ad91fbba5480d80bdd8a72d6b2ea4365037093a581eb355efa0f5147762e6",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_wgmy2022_christmas_wishlist2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_wgmy2022_christmas_wishlist2",
-        "data/ctf_benchmark/purellm_full188.json#real_web_wgmy2022_christmas_wishlist2"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_wgmy2022_christmas_wishlist2"
       ],
       "hits": 1
     },
@@ -739,8 +642,7 @@
       "flag_sha256": "50d32d18a93927b6d3283e15459aa5d8f5841aa1227b8fd41dc772a8a911c0ab",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_linectf2022_ssti_jwt",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_linectf2022_ssti_jwt",
-        "data/ctf_benchmark/purellm_full188.json#real_web_linectf2022_ssti_jwt"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_linectf2022_ssti_jwt"
       ],
       "hits": 1
     },
@@ -749,8 +651,7 @@
       "flag_sha256": "fe687acb1bd7285c1d132e771747f74ac1e6057d9a8fdabceb4264242b5f2c29",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_hacktheboo2022_spookifier",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_hacktheboo2022_spookifier",
-        "data/ctf_benchmark/purellm_full188.json#real_web_hacktheboo2022_spookifier"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_hacktheboo2022_spookifier"
       ],
       "hits": 1
     },
@@ -759,8 +660,7 @@
       "flag_sha256": "279351e645239166ebbfdda049b803ae57e6657da906573b3d78ba2e8512600b",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_qiangwang2020_cefang",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_qiangwang2020_cefang",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_qiangwang2020_cefang"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_qiangwang2020_cefang"
       ],
       "hits": 1
     },
@@ -769,8 +669,7 @@
       "flag_sha256": "c462cfa208b35e359c691de7c4e85eb391237c4c2e6e497e8098627aae4069f0",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_qiangwang2020_upload",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_qiangwang2020_upload",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_qiangwang2020_upload"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_qiangwang2020_upload"
       ],
       "hits": 1
     },
@@ -779,8 +678,7 @@
       "flag_sha256": "20e6092c61846e7187af7c18b382e78e8212ca898bc94f2af9e32cada936a52a",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2023_baby_forensics3",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2023_baby_forensics3",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2023_baby_forensics3"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2023_baby_forensics3"
       ],
       "hits": 1
     },
@@ -788,8 +686,7 @@
       "file": "CTF-Agent_融合/ctf_agent/scripts/_scan_kpi_candidates.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -798,8 +695,7 @@
       "flag_sha256": "f7494167e4c3fc8e6b36525c5c12a5c73077b5f6fdd6f75dd205903b0779b181",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_changan2021_ezpy",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_changan2021_ezpy",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_changan2021_ezpy"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_changan2021_ezpy"
       ],
       "hits": 1
     },
@@ -808,8 +704,7 @@
       "flag_sha256": "95a8f144fd20374d4231e799f4d281c62e3802ae47c11deed9c004e4dba45a9c",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_changan2021_soeasy",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_changan2021_soeasy",
-        "data/ctf_benchmark/purellm_full188.json#real_web_changan2021_soeasy"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_changan2021_soeasy"
       ],
       "hits": 1
     },
@@ -818,16 +713,7 @@
       "flag_sha256": "13c42279aade7f573945437b0b3a46d5a1fcf6f143d2ac19d2b8274e591ee37f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_pwn_hws2022_peach",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_pwn_hws2022_peach",
-        "data/ctf_benchmark/purellm_full188.json#real_pwn_hws2022_peach"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/scripts/_solve_vnctf_cm1.py",
-      "flag_sha256": "a9bb88af16508d85215cfd72a3145a8db76d54930fbd5a1834d032e2309606fa",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_vnctf_cm1"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_pwn_hws2022_peach"
       ],
       "hits": 1
     },
@@ -835,8 +721,7 @@
       "file": "CTF-Agent_融合/ctf_agent/scripts/_verify_kpi_promote.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -845,8 +730,7 @@
       "flag_sha256": "6061e023561587c02d9f63e4e24df3626370623691871ed330506042e15de376",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_full188.json#real_web_gongye_web2"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2"
       ],
       "hits": 1
     },
@@ -854,8 +738,7 @@
       "file": "CTF-Agent_融合/ctf_agent/skills/crypto_keyboard_path.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -864,8 +747,7 @@
       "flag_sha256": "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
       ],
       "hits": 1
     },
@@ -874,8 +756,7 @@
       "flag_sha256": "b1ecd2fb216a148f0d45783e3a8b6c41538064f550a9449f0e8df19e93744da2",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_chunqiu2022_checkin",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_chunqiu2022_checkin",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_chunqiu2022_checkin"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_chunqiu2022_checkin"
       ],
       "hits": 1
     },
@@ -883,8 +764,7 @@
       "file": "CTF-Agent_融合/ctf_agent/tests/test_crypto_keyboard_path.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -893,8 +773,7 @@
       "flag_sha256": "57fadd46d13972fee45dd5da37db06be6f5781e9bfa7c12a4044273cc2595a8e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_mhk2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_mhk2",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_mhk2"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_mhk2"
       ],
       "hits": 1
     },
@@ -903,8 +782,7 @@
       "flag_sha256": "df18e59de0157907864737b5f2a3d1a0fb5ffc4fe7e64a5f467c92054a783d56",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_primes",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_primes",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_primes"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_primes"
       ],
       "hits": 1
     },
@@ -913,8 +791,7 @@
       "flag_sha256": "0e063f15a4c24ca6e9d9277225fdf5f8ff7b9ea61d66e0a111eae4919d6a489f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
       ],
       "hits": 1
     },
@@ -923,32 +800,7 @@
       "flag_sha256": "ce5aff49a6411c3ded733575a1f4dc6f419039baf3bd04501beb04b1091cae87",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023f_for_emoji"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_jpeg_png_ocr.py",
-      "flag_sha256": "d5e1894ae1bb4e4d191702604bfea3ceb7a006074721d6fc3a05b8c601f42b83",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_misc_xuanhun_signin"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_l2_legendre_modinv_route.py",
-      "flag_sha256": "75e6aa4de894faf2a760a91aa74d93e9f3b971377012f81bfb95806902ba0002",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_simplelegendre"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_l2_legendre_modinv_route.py",
-      "flag_sha256": "4b84616cccbe84a99256c23152a4fd226e87e9da64e92689063046251cc251c5",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_exciting_inverse"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji"
       ],
       "hits": 1
     },
@@ -957,8 +809,7 @@
       "flag_sha256": "b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
       ],
       "hits": 1
     },
@@ -967,8 +818,7 @@
       "flag_sha256": "81dd6bd94dde9d9c78c99c7489bffc718516ea4ac809ef45827d46a76c3bea41",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_vnctf_timeflies",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_vnctf_timeflies",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_vnctf_timeflies"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_vnctf_timeflies"
       ],
       "hits": 1
     },
@@ -977,16 +827,7 @@
       "flag_sha256": "637b377493441132e12eb8712731c6983f8f234f461e0245fb43983a4b933737",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_release_export_policy.py",
-      "flag_sha256": "a9bb88af16508d85215cfd72a3145a8db76d54930fbd5a1834d032e2309606fa",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_vnctf_cm1"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third"
       ],
       "hits": 1
     },
@@ -994,8 +835,7 @@
       "file": "CTF-Agent_融合/ctf_agent/tests/test_scan_kpi_leak_guard.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -1004,8 +844,7 @@
       "flag_sha256": "d02cc7d165021ac275773ffc743880968716f0474c6aece8a6071084296d967d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_for_1black0white"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white"
       ],
       "hits": 1
     },
@@ -1014,8 +853,7 @@
       "flag_sha256": "bb6da24e15a2187b8e7809f118f1c5b4a115b01688cb3a84e1c6fe9f21246b29",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_rev_realism",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_realism",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_rev_realism"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_realism"
       ],
       "hits": 1
     },
@@ -1024,8 +862,7 @@
       "flag_sha256": "b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
       ],
       "hits": 1
     },
@@ -1034,8 +871,7 @@
       "flag_sha256": "d26af118b7158be2c5f04889c9b960053880ac75424a09d318a625489b6cf87a",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_lowe",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_lowe",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_lowe"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_lowe"
       ],
       "hits": 1
     },
@@ -1044,8 +880,7 @@
       "flag_sha256": "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
       ],
       "hits": 1
     },
@@ -1054,8 +889,7 @@
       "flag_sha256": "2819d24b75a686324e1d7222101999def0e6a99ffe3bde0e8ebf7388a128653f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_rev_bananascript",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_bananascript",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_rev_bananascript"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_bananascript"
       ],
       "hits": 1
     },
@@ -1063,8 +897,7 @@
       "file": "CTF-Agent_融合/deliverables/复盘赛报/heldout重测-首次真实LLM-20260919.md",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -1073,8 +906,7 @@
       "flag_sha256": "98af532276d02fe4953b5211da114933d7aafc1e8fe00c13488b6207b7162c00",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_rox",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_rox",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_rev_rox"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_rox"
       ],
       "hits": 1
     },
@@ -1083,8 +915,7 @@
       "flag_sha256": "57f3b2a86dd1de7f5a69830a615f7b4911e23a78e378bbe390cac9a81d35f119",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2019q_rev_beleaf",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2019q_rev_beleaf",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2019q_rev_beleaf"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2019q_rev_beleaf"
       ],
       "hits": 1
     },
@@ -1093,8 +924,7 @@
       "flag_sha256": "707e9186da17325af0f513b58f412bb53f0d0e6bdbd359ac5459f8c9ed7c9ecb",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_whataxor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_whataxor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2023q_rev_whataxor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_whataxor"
       ],
       "hits": 1
     },
@@ -1103,24 +933,7 @@
       "flag_sha256": "2fbda70805e65bc8a2c08198ec87527aa9319da17ac488b0414143ed9c26ecb1",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_rev_tablez",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_tablez",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017q_rev_tablez"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/deliverables/复盘赛报/初赛实战深度复盘-补遗-2题0矛盾.md",
-      "flag_sha256": "93be5f3ad422c43e99e705f52df3ad974548dc558714e48162d3939787bdfdbf",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_ezrsa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/deliverables/复盘赛报/数据分析报告-scene8-20260822.md",
-      "flag_sha256": "93be5f3ad422c43e99e705f52df3ad974548dc558714e48162d3939787bdfdbf",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_ezrsa"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_rev_tablez"
       ],
       "hits": 1
     },
@@ -1129,8 +942,7 @@
       "flag_sha256": "0e063f15a4c24ca6e9d9277225fdf5f8ff7b9ea61d66e0a111eae4919d6a489f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
       ],
       "hits": 1
     },
@@ -1139,8 +951,7 @@
       "flag_sha256": "d26af118b7158be2c5f04889c9b960053880ac75424a09d318a625489b6cf87a",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_lowe",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_lowe",
-        "data/ctf_benchmark/purellm_full188.json#ext_nyu_ctf_bench_2018q_cry_lowe"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_lowe"
       ],
       "hits": 1
     },
@@ -1149,8 +960,7 @@
       "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_cycling"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
       ],
       "hits": 1
     },
@@ -1159,8 +969,7 @@
       "flag_sha256": "408e722c601b1a154611b19e808c73bbce676d318f38ab1cc30819663e6dad19",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_electric-mayhem-cls",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_electric-mayhem-cls",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_electric-mayhem-cls"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_electric-mayhem-cls"
       ],
       "hits": 1
     },
@@ -1169,8 +978,7 @@
       "flag_sha256": "69981daf9abdebef789ff622d1672c37c6a1e97737415369dc77a4ba6360fd96",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_least-common-genominator",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_least-common-genominator",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_least-common-genominator"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_least-common-genominator"
       ],
       "hits": 1
     },
@@ -1179,8 +987,7 @@
       "flag_sha256": "d3109ddee29b5916e1b3356a863bd4203bd356cbfa76a5d5467c62cac692a69e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_zip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_zip",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_zip"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_zip"
       ],
       "hits": 1
     },
@@ -1729,31 +1536,13 @@
       "hits": 1
     },
     {
-      "file": "data/ctf_benchmark/xhlj_legacy/questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt",
-      "flag_sha256": "c6027195acce72e061439a8da8dc6121bf4579c25eaa53f743473b9ae9e6aebc",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_anxun2020_aes"
-      ],
-      "hits": 1
-    },
-    {
       "file": "data/ctf_benchmark/xhlj_legacy/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt",
       "flag_sha256": "2415582719bf1598005e6cd6cc844b75ff64193312f7dc27695a7533f13f5477",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2023_smallsword3",
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2024_smallsword3",
         "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2023_smallsword3",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2024_smallsword3",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2023_smallsword3",
-        "data/ctf_benchmark/purellm_full188.json#real_misc_longjian2024_smallsword3"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "data/ctf_benchmark/xhlj_legacy/questions_real/_attachments/reverse/real_reverse_upx/helloupx11",
-      "flag_sha256": "7130218010da8eea66d88b56a779817c0fca75707897285f104370bf1ed99842",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_upx"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2024_smallsword3"
       ],
       "hits": 1
     },
@@ -1762,16 +1551,7 @@
       "flag_sha256": "6061e023561587c02d9f63e4e24df3626370623691871ed330506042e15de376",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2",
-        "data/ctf_benchmark/purellm_full188.json#real_web_gongye_web2"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "data/ctf_benchmark/xhlj_legacy/questions_real/crypto/real_crypto_anxun2020_aes.json",
-      "flag_sha256": "c6027195acce72e061439a8da8dc6121bf4579c25eaa53f743473b9ae9e6aebc",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_anxun2020_aes"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_gongye_web2"
       ],
       "hits": 1
     },
@@ -1780,8 +1560,7 @@
       "flag_sha256": "cc52e2806a885fb89d542ea9dd04a4e6cea5960f503d0a4984da2d79ca2dcffa",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_BeCare4",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_BeCare4",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_BeCare4"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_BeCare4"
       ],
       "hits": 1
     },
@@ -1790,8 +1569,7 @@
       "flag_sha256": "c0e60525cb10c10ed6ed1b117ad8924787d225addb9c1ff9b7bea9c5128246ac",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_depressed",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_depressed",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_depressed"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_depressed"
       ],
       "hits": 1
     },
@@ -1800,8 +1578,7 @@
       "flag_sha256": "7799cc74e49f7e4ea7c7b215bfc6241426362fc3168696e8e3a3d79f7dd7a10d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_easyzip"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip"
       ],
       "hits": 1
     },
@@ -1810,16 +1587,7 @@
       "flag_sha256": "962e66806ec1256e18b41885875d5551e0413f198305099425ad5337ceaa1a88",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_love_letter",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_love_letter",
-        "data/ctf_benchmark/purellm_full188.json#real_anxun2020_love_letter"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "data/ctf_benchmark/xhlj_legacy/questions_real/reverse/real_reverse_anxun2020_notright.json",
-      "flag_sha256": "fae681a2f211c54a8cd1e626f8876fc659789c0825eee0ce7066c61227208d75",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_anxun2020_notright"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_love_letter"
       ],
       "hits": 1
     },
@@ -1827,8 +1595,7 @@
       "file": "data/ctf_benchmark/xhlj_legacy/skills/crypto_keyboard_path.py",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -1836,8 +1603,7 @@
       "file": "docs/2027决赛作战规划/evidence/presolve_9of17_pollution_20261008.md",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -1846,8 +1612,7 @@
       "flag_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_js"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js"
       ],
       "hits": 1
     },
@@ -1856,8 +1621,7 @@
       "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_cycling"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
       ],
       "hits": 1
     },
@@ -1866,8 +1630,7 @@
       "flag_sha256": "408e722c601b1a154611b19e808c73bbce676d318f38ab1cc30819663e6dad19",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_electric-mayhem-cls",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_electric-mayhem-cls",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2022_electric-mayhem-cls"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_electric-mayhem-cls"
       ],
       "hits": 1
     },
@@ -1876,8 +1639,7 @@
       "flag_sha256": "69981daf9abdebef789ff622d1672c37c6a1e97737415369dc77a4ba6360fd96",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_least-common-genominator",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_least-common-genominator",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_least-common-genominator"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_least-common-genominator"
       ],
       "hits": 1
     },
@@ -1885,8 +1647,7 @@
       "file": "docs/2027决赛作战规划/evidence/presolve_baseline_41_20261008.md",
       "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
       "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard",
-        "data/ctf_benchmark/purellm_full188.json#real_crypto_dnui_keyboard"
+        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
       ],
       "hits": 1
     },
@@ -1895,8 +1656,7 @@
       "flag_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_js"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js"
       ],
       "hits": 1
     },
@@ -1905,8 +1665,7 @@
       "flag_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_js"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js"
       ],
       "hits": 1
     },
@@ -1915,16 +1674,7 @@
       "flag_sha256": "d3109ddee29b5916e1b3356a863bd4203bd356cbfa76a5d5467c62cac692a69e",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_zip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_zip",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_zip"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "docs/archive/2026-10/handoff_vvmm_12085_20261024.md",
-      "flag_sha256": "6d26ce470eaa59f5a125197c4b53de6912b5532b3e29934c4078ae581f237163",
-      "ids": [
-        "data/ctf_benchmark/ycb2026_static.json#ycb12085_vvmm"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_zip"
       ],
       "hits": 1
     },
@@ -1969,14 +1719,6 @@
       "hits": 1
     },
     {
-      "file": "internal/ctfplatform/presolve_bin_repair_test.go",
-      "flag_sha256": "7130218010da8eea66d88b56a779817c0fca75707897285f104370bf1ed99842",
-      "ids": [
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_upx"
-      ],
-      "hits": 1
-    },
-    {
       "file": "internal/ctfplatform/xss_parity_test.go",
       "flag_sha256": "d9ccc3f3b415a8625476e080e88c4afadebcf4f9882310284ed4b6cb68f6e8b1",
       "ids": [
@@ -2005,8 +1747,7 @@
       "flag_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js",
-        "data/ctf_benchmark/purellm_full188.json#real_reverse_js"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_js"
       ],
       "hits": 1
     },
@@ -2015,8 +1756,7 @@
       "flag_sha256": "8185f0adaafb18b0f95d0ee11fd8e5cf3225cccfb117457bef7defa8b6482e7f",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_cursved",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_cursved",
-        "data/ctf_benchmark/purellm_full188.json#ext_gctf2023_cursved"
+        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_cursved"
       ],
       "hits": 1
     }

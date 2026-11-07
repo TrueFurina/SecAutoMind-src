@@ -125,7 +125,7 @@ LEGACY_WINDOW = {
 #   E2 status 必须与「现在还是不是判分用的答案」一致：仍是 → exposed，已轮换 → rotated。
 # 「漏记」由 R10 结构性拦住：从 HISTORY_SINCE 起新明文进不了历史，就不会多出未记的暴露。
 EXPOSURE_REL = "data/ctf_benchmark/history_exposure.json"
-EXPOSURE_STATUS = {"exposed", "rotated"}
+EXPOSURE_STATUS = {"exposed", "rotated", "pending_corpus"}
 
 # R12 明文债棘轮（2026-11-07）：题库从 3 个文件扩到 33 个、答案从 126 条涨到 434 条后，
 # 放宽扫描面立刻照出 1064 处入仓明文——说明此前「命中 0」是**判据看不见**，不是真干净。
@@ -202,7 +202,7 @@ def load_json(p: Path, default):
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def collect_answer_hashes(root: Path) -> dict:
+def collect_answer_hashes(root: Path, include_untracked: bool = False) -> dict:
     """已知答案哈希 → [来源标识]。口径与判分同源：sha256(整串候选)。
 
     2026-11-07 改：原先只读 arena_manifest + real_benchmark + benchmark 三处，
@@ -221,7 +221,18 @@ def collect_answer_hashes(root: Path) -> dict:
     corpus_dir = root / CORPUS_DIR
     if not corpus_dir.is_dir():
         return known
-    for p in sorted(corpus_dir.glob("*.json")):
+    # 判据只认**入仓**的题库文件：未跟踪的题库是并行会话在途 WIP，CI 干净检出里没有它。
+    # 实测（2026-11-07，CI job 128351584627）：本地从磁盘读全部 *.json 得到 434 条哈希，
+    # CI 只有 414 条 → 同一份历史暴露表在两处得出**相反的 status**（17 条被判「谎报 exposed」）。
+    # 判据读的是开发机的草稿目录，而不是仓库内容，就不可能和 CI 一致。
+    corpus_files = None
+    if _git_out(root, "rev-parse", "--git-dir") is not None and not include_untracked:
+        corpus_files = _tracked_json(root, CORPUS_DIR)
+    paths = ([corpus_dir / n for n in corpus_files] if corpus_files is not None
+             else sorted(corpus_dir.glob("*.json")))
+    for p in sorted(paths):
+        if not p.is_file():
+            continue
         try:
             doc = load_json(p, {})
         except (ValueError, UnicodeDecodeError):
@@ -237,6 +248,27 @@ def collect_answer_hashes(root: Path) -> dict:
                     known.setdefault(h, []).append(
                         "%s/%s#%s" % (CORPUS_DIR, p.name, name))
     return known
+
+
+def _tracked_json(root: Path, subdir: str) -> list[str] | None:
+    """列出 subdir 下**已入仓**的 .json 文件名；git 不可用时返回 None（调用方回退 glob）。"""
+    try:
+        out = subprocess.run(["git", "ls-files", "-z", "--", subdir], cwd=str(root),
+                             capture_output=True, text=True, encoding="utf-8")
+    except OSError:
+        return None
+    if out.returncode != 0:
+        return None
+    names = []
+    prefix = subdir.rstrip("/") + "/"
+    for rel in out.stdout.split("\0"):
+        if not rel.startswith(prefix) or not rel.lower().endswith(".json"):
+            continue
+        rest = rel[len(prefix):]
+        if "/" in rest:      # 只取目录顶层，与 glob("*.json") 同口径
+            continue
+        names.append(rest)
+    return names
 
 
 def _scan_files(root: Path) -> list[str]:
@@ -614,7 +646,7 @@ def check(root: Path) -> tuple[int, list[str]]:
             fails.append("R11 事实表无人负责：owner=%r" % owner_)
         live = set(known)  # 现役（判分正在用）答案哈希
         seen: set[str] = set()
-        exposed_n = rotated_n = 0
+        exposed_n = rotated_n = pending_n = 0
         for e in exp_entries:
             sha = str(e.get("flag_sha256") or "").strip().lower()
             if not sha:
@@ -644,6 +676,11 @@ def check(root: Path) -> tuple[int, list[str]]:
                 if sha in live:
                     fails.append("R11 状态与事实不符：%s… 标 rotated，但它仍是现役判定答案"
                                  "（轮换没做完就标 rotated，等于宣布已解决）" % sha[:12])
+            elif st == "pending_corpus":
+                pending_n += 1
+                if sha in live:
+                    fails.append("R11 状态过期：%s… 标 pending_corpus（题库未入仓），"
+                                 "但它现在已是入仓题库的现役答案——语料入库了就得重生成" % sha[:12])
         if len(exp_entries) == 0 and known:
             fails.append("R11 事实表为空但答案库非空：全历史至少应有 exposure，"
                          "空表通常意味着扫描根本没跑（生成物只由 --update-exposure 产出）")
@@ -655,9 +692,9 @@ def check(root: Path) -> tuple[int, list[str]]:
         if int(legacy.get("hits") or 0) <= 0:
             fails.append("R11 前移起点没留下账：legacy.hits=%r（被移出防线范围的历史明文"
                          "必须计数，否则等于把历史红擦成 0）" % (legacy.get("hits"),))
-        lines.append("  R11 历史暴露事实表：%d 条（exposed %d ｜ rotated %d）"
+        lines.append("  R11 历史暴露事实表：%d 条（exposed %d ｜ rotated %d ｜ pending_corpus %d）"
                      "｜ 防线起点 %s，移出防线范围的 %s..%s 有 %d 提交 / %d 处明文，已入表"
-                     % (len(exp_entries), exposed_n, rotated_n, HISTORY_SINCE,
+                     % (len(exp_entries), exposed_n, rotated_n, pending_n, HISTORY_SINCE,
                         legacy.get("since_prev") or LEGACY_WINDOW["since_prev"],
                         HISTORY_SINCE, int(legacy.get("commits") or 0),
                         int(legacy.get("hits") or 0)))
@@ -801,6 +838,9 @@ def update_exposure(root: Path, owner: str) -> int:
     一个因为爱吃内存而时灵时不灵的门禁，比没有门禁更糟。
     """
     known = collect_answer_hashes(root)
+    # 磁盘上（含未入仓的在途题库）也算一遍：用来区分「已轮换」与「题库还没入仓」。
+    # 不这样做就只能二选一，而未入仓题库里的真值答案既没轮换、也不该被记成 rotated。
+    known_disk = collect_answer_hashes(root, include_untracked=True)
     if _git_out(root, "rev-parse", "--git-dir") is None:
         print("非 git 环境：无法扫描历史，拒绝生成（fail-closed）")
         return 2
@@ -839,10 +879,13 @@ def update_exposure(root: Path, owner: str) -> int:
             if "REDACTED" in cand:
                 continue
             h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-            if h not in known:
+            # 匹配用「入仓 ∪ 磁盘」的并集：否则在途题库里的真值答案在历史里扫不到，
+            # 事实表会把它们凭空漏掉（record 的完整性比「只看入仓」更要紧）。
+            src = known.get(h) or known_disk.get(h)
+            if not src:
                 continue
             a = agg.setdefault(h, {"literal": cand, "flag_sha256": h,
-                                   "ids": list(known[h]), "hits": 0,
+                                   "ids": list(src), "hits": 0,
                                    "first_commit": cur, "last_commit": cur,
                                    "places": []})
             a["hits"] += 1
@@ -861,7 +904,14 @@ def update_exposure(root: Path, owner: str) -> int:
             # 只记哈希，不记字面：事实表本身若带明文，就会变成新的明文载体
             "flag_sha256": h,
             "ids": a["ids"],
-            "status": "exposed" if h in known else "rotated",
+            "ids": a["ids"],
+            # exposed = 仍是入仓题库里的现役判分答案；
+            # rotated = 已不在任何题库里（换过值）；
+            # pending_corpus = 答案只在**未入仓**的在途题库里，本仓还不判它——
+            #   既不能叫 exposed（本仓没有这题），也不能叫 rotated（值没换过）。
+            "status": ("exposed" if h in known
+                       else "pending_corpus" if h in known_disk
+                       else "rotated"),
             "hits": a["hits"],
             "first_commit": a["first_commit"],
             "last_commit": a["last_commit"],

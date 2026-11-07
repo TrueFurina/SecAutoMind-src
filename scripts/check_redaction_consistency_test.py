@@ -333,6 +333,13 @@ def main() -> int:
     # T26 变异：新增行里的答案被拆进 diff 头（+++ b/file）时不许误判成内容行
     _patch_case("T26 文件头 +++ 不算新增内容 → 不命中", expect_hits=0,
                 added="", removed="", header_name="XXX{fixture_patch_leak}")
+    # T35 语料已入库但事实表还标 pending_corpus → FAIL（状态过期，必须重生成）
+    _history_case("T35 标 pending_corpus 但答案已入仓 → FAIL",
+                  exposure={"schema": 1, "owner": "agent", "since": "HEADSHORT",
+                            "legacy": {"hits": 1},
+                            "entries": [{"flag_sha256": "@LEAK@", "ids": ["web_xss"],
+                                         "status": "pending_corpus", "hits": 1}]})
+
     # T27 端到端：HEAD 干净、历史里有过明文 → 只有 R10 能抓到（证明「清 HEAD 不等于清干净」）
     _history_case("T27 HEAD 干净但历史含明文 → 只有 R10 抓得到")
     # T33 事实表起点与防线常量脱钩 → FAIL（移动起点必须同一次留账）
