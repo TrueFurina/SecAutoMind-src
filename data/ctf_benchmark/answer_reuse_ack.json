@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "owner": "agent",
+  "expires": "2027-11-07",
+  "count": 40,
+  "reason": "实测（2026-11-07）：arena_manifest 里 40 条带 flag_sha256 的判分答案，全部命中 history_exposure 的 exposed —— 即这些答案的明文都曾提交进这个 PUBLIC 仓。题面脱敏与判分只用哈希都抵不过「历史可被任何人 fetch」，所以用它们判分等于拿一个谁都能读到的答案宣布自己解出了。当前仍按现状判分，是因为轮换要重生成这 40 题的靶场产物与答案、并同步 baseline/parity/quant 四门地板，属判分口径变更，需人拍板；本文件的作用是禁止这件事继续无人认领、无上限：count 只许随轮换下调，ANSWER_REUSE_MAX=40 同步下调，新增「已公开答案」用于判分一律红。到期未轮换即判红，不许续着挂。",
+  "how_to_reduce": "① 重生成这 40 题的答案与靶场产物（旧答案作废，history_exposure 把旧条目标 rotated）；② 同步 arena_manifest 的 flag_sha256 与 baseline 的 min_real_hit；③ 把本文件 count 下调到新的条数，并把 ANSWER_REUSE_MAX 改成同一个值。"
+}

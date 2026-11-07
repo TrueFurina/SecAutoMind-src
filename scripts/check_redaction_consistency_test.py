@@ -36,7 +36,8 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
               baseline_min_hit: int = 20, baseline_impact=None,
               dangling_entry: bool = False, consumer: str = "synced",
               answer_leak: bool = False, exempt=None, debt=None,
-              leak_path: str = "scripts/leaky_fixture.py") -> Path:
+              leak_path: str = "scripts/leaky_fixture.py",
+              exposure=None, ack=None, judge_hash: bool = False) -> Path:
     """造一个最小仓库形态。
 
     consumer 四种形态：
@@ -63,6 +64,9 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
     elif consumer == "answer":
         man = [{"name": "web_xss", "mode": "local", "cmd": "x",
                 "flag_sha256": "0" * 64}]
+    if judge_hash and consumer == "synced":
+        # R13 夹具：题面已脱敏（判分不要求答案），但条目仍带着判定哈希
+        man[0]["flag_sha256"] = "@LEAK@"
     elif consumer == "plain":
         man = [{"name": "web_xss", "mode": "local", "cmd": "x", "flag": "flag{old_answer}"}]
     elif consumer == "service_env":
@@ -104,10 +108,18 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
         leak_p = tmp / leak_path
         leak_p.parent.mkdir(parents=True, exist_ok=True)
         leak_p.write_text('# 夹具：答案明文躺在这里\nLEAK = "%s"\n' % leak, encoding="utf-8")
+        # R13 夹具需要「判分用的哈希 == 这处明文的哈希」，故用 @LEAK@ 占位替换
+        man_txt = json.dumps(man).replace("@LEAK@", prob["flag_sha256"])
+        _write(tmp, "scripts/arena_manifest.json", json.loads(man_txt))
+        if exposure is not None:
+            exp_txt = json.dumps(exposure).replace("@LEAK@", prob["flag_sha256"])
+            _write(tmp, C.EXPOSURE_REL, json.loads(exp_txt))
     if exempt is not None:
         _write(tmp, C.EXEMPT_REL, {"schema": 1, "entries": exempt})
     if debt is not None:
         _write(tmp, C.DEBT_REL, debt)
+    if ack is not None:
+        _write(tmp, C.ANSWER_REUSE_REL, ack)
     return tmp
 
 
@@ -377,12 +389,34 @@ def main() -> int:
                    "entries": [{"file": "docs/leaky_note.md", "kind": "doc_prose",
                                 "flag_sha256": __import__("hashlib").sha256(
                                     b"flag{fixture_leak_0001}").hexdigest()}]})
-    run_case("T37 債条目缺分类 → FAIL（不写清它是什么，就没法判断该不该留）", 1,
+    run_case("T37 债条目缺分类 → FAIL（不写清它是什么，就没法判断该不该留）", 1,
              consumer="synced", status="synced", answer_leak=True,
              debt={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
                    "entries": [{"file": "scripts/leaky_fixture.py",
                                 "flag_sha256": __import__("hashlib").sha256(
                                     b"flag{fixture_leak_0001}").hexdigest()}]})
+    # T38/T39 R13：拿「历史已公开」的答案判分，可以，但必须有人认领且有上限
+    _hist_fixture = {"schema": 1, "owner": "agent", "since": C.HISTORY_SINCE,
+                     "legacy": {"since_prev": "x", "commits": 1, "hits": 1},
+                     "entries": [{"flag_sha256": "@LEAK@", "ids": ["web_xss"],
+                                  "status": "exposed", "hits": 1}]}
+    _debt_ok = {"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                "entries": [{"file": "scripts/leaky_fixture.py", "kind": "source_literal",
+                             "flag_sha256": __import__("hashlib").sha256(
+                                 b"flag{fixture_leak_0001}").hexdigest()}]}
+    run_case("T38 判分用了已公开的答案且无人认领 → FAIL", 1, consumer="synced",
+             judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
+             exposure=_hist_fixture)
+    run_case("T39 同上但已写清 owner/到期日/count → PASS", 0, consumer="synced",
+             judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
+             exposure=_hist_fixture,
+             ack={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                  "count": 40, "reason": "夹具：轮换需重生成靶场，未拍板前按现状判分"})
+    run_case("T40 认领上限被抬高到 41 → FAIL（上限只许下调）", 1, consumer="synced",
+             judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
+             exposure=_hist_fixture,
+             ack={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                  "count": 41, "reason": "夹具：想把容忍度往上调，必须判红"})
     run_case("T32 明文债已过期 → FAIL（到期必须闭环）", 1, consumer="synced",
              status="synced", answer_leak=True,
              debt={"schema": 1, "owner": "agent", "expires": "2026-01-01", "entries": []})

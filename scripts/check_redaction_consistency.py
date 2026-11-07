@@ -125,6 +125,11 @@ LEGACY_WINDOW = {
 #   E2 status 必须与「现在还是不是判分用的答案」一致：仍是 → exposed，已轮换 → rotated。
 # 「漏记」由 R10 结构性拦住：从 HISTORY_SINCE 起新明文进不了历史，就不会多出未记的暴露。
 EXPOSURE_REL = "data/ctf_benchmark/history_exposure.json"
+
+# R13 用「已公开答案」判分的上限。只许下调：下调＝先把这些题轮换掉再判分。
+# 现状 40（2026-11-07 实测：arena_manifest 里 40 条带 flag_sha256，全部命中历史 exposed）。
+ANSWER_REUSE_REL = "data/ctf_benchmark/answer_reuse_ack.json"
+ANSWER_REUSE_MAX = 40
 EXPOSURE_STATUS = {"exposed", "rotated", "pending_corpus"}
 
 # R12 明文债棘轮（2026-11-07）：题库从 3 个文件扩到 33 个、答案从 126 条涨到 434 条后，
@@ -714,6 +719,50 @@ def check(root: Path) -> tuple[int, list[str]]:
                         legacy.get("since_prev") or LEGACY_WINDOW["since_prev"],
                         HISTORY_SINCE, int(legacy.get("commits") or 0),
                         int(legacy.get("hits") or 0)))
+
+    # R13 判分不得**静默**使用「已经进过公开历史」的答案。
+    # 这不是新发现的泄漏，而是把既有事实钉成机器可见的账：题面脱敏、判分只用哈希，
+    # 都抵不过「历史可被任何人 fetch」。用它判分等于用一个谁都读得到的答案宣布自己解出了。
+    # 不擅自改判分口径（那要人拍板），但禁止这件事继续无人认领、无上限。
+    if exp_doc is not None:
+        burned = {str(e.get("flag_sha256") or "").strip().lower()
+                  for e in (exp_doc.get("entries") or [])
+                  if str(e.get("status") or "").strip() == "exposed"}
+        judged = [e for e in manifest if isinstance(e, dict) and e.get("flag_sha256")]
+        reused = [e for e in judged
+                  if str(e.get("flag_sha256") or "").strip().lower() in burned]
+        ack = load_json(root / ANSWER_REUSE_REL, None)
+        if reused and ack is None:
+            fails.append("R13 有 %d 条判分答案已进过公开历史，但没有任何人认领：%s"
+                         "（要么轮换这些答案，要么在 %s 里写明 owner/到期日/为什么还必须用它判分）"
+                         % (len(reused), ",".join(str(e.get("name")) for e in reused[:6]),
+                            ANSWER_REUSE_REL))
+        elif ack is not None:
+            a_owner = str(ack.get("owner") or "").strip()
+            a_exp = str(ack.get("expires") or "").strip()
+            a_count = ack.get("count")
+            if a_owner in OWNER_PLACEHOLDERS:
+                fails.append("R13 复用认领无人负责：owner=%r" % a_owner)
+            if not str(ack.get("reason") or "").strip():
+                fails.append("R13 复用认领无理由：必须写清为什么这些答案已公开还要拿来判分")
+            try:
+                a_d = date.fromisoformat(a_exp)
+            except ValueError:
+                fails.append("R13 复用认领到期日非法或缺失：%r" % a_exp)
+            else:
+                if a_d < date.today():
+                    fails.append("R13 复用认领已过期：%s（到期必须轮换答案，不许续着挂）" % a_exp)
+            if not isinstance(a_count, int):
+                fails.append("R13 复用认领缺 count（必须写明现在容忍几条已公开答案判分）")
+            elif len(reused) > a_count:
+                fails.append("R13 已公开答案被新用于判分：现 %d 条 > 认领的 %d 条"
+                             "（新题不许再拿已进过公开历史的答案判分）" % (len(reused), a_count))
+            elif a_count > ANSWER_REUSE_MAX:
+                fails.append("R13 认领上限被抬高：count=%d > ANSWER_REUSE_MAX=%d"
+                             "（这个上限只许下调）" % (a_count, ANSWER_REUSE_MAX))
+        lines.append("  R13 判分答案 vs 公开历史：%d 条带哈希判分 ｜ 其中 %d 条的历史明文已公开"
+                     "（上限 %s 条，认领文件 %s）"
+                     % (len(judged), len(reused), ANSWER_REUSE_MAX, ANSWER_REUSE_REL))
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
