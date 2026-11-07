@@ -257,6 +257,14 @@ def main():
     ck("纯分支：接口失败保留原因", "403" in (r.get("api_error_first") or ""))
     m.call_llm = orig_call
 
+    # §18 共享判据模块（agentic_binding.py）自测并入：判据实现搬进共享模块后，
+    # 必须跟编排器回归一起被 CI 锁住，否则模块单独漂移无人知晓。
+    import agentic_binding
+    if not agentic_binding._selftest():
+        ck("agentic_binding selftest：共享模块真值表有 FAIL", False)
+    else:
+        ok += 10; total += 10  # 共享模块 10 例全过，计入总数
+
     print("\nselftest %d/%d" % (ok, total))
     return 0 if ok == total else 1
 

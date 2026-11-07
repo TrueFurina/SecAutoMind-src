@@ -38,6 +38,9 @@ import subprocess
 import tempfile
 import shutil
 import threading
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from agentic_binding import self_check_binding  # §18 跨层绑定判据（单点实现）
 import urllib.request
 import urllib.error
 import zipfile
@@ -875,6 +878,14 @@ def main():
                     help="单次响应输出预算(默认 %d)。原先硬压 4096，长推理题会被截断在半句，"
                          "表现为 0 tool call + 20s 收口 —— 那是预算耗尽不是能力边界" % DEFAULT_MAX_TOKENS)
     ap.add_argument("--slice", default="xfyun-55", help="占位切片名（写入结果元数据）")
+    # §18 跨层绑定：把隔离判据接进跑批进程自身（此前只在外部门禁 run_capability_eval 里，
+    # 结果文件无法自证「本次跑批的解题子进程被隔离」——第13轮跨层假绿的缺口）。
+    ap.add_argument("--airgap-proof", default=None,
+                    help="agentic 隔离证据路径（gen_agentic_isolation_proof.py 产出）。"
+                         "传入则自证绑定并把结论写进 summary.airgap_binding；缺省不改变行为")
+    ap.add_argument("--require-airgap", action="store_true",
+                    help="与 --airgap-proof 同用：绑定不成立则在花任何 API 额度之前退出(RC=2)，"
+                         "fail-closed。agentic 模式下强制要求 --airgap-proof 传入且绑定成立")
     args = ap.parse_args()
 
     cfg = PROVIDERS[args.provider]
@@ -885,6 +896,35 @@ def main():
     # 结果文件声称「agentic」而工具调用恒为 0、llm_rounds 为空 —— 配置自曝造假。
     tools_available = bool(cfg.get("supports_tools", False))
     agentic = resolve_agentic(args.agentic, args.no_agentic, tools_available)
+
+    # §18 跨层绑定自证（fail-closed，且在花任何 API 额度**之前**判）：
+    # 机制证据只证明闸门在探测二进制上生效，不证明「本次跑批的解题子进程」被隔离。
+    # 绑定判据 = 机制层 + UID + 命令后缀（proof.run_binding.command 以本进程 argv 为后缀）
+    # + 指纹自洽，全在 scripts/agentic_binding.py 单点维护。
+    airgap_binding = None
+    if args.airgap_proof:
+        if not os.path.isfile(args.airgap_proof):
+            airgap_binding = {"ok": False, "why": "证据文件不存在: %s" % args.airgap_proof}
+        else:
+            try:
+                proof = json.load(open(args.airgap_proof, encoding="utf-8"))
+            except Exception as exc:
+                proof = {"parse_error": str(exc)}
+            ok_b, why_b = self_check_binding(proof, sys.argv)
+            airgap_binding = {
+                "ok": ok_b, "why": why_b,
+                "proof_path": args.airgap_proof,
+                "proof_sha256": hashlib.sha256(open(args.airgap_proof, "rb").read()).hexdigest(),
+                "na": not agentic,  # 纯 LLM 无解题子进程 ⇒ 绑定 N/A（preflight 同口径）
+            }
+        if agentic and not airgap_binding["ok"] and args.require_airgap:
+            print("[airgap] 绑定不成立，fail-closed（未消耗任何 API 额度）: %s"
+                  % airgap_binding["why"], file=sys.stderr)
+            return 2
+    elif args.require_airgap and agentic:
+        print("[airgap] --require-airgap 需要同时给 --airgap-proof；agentic 无证据 ⇒ fail-closed",
+              file=sys.stderr)
+        return 2
     if args.agentic and not tools_available:
         print("[warn] provider=%s 不支持工具，--agentic 已降级为纯 LLM；"
               "结果文件会写明 agentic_effective=False" % args.provider, file=sys.stderr)
@@ -969,6 +1009,9 @@ def main():
         "agentic_requested": bool(args.agentic),
         "agentic_effective": agentic,
         "tools_available": tools_available,
+        # §18 跨层绑定自证结论：None=未提供证据（行为同旧版）；na=True 表示纯 LLM
+        # 路径无解题子进程，绑定不适用（与 run_capability_eval preflight 口径一致）。
+        "airgap_binding": airgap_binding,
         "sandbox": ("run_python fail-closed guard + full code audit" if agentic
                     else "disabled (pure LLM, no tool)"),
         "tool_calls_total": len(audit_all),
@@ -988,4 +1031,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

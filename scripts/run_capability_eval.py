@@ -396,38 +396,13 @@ def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=
 
 
 def agentic_run_binding(proof, command):
-    """§18 跨层绑定：机制证据 ≠ 本次跑批的解题子进程被隔离。
+    """已抽到共享模块 scripts/agentic_binding.py（§18 唯一口径）。
 
-    实证（2026-11-06）：`CTF_AIRGAP=1` + 三个开关全开 + 已生成的 IP 直连 proof，
-    仍可从 `ctf_stepfun_orchestrator.run_python_tool` 用
-    `importlib.import_module('so'+'cket')` 绕过源码正则，IP 直连
-    172.16.222.99:22 成功（CONNECTED）。原因是 seccomp 由 Go 二进制自 re-exec 安装，
-    而 Python 子进程是 `subprocess.run([python, '-I', '-c', code])`，两者不同层。
-
-    proof 自己已声明这一点：caveats[0]「不证明任何一次跑批真的开了闸」，
-    airgap_scope 是 Go 侧 python_session。因此放行需要第二条件：
-    `run_binding.command_sha256` == 本次跑批命令指纹，且
-    `subprocess_ip_direct_blocked` is True（本次子进程内实跑 A/B）。
-    当前证据没有该字段 ⇒ agentic 一律 fail-closed。
+    这里保留同名薄封装：本文件内的 preflight / selftest 与既有引用不改一行，
+    判据实现只在 agentic_binding.py 维护，杜绝两份口径漂移。
     """
-    if not isinstance(proof, dict) or proof.get("parse_error"):
-        return False, "IP 直连证据缺失或不可解析"
-    if proof.get("ip_direct_blocked") is not True or proof.get("af_unix_ok") is not True:
-        return False, "机制层 IP 直连 A/B 未成立"
-    cmd = [x for x in (command or []) if x != "--"]
-    if not cmd:
-        return False, ("无跑批命令可绑定；按 proof.caveats，该证据只证明闸门在探测"
-                       "二进制上生效，不证明任何一次跑批开了闸")
-    bound = proof.get("run_binding")
-    if not isinstance(bound, dict):
-        return False, ("证据缺 run_binding：作用域是 Go 二进制 seccomp 探测，"
-                       "本次跑批解题子进程未独立证明（实测 CTF_AIRGAP=1 下仍可出网）")
-    fp = hashlib.sha256(" ".join(cmd).encode("utf-8")).hexdigest()
-    if bound.get("command_sha256") != fp:
-        return False, "run_binding.command_sha256 与本次跑批命令指纹不符"
-    if bound.get("subprocess_ip_direct_blocked") is not True:
-        return False, "本次跑批解题子进程无 IP 直连拦截证据"
-    return True, "机制证据 + 本次跑批子进程隔离绑定均成立"
+    from agentic_binding import agentic_run_binding as _impl
+    return _impl(proof, command)
 
 
 def airgap_scope_selftest():
