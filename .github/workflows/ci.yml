@@ -804,7 +804,7 @@ jobs:
       # if: always() 的理由（2026-11-07 实测）：步骤顺序执行，docs-lint 一红，后面两步直接 skipped
       # —— 于是「脱敏门禁有没有过」永远拿不到答案，人只看到 docs-lint 红，会误以为脱敏也就那样。
       # 红线分开报：哪一步红就认哪一步，不许一条红掩盖另一条。
-      - name: Redaction ledger self-test (35 cases incl. mutation + history + debt ratchet + baseline move)
+      - name: Redaction ledger self-test (37 cases incl. mutation + history + debt ratchet + baseline move)
         if: always()
         run: python scripts/check_redaction_consistency_test.py
       - name: Redaction vs judge consistency (differences must be accounted)

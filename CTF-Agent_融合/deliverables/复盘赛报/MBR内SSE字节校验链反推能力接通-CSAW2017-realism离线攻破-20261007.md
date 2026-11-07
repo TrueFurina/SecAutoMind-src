@@ -13,7 +13,7 @@ a really old Master Boot Record ... `qemu-system-i386 -drive format=raw,file=mai
 被**离线确定性解出**：
 
 ```
-flag{4r3alz_m0d3_y0}
+<REDACTED:sha256=bb6da24e15a2>
 ```
 
 与题面 `flag_sha256 = bb6da24e15a2187b8e7809f118f1c5b4a115b01688cb3a84e1c6fe9f21246b29`

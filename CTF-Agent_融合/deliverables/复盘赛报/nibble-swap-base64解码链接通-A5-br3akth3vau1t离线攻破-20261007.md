@@ -27,7 +27,7 @@ A5 held-out 五题中，`br3akth3vau1t`（CSAW-Quals 2023，forensics）此前�
 
 ```
 sus (十进制) → int→大端 bytes → nibble-swap → base64
-  → csawctf{w@11_ST_1s_n0t_n3ce$$@ry}
+  → <REDACTED:sha256=b3c9db6b888f>
 sha256 == b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237  ✅（题目真值）
 ```
 
@@ -35,7 +35,7 @@ sha256 == b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237  ✅�
 
 | 变量 | nibble-swap→base64 结果 | 含 flag？ |
 |---|---|---|
-| `sus` | `csawctf{w@11_ST_1s_n0t_n3ce$$@ry}` | ✅ 本题真值 |
+| `sus` | `<REDACTED:sha256=b3c9db6b888f>` | ✅ 本题真值 |
 | `sus1337` | `1337` | ✗ |
 | `sus14` | 《A Cypherpunk's Manifesto》全文（5075 字节） | ✗ |
 

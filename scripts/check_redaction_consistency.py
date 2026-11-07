@@ -578,6 +578,22 @@ def check(root: Path) -> tuple[int, list[str]]:
                      "（只减不增；不在债表里的明文一律红）"
                      % (len(debt_keys), len(debt_keys & hit_keys),
                         len(debt_keys - hit_keys)))
+        # 分类核查：一锅账会掩盖「哪些真该清」。文档类必须为 0；未知类别直接红。
+        by_kind: dict[str, int] = {}
+        for e in debt_entries:
+            k = str(e.get("kind") or "").strip()
+            rel = str(e.get("file") or "").replace("\\", "/")
+            if k not in DEBT_KINDS:
+                fails.append("R12 明文债缺分类：%s kind=%r（必须写明它属于哪一类，"
+                             "否则「还留着」和「该清」混成一锅账）" % (rel, k))
+                continue
+            by_kind[k] = by_kind.get(k, 0) + 1
+            if k == "doc_prose":
+                fails.append("R12 文档里还有答案明文：%s（叙事/赛报/日志没有「必须持有真值」"
+                             "的理由；用 scripts/redact_answer_plaintext.py --apply 换成人可读、"
+                             "机不可抄的 <REDACTED:sha256=…>，不许记成债）" % rel)
+        for k, n in sorted(by_kind.items(), key=lambda kv: -kv[1]):
+            lines.append("    [KIND] %-24s %3d 条 ｜ %s" % (k, n, DEBT_KINDS[k][0]))
     lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处 ｜ 超大文件跳过 %d 个（>%dKB 未解码，属已知盲区）"
                  % (len(known), len(hits), len(used_exempt), skipped_large,
                     MAX_SCAN_BYTES // 1024))
@@ -784,6 +800,45 @@ def update_ledger(root: Path, owner: str, expires: str,
     return 0
 
 
+def debt_kind(rel: str) -> str:
+    """给每处明文债分类，因为「一锅 205 条」会掩盖两类完全不同的东西。
+
+    ① doc_prose：叙事/赛报/计划/日志里的答案 —— 这类**没有必须持有真值的理由**，
+       只是没清。清掉之后（2026-11-07：37 条 → 0）应当永久为 0，再出现就是新泄漏。
+    ② target_artifact：靶场/生成器 —— 题目要能被解，真值就必须在题目里，
+       删掉等于把题改成不可解。属结构性，但仍是「谁能读到 repo 谁就能抄」的风险面。
+    ③ test_fixture：测试要断言「解出的就是这个值」，字面在断言里。
+    ④ external_public_question：公开真题题库，答案本身是公开信息，
+       但仍让该题变成「可抄」，会污染解出率。
+    ⑤ source_literal：源码里写死的答案（如 presolve 的已知题对照表）。
+    """
+    p = rel.replace("\\", "/")
+    if (p.startswith("docs/") or "/docs/" in p or "deliverables/" in p or
+            p.startswith("plans/") or "/plans/" in p or "evidence/" in p or
+            p.endswith(".log") or p.endswith(".jsonl") or p.endswith(".md")):
+        if not p.endswith(".json") or "evidence/" in p:
+            return "doc_prose"
+    name = p.rsplit("/", 1)[-1]
+    if "/tests/" in p or name.startswith("test_") or name.endswith("_test.py") \
+            or name.endswith("_test.go"):
+        return "test_fixture"
+    if "live_target/" in p or name.startswith("gen_") or name.startswith("_gen_") \
+            or name.startswith("judge_") or "crypto_attack_params" in p:
+        return "target_artifact"
+    if "questions_real/" in p or "questions_external/" in p:
+        return "external_public_question"
+    return "source_literal"
+
+
+DEBT_KINDS = {
+    "doc_prose": ("叙事/赛报/计划/日志", "必须为 0：这些地方没有『题要可解才需要真值』的理由"),
+    "target_artifact": ("靶场 / 生成器", "题目要能被解，真值必须在题目里；删掉等于把题改成不可解"),
+    "test_fixture": ("测试 / 夹具", "断言要写『解出的就是这个值』，真值在断言字面里"),
+    "external_public_question": ("公开真题题库", "答案本身公开，但仍会让该题变可抄，污染解出率"),
+    "source_literal": ("源码写死", "如 presolve 已知题对照表；可逐步改成按哈希比对"),
+}
+
+
 def update_debt(root: Path, owner: str, expires: str) -> int:
     """按当前扫描结果重写明文债表（R12）。只许在**减少**后重写，增项要人工解释。"""
     known = collect_answer_hashes(root)
@@ -796,7 +851,7 @@ def update_debt(root: Path, owner: str, expires: str) -> int:
         if rel in ex_files:
             continue
         h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-        row = rows.setdefault((rel, h), {"file": rel,
+        row = rows.setdefault((rel, h), {"file": rel, "kind": debt_kind(rel),
                                          "flag_sha256": h, "ids": sorted(set(ids)),
                                          "hits": 0})
         row["hits"] += 1
@@ -811,8 +866,9 @@ def update_debt(root: Path, owner: str, expires: str) -> int:
         "owner": owner,
         "expires": expires,
         "note": ("明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。"
-                 "不在本表里的明文一律判红。生成器/靶场/测试夹具需要真值才能产出与断言，"
-                 "属于要单独决策的类别（要么改成不落真值，要么进豁免表并写明理由）。"),
+                 "不在本表里的明文一律判红。每条带 kind 说明它属于哪一类："
+                 "doc_prose 必须为 0（叙事里不该有答案）；target_artifact / test_fixture "
+                 "是结构性真值；external_public_question / source_literal 应逐步改成按哈希比对。"),
         "head": (_git_out(root, "rev-parse", "--short", "HEAD") or "").strip(),
         "total_hits": sum(e["hits"] for e in entries),
         "raw_hits": len(hits),

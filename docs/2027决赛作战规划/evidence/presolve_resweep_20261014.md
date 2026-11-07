@@ -56,7 +56,7 @@ NO_HIT 47/53
   node 权威执行 `delog(wincode)` = `flag{lmjKhKbdjbbgJHkjkG}`，
   与库存 flag_sha256（`aec640f0…`）**三者全不符** → 从幸存数据不可复现。
   > 🔴 **2026-10-26 归因更正**：上句「三者全不符」只是事实描述，**不代表真值有错**。
-  > 实算 `sha256("flag{cslhahldlnst0day}")` = `aec640f0…` **逐位相等，真值正确**。
+  > 实算 `sha256("<REDACTED:sha256=aec640f00c41>")` = `aec640f0…` **逐位相等，真值正确**。
   > 该题是「index.html 注释泄露」题，`delog` 是诱导项，且其可达输出集缺 `n o p q r s t`
   > → 永不等于真值（题设）。所以「不可复现」的真因是**含答案的 html 丢了**，而非 sha256 登记错。
   > 详见 `docs/evidence/2026-10-26_更正_real_reverse_js真值正确_是附件缺失.md`
@@ -74,7 +74,7 @@ NO_HIT 47/53
 第一次（08:34，与 Enigma 分析并发）→ NO_HIT @3600.0s：bkcrack OMP 全核攻击
   在 CPU 争抢下未跑完（墙钟耗尽，1 路未完成）——环境性失败，非能力问题。
 第二次（09:44，无争抢重跑）→ ✅ TRUE @1733.3s：
-  CTF{y0u_u5ed_3xtr@_pl@1nt3xt_t0_d3t3rm1n3_k3ys}
+  <REDACTED:sha256=d3109ddee29b>
   sha256 = d3109ddee2… == 题库真值 ✓（与 10-09 的 1561s 同量级）
 ```
 

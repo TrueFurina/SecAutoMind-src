@@ -14,7 +14,7 @@
 全池 MISS 扫描中，`2017q_for_missed_registration`（CSAW-Quals 2017 forensics）被**离线确定性解出**：
 
 ```
-FLAG{3Am_LaunDR3Y_FL4G_L34kz!}
+<REDACTED:sha256=b0e408d1da7e>
 ```
 
 与题面 `flag_sha256 = b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e`
@@ -36,7 +36,7 @@ ext 池 HITS **14 → 15**。并据此新增确定性能力 `skills/pcap_http_ca
    `c/lname/major/n/name/s/school/text`）。`x` 的值是**偶数长度 hex + 尾部 NUL 填充**。
 3. **切片拼接 → 还原文件**：按**抓包时间序**把 125 段 hex 拼起来，恰得 **13714 字节**，
    与首段 BMP 头里声明的 `filesize` **完全相等** —— 一张 323×39 的 8bpp BMP。
-   渲染即 `FLAG{3Am_LaunDR3Y_FL4G_L34kz!}`。
+   渲染即 `<REDACTED:sha256=b0e408d1da7e>`。
 
 首段以 `424d`（ASCII `"BM"`）开头、第三段起不再有文件头，正是「同一文件被逐段搬运」的铁证。
 

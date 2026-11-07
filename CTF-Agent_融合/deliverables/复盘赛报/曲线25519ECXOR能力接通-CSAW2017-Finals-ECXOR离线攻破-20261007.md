@@ -85,7 +85,7 @@ ct[i] - ct[j] = (ord_i - ord_j) · G        （key 抵消）
 ```
 L = 12
 key = b'\xee\xb7\xca\xc7u\xaa\xf6\xf8\xa5e\x9e#'
-明文首行 = flag{generalizing_vignere_to_arbitrary_groups_is_not_good}"If you're going to turn into a pig, my dear," said Alice, ...
+明文首行 = <REDACTED:sha256=0e063f15a4c2>"If you're going to turn into a pig, my dear," said Alice, ...
 sha256(flag) = 0e063f15a4c24ca6e9d9277225fdf5f8ff7b9ea61d66e0a111eae4919d6a489f
 题面 flag_sha256 = 0e063f15…489f   ✅ 逐字吻合
 ```

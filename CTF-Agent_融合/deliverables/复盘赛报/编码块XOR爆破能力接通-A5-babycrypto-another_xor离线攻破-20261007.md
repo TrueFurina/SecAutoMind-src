@@ -24,9 +24,9 @@ Windows CreateProcess 命令行上限 ~32767 字符；crypto 兜底脚本已增�
 
 | 题目 | 类别 | 事件 | 状态 | 关键 flag |
 |---|---|---|---|---|
-| lowe | crypto | CSAW-Quals 2018 | ✅ 上轮攻破 | `flag{saltstacksaltcomit5dd304276ba5745ec21fc1e6686a0b28da29e6fc}` |
-| **babycrypto** | crypto | CSAW-Quals 2018 | ✅ **本轮攻破** | `flag{diffie-hellman-g0ph3rzraOY1Jal4cHaFY9SWRyAQ6aH}` |
-| **another_xor** | crypto | CSAW-Quals 2017 | ✅ **本轮攻破** | `flag{sti11_us3_da_x0r_for_my_s3cratz}` |
+| lowe | crypto | CSAW-Quals 2018 | ✅ 上轮攻破 | `<REDACTED:sha256=d26af118b715>` |
+| **babycrypto** | crypto | CSAW-Quals 2018 | ✅ **本轮攻破** | `<REDACTED:sha256=f8d5f4db80f8>` |
+| **another_xor** | crypto | CSAW-Quals 2017 | ✅ **本轮攻破** | `<REDACTED:sha256=d8a4684a12d7>` |
 | br3akth3vau1t | forensics | CSAW-Quals 2023 | ⬜ 未破（Ansible Vault 取证，需真实 crypto/forensics 工作） |
 | free_as_in_freedom | rev | CSAW-Finals 2018 | ⬜ 未破（radare2 脚本，r2 未安装 → 需静态还原） |
 
@@ -42,7 +42,7 @@ Windows CreateProcess 命令行上限 ~32767 字符；crypto 兜底脚本已增�
 s5qQkd+WjN…  ──base64──▶ 322 非可打印字节 ──XOR 0xFF──▶ 英文散文 + flag
 ```
 
-复原明文（节选）：`Leon is a programmer who aspires to create programs that help people do less. … flag{diffie-hellman-g0ph3rzraOY1Jal4cHaFY9SWRyAQ6aH}`
+复原明文（节选）：`Leon is a programmer who aspires to create programs that help people do less. … <REDACTED:sha256=f8d5f4db80f8>`
 
 ### 2.2 another_xor（CSAW 2017 Quals）
 
@@ -67,7 +67,7 @@ cipher = xor(plaintext, repeat(key, len(plaintext)))
 
 ```
 key  = A quart jar of oil mixed with zinc oxide makes a very bright paint
-flag = flag{sti11_us3_da_x0r_for_my_s3cratz}
+flag = <REDACTED:sha256=d8a4684a12d7>
 md5(flag+key) = d5111350bbbe105121b9a9496ac08df2  == 密文末 32 字符  ✅
 ```
 

@@ -16,8 +16,8 @@
 | blinders | `flag{missing}` | `099cc26a39b564a4` | ❌ |
 | desfunctional | `flag{getting}` | `c1dcdcf4ec349587` | ❌ |
 | otp | `flag{fancy}` | `fd7e6ace45e9e02b` | ❌ |
-| real_crypto_dnui_keyboard | `flag{CLCKOUTHK}` | （(sha256,set) 形态） | ✅ |
-| real_reverse_js | `flag{cslhahldlnst0day}` | ✅ | ✅ |
+| real_crypto_dnui_keyboard | `<REDACTED:sha256=0629c8d6eb02>` | （(sha256,set) 形态） | ✅ |
+| real_reverse_js | `<REDACTED:sha256=aec640f00c41>` | ✅ | ✅ |
 
 **7/9 的返回值是单字占位词**（program/this/correct/time/missing/getting/fancy）——与 09-30 发现的 `_try_desc_answer` 假命中（`flag{file}`/`flag{tened}`）**同一形态**：从题面描述抽一个词塞进 `flag{...}`。
 

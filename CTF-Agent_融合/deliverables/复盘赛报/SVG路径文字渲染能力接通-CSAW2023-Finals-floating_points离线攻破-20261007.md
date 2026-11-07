@@ -12,7 +12,7 @@
 （CSAW-Finals 2023 「Floating Points / 浮点数」）被确定性解出**：
 
 ```
-flag   = csawctf{did_you_try_w3schools_path_d=}
+flag   = <REDACTED:sha256=6500f523032d>
 sha256 = 6500f523…5b2e  ==  题面 flag_sha256  ✅ 逐字吻合
 ```
 
@@ -21,7 +21,7 @@ sha256 = 6500f523…5b2e  ==  题面 flag_sha256  ✅ 逐字吻合
 ```
 floating_points  --bzip2-->  Ascii85 文本  --a85decode-->  SVG path 数据
                  --纯 Python 栅格化(even-odd 填充)-->  一行文字位图
-                 --系统 tesseract OCR-->  csawctf{did_you_try_w3schools_path_d=}
+                 --系统 tesseract OCR-->  <REDACTED:sha256=6500f523032d>
 ```
 
 ## 根因：能力缺口（「明文只存在于图形里」）
@@ -70,7 +70,7 @@ floating_points  --bzip2-->  Ascii85 文本  --a85decode-->  SVG path 数据
 
 ## 验证（全部通过）
 
-- **sha256 逐字吻合**：`csawctf{did_you_try_w3schools_path_d=}` →
+- **sha256 逐字吻合**：`<REDACTED:sha256=6500f523032d>` →
   `6500f523…5b2e` == 题面 `flag_sha256`；亦与上游 `challenge.json` 的 `flag`
   字段逐字一致。
 - **新增测试 19/19**：容器 round-trip / a85 / 反例、path 解析（含相对+曲线+
@@ -101,7 +101,7 @@ import sys; sys.path.insert(0,'.')
 from skills import svg_path_text as S
 print(S.run({'path':'data/questions_ext/_attachments/forensics/2023f-for-floating_points/floating_points'}))
 "
-# -> b'csawctf{did_you_try_w3schools_path_d=}'
+# -> b'<REDACTED:sha256=6500f523032d>'
 ```
 
 ## 附：本轮附带发现（`des2bites` = NO_INPUT）

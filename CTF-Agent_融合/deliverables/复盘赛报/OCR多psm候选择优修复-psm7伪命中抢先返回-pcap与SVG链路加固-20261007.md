@@ -16,7 +16,7 @@ psm6 的正确结果。
 | psm | OCR 输出 |
 |---|---|
 | 7 | `| FLAG{anm_LaunDR3Y_FL4E_L34k§_}` ← 含 `§`（非 ASCII） |
-| 6 | `FLAG{3Am_LaunDR3Y_FL4G_L34kz!}` ← 正确 |
+| 6 | `<REDACTED:sha256=b0e408d1da7e>` ← 正确 |
 
 修前 `P.solve(cap.pcap)` 返回 psm7 的伪命中（sha `887c2993…`）≠ 题面；修后返回 psm6 的正确值
 （sha `b0e408d1…`，与题面 `flag_sha256` **逐字吻合**）。

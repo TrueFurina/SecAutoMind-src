@@ -19,7 +19,7 @@ crypto 200）为**能力缺口**：现网无任何 handler / triage 段覆盖「
 CSAW-Quals 2017 **almost_xor**：
 
 ```
-flag = flag{>x0r_i5_Add1+10n-m0D-2,'bU+_+h15_Wa5_m0d=8}
+flag = <REDACTED:sha256=6bb0e2756e56>
 sha256(flag) = 6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407
 ```
 

@@ -60,7 +60,7 @@
 
 **bug 1 · presolve 键盘路径无 sha256 闸**（`core/presolve.py::_try_keyboard_path`）：只查"无?+长度 4-30"，与 `_vision_read_flag`/`_try_hastad_broadcast` 家规不一致。修复：接入 `sha256_matches()` 三态仲裁，不符真值即降级普通候选。
 
-**bug 2 · 🔴 solver 正确性校验查错题库**（`run.py::build_solver`）：硬编码 `load_questions("data/questions")`（已退役混合集）构造答案表 → held-out（`data/questions_real/`）题**不在表内，任何正确 flag 都被判 hallucination 且置 None**。实证：dnui_keyboard 的 `flag{CLCKOUTHK}` 与题面 sha256 真值逐字匹配——**正确答案被自己的验证器枪毙**。修复：solver 末段增加"本题自身真值优先仲裁"（`question.flag_matches`，无真值才回落旧答案表）。
+**bug 2 · 🔴 solver 正确性校验查错题库**（`run.py::build_solver`）：硬编码 `load_questions("data/questions")`（已退役混合集）构造答案表 → held-out（`data/questions_real/`）题**不在表内，任何正确 flag 都被判 hallucination 且置 None**。实证：dnui_keyboard 的 `<REDACTED:sha256=0629c8d6eb02>` 与题面 sha256 真值逐字匹配——**正确答案被自己的验证器枪毙**。修复：solver 末段增加"本题自身真值优先仲裁"（`question.flag_matches`，无真值才回落旧答案表）。
 
 配套增强：`verify/flag_checker.py::sha256_matches()` 三态仲裁（None 无真值 / True 确定性正确 / False 确定性错误，全串+内文双形态）；`core/phases.py::extract_flag` 双路接入（真值匹配=早接受省预算且优先于工具证据门；不符=确定性幻觉即拒+反幻觉 strike）。新增 `tests/test_sha256_arbitration.py` 16 用例，全量 **516 passed / 16 skipped EXIT=0**。
 

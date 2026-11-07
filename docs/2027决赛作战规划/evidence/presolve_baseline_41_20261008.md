@@ -13,11 +13,11 @@
 
 | 判定 | 题 | 返回候选 | sha256 |
 |---|---|---|---|
-| ✅ TRUE | `ext_gctf2022_cycling` | `CTF{Recycling_Is_Great}` | 吻合 |
-| ✅ TRUE | `ext_gctf2022_electric-mayhem-cls` | `CTF{W0ckAwocKaWoCka1}` | 吻合 |
-| ✅ TRUE | `ext_gctf2023_least-common-genominator` | `CTF{C0nGr@tz_RiV35t_5h4MiR_nD_Ad13MaN_W0ulD_b_h@pPy}` | 吻合 |
-| ✅ TRUE | `real_crypto_dnui_keyboard` | `flag{CLCKOUTHK}` | 吻合 |
-| ✅ TRUE | `real_reverse_js` | `flag{cslhahldlnst0day}` | 吻合 |
+| ✅ TRUE | `ext_gctf2022_cycling` | `<REDACTED:sha256=acbe3fcecd1f>` | 吻合 |
+| ✅ TRUE | `ext_gctf2022_electric-mayhem-cls` | `<REDACTED:sha256=408e722c601b>` | 吻合 |
+| ✅ TRUE | `ext_gctf2023_least-common-genominator` | `<REDACTED:sha256=69981daf9abd>` | 吻合 |
+| ✅ TRUE | `real_crypto_dnui_keyboard` | `<REDACTED:sha256=0629c8d6eb02>` | 吻合 |
+| ✅ TRUE | `real_reverse_js` | `<REDACTED:sha256=aec640f00c41>` | 吻合 |
 | ❌ FALSE | `ext_gctf2023_primes` | `CTF{YkDOLIStjpjP5Am1SXDt5d2r9es3b5KZP47v8rXF}` | **不符**（题面 sha=df18e59d…）|
 
 - **确定性真命中率 = 5/41 ≈ 12.2%**（2 real 命中 2/2 = 100%；39 external 命中 3/39 ≈ 7.7%）。**必须分层，禁混成一个率。**

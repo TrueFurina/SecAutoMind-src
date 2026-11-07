@@ -35,7 +35,8 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
               owner: str = DEFAULT_OWNER, renewals=None,
               baseline_min_hit: int = 20, baseline_impact=None,
               dangling_entry: bool = False, consumer: str = "synced",
-              answer_leak: bool = False, exempt=None, debt=None) -> Path:
+              answer_leak: bool = False, exempt=None, debt=None,
+              leak_path: str = "scripts/leaky_fixture.py") -> Path:
     """造一个最小仓库形态。
 
     consumer 四种形态：
@@ -100,7 +101,7 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
         prob["flag_sha256"] = hashlib.sha256(leak.encode("utf-8")).hexdigest()
         _write(tmp, "data/ctf_benchmark/benchmark.json",
                {"version": 1, "problems": {"web_xss": prob}})
-        leak_p = tmp / "scripts" / "leaky_fixture.py"
+        leak_p = tmp / leak_path
         leak_p.parent.mkdir(parents=True, exist_ok=True)
         leak_p.write_text('# 夹具：答案明文躺在这里\nLEAK = "%s"\n' % leak, encoding="utf-8")
     if exempt is not None:
@@ -364,6 +365,20 @@ def main() -> int:
              status="synced", answer_leak=True, debt=debt_leak)
     run_case("T31 同一处明文已入账债表 → PASS（只减不增）", 0, consumer="synced",
              status="synced", answer_leak=True,
+             debt={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                   "entries": [{"file": "scripts/leaky_fixture.py",
+                                "kind": "source_literal",
+                                "flag_sha256": __import__("hashlib").sha256(
+                                    b"flag{fixture_leak_0001}").hexdigest()}]})
+    # T36/T37 分类核查：账不能一锅记，否则「该清」和「必须留」混在一起互相掩护
+    run_case("T36 文档类明文债 → FAIL（叙事里没理由持真值）", 1, consumer="synced",
+             status="synced", answer_leak=True, leak_path="docs/leaky_note.md",
+             debt={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                   "entries": [{"file": "docs/leaky_note.md", "kind": "doc_prose",
+                                "flag_sha256": __import__("hashlib").sha256(
+                                    b"flag{fixture_leak_0001}").hexdigest()}]})
+    run_case("T37 債条目缺分类 → FAIL（不写清它是什么，就没法判断该不该留）", 1,
+             consumer="synced", status="synced", answer_leak=True,
              debt={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
                    "entries": [{"file": "scripts/leaky_fixture.py",
                                 "flag_sha256": __import__("hashlib").sha256(

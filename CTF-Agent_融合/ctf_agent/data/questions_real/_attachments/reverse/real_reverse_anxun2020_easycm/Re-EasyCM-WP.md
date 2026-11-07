@@ -114,7 +114,7 @@ char table[150] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
 		'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
 		'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
 		'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/' };
-char RTS[] =  "D0g3{cyzcc_have_ten_girlfriends}";
+char RTS[] =  "<REDACTED:sha256=888adf3fcf54>";
 char rra[] = { 0x23,0x7a,0x3d,0x60,0x34,0x7,0x11,0x36,0x2c,0x5,
 				0xc,0x20,0xb,0x22,0x3f,0x6f,0x16,0x0,0x37,0xd,
 				0x36,0xf,0x1e,0x20,0x37,0x14,0x2,0x9,0x2,0xf,

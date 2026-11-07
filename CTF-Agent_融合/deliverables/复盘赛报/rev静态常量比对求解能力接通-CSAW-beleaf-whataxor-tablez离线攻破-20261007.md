@@ -12,9 +12,9 @@
 
 | 题 | 赛事 | flag | 校验 |
 |---|---|---|---|
-| `beleaf` | CSAW-Quals 2019 | `flag{we_beleaf_in_your_re_future}` | sha256 ✅ 逐字吻合 |
-| `whataxor` | CSAW-Quals 2023 | `csawctf{0ne_sheeP_1wo_sheWp_2hree_5heeks_____z___zzz_____zzzzzz____xor}` | sha256 ✅ |
-| `tablez` | CSAW-Quals 2017 | `flag{t4ble_l00kups_ar3_b3tter_f0r_m3}` | sha256 ✅ |
+| `beleaf` | CSAW-Quals 2019 | `<REDACTED:sha256=57f3b2a86dd1>` | sha256 ✅ 逐字吻合 |
+| `whataxor` | CSAW-Quals 2023 | `<REDACTED:sha256=707e9186da17>` | sha256 ✅ |
+| `tablez` | CSAW-Quals 2017 | `<REDACTED:sha256=2fbda70805e6>` | sha256 ✅ |
 
 `questions_ext` 池 HITS：**9 → 14**（含本轮 4 道 + 上轮 floating_points）。
 
