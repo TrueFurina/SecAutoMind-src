@@ -212,6 +212,26 @@ def main():
     finally:
         shutil.rmtree(r, ignore_errors=True)
 
+    # T15/T16 `git show <commit>:path` 不是「仓库里缺了脚本」（2026-11-07 实测假红）
+    r = _mkroot()
+    try:
+        _compliant(r)
+        _write(r, "scripts/real_tool.py", "print(1)\n")
+        _write(r, "docs/verify.md",
+               "# 复算\n\n`code_sha256` 可这样复算：\n"
+               "`git show <commit>:scripts/real_tool.py | sha256sum`\n")
+        rc, out = _run(r)
+        check("T15 git show <commit>:path 引用真实脚本 → exit 0（不得假红）",
+              rc == 0, f"rc={rc} {out[-200:]}")
+        # 变异：同样的写法，但脚本真不存在 → 仍必须红（否则修法把门禁弄瞎了）
+        _write(r, "docs/verify2.md",
+               "# 复算\n\n`git show HEAD:scripts/ghost_tool.py | sha256sum`\n")
+        rc, out = _run(r)
+        check("T16 变异：git show 形式引用缺失脚本 → exit 1 且点名",
+              rc == 1 and "ghost_tool.py" in out, f"rc={rc} {out[-200:]}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
+
     # 汇总
     print("=" * 70)
     print("check_docs_lint.py 回归 + 变异验证")

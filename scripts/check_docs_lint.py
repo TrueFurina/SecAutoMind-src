@@ -221,6 +221,25 @@ def _resolve_script_ref(token, root):
     return None
 
 
+def _strip_git_rev_prefix(text: str, start: int, token: str) -> str:
+    """`git show <commit>:scripts/x.py` 这类「版本:路径」写法，取冒号右边再校验。
+
+    实测假红（2026-11-07）：证据 README 写 `git show <commit>:scripts/ctf_stepfun_orchestrator.py`
+    教人复算哈希，本门禁把前面的 `:` 一起吃进 token，得到 `:scripts/...`，
+    再拼到仓库根自然不存在 → 文档没错、脚本也没缺，是解析器错。
+    """
+    if not token.startswith(":"):
+        return token
+    rest = token[1:]
+    if not rest.startswith("scripts/"):
+        return token
+    prev = text[max(0, start - 40):start]
+    # 冒号左边是 git 版本号（`<commit>` / 短 sha / HEAD~1 …）或就是那个冒号本身
+    if re.search(r"(?:<[^<>\s]+>|[0-9a-f]{4,40}|HEAD[\w~^.]*):$", prev) or prev.endswith(":"):
+        return rest
+    return token
+
+
 def check_script_refs(text, root):
     """scripts/ 引用必须真实存在（只校验仓库内相对路径）。"""
     problems = []
@@ -228,6 +247,7 @@ def check_script_refs(text, root):
         token = _expand_path_token(text, m.start(), m.end())
         if not token.lower().endswith(SCRIPT_EXT):
             continue
+        token = _strip_git_rev_prefix(text, m.start(), token)
         token = token.rstrip(".,);:、。")
         if _is_absolute_ref(token):
             continue

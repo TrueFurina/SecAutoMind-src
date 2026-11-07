@@ -801,9 +801,14 @@ jobs:
       # 实锤：benchmark.json 15 题题面脱敏后 arena_manifest 仍用原 flag 判分 → 15 题恒判退化；
       # real_benchmark.json 4 题脱敏后 static 地板仍写 20 → evidence/parity/quant 四门连坐。
       # 本步把差异强制入账；新增脱敏未登记一律红。挂在本 job 内（不新增 job，避免门禁地图漂移）。
+      # if: always() 的理由（2026-11-07 实测）：步骤顺序执行，docs-lint 一红，后面两步直接 skipped
+      # —— 于是「脱敏门禁有没有过」永远拿不到答案，人只看到 docs-lint 红，会误以为脱敏也就那样。
+      # 红线分开报：哪一步红就认哪一步，不许一条红掩盖另一条。
       - name: Redaction ledger self-test (34 cases incl. mutation + history + debt ratchet + baseline move)
+        if: always()
         run: python scripts/check_redaction_consistency_test.py
       - name: Redaction vs judge consistency (differences must be accounted)
+        if: always()
         run: python scripts/check_redaction_consistency.py
   # 文档结构门禁（十一防线 P-01/P-02/P-03/P-09/P-10 的机验部分）。
   # 守的是「文档结构会自己烂掉」：AGENTS.md 只增不删会撑爆常驻预算；路由表里的
