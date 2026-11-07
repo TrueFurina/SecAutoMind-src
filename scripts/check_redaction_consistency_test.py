@@ -154,7 +154,7 @@ def _patch_case(title: str, *, expect_hits: int, added: str, removed: str,
                                              "" if ok else " ｜ %r" % (hits,))))
 
 
-def _history_case(title: str) -> None:
+def _history_case(title: str, *, exposure=None, sinces: str = "self") -> None:
     """真仓库端到端：先提交一次带答案明文的文件，再提交把它删掉。
 
     结果：HEAD 上看什么都没有（R9 查不到），但历史里还在——这正是本项目
@@ -198,6 +198,16 @@ def _history_case(title: str) -> None:
 
         saved = C.HISTORY_SINCE
         C.HISTORY_SINCE = base[:8]
+        if exposure is not None:
+            # 夹具里用占位符填「题目真值哈希」与「起点 sha」，避免写死与本用例无关的值
+            import copy
+            exposure = copy.deepcopy(exposure)
+            if str(exposure.get("since")) == "HEADSHORT":
+                exposure["since"] = base[:8]
+            for e in exposure.get("entries") or []:
+                if e.get("flag_sha256") == "@LEAK@":
+                    e["flag_sha256"] = hashlib.sha256(leak.encode("utf-8")).hexdigest()
+            _write(tmp, C.EXPOSURE_REL, exposure)
         try:
             code, lines = C.check(tmp)
         finally:
@@ -205,10 +215,18 @@ def _history_case(title: str) -> None:
         joined = "\n".join(lines)
         r10_lines = [ln for ln in lines if "R10" in ln and "[FAIL]" in ln]
         r9_lines = [ln for ln in lines if "R9 入仓明文答案" in ln]
-        ok = (code == 1 and len(r10_lines) == 1 and not r9_lines)
-        detail = "RC=%d ｜ R10 命中 %d ｜ R9 命中 %d ｜ %s" % (
-            code, len(r10_lines), len(r9_lines),
-            r10_lines[0].strip() if r10_lines else joined[-80:])
+        r11_lines = [ln for ln in lines if "R11" in ln and "[FAIL]" in ln]
+        if exposure is None:
+            ok = (code == 1 and len(r10_lines) == 1 and not r9_lines)
+            detail = "RC=%d ｜ R10 命中 %d ｜ R9 命中 %d ｜ %s" % (
+                code, len(r10_lines), len(r9_lines),
+                r10_lines[0].strip() if r10_lines else joined[-80:])
+        else:
+            # 同一夹具里历史确实有明文，R10 也会命中；这里只断言**目标不变量**确实把门禁判红
+            ok = code == 1 and len(r11_lines) >= 1
+            detail = "RC=%d ｜ R11 命中 %d ｜ 全部 FAIL：%s" % (
+                code, len(r11_lines),
+                " ; ".join(l.strip() for l in lines if "[FAIL]" in l)[:400])
         RESULTS.append((title, ok, detail))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -317,6 +335,18 @@ def main() -> int:
                 added="", removed="", header_name="XXX{fixture_patch_leak}")
     # T27 端到端：HEAD 干净、历史里有过明文 → 只有 R10 能抓到（证明「清 HEAD 不等于清干净」）
     _history_case("T27 HEAD 干净但历史含明文 → 只有 R10 抓得到")
+    # T33 事实表起点与防线常量脱钩 → FAIL（移动起点必须同一次留账）
+    _history_case("T33 事实表 since 与 HISTORY_SINCE 不一致 → FAIL",
+                  exposure={"schema": 1, "owner": "agent", "since": "deadbeef",
+                            "legacy": {"hits": 1},
+                            "entries": [{"flag_sha256": "@LEAK@", "ids": ["web_xss"],
+                                         "status": "exposed", "hits": 1}]})
+    # T34 前移起点却不记旧债（legacy.hits=0）→ FAIL（等于把历史红擦成 0）
+    _history_case("T34 前移起点但没留下旧债计数 → FAIL",
+                  exposure={"schema": 1, "owner": "agent", "since": "HEADSHORT",
+                            "legacy": {"hits": 0},
+                            "entries": [{"flag_sha256": "@LEAK@", "ids": ["web_xss"],
+                                         "status": "exposed", "hits": 1}]})
     # ---- R10 补：提交信息也是公开面（git log 原样打印 message）----
     _msg_case("T28 提交信息里带答案 → 命中")
     _msg_case("T29 提交信息里是 REDACTED 占位 → 不命中", expect_hits=0,

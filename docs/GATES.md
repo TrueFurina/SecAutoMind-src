@@ -35,7 +35,7 @@
 | `external-payload-gate` | 守的是「声明齐全 ≠ 实物存在」：external_westlake 基准 80/80 题标着 payload_status=verified_on_disk，但附件是导出方仓库相对路径、本仓库 0 题可解析； 同目录… | 2 | 有 |
 | `plaintext-answer-gate` | 自产基准反注水：题干里不得直接写出答案 | 2 | 有 |
 | `benchmark-validity-gate` | 真题基准可解性基线：A 层 ≤4 题、C 层占比 ≤71.0%（实测 70.9%） | 2 | 有 |
-| `flag-eval-gate` | flag 评测口径门禁（2026-10-28 建立） | 3 | 有 |
+| `flag-eval-gate` | flag 评测口径门禁（2026-10-28 建立） | 8 | 有 |
 | `flag-extract-contract-gate` | flag 提取跨语言单一真值源契约（2026-10-30 建立） | 2 | **无** |
 | `session-gate` | 并发会话登记表门禁（2026-10-28 建立） | 2 | 有 |
 | `benchmark-parity-gate` | 双语言基准 parity 门禁（静态集 55 题）：把「Python judge.py 镜像 == Go 生产路径」 这句**写在对外汇总里的宣称**真正接上线 | 2 | 有 |
@@ -43,7 +43,7 @@
 | `external-bench` | 外部真题对照尺（external-bench）—— 关闭「自产集高分 = 解题能力」的最后一个辩解出口 | 3 | 有 |
 | `skill-exec-gate` | 解题 skill 可执行性门禁（2026-10-25）——堵死「skill 写在目录里但从未被调用」 | 8 | 有 |
 | `answer-leak-gate` | 题库答案泄漏门禁（2026-10-28） 背景：real 4 道 / benchmark 15 道题干直接内嵌正确 flag，喂 description 等于喂答案； 门禁本体早已写好（scripts/check_ben… | 2 | 有 |
-| `capability-caliber-gate` | 能力率口径门禁（2026-11-06）：判据链最上层「能不能叫能力率」必须有外部锚点，题面自证一律不采信 | 2 | 有 |
+| `capability-caliber-gate` | 能力率口径门禁（2026-11-06）：判据链最上层「能不能叫能力率」必须有外部锚点，题面自证一律不采信 | 3 | 有 |
 | `arena-regression-gate` | （无注释——需补：这个门禁守什么） | 1 | **无** |
 | `artifact-inject-gate` | 附件注入守卫：工件白名单模式只放开「相对文件名的 open()」，越界读取(绝对路径/..穿越/答案路径/列目录)必须被拦 | 1 | **无** |
 | `ctf-agent-pytest-gate` | CTF-Agent 全量 pytest 门禁（2026-10-31 接入） | 6 | 有 |

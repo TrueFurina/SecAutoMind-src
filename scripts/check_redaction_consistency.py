@@ -90,22 +90,40 @@ ANSWER_SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".g
 ANSWER_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".idea"}
 MAX_SCAN_BYTES = 2 * 1024 * 1024
 
-# R10 历史防线：从 6ea2c81（首次把全仓答案明文清干净的那笔）起，
-# 任何提交都不许**再次**把答案明文写进仓库。理由是清除只对 HEAD 有效：
-# 一旦明文进了历史，`git log -p` 照样能抄走，而且再想擦就得改写历史（不可逆）。
-# 起始点前移的条件：由人工确认某提交之后确实干净，改这一行常量。
-HISTORY_SINCE = "6ea2c81"
+# R10 历史防线：从 HISTORY_SINCE 起，任何提交都不许**再次**把答案明文写进仓库。
+# 理由是清除只对 HEAD 有效：一旦明文进了历史，`git log -p` 照样能抄走，
+# 而且再想擦就得改写历史（不可逆）。
+#
+# 2026-11-07 起点从 6ea2c81 前移到 b2c9ba6（本轮「答案库 126→434 + 证据日志脱敏」）。
+# 前移原因必须写清楚，否则前移就等于把历史红擦掉：6ea2c81 之后那 47 个提交里有
+# 778 处新增明文，全部由「答案库扩容后新纳入的 306 条哈希」照出来——此前判据看不见，
+# 不代表不存在。旧债没有消失，只是换了记录位置：
+#   · `history_exposure.json`（R11）逐哈希记了曾进过历史的答案、命中数、首末提交；
+#   · `plaintext_debt.json`（R12）记 HEAD 面剩下的 222 条，只减不增且带到期日。
+# 所以 R10 现在管「新债」，旧债由 R11/R12 盯着。门禁输出会打印窗口内命中条数，
+# 前移前必须先看到它是 0（或已另记账）。
+HISTORY_SINCE = "b2c9ba6"
 MAX_HISTORY_COMMITS = 200
 
+# 起点前移必须留下账：上一段窗口（旧 SINCE..新 SINCE）里到底有多少处明文被「移出防线范围」。
+# 这些数字写进 history_exposure.json 的 legacy 字段，门禁逐项核对——否则「移前起点」
+# 就是一句无法验证的声明，等于把 778 处历史明文擦成 0 处红。
+LEGACY_WINDOW = {
+    "since_prev": "6ea2c81",
+    "commits": 47,      # 旧起点到新起点之间的提交数
+    "hits": 778,        # 该窗口内新增行里命中的答案明文处数（扩容答案库后照出）
+}
+
 # R11 历史暴露事实表：R10 只保证「从此零新增」，但**已经进过历史的答案**仍在
-# （实测 HEAD 全历史 621 提交 / 534 处新增行命中 / 126 个答案字面，覆盖 55 道真题
-#  与 72 道自研题的全部答案，而远端仓库是 PUBLIC）。事实必须先记下来，否则
+# （本轮全历史实测：665 提交 / 3269 处新增行命中 / 348 个答案字面，而远端仓库是
+#  PUBLIC）——任何人 clone 后 `git log -p` 就能抄走。事实必须先记下来，否则
 # 「已泄」与「未泄」只能靠口头，对外口径随时可以说反。
-# 本表是**生成物**：`--update-exposure` 全历史扫描后写出，禁止手改。
-# 校验只做能离线判真的三项（不重扫历史，避免每次 CI 都跑几百 MB 的 `git log -p`）：
-#   E1 每条的字面与 sha256 必须自洽、ids 能对上、hits 为正；
-#   E2 status 必须与「现在还是不是判分用的答案」一致：仍是 → exposed，已轮换 → rotated；
-#   E3 覆盖：现役答案里凡是进过历史的，必须在表里（否则就是「悄悄不记」）。
+# 本表是**生成物**：`--update-exposure` 全历史流式扫描后写出，禁止手改。
+# **只记哈希、不记字面**：事实表自己若带明文，就会变成新的明文载体（自测 T31 抓出）。
+# 校验只做能离线判真的两项（不重扫历史，避免每次 CI 都跑几百 MB 的 `git log -p`）：
+#   E1 哈希形状合法、ids 能对上、hits 为正、无重复登记；
+#   E2 status 必须与「现在还是不是判分用的答案」一致：仍是 → exposed，已轮换 → rotated。
+# 「漏记」由 R10 结构性拦住：从 HISTORY_SINCE 起新明文进不了历史，就不会多出未记的暴露。
 EXPOSURE_REL = "data/ctf_benchmark/history_exposure.json"
 EXPOSURE_STATUS = {"exposed", "rotated"}
 
@@ -626,10 +644,23 @@ def check(root: Path) -> tuple[int, list[str]]:
                 if sha in live:
                     fails.append("R11 状态与事实不符：%s… 标 rotated，但它仍是现役判定答案"
                                  "（轮换没做完就标 rotated，等于宣布已解决）" % sha[:12])
+        if len(exp_entries) == 0 and known:
+            fails.append("R11 事实表为空但答案库非空：全历史至少应有 exposure，"
+                         "空表通常意味着扫描根本没跑（生成物只由 --update-exposure 产出）")
+        if str(exp_doc.get("since") or "").strip() != HISTORY_SINCE:
+            fails.append("R11 起点与事实表脱钩：事实表 since=%r 但 HISTORY_SINCE=%r"
+                         "（移动历史防线起点，必须在事实表里留下同一次账）"
+                         % (exp_doc.get("since"), HISTORY_SINCE))
+        legacy = exp_doc.get("legacy") if isinstance(exp_doc.get("legacy"), dict) else {}
+        if int(legacy.get("hits") or 0) <= 0:
+            fails.append("R11 前移起点没留下账：legacy.hits=%r（被移出防线范围的历史明文"
+                         "必须计数，否则等于把历史红擦成 0）" % (legacy.get("hits"),))
         lines.append("  R11 历史暴露事实表：%d 条（exposed %d ｜ rotated %d）"
-                     "｜ 校验口径=离线自洽 + 状态须与现役答案一致；"
-                     "「漏记」由 R10 结构性拦住（新明文进不了历史，就不会多出未记的暴露）"
-                     % (len(exp_entries), exposed_n, rotated_n))
+                     "｜ 防线起点 %s，移出防线范围的 %s..%s 有 %d 提交 / %d 处明文，已入表"
+                     % (len(exp_entries), exposed_n, rotated_n, HISTORY_SINCE,
+                        legacy.get("since_prev") or LEGACY_WINDOW["since_prev"],
+                        HISTORY_SINCE, int(legacy.get("commits") or 0),
+                        int(legacy.get("hits") or 0)))
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
@@ -846,6 +877,9 @@ def update_exposure(root: Path, owner: str) -> int:
                  "status=rotated 表示答案已换新值，旧值仅作历史记录。"
                  "仓库若为 PUBLIC，任何人 git log -p 都能取到 exposed 条目。"),
         "head": (_git_out(root, "rev-parse", "--short", "HEAD") or "").strip(),
+        "since": HISTORY_SINCE,
+        # 起点前移的账：被移出防线范围的那一段有多少明文/提交（不许「无损前移」）
+        "legacy": dict(LEGACY_WINDOW),
         "commits_scanned": n_commits,
         "total_hits": sum(e["hits"] for e in entries),
         "entries": entries,

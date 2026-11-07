@@ -3,8 +3,14 @@
   "generated_by": "scripts/check_redaction_consistency.py --update-exposure",
   "owner": "agent",
   "note": "本表是生成物，禁手改。语义：这些答案的明文**曾经**进过 git 历史。status=exposed 表示它仍是现役判分答案（泄密成立，须轮换或明确接受）；status=rotated 表示答案已换新值，旧值仅作历史记录。仓库若为 PUBLIC，任何人 git log -p 都能取到 exposed 条目。",
-  "head": "c761e96",
-  "commits_scanned": 665,
+  "head": "b2c9ba6",
+  "since": "b2c9ba6",
+  "legacy": {
+    "since_prev": "6ea2c81",
+    "commits": 47,
+    "hits": 778
+  },
+  "commits_scanned": 667,
   "total_hits": 3269,
   "entries": [
     {
