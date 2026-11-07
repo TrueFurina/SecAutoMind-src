@@ -35,7 +35,7 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
               owner: str = DEFAULT_OWNER, renewals=None,
               baseline_min_hit: int = 20, baseline_impact=None,
               dangling_entry: bool = False, consumer: str = "synced",
-              answer_leak: bool = False, exempt=None) -> Path:
+              answer_leak: bool = False, exempt=None, debt=None) -> Path:
     """造一个最小仓库形态。
 
     consumer 四种形态：
@@ -105,6 +105,8 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
         leak_p.write_text('# 夹具：答案明文躺在这里\nLEAK = "%s"\n' % leak, encoding="utf-8")
     if exempt is not None:
         _write(tmp, C.EXEMPT_REL, {"schema": 1, "entries": exempt})
+    if debt is not None:
+        _write(tmp, C.DEBT_REL, debt)
     return tmp
 
 
@@ -123,7 +125,7 @@ def run_case(title: str, expect: int, **kw) -> None:
 
 
 def _patch_case(title: str, *, expect_hits: int, added: str, removed: str,
-                header_name: str = "") -> None:
+                header_name: str = "", msg_body: str = "    fixture commit") -> None:
     """R10 的纯函数夹具：造一段 `git log -p` 文本，喂给 scan_patch_added。
 
     为什么不用真仓库：自测要能在任何环境毫秒级跑完，且要能精确控制
@@ -135,7 +137,7 @@ def _patch_case(title: str, *, expect_hits: int, added: str, removed: str,
     patch = "\n".join([
         "commit 0123456789abcdef0123456789abcdef01234567",
         "Author: agent <agent@example>",
-        "    fixture commit",
+        msg_body,
         "",
         "diff --git a/%s b/%s" % (header_name or "scripts/x.py", header_name or "scripts/x.py"),
         "--- a/%s" % (header_name or "scripts/x.py"),
@@ -210,6 +212,12 @@ def _history_case(title: str) -> None:
         RESULTS.append((title, ok, detail))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _msg_case(title: str, *, expect_hits: int = 1,
+              body: str = "    顺手把答案写进提交信息 XXX{fixture_patch_leak}") -> None:
+    """R10 提交信息通道：message 与 diff 一样会被 git log 打印，不能只扫 `+` 行。"""
+    _patch_case(title, expect_hits=expect_hits, added="", removed="", msg_body=body)
 
 
 def main() -> int:
@@ -309,6 +317,23 @@ def main() -> int:
                 added="", removed="", header_name="XXX{fixture_patch_leak}")
     # T27 端到端：HEAD 干净、历史里有过明文 → 只有 R10 能抓到（证明「清 HEAD 不等于清干净」）
     _history_case("T27 HEAD 干净但历史含明文 → 只有 R10 抓得到")
+    # ---- R10 补：提交信息也是公开面（git log 原样打印 message）----
+    _msg_case("T28 提交信息里带答案 → 命中")
+    _msg_case("T29 提交信息里是 REDACTED 占位 → 不命中", expect_hits=0,
+              body="    XXX{REDACTED_by_tool}")
+    # ---- R12 明文债棘轮：旧债允许存在，新债一律红，过期即红 ----
+    debt_leak = {"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES, "entries": []}
+    run_case("T30 明文不在债表 → FAIL（新增明文）", 1, consumer="synced",
+             status="synced", answer_leak=True, debt=debt_leak)
+    run_case("T31 同一处明文已入账债表 → PASS（只减不增）", 0, consumer="synced",
+             status="synced", answer_leak=True,
+             debt={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                   "entries": [{"file": "scripts/leaky_fixture.py",
+                                "flag_sha256": __import__("hashlib").sha256(
+                                    b"flag{fixture_leak_0001}").hexdigest()}]})
+    run_case("T32 明文债已过期 → FAIL（到期必须闭环）", 1, consumer="synced",
+             status="synced", answer_leak=True,
+             debt={"schema": 1, "owner": "agent", "expires": "2026-01-01", "entries": []})
 
     bad = 0
     for title, ok, detail in RESULTS:

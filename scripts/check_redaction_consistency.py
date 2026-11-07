@@ -97,6 +97,27 @@ MAX_SCAN_BYTES = 2 * 1024 * 1024
 HISTORY_SINCE = "6ea2c81"
 MAX_HISTORY_COMMITS = 200
 
+# R11 历史暴露事实表：R10 只保证「从此零新增」，但**已经进过历史的答案**仍在
+# （实测 HEAD 全历史 621 提交 / 534 处新增行命中 / 126 个答案字面，覆盖 55 道真题
+#  与 72 道自研题的全部答案，而远端仓库是 PUBLIC）。事实必须先记下来，否则
+# 「已泄」与「未泄」只能靠口头，对外口径随时可以说反。
+# 本表是**生成物**：`--update-exposure` 全历史扫描后写出，禁止手改。
+# 校验只做能离线判真的三项（不重扫历史，避免每次 CI 都跑几百 MB 的 `git log -p`）：
+#   E1 每条的字面与 sha256 必须自洽、ids 能对上、hits 为正；
+#   E2 status 必须与「现在还是不是判分用的答案」一致：仍是 → exposed，已轮换 → rotated；
+#   E3 覆盖：现役答案里凡是进过历史的，必须在表里（否则就是「悄悄不记」）。
+EXPOSURE_REL = "data/ctf_benchmark/history_exposure.json"
+EXPOSURE_STATUS = {"exposed", "rotated"}
+
+# R12 明文债棘轮（2026-11-07）：题库从 3 个文件扩到 33 个、答案从 126 条涨到 434 条后，
+# 放宽扫描面立刻照出 1064 处入仓明文——说明此前「命中 0」是**判据看不见**，不是真干净。
+# 一次清完不现实（生成器/靶场/测试夹具需要用真值才能产出与断言），但可以把债冻住：
+#   · 债表里的（文件, 答案哈希）＝已入账的旧债，允许存在；
+#   · 不在债表里的一律判红（新增明文不行）；
+#   · 债表整体有 owner + 到期日，过期即红（不许无限期挂着）；
+#   · 债只能变小：条目消失不算错（那是还债），但重新出现要靠 `--update-debt` 记回来。
+DEBT_REL = "data/ctf_benchmark/plaintext_debt.json"
+
 
 def str_fields(obj, path=""):
     """递归取出 (json 路径, 字符串值)，用于定位脱敏字段。"""
@@ -164,7 +185,14 @@ def load_json(p: Path, default):
 
 
 def collect_answer_hashes(root: Path) -> dict:
-    """已知答案哈希 → [来源标识]。口径与判分同源：sha256(整串候选)。"""
+    """已知答案哈希 → [来源标识]。口径与判分同源：sha256(整串候选)。
+
+    2026-11-07 改：原先只读 arena_manifest + real_benchmark + benchmark 三处，
+    而题库已扩到 33 个 problem 文件 / 432 条哈希（私有题库 v1/v2、纯 LLM 两版、
+    ycb 静态题…）。判据写死三个文件名，等于新题库的答案**不被任何明文扫描保护**——
+    这是「语料往前走了、判据原地不动」的又一次复发（R9 上线时同款），
+    所以改成按目录自动发现：凡是 `problems` 里带 flag_sha256 的都算真值源。
+    """
     known: dict[str, list[str]] = {}
     manifest = load_json(root / MANIFEST_REL, [])
     cases = manifest if isinstance(manifest, list) else (manifest.get("cases") or [])
@@ -172,12 +200,24 @@ def collect_answer_hashes(root: Path) -> dict:
         if isinstance(c, dict) and c.get("flag_sha256"):
             known.setdefault(str(c["flag_sha256"]).strip().lower(), []).append(
                 "arena:%s" % c.get("name"))
-    for rel in ("data/ctf_benchmark/real_benchmark.json",
-                "data/ctf_benchmark/benchmark.json"):
-        for name, prob in iter_problems(load_json(root / rel, {})):
-            if isinstance(prob, dict) and prob.get("flag_sha256"):
-                known.setdefault(str(prob["flag_sha256"]).strip().lower(), []).append(
-                    "%s#%s" % (rel, name))
+    corpus_dir = root / CORPUS_DIR
+    if not corpus_dir.is_dir():
+        return known
+    for p in sorted(corpus_dir.glob("*.json")):
+        try:
+            doc = load_json(p, {})
+        except (ValueError, UnicodeDecodeError):
+            continue
+        for name, prob in iter_problems(doc):
+            if not isinstance(prob, dict):
+                continue
+            # flag_sha256_inner 是「内层 flag」口径（ycb 静态题），与主 flag 同等看待：
+            # 内层答案照样能被抄，判分也照样用它。
+            for key in ("flag_sha256", "flag_sha256_inner"):
+                h = str(prob.get(key) or "").strip().lower()
+                if h:
+                    known.setdefault(h, []).append(
+                        "%s/%s#%s" % (CORPUS_DIR, p.name, name))
     return known
 
 
@@ -245,26 +285,38 @@ def scan_patch_added(text: str, known: dict) -> list[tuple[str, str, str, list[s
     hits: list[tuple[str, str, str, list[str]]] = []
     commit = "?"
     path = "?"
+    in_msg = False
     for raw in text.splitlines():
         if raw.startswith("commit ") and len(raw) > 8:
             parts = raw.split()
             if len(parts) >= 2:
                 commit = parts[1][:8]
+            in_msg = True
             continue
         if raw.startswith("diff --git "):
+            in_msg = False
             frag = raw[len("diff --git "):]
             idx = frag.find(" b/")
             path = frag[idx + 3:].strip() if idx >= 0 else frag.strip()
             continue
-        if not raw.startswith("+") or raw.startswith("+++"):
-            continue
+        if in_msg:
+            # 提交信息正文（`git log` 里以 4 空格缩进；Author/Date 顶格）。
+            # 为什么要扫它：公开仓上 commit message 和 diff 一样会被 `git log`
+            # 原样打印出去——有人把答案写进 message，换个地方就照样泄密。
+            if not raw.startswith("    "):
+                continue
+            where = "提交信息"
+        else:
+            if not raw.startswith("+") or raw.startswith("+++"):
+                continue
+            where = path
         for m in ANSWER_SHAPE.finditer(raw):
             cand = m.group(0)
             if "REDACTED" in cand:
                 continue
             h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
             if h in known:
-                hits.append((commit, path, cand, known[h]))
+                hits.append((commit, where, cand, known[h]))
     return hits
 
 
@@ -425,16 +477,57 @@ def check(root: Path) -> tuple[int, list[str]]:
     ex_by_file = {str(e.get("file") or "").replace("\\", "/"): e for e in exempt_entries}
     hits, skipped_large = scan_answer_plaintext(root, known)
     used_exempt: set[str] = set()
+    debt_doc = load_json(root / DEBT_REL, None)
+    debt_entries = []
+    debt_owner = ""
+    debt_expires = ""
+    if isinstance(debt_doc, dict):
+        debt_entries = [e for e in (debt_doc.get("entries") or []) if isinstance(e, dict)]
+        debt_owner = str(debt_doc.get("owner") or "").strip()
+        debt_expires = str(debt_doc.get("expires") or "").strip()
+    debt_keys = {(str(e.get("file") or "").replace("\\", "/"),
+                  str(e.get("flag_sha256") or "").strip().lower()) for e in debt_entries}
+    hit_keys: set[tuple[str, str]] = set()
     for rel, cand, ids in hits:
         e = ex_by_file.get(rel)
         if e:
             used_exempt.add(rel)
             lines.append("    [EXEMPT] %s ｜ %s ｜ %s" % (rel, cand, ",".join(ids)[:80]))
+            continue
+        h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+        key = (rel, h)
+        hit_keys.add(key)
+        if key in debt_keys:
+            continue  # 已入账旧债：允许存在，但到期必须清
+        fails.append("R9 入仓明文答案：%s ｜ %s ｜ 对应 %s"
+                     "（判分只用哈希，明文在入仓文件里等于把答案白送；"
+                     "确需保留的登记到 %s 并写明理由与到期日；"
+                     "旧债请用 --update-debt 记账，不许在扫描面上动手脚）"
+                     % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
+    if debt_doc is None:
+        if hit_keys:
+            fails.append("R12 缺明文债基线 %s（`--update-debt` 生成：把已知旧债一次性记账，"
+                         "之后只许减少）" % DEBT_REL)
         else:
-            fails.append("R9 入仓明文答案：%s ｜ %s ｜ 对应 %s"
-                         "（判分只用哈希，明文在入仓文件里等于把答案白送；"
-                         "确需保留的登记到 %s）"
-                         % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
+            lines.append("  明文债棘轮：无债表且入仓明文 0 处（无债可记）")
+    else:
+        if debt_owner in OWNER_PLACEHOLDERS:
+            fails.append("R12 债表无人负责：owner=%r" % debt_owner)
+        try:
+            d_exp = date.fromisoformat(debt_expires)
+        except ValueError:
+            fails.append("R12 债表到期日非法或缺失：%r" % debt_expires)
+        else:
+            if d_exp < date.today():
+                fails.append("R12 明文债已过期：expires=%s（到期必须闭环，不许续着挂）"
+                             % debt_expires)
+            elif d_exp > horizon:
+                fails.append("R12 债表到期日过远：expires=%s（超过 %d 天）"
+                             % (debt_expires, MAX_EXPIRY_DAYS))
+        lines.append("  明文债棘轮：登记 %d 条 ｜ 仍命中 %d 条 ｜ 已消债 %d 条"
+                     "（只减不增；不在债表里的明文一律红）"
+                     % (len(debt_keys), len(debt_keys & hit_keys),
+                        len(debt_keys - hit_keys)))
     lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处 ｜ 超大文件跳过 %d 个（>%dKB 未解码，属已知盲区）"
                  % (len(known), len(hits), len(used_exempt), skipped_large,
                     MAX_SCAN_BYTES // 1024))
@@ -487,6 +580,56 @@ def check(root: Path) -> tuple[int, list[str]]:
                              "（清除只对 HEAD 有效：进了历史就能 git log -p 抄走，"
                              "且擦掉要改写历史；请在提交前就清掉）"
                              % (commit, path, cand, ",".join(sorted(set(ids)))[:80]))
+
+    # R11 历史暴露事实表（生成物；这里只做离线可判真的诚信校验）
+    # 非 git 环境没有历史可扫，不适用本条（自测夹具/源码包副本走这条分支）。
+    exp_doc = load_json(root / EXPOSURE_REL, None)
+    if _git_out(root, "rev-parse", "--git-dir") is None:
+        lines.append("  R11 历史暴露事实表：非 git 环境，不适用")
+    elif exp_doc is None:
+        fails.append("R11 缺历史暴露事实表 %s（`--update-exposure` 生成；"
+                     "已进过历史的答案必须被记下来，不许只靠口头承认）" % EXPOSURE_REL)
+    else:
+        exp_entries = exp_doc.get("entries") or []
+        owner_ = str(exp_doc.get("owner") or "").strip()
+        if owner_ in OWNER_PLACEHOLDERS:
+            fails.append("R11 事实表无人负责：owner=%r" % owner_)
+        live = set(known)  # 现役（判分正在用）答案哈希
+        seen: set[str] = set()
+        exposed_n = rotated_n = 0
+        for e in exp_entries:
+            sha = str(e.get("flag_sha256") or "").strip().lower()
+            if not sha:
+                fails.append("R11 事实表条目缺 flag_sha256：%r" % (e,))
+                continue
+            if len(sha) != 64:
+                fails.append("R11 事实表哈希非法：%r" % sha)
+                continue
+            if sha in seen:
+                fails.append("R11 事实表重复登记：%s…" % sha[:12])
+            seen.add(sha)
+            if int(e.get("hits") or 0) <= 0:
+                fails.append("R11 事实表 hits 非正：%s…" % sha[:12])
+            ids = e.get("ids") or []
+            if not isinstance(ids, list) or not ids:
+                fails.append("R11 事实表缺对应题目：%s…" % sha[:12])
+            st = str(e.get("status") or "").strip()
+            if st not in EXPOSURE_STATUS:
+                fails.append("R11 状态非法：%s… status=%r" % (sha[:12], st))
+            elif st == "exposed":
+                exposed_n += 1
+                if sha not in live:
+                    fails.append("R11 状态与事实不符：%s… 标 exposed，但它已不在现役答案里"
+                                 "（轮换过就该改成 rotated）" % sha[:12])
+            elif st == "rotated":
+                rotated_n += 1
+                if sha in live:
+                    fails.append("R11 状态与事实不符：%s… 标 rotated，但它仍是现役判定答案"
+                                 "（轮换没做完就标 rotated，等于宣布已解决）" % sha[:12])
+        lines.append("  R11 历史暴露事实表：%d 条（exposed %d ｜ rotated %d）"
+                     "｜ 校验口径=离线自洽 + 状态须与现役答案一致；"
+                     "「漏记」由 R10 结构性拦住（新明文进不了历史，就不会多出未记的暴露）"
+                     % (len(exp_entries), exposed_n, rotated_n))
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
@@ -573,6 +716,148 @@ def update_ledger(root: Path, owner: str, expires: str,
     return 0
 
 
+def update_debt(root: Path, owner: str, expires: str) -> int:
+    """按当前扫描结果重写明文债表（R12）。只许在**减少**后重写，增项要人工解释。"""
+    known = collect_answer_hashes(root)
+    hits, skipped = scan_answer_plaintext(root, known)
+    exempt_doc = load_json(root / EXEMPT_REL, {"schema": 1, "entries": []})
+    ex_files = {str(e.get("file") or "").replace("\\", "/")
+                for e in (exempt_doc.get("entries") or []) if isinstance(e, dict)}
+    rows: dict[tuple[str, str], dict] = {}
+    for rel, cand, ids in hits:
+        if rel in ex_files:
+            continue
+        h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+        row = rows.setdefault((rel, h), {"file": rel,
+                                         "flag_sha256": h, "ids": sorted(set(ids)),
+                                         "hits": 0})
+        row["hits"] += 1
+    old = load_json(root / DEBT_REL, {})
+    old_keys = {(str(e.get("file") or ""), str(e.get("flag_sha256") or ""))
+                for e in (old.get("entries") or []) if isinstance(e, dict)}
+    gained = sorted(k for k in rows if k not in old_keys)
+    entries = sorted(rows.values(), key=lambda e: (-e["hits"], e["file"]))
+    doc = {
+        "schema": 1,
+        "generated_by": "scripts/check_redaction_consistency.py --update-debt",
+        "owner": owner,
+        "expires": expires,
+        "note": ("明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。"
+                 "不在本表里的明文一律判红。生成器/靶场/测试夹具需要真值才能产出与断言，"
+                 "属于要单独决策的类别（要么改成不落真值，要么进豁免表并写明理由）。"),
+        "head": (_git_out(root, "rev-parse", "--short", "HEAD") or "").strip(),
+        "total_hits": sum(e["hits"] for e in entries),
+        "raw_hits": len(hits),
+        "entries": entries,
+    }
+    p = root / DEBT_REL
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("明文债表已重写：%d 条（%d 处）｜ 相对上一版新增 %d 条 ｜ 超大文件跳过 %d"
+          % (len(entries), doc["total_hits"], len(gained), skipped))
+    if gained:
+        print("新增条目（这些是**新债**，不是已达成的基线，须解释来源）：")
+        for f, h in gained[:20]:
+            print("  %s ｜ %s" % (f, rows[(f, h)]["literal"]))
+    return 0
+
+
+def update_exposure(root: Path, owner: str) -> int:
+    """全历史扫描，生成 `history_exposure.json`（R11）。
+
+    为什么用流式读而不 `subprocess.run(capture_output=True)`：本仓 600+ 提交的
+    `git log -p` 文本是几百 MB 级，一次性读进内存会直接把门禁自己 OOM ——
+    一个因为爱吃内存而时灵时不灵的门禁，比没有门禁更糟。
+    """
+    known = collect_answer_hashes(root)
+    if _git_out(root, "rev-parse", "--git-dir") is None:
+        print("非 git 环境：无法扫描历史，拒绝生成（fail-closed）")
+        return 2
+    proc = subprocess.Popen(["git", "log", "-p", "-U0", "--no-color", "--no-merges",
+                             "--reverse", "HEAD"],
+                            cwd=str(root), stdout=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="ignore")
+    agg: dict[str, dict] = {}
+    n_commits = 0
+    cur = "?"
+    last_path = "?"
+    in_msg = False
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        if raw.startswith("commit ") and len(raw) > 8:
+            n_commits += 1
+            cur = raw.split()[1][:8]
+            in_msg = True
+            continue
+        if raw.startswith("diff --git "):
+            in_msg = False
+            frag = raw[len("diff --git "):]
+            idx = frag.find(" b/")
+            last_path = frag[idx + 3:].strip() if idx >= 0 else frag.strip()
+            continue
+        if in_msg:
+            if not raw.startswith("    "):
+                continue
+            where = "commit-message"
+        else:
+            if not raw.startswith("+") or raw.startswith("+++"):
+                continue
+            where = last_path
+        for m in ANSWER_SHAPE.finditer(raw):
+            cand = m.group(0)
+            if "REDACTED" in cand:
+                continue
+            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+            if h not in known:
+                continue
+            a = agg.setdefault(h, {"literal": cand, "flag_sha256": h,
+                                   "ids": list(known[h]), "hits": 0,
+                                   "first_commit": cur, "last_commit": cur,
+                                   "places": []})
+            a["hits"] += 1
+            a["last_commit"] = cur
+            if where not in a["places"]:
+                a["places"].append(where)
+    proc.wait()
+    if proc.returncode != 0:
+        print("git log 读取失败 rc=%d，拒绝写出不完整的暴露表（fail-closed）"
+              % proc.returncode)
+        return 2
+
+    entries = []
+    for h, a in agg.items():
+        entries.append({
+            # 只记哈希，不记字面：事实表本身若带明文，就会变成新的明文载体
+            "flag_sha256": h,
+            "ids": a["ids"],
+            "status": "exposed" if h in known else "rotated",
+            "hits": a["hits"],
+            "first_commit": a["first_commit"],
+            "last_commit": a["last_commit"],
+            "places": a["places"][:12],
+        })
+    entries.sort(key=lambda e: (-e["hits"], e["flag_sha256"]))
+    doc = {
+        "schema": 1,
+        "generated_by": "scripts/check_redaction_consistency.py --update-exposure",
+        "owner": owner,
+        "note": ("本表是生成物，禁手改。语义：这些答案的明文**曾经**进过 git 历史。"
+                 "status=exposed 表示它仍是现役判分答案（泄密成立，须轮换或明确接受）；"
+                 "status=rotated 表示答案已换新值，旧值仅作历史记录。"
+                 "仓库若为 PUBLIC，任何人 git log -p 都能取到 exposed 条目。"),
+        "head": (_git_out(root, "rev-parse", "--short", "HEAD") or "").strip(),
+        "commits_scanned": n_commits,
+        "total_hits": sum(e["hits"] for e in entries),
+        "entries": entries,
+    }
+    p = root / EXPOSURE_REL
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("历史暴露事实表已生成：%d 条字面 ｜ %d 处命中 ｜ %d 个提交 → %s"
+          % (len(entries), doc["total_hits"], n_commits, p))
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="脱敏一致性门禁")
     ap.add_argument("--root", default=".", help="仓库根目录（自测用）")
@@ -585,6 +870,10 @@ def main(argv=None) -> int:
     ap.add_argument("--renew", action="store_true",
                     help="续期：覆盖 expires 并把 date/by/from/to/reason 追加进 renewals")
     ap.add_argument("--reason", default="", help="续期理由（--renew 时必填）")
+    ap.add_argument("--update-exposure", action="store_true",
+                    help="全历史扫描，重写历史暴露事实表（R11 生成物）")
+    ap.add_argument("--update-debt", action="store_true",
+                    help="按当前扫描重写明文债表（R12；只许减少）")
     args = ap.parse_args(argv)
     if args.expires:
         try:
@@ -603,6 +892,11 @@ def main(argv=None) -> int:
     if not (root / CORPUS_DIR).is_dir():
         print("[ERROR] 找不到语料目录：%s" % (root / CORPUS_DIR))
         return 2
+    if args.update_exposure:
+        return update_exposure(root, args.owner)
+    if args.update_debt:
+        return update_debt(root, args.owner,
+                           args.expires or (date.today() + timedelta(days=MAX_EXPIRY_DAYS)).isoformat())
     if args.update_ledger:
         return update_ledger(root, args.owner, args.expires,
                              renew=args.renew, reason=args.reason.strip())
