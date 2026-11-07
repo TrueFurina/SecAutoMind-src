@@ -925,6 +925,8 @@ jobs:
         run: python scripts/audit_external_pool_readiness.py --selftest
       - name: External pool summary self-test (8 cases: API失败不算答错 / 模型误标判红 / 分母资格)
         run: python scripts/test_summarize_external_runs.py
+      - name: Overnight batch tooling self-test (18 cases: 接口失败剔除分母 / 空分母记'-' / 损坏文件不崩)
+        run: python scripts/test_overnight_tools.py
       - name: External pool scorer positive control (官方 flag 必须判中，诱饵必须判不中)
         run: python scripts/verify_flag_positive_control.py
 
