@@ -92,6 +92,34 @@ def extract_flag(out: Any) -> Optional[str]:
     return None
 
 
+_CTF_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # ctf_agent/
+_REPO_ROOT = os.path.dirname(os.path.dirname(_CTF_ROOT))  # 仓库根
+
+
+def resolve_attachment_path(a: Any) -> Optional[str]:
+    """把题面 attachments 里的路径解析成真实存在的文件；解析不到返回 None。
+
+    2026-11-08 实测事故（本地绿 / CI 红）：
+      · 题面里有 Windows 反斜杠路径（``data\\\\questions_external\\\\...``）。
+        Windows 把反斜杠当分隔符 → 本地 ``os.path.isfile`` 全绿；
+        Linux 不认反斜杠 → CI 上整批附件解析失败，
+        test_capability_ledger_guard 报 ``no_candidate_params``，
+        被误读成「适配层分支被删」的能力回归（实际是路径分隔符）。
+      · 题面路径还有两套基准：仓库根相对 与 ctf_agent 相对，
+        任何单一基准都会冤枉另一批。
+    所以：统一正斜杠 + 依次试 (原样, ctf_agent, 仓库根)。
+    """
+    raw = str(a)
+    p = raw.replace("\\", "/").lstrip("/")
+    if os.path.isabs(p):
+        return p if os.path.isfile(p) else None
+    for base in ("", _CTF_ROOT, _REPO_ROOT):
+        cand = os.path.join(base, p) if base else p
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
 def resolve_first_existing(question: Any) -> Optional[str]:
     """从题面 attachments 里取第一个**真实存在**的附件路径。
 
@@ -102,8 +130,8 @@ def resolve_first_existing(question: Any) -> Optional[str]:
     if isinstance(atts, str):
         atts = [atts]
     for a in atts:
-        p = str(a)
-        if os.path.isfile(p):
+        p = resolve_attachment_path(a)
+        if p:
             return p
     return None
 
@@ -180,8 +208,8 @@ def iter_candidate_params(skill_name: str, question: Any):
         atts = [atts]
     n = 0
     for a in atts:
-        p = str(a)
-        if not os.path.isfile(p):
+        p = resolve_attachment_path(a)
+        if not p:
             continue
         n += 1
         params = {"path": p}
@@ -219,8 +247,8 @@ def iter_attachment_texts(question: Any):
     if isinstance(atts, str):
         atts = [atts]
     for a in atts:
-        p = str(a)
-        if not os.path.isfile(p):
+        p = resolve_attachment_path(a)
+        if not p:
             continue
         try:
             if os.path.getsize(p) > _MAX_TEXT_BYTES:
