@@ -804,7 +804,7 @@ jobs:
       # if: always() 的理由（2026-11-07 实测）：步骤顺序执行，docs-lint 一红，后面两步直接 skipped
       # —— 于是「脱敏门禁有没有过」永远拿不到答案，人只看到 docs-lint 红，会误以为脱敏也就那样。
       # 红线分开报：哪一步红就认哪一步，不许一条红掩盖另一条。
-      - name: Redaction ledger self-test (45 cases incl. mutation + history + debt ratchet + baseline move)
+      - name: Redaction ledger self-test (49 cases incl. mutation + history + debt ratchet + baseline move)
         if: always()
         run: python scripts/check_redaction_consistency_test.py
       - name: Redaction vs judge consistency (differences must be accounted)
@@ -926,7 +926,7 @@ jobs:
         run: python scripts/experiments/flag_util.py
       - name: Gate regression + mutation check (prove the gate can fail)
         run: python scripts/check_flag_eval_regex.py --self-test
-      - name: "Agentic loop offline test (48 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除 / API失败落账 / HTTP 4xx 带原因且不重试 / kimi 不发 temperature)"
+      - name: "Agentic loop offline test (49 cases: tcalls 顺序 / 截断可见 / 4096 硬压已解除 / API失败落账 / HTTP 4xx 带原因且不重试 / kimi 不发 temperature)"
         run: python scripts/test_ctf_orchestrator_agentic.py
       - name: External pool admission audit self-test (9 cases incl. mutation)
         run: python scripts/audit_external_pool_readiness.py --selftest

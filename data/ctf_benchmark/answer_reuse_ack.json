@@ -3,6 +3,15 @@
   "owner": "agent",
   "expires": "2027-11-07",
   "count": 40,
-  "reason": "实测（2026-11-07）：arena_manifest 里 40 条带 flag_sha256 的判分答案，全部命中 history_exposure 的 exposed —— 即这些答案的明文都曾提交进这个 PUBLIC 仓。题面脱敏与判分只用哈希都抵不过「历史可被任何人 fetch」，所以用它们判分等于拿一个谁都能读到的答案宣布自己解出了。当前仍按现状判分，是因为轮换要重生成这 40 题的靶场产物与答案、并同步 baseline/parity/quant 四门地板，属判分口径变更，需人拍板；本文件的作用是禁止这件事继续无人认领、无上限：count 只许随轮换下调，ANSWER_REUSE_MAX=40 同步下调，新增「已公开答案」用于判分一律红。到期未轮换即判红，不许续着挂。",
-  "how_to_reduce": "① 重生成这 40 题的答案与靶场产物（旧答案作废，history_exposure 把旧条目标 rotated）；② 同步 arena_manifest 的 flag_sha256 与 baseline 的 min_real_hit；③ 把本文件 count 下调到新的条数，并把 ANSWER_REUSE_MAX 改成同一个值。"
+  "reason": "实测（2026-11-07）：arena_manifest 里 40 条带 flag_sha256 的判分答案，全部命中 history_exposure 的 exposed —— 这些答案的明文都曾提交进这个 PUBLIC 仓。2026-11-08 又测出一条更硬的事实：这 40 条全部是 local 模式，按 manifest 里的 cmd 在仓内跑一遍，40/40 当场打印出与 flag_sha256 相符的答案（0 条失败、0 条异常）。也就是说在公开仓里，这些答案不只是「历史里漏过」，而是「现在一条命令就能算出来」。轮换只能断掉历史那一条路径，断不掉题面这一条：只要题还得可解，答案就必然由入仓材料产出，除非把题面与 solver 一起搬出公开仓。所以这 40 条的真实用途是回归测试（证明链路没坏），不能对外当能力证据。本文件的作用：禁止这件事继续无人认领、无上限——count 只许随轮换下调，ANSWER_REUSE_MAX=40 同步下调，新题再用已公开答案判分一律红，到期未处置即红。",
+  "claim_boundary": "这 40 条 local 模式的判分条目只用于回归（链路是否还通），不得计入对外能力证据；对外只能陈述「含 N 条自回归用例」，不得把它们的通过率当成解出率。",
+  "measured": {
+    "judged_with_hash": 40,
+    "in_history_exposed": 40,
+    "literal_in_current_tree": 0,
+    "reproducible_by_in_repo_cmd": 40,
+    "measured_at": "2026-11-08",
+    "how": "按 arena_manifest 的 cmd 逐条在 scripts/ 下执行，取 stdout 各行做 sha256 与 flag_sha256 比对"
+  },
+  "how_to_reduce": "① 重生成这 40 题的答案与题面（旧答案作废，history_exposure 把旧条目标 rotated）；② 同步 arena_manifest 的 flag_sha256 与 baseline 的 min_real_hit；③ 把 count 与 ANSWER_REUSE_MAX 同步下调。注意：在公开仓里轮换只断历史路径，断不掉「入仓题面当场产出」这一路径。"
 }

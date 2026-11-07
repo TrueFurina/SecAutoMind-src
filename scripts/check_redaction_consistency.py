@@ -753,6 +753,9 @@ def check(root: Path) -> tuple[int, list[str]]:
         reused = [e for e in judged
                   if str(e.get("flag_sha256") or "").strip().lower() in burned]
         ack = load_json(root / ANSWER_REUSE_REL, None)
+        # local 模式 = 答案由入仓题面当场产出的题；公开仓里它不是「历史上漏过」，
+        # 是「现在一条命令就能打印」，所以一并作为 R13 的判定维度。
+        local_reused = [e for e in reused if str(e.get("mode") or "").strip() == "local"]
         if reused and ack is None:
             fails.append("R13 有 %d 条判分答案已进过公开历史，但没有任何人认领：%s"
                          "（要么轮换这些答案，要么在 %s 里写明 owner/到期日/为什么还必须用它判分）"
@@ -781,9 +784,17 @@ def check(root: Path) -> tuple[int, list[str]]:
             elif a_count > ANSWER_REUSE_MAX:
                 fails.append("R13 认领上限被抬高：count=%d > ANSWER_REUSE_MAX=%d"
                              "（这个上限只许下调）" % (a_count, ANSWER_REUSE_MAX))
+            # local 模式的题，答案由入仓题面当场产出：公开仓里它不只是「历史上漏过」，
+            # 是「现在一条命令就能打印」。这类答案不能对外当能力证据，必须在认领里写明。
+            local_reused = [e for e in reused if str(e.get("mode") or "").strip() == "local"]
+            if local_reused and not str(ack.get("claim_boundary") or "").strip():
+                fails.append("R13 有 %d 条复用答案属 local 模式（入仓题面当场可算出答案），"
+                             "认领缺 claim_boundary：必须写明它们不能对外当能力证据"
+                             % len(local_reused))
         lines.append("  R13 判分答案 vs 历史暴露：%d 条带哈希判分 ｜ 其中 %d 条在历史里出现过"
+                     " ｜ 其中 %d 条是 local 模式（答案由入仓题面当场产出，公开仓 = 当场可打印）"
                      "（按 R14 声明为 %s：暴露面=%s）｜ 上限 %s 条 ｜ 认领文件 %s"
-                     % (len(judged), len(reused), declared_vis,
+                     % (len(judged), len(reused), len(local_reused), declared_vis,
                         "互联网上任何人（可 fetch/fork/被索引）"
                         if declared_vis == "public" else "有仓权限者（不会自动外泄，但一次转公开即撤销此结论）",
                         ANSWER_REUSE_MAX, ANSWER_REUSE_REL))
@@ -900,6 +911,16 @@ def visibility_state(doc) -> tuple[str, list[str]]:
             probs.append("R14 可见性声明已过期：%s（到期必须复核：仓还是私有的吗）" % exp)
     if not str(doc.get("decision") or "").strip():
         probs.append("R14 可见性声明缺 decision：谁拍的板、原话是什么，必须留痕")
+    if vis == "public":
+        # 公开仓的可见范围只有一个答案：任何人。写成「有权限者」等于把私有仓的说法
+        # 套在公开仓上，属于把风险说轻，必须红。
+        principals = json.dumps(doc.get("access_principals") or [], ensure_ascii=False)
+        if not any(t in principals for t in ("任何人", "anyone", "public", "互联网")):
+            probs.append("R14 声明为 public，但 access_principals 没写「任何人」："
+                         "公开仓的暴露面不许按私有仓口径描述")
+        if not isinstance(doc.get("github_public_constraints"), list) or not doc.get("github_public_constraints"):
+            probs.append("R14 公开仓必须写下它的限制（Actions 不计费/日志与产物全公开/"
+                         "可被搜索引擎与公开事件存档索引/fork 产生公开副本/不可撤回）")
     if vis == "private":
         cons = doc.get("github_private_constraints")
         if not isinstance(cons, list) or not cons:

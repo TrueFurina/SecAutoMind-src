@@ -411,12 +411,19 @@ def main() -> int:
              judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
              exposure=_hist_fixture,
              ack={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
-                  "count": 40, "reason": "夹具：轮换需重生成靶场，未拍板前按现状判分"})
+                  "count": 40, "reason": "夹具：轮换需重生成靶场，未拍板前按现状判分",
+                  "claim_boundary": "夹具：local 模式只当回归测试，不当对外能力证据"})
     run_case("T40 认领上限被抬高到 41 → FAIL（上限只许下调）", 1, consumer="synced",
              judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
              exposure=_hist_fixture,
              ack={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
                   "count": 41, "reason": "夹具：想把容忍度往上调，必须判红"})
+    # T49 local 模式的复用答案：仓里跑一条命令就能算出答案，认领必须写明不能当能力证据
+    run_case("T49 local 模式复用答案却不写 claim_boundary → FAIL", 1, consumer="synced",
+             judge_hash=True, status="synced", answer_leak=True, debt=_debt_ok,
+             exposure=_hist_fixture,
+             ack={"schema": 1, "owner": "agent", "expires": DEFAULT_EXPIRES,
+                  "count": 40, "reason": "夹具：只写了理由，没写这条答案能对外说什么"})
     run_case("T32 明文债已过期 → FAIL（到期必须闭环）", 1, consumer="synced",
              status="synced", answer_leak=True,
              debt={"schema": 1, "owner": "agent", "expires": "2026-01-01", "entries": []})
@@ -442,6 +449,17 @@ def main() -> int:
               "private", 2,
               dict(_vis_ok, flip_to_public_requires=["重扫历史", "跑完门禁四步"]))
     _vis_case("T45 声明完整 → private 且 0 问题（正面对照）", "private", 0, _vis_ok)
+
+    # T46~T48 公开仓：可见范围只许写「任何人」，且必须写下公开仓自己的限制。
+    _vis_pub = {"visibility": "public", "owner": "agent", "expires": DEFAULT_EXPIRES,
+                "decision": "夹具：保持公开",
+                "access_principals": ["互联网上任何人"],
+                "github_public_constraints": ["日志全公开", "历史永久可 fetch"]}
+    _vis_case("T46 声明完整 → public 且 0 问题（正面对照）", "public", 0, _vis_pub)
+    _vis_case("T47 public 却把可见范围写成「有权限者」→ 判红（把风险说轻）", "public", 1,
+              dict(_vis_pub, access_principals=["agent", "有权限者"]))
+    _vis_case("T48 public 却不写公开仓的限制 → 判红", "public", 1,
+              dict(_vis_pub, github_public_constraints=[]))
 
     bad = 0
     for title, ok, detail in RESULTS:
