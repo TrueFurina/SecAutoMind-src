@@ -21,4 +21,16 @@ if [ "$rc" -ne 0 ]; then
   echo "[pre-commit] 处置：先按上方报告清理真实凭证；确属误报才允许 --no-verify 并留痕。"
   exit 1
 fi
+
+# workflow YAML 强校验（2026-11-07）：d90da85 的步骤名内嵌冒号让整个 ci.yml
+# 无效，而 CI 自己无法报告「文件加载失败」⇒ 此后所有门禁在 GitHub 上没跑过。
+# 本地拦一道（降级扫描兜底），线上由 ci_lint.yml 兜底（fail-closed 双层）。
+"$PY" "$repo/scripts/check_workflows_yaml.py"
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] workflow YAML 校验 rc=$rc —— 本次提交被阻止。"
+  echo "[pre-commit] 修复：给含冒号的 name/run 值加引号；本机装 PyYAML 可获得完整校验。"
+  exit 1
+fi
 exit 0

@@ -1,0 +1,29 @@
+name: Workflow YAML lint
+
+# 为什么独立成 workflow（2026-11-07）：
+# d90da85 的步骤名内嵌「: 」让 ci.yml 整个无效，而 workflow 加载失败 ≠ job 失败，
+# CI 自己**无法**报告「ci.yml 坏了」——只有另一个能正常加载的 workflow 才盯得住它。
+# 本文件校验 .github/workflows/ 下所有文件（包括它自己）：任何一个解析失败都报红。
+# 与本地 pre-commit（check_workflows_yaml.py）构成双层防线。
+
+on:
+  push:
+    paths:
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+jobs:
+  workflow-yaml-lint:
+    runs-on: ubuntu-latest   # PyYAML 预装；本机无 PyYAML 时 pre-commit 只做降级扫描，这里兜底完整校验
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: All workflow files must parse (full PyYAML check)
+        run: python scripts/check_workflows_yaml.py
+      - name: Lint self-test (bad sample must FAIL, incl. degraded path)
+        run: python scripts/check_workflows_yaml.py --selftest
