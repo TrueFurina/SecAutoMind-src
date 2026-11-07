@@ -6,8 +6,8 @@
 
 | # | 题 | 攻击链 |
 |---|---|---|
-| 4 | HTB urgent (forensics very_easy) | eml → onlineform.html → `document.write(unescape(...))` 双层解码 → VBScript 内嵌 `HTB{4n0th3r_d4y_4n0th3r_ph1shi1ng_4tt3mpT}`（锚 a5d2823a ✅） |
-| 5 | HTB packedaway (reverse very_easy) | UPX 4.22 壳——本地无 upx 工具，**下载官方 upx-4.2.4-win64（免费工具）解壳** → 脱壳体内 `HTB{unp4ck3d_th3_s3cr3t_0f_th3_p455w0rd}`（锚 7419e7ac ✅）。压缩流里泄漏的 `Hr3t_0f_th3_p45}` 片段是初筛线索 |
+| 4 | HTB urgent (forensics very_easy) | eml → onlineform.html → `document.write(unescape(...))` 双层解码 → VBScript 内嵌 `<REDACTED:sha256=a5d2823a7309>`（锚 a5d2823a ✅） |
+| 5 | HTB packedaway (reverse very_easy) | UPX 4.22 壳——本地无 upx 工具，**下载官方 upx-4.2.4-win64（免费工具）解壳** → 脱壳体内 `<REDACTED:sha256=7419e7acc46f>`（锚 7419e7ac ✅）。压缩流里泄漏的 `Hr3t_0f_th3_p45}` 片段是初筛线索 |
 
 ## 工具资产沉淀
 

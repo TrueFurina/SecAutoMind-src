@@ -107,7 +107,7 @@ presolve_off_proven / pool_tracked_and_clean / result_pool_matches_proven` 全�
 ### 5.3 一次判分漏收（假阴性，可机验）
 
 `pp_v2_30_vm_bytecode_trace`（s3）交了 `flag{00004908}`，而被判 CLEAN_FAIL。
-该题正确值是 0x4908，题面要求 **16 位**零填充（`flag{0000000000004908}`）。
+该题正确值是 0x4908，题面要求 **16 位**零填充（`<REDACTED:sha256=d0799edfbba5>`）。
 **数值对、宽度不符**，判分器不认同值不同填充，`scoring_variant_gap` 自报
 `false_negative_count=0` ⇒ 这个片段也漏检了。
 
