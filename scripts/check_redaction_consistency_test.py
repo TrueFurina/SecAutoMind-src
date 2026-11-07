@@ -421,6 +421,28 @@ def main() -> int:
              status="synced", answer_leak=True,
              debt={"schema": 1, "owner": "agent", "expires": "2026-01-01", "entries": []})
 
+    # T41~T44 R14 可见性：缺文件/过期/私有却写不出限制/转公开没手续，都不许静默通过
+    def _vis_case(title: str, expect_vis: str, expect_probs: int, doc) -> None:
+        vis, probs = C.visibility_state(doc)
+        ok = vis == expect_vis and len(probs) == expect_probs
+        RESULTS.append((title, ok, "vis=%s probs=%d ｜ %s"
+                        % (vis, len(probs), (probs or ["(无)"])[0][:200])))
+
+    _vis_ok = {"visibility": "private", "owner": "agent", "expires": DEFAULT_EXPIRES,
+               "decision": "夹具：按私有仓对待",
+               "github_private_constraints": ["Actions 走配额", "日志只有协作者可见"],
+               "flip_to_public_requires": ["轮换已暴露答案", "重扫历史", "跑完门禁四步",
+                                           "同一次提交改 visibility"]}
+    _vis_case("T41 缺可见性声明 → 回落 public（宁可说重）", "public", 1, None)
+    _vis_case("T42 可见性声明已过期 → 判红", "private", 1,
+              dict(_vis_ok, expires="2026-01-01"))
+    _vis_case("T43 私有仓却不写 GitHub 私有仓限制 → 判红", "private", 1,
+              dict(_vis_ok, github_private_constraints=[]))
+    _vis_case("T44 转公开手续缺「轮换」「visibility」→ 各判一条红（只改一个字段转公开会被拦）",
+              "private", 2,
+              dict(_vis_ok, flip_to_public_requires=["重扫历史", "跑完门禁四步"]))
+    _vis_case("T45 声明完整 → private 且 0 问题（正面对照）", "private", 0, _vis_ok)
+
     bad = 0
     for title, ok, detail in RESULTS:
         print("  [%s] %s" % ("PASS" if ok else "FAIL", title))

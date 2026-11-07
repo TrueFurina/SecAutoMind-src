@@ -130,6 +130,15 @@ EXPOSURE_REL = "data/ctf_benchmark/history_exposure.json"
 # 现状 40（2026-11-07 实测：arena_manifest 里 40 条带 flag_sha256，全部命中历史 exposed）。
 ANSWER_REUSE_REL = "data/ctf_benchmark/answer_reuse_ack.json"
 ANSWER_REUSE_MAX = 40
+
+# R14 仓库可见性声明。用户 2026-11-07 拍板「按私有仓对待、记死」，不实际改设置。
+# 为什么要有这个文件：可见性决定了「历史里的答案对谁可得」——私有时是「有权限者」，
+# 公开时是「互联网上任何人」；这两种其实是两条不同的风险，不能靠口头共识区分。
+# 缺文件/过期/写错 → 一律按 public 处理（fail-closed）：宁可把风险说重，不许说轻。
+REPO_VISIBILITY_REL = "data/ctf_benchmark/repo_visibility.json"
+VISIBILITY_OK = {"private", "public"}
+PUBLIC_FLIP_REQUIRES = ("rotate", "history", "gate", "visibility")
+
 EXPOSURE_STATUS = {"exposed", "rotated", "pending_corpus"}
 
 # R12 明文债棘轮（2026-11-07）：题库从 3 个文件扩到 33 个、答案从 126 条涨到 434 条后，
@@ -720,6 +729,18 @@ def check(root: Path) -> tuple[int, list[str]]:
                         HISTORY_SINCE, int(legacy.get("commits") or 0),
                         int(legacy.get("hits") or 0)))
 
+    # R14 仓库可见性声明：它决定「历史里的答案对谁可得」，不是一句口头共识
+    declared_vis = "public"
+    if _git_out(root, "rev-parse", "--git-dir") is not None:
+        vis_doc = load_json(root / REPO_VISIBILITY_REL, None)
+        declared_vis, vis_probs = visibility_state(vis_doc)
+        fails.extend(vis_probs)
+        lines.append("  R14 仓库可见性：按 %s 对待（声明文件 %s，复核期限 %s）"
+                     % (declared_vis, REPO_VISIBILITY_REL,
+                        str((vis_doc or {}).get("expires") or "—")))
+    else:
+        lines.append("  R14 仓库可见性：非 git 环境，不适用")
+
     # R13 判分不得**静默**使用「已经进过公开历史」的答案。
     # 这不是新发现的泄漏，而是把既有事实钉成机器可见的账：题面脱敏、判分只用哈希，
     # 都抵不过「历史可被任何人 fetch」。用它判分等于用一个谁都读得到的答案宣布自己解出了。
@@ -760,9 +781,12 @@ def check(root: Path) -> tuple[int, list[str]]:
             elif a_count > ANSWER_REUSE_MAX:
                 fails.append("R13 认领上限被抬高：count=%d > ANSWER_REUSE_MAX=%d"
                              "（这个上限只许下调）" % (a_count, ANSWER_REUSE_MAX))
-        lines.append("  R13 判分答案 vs 公开历史：%d 条带哈希判分 ｜ 其中 %d 条的历史明文已公开"
-                     "（上限 %s 条，认领文件 %s）"
-                     % (len(judged), len(reused), ANSWER_REUSE_MAX, ANSWER_REUSE_REL))
+        lines.append("  R13 判分答案 vs 历史暴露：%d 条带哈希判分 ｜ 其中 %d 条在历史里出现过"
+                     "（按 R14 声明为 %s：暴露面=%s）｜ 上限 %s 条 ｜ 认领文件 %s"
+                     % (len(judged), len(reused), declared_vis,
+                        "互联网上任何人（可 fetch/fork/被索引）"
+                        if declared_vis == "public" else "有仓权限者（不会自动外泄，但一次转公开即撤销此结论）",
+                        ANSWER_REUSE_MAX, ANSWER_REUSE_REL))
 
     if debt:
         lines.append("  判分口径对账：已同步 %d ｜ 未同步但已入账 %d" % (len(synced), len(debt)))
@@ -847,6 +871,46 @@ def update_ledger(root: Path, owner: str, expires: str,
     print("台账已同步：%d 条 → %s（expires 缺省=%s%s）"
           % (len(entries), path, default_exp, "，已续期并留痕" if renew else ""))
     return 0
+
+
+def visibility_state(doc) -> tuple[str, list[str]]:
+    """把「仓库可见性」解析成一个可判真的事实 + 问题清单。
+
+    纯函数，便于直接单测（造真 git 仓太重，而这条的判定逻辑与仓库内容无关）。
+    fail-closed：缺文件、字段非法、过期，一律回落 public —— 宁可把暴露面说重。
+    """
+    probs: list[str] = []
+    if not isinstance(doc, dict):
+        return "public", ["R14 缺仓库可见性声明（没有它就无法区分「私有时有权限者可读」"
+                          "与「公开时任何人可读」；缺省按 public 处理）"]
+    vis = str(doc.get("visibility") or "").strip()
+    if vis not in VISIBILITY_OK:
+        probs.append("R14 可见性非法：%r（只能是 private / public）" % vis)
+        vis = "public"
+    owner = str(doc.get("owner") or "").strip()
+    if owner in OWNER_PLACEHOLDERS:
+        probs.append("R14 可见性声明无人负责：owner=%r" % owner)
+    exp = str(doc.get("expires") or "").strip()
+    try:
+        d = date.fromisoformat(exp)
+    except ValueError:
+        probs.append("R14 可见性声明到期日非法或缺失：%r（可见性会变，必须有复核期限）" % exp)
+    else:
+        if d < date.today():
+            probs.append("R14 可见性声明已过期：%s（到期必须复核：仓还是私有的吗）" % exp)
+    if not str(doc.get("decision") or "").strip():
+        probs.append("R14 可见性声明缺 decision：谁拍的板、原话是什么，必须留痕")
+    if vis == "private":
+        cons = doc.get("github_private_constraints")
+        if not isinstance(cons, list) or not cons:
+            probs.append("R14 私有仓必须写下 GitHub 私有仓的限制（Actions 配额/日志可见性/"
+                         "fork 可转公开/扫描能力付费等）——不写下就等于假装没限制")
+        flip = json.dumps(doc.get("flip_to_public_requires") or [], ensure_ascii=False)
+        for token, why in (("轮换", "已暴露答案必须先轮换"), ("历史", "必须重扫全历史明文"),
+                           ("门禁", "必须跑完门禁四步"), ("visibility", "必须同一次提交改本文件")):
+            if token not in flip:
+                probs.append("R14 转公开手续缺「%s」（%s）" % (token, why))
+    return vis, probs
 
 
 def debt_kind(rel: str) -> str:
