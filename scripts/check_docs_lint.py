@@ -315,23 +315,28 @@ def check_script_refs(text, root):
             continue
         resolved = _resolve_script_ref(token, root)
         line_no = text[:m.start()].count("\n") + 1
+        # 已登记的「未入仓产物」引用：在开发机上（磁盘有、仓库无）报"未入仓"，
+        # 在 CI 干净检出里（磁盘也没有）报"不存在"——一条债，两种现场。
+        # 必须两边都走同一个判定，否则这条债只在本地绿、线上仍红。
+        debt = DOC_REF_DEBT.get(token)
+        if resolved is not None and _is_tracked(root, resolved):
+            continue
+        if debt:
+            if _debt_expired(debt.get("expires")):
+                problems.append((line_no,
+                                 f"未入仓引用已过期（owner=%s，expires=%s）：`%s`"
+                                 % (debt.get("owner"), debt.get("expires"), token)))
+            else:
+                DEBT_NOTES.append("  [DEBT] 未入仓引用 line %d `%s` ｜ owner=%s ｜ expires=%s"
+                                  " ｜ %s" % (line_no, token, debt.get("owner"),
+                                              debt.get("expires"), debt.get("reason", "")))
+            continue
         if resolved is None:
             problems.append((line_no, f"引用了不存在的脚本：`{token}`"))
-        elif not _is_tracked(root, resolved):
+        else:
             # 文件在开发机磁盘上、但没入仓：CI 干净检出里没有它 → 这里必须红。
             # 否则本门禁「本地绿 / CI 红」，是同一份文档在两处得出相反结论的老病根。
-            if token in DOC_REF_DEBT:
-                d = DOC_REF_DEBT[token]
-                if _debt_expired(d.get("expires")):
-                    problems.append((line_no,
-                                     f"未入仓引用已过期（owner=%s，expires=%s）：`%s`"
-                                     % (d.get("owner"), d.get("expires"), token)))
-                else:
-                    DEBT_NOTES.append("  [DEBT] 未入仓引用 line %d `%s` ｜ owner=%s ｜ expires=%s"
-                                      " ｜ %s" % (line_no, token, d.get("owner"),
-                                                  d.get("expires"), d.get("reason", "")))
-            else:
-                problems.append((line_no, f"引用了未入仓的文件（CI 干净检出里不存在）：`{token}`"))
+            problems.append((line_no, f"引用了未入仓的文件（CI 干净检出里不存在）：`{token}`"))
     return problems
 
 
