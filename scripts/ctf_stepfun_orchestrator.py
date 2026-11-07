@@ -350,6 +350,18 @@ def _urlopen_deadline(req, timeout):
 _NO_TEMPERATURE_PREFIXES = ("kimi-",)
 
 
+def resolve_agentic(requested, no_agentic, supports_tools):
+    """实际执行形态。
+
+    三条规则，每条都对应一次真实踩坑（2026-11-07）：
+      1. provider 支持工具时，不加 --agentic 也走工具（历史行为，保留）；
+      2. --agentic 但 provider 不支持工具 ⇒ 只能是纯 LLM，不许在 summary 里谎称 agentic；
+      3. --no-agentic 优先级最高，用于在 dashscope 这类 provider 上做工具消融对照
+         （否则永远跑不出纯 LLM 基线，"算不动 vs 想不出来"就无法区分）。
+    """
+    return bool(supports_tools and not no_agentic)
+
+
 def _accepts_temperature(model):
     return not str(model or "").lower().startswith(_NO_TEMPERATURE_PREFIXES)
 
@@ -807,6 +819,11 @@ def main():
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "stepfun_orchestrator_result.json"))
     ap.add_argument("--model", default=None)
     ap.add_argument("--agentic", action="store_true")
+    # 反方向开关。2026-11-07 发现：`agentic = args.agentic or cfg.supports_tools`，
+    # 对 dashscope（supports_tools=True）来说**不加 --agentic 也会走工具**，
+    # 于是「纯 LLM 对照」根本跑不出来 —— 而"算不动 vs 想不出来"正是靠这个对照回答的。
+    ap.add_argument("--no-agentic", action="store_true",
+                    help="强制纯 LLM（即使 provider 支持工具），用于工具消融对照")
     ap.add_argument("--only-ids", default=None, help="逗号分隔的题 ID 白名单")
     ap.add_argument("--artifact-dir", default=None,
                     help="工件目录(zip 所在)。传入则为每题解压其附件并允许 run_python 以相对文件名读取；"
@@ -827,7 +844,14 @@ def main():
     cfg = PROVIDERS[args.provider]
     cap = cfg["concurrency_cap"]
     concurrency = min(max(args.concurrency, 1), cap)
-    agentic = args.agentic or cfg.get("supports_tools", False)
+    # 实际执行形态 = 请求 × 能力，两者都要如实记录。
+    # 2026-11-07 踩到：stepfun 的 supports_tools=False，但 --agentic 仍写进 summary，
+    # 结果文件声称「agentic」而工具调用恒为 0、llm_rounds 为空 —— 配置自曝造假。
+    tools_available = bool(cfg.get("supports_tools", False))
+    agentic = resolve_agentic(args.agentic, args.no_agentic, tools_available)
+    if args.agentic and not tools_available:
+        print("[warn] provider=%s 不支持工具，--agentic 已降级为纯 LLM；"
+              "结果文件会写明 agentic_effective=False" % args.provider, file=sys.stderr)
     api_key = load_key(cfg)
     items = load_benchmark(args.benchmark)
     if args.limit > 0:
@@ -905,7 +929,12 @@ def main():
         "max_in_flight_observed": _max_in_flight,
         "concurrency_cap": cap,
         "agentic": agentic,
-        "sandbox": "run_python fail-closed guard + full code audit",
+        # 三个字段分开写，避免「请求了工具但其实没有工具」被同一个布尔值掩盖
+        "agentic_requested": bool(args.agentic),
+        "agentic_effective": agentic,
+        "tools_available": tools_available,
+        "sandbox": ("run_python fail-closed guard + full code audit" if agentic
+                    else "disabled (pure LLM, no tool)"),
         "tool_calls_total": len(audit_all),
         "tool_calls_blocked": blocked_total,
         "by_category": by_cat,

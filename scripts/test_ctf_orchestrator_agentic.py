@@ -204,6 +204,24 @@ def main():
     ck("stepfun 请求体里有 temperature", seen.get("temperature") == 0.2)
     m._post_json, m.run_python_tool = orig_post, orig_tool
 
+    # ── 用例：实际执行形态必须自证（2026-11-07 缺陷）──────────
+    # 现象：stepfun 的 supports_tools=False，但 `--agentic` 仍写进 summary，
+    # 结果文件声称 agentic 而工具调用恒为 0。另一面：dashscope supports_tools=True，
+    # 不加 --agentic 也走工具 ⇒ 纯 LLM 对照根本跑不出来。
+    cases = [
+        (True, False, True, True, "--agentic + 支持工具 ⇒ 走工具"),
+        (False, False, True, True, "默认 + 支持工具 ⇒ 走工具（历史行为不变）"),
+        (True, False, False, False, "--agentic + 不支持工具 ⇒ 必须降级为纯"),
+        (False, False, False, False, "默认 + 不支持工具 ⇒ 纯"),
+        (True, True, True, False, "--no-agentic 压过 --agentic"),
+        (False, True, True, False, "--no-agentic 压过默认（dashscope 上做消融靠这条）"),
+        (False, True, False, False, "--no-agentic + 无工具 ⇒ 纯"),
+        (True, True, False, False, "全禁 ⇒ 纯"),
+    ]
+    for req, noa, sup, exp, desc in cases:
+        got_v = m.resolve_agentic(req, noa, sup)
+        ck("%s（got=%s）" % (desc, got_v), got_v is exp)
+
     print("\nselftest %d/%d" % (ok, total))
     return 0 if ok == total else 1
 
