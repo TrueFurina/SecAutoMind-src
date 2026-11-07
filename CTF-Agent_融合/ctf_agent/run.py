@@ -405,7 +405,7 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
         # ── P0 修复（2026-09-19 heldout 首测实证）：本题自身真值优先仲裁 ──
         # 旧逻辑只查 build_solver 启动时加载的 data/questions 混合集答案表；
         # heldout（data/questions_real/）等其它目录题不在表内 → 主 Agent/内部预扫
-        # 解出的正确 flag（实证：dnui_keyboard 的 flag{CLCKOUTHK}，sha256 与题面
+        # 解出的正确 flag（实证：dnui_keyboard 的 flag{REDACTED}，sha256 与题面
         # 真值逐字匹配）被误判 hallucination 且 flag 置 None——正确答案被自己的
         # 验证器枪毙。本题自带 flag_sha256/flag 是最权威真值，先裁决；无真值
         # （缺字段）才回落下方旧答案表逻辑（兼容自产训练题）。

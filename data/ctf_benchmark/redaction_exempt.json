@@ -13,6 +13,12 @@
       "reason": "取证工件生成器：LSB 题的真 flag 必须明文嵌入 PNG 像素，solver 才能从工件里抽出来。脱敏只能作用于题面与判分清单，作用不到生成器。",
       "owner": "agent",
       "expires": "2027-11-04"
+    },
+    {
+      "file": "data/ctf_benchmark/gen_exec_artifacts_v2.py",
+      "reason": "执行基准工件生成器 v2：磁盘镜像 / 内存 dump / pcap 日志三类题的答案必须明文嵌进生成的二进制工件，solver 才有东西可 carve、strings、grep；生成器只拿哈希就出不了含答案的工件。2026-11-08 曾误把它当注释答案删掉，随即发现工件会变空、题目不成立，故改登记豁免。判分仍只走 execution_benchmark.json 的 flag_sha256。",
+      "owner": "agent",
+      "expires": "2027-11-04"
     }
   ]
 }

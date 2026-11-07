@@ -58,12 +58,15 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tokenize
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -89,6 +92,12 @@ ANSWER_SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".g
                    ".sqlite", ".db"}
 ANSWER_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".idea"}
 MAX_SCAN_BYTES = 2 * 1024 * 1024
+
+# R15 说明型泄密（2026-11-08）：答案写在**注释 / 文档串**里，不为程序所需，纯粹是
+# 「讲解方法时顺手把答案抄了一遍」。它是 R9/R12 的漏网处：R12 允许「债表里的真值留着」
+# （生成器/靶场/测试确实要真值才能产出），可注释里的答案**没有任何必须持有的理由**，
+# 一旦记账就等于把「讲解」和「答案」捆在一起永不清。故单独立规则、不给债、不给豁免。
+COMMENT_RULE = "R15 注释/文档串里写着答案"
 
 # R10 历史防线：从 HISTORY_SINCE 起，任何提交都不许**再次**把答案明文写进仓库。
 # 理由是清除只对 HEAD 有效：一旦明文进了历史，`git log -p` 照样能抄走，
@@ -325,6 +334,69 @@ def scan_answer_plaintext(root: Path, known: dict) -> tuple[list[tuple[str, str,
             if h in known:
                 hits.append((rel.replace("\\", "/"), cand, known[h]))
     return hits, skipped
+
+
+def _py_sensitive_segments(p: Path) -> tuple[list[tuple[int, str]], bool]:
+    """取出 .py 里「注释 + 文档串」的原文片段 [(行号, 片段)]，以及是否解析成功。
+
+    为什么只盯这两处：注释与 docstring 不参与运行，删掉/换成占位**不会**改变任何
+    判分或能力，也就没有「改语料改坏能力」的风险；真值若确被代码消费，那属于 R12 债的
+    范围。解析不了（语法错误）时**不静默放过**：返回 ok=False，由调用方计数并打印。
+    """
+    txt = p.read_text(encoding="utf-8", errors="ignore")
+    segs: list[tuple[int, str]] = []
+    try:
+        tree = ast.parse(txt)
+    except (SyntaxError, ValueError):
+        return [], False
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = getattr(node, "body", None) or []
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) \
+                and isinstance(body[0].value.value, str):
+            doc = body[0]
+            # 整个文档串作为**一个**片段、只记起始行：按行拆会同一处答案报 N 次，
+            # 把「1 处」放大成「12 处」，读数就骗人了。
+            segs.append((doc.lineno, doc.value.value))
+    lines = txt.splitlines()
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(txt).readline):
+            if tok.type == tokenize.COMMENT:
+                r = tok.start[0]
+                if 1 <= r <= len(lines):
+                    segs.append((r, lines[r - 1][tok.start[1]:tok.end[1]]))
+    except (tokenize.TokenError, IndentationError):
+        return segs, False
+    return segs, True
+
+
+def scan_comment_docstring_leaks(root: Path, known: dict) -> tuple[list[tuple[str, str, list[str]]], int]:
+    """R15：注释/文档串里出现已知答案 → 命中列表；外加「解析不了、未能核实」的 .py 计数。"""
+    hits: list[tuple[str, str, list[str]]] = []
+    unparsed = 0
+    for rel in _scan_files(root):
+        if os.path.splitext(rel)[1].lower() != ".py":
+            continue
+        p = root / rel
+        try:
+            if p.stat().st_size > MAX_SCAN_BYTES:
+                unparsed += 1
+                continue
+        except OSError:
+            continue
+        segs, ok = _py_sensitive_segments(p)
+        if not ok:
+            unparsed += 1
+        for ln, seg in segs:
+            for m in ANSWER_SHAPE.finditer(seg):
+                cand = m.group(0)
+                if "REDACTED" in cand:
+                    continue
+                h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+                if h in known:
+                    hits.append(("%s:%d" % (rel.replace("\\", "/"), ln), cand, known[h]))
+    return hits, unparsed
 
 
 def _git_out(root: Path, *args: str) -> str | None:
@@ -642,6 +714,16 @@ def check(root: Path) -> tuple[int, list[str]]:
     lines.append("  全域明文扫描：已知答案哈希 %d 条 ｜ 命中 %d 处 ｜ 豁免 %d 处 ｜ 超大文件跳过 %d 个（>%dKB 未解码，属已知盲区）"
                  % (len(known), len(hits), len(used_exempt), skipped_large,
                     MAX_SCAN_BYTES // 1024))
+
+    # R15 说明型泄密：注释 / 文档串里的答案。无债、无豁免 —— 删它不改变任何行为。
+    c_leaks, c_unparsed = scan_comment_docstring_leaks(root, known)
+    for where, cand, ids in c_leaks:
+        fails.append("%s：%s ｜ %s ｜ 对应 %s"
+                     "（讲解要留、答案要删：把答案换成人可读机不可抄的占位；"
+                     "注释里没有「必须持有真值」的理由，故不给债也不给豁免）"
+                     % (COMMENT_RULE, where, cand, ",".join(sorted(set(ids)))))
+    lines.append("  注释/文档串检查（R15）：命中 %d 处 ｜ 未能解析核实的 .py %d 个"
+                 % (len(c_leaks), c_unparsed))
     horizon_ex = horizon  # 与 R8 同一个 365 天上限
     for e in exempt_entries:
         rel = str(e.get("file") or "").replace("\\", "/")

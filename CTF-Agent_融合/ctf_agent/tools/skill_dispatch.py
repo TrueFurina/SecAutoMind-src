@@ -57,8 +57,8 @@ AUTO_CALLABLE = _PATH_SKILLS | _DIR_SKILLS | _NUMERIC_SKILLS
 # flag 抽取正则（对齐既有 keyboard_path 分支的思路）
 # 2026-10-07 修复**抽取过度**（真实缺陷，由 Cycling 端到端实证发现）：
 #   原正则 `{[ -~]{1,200}` 是**贪婪**的，而多数 skill 返回 Python dict 的 repr，
-#   例如 ``{'flag': 'CTF{Recycling_Is_Great}'}`` —— 正则一路吃到**最外层**的
-#   ``}`` 之后还剩一个 ``'}`` 尾巴，于是抽出 ``CTF{Recycling_Is_Great}'}``。
+#   例如 ``{'flag': 'CTF{REDACTED}'}`` —— 正则一路吃到**最外层**的
+#   ``}`` 之后还剩一个 ``'}`` 尾巴，于是抽出 ``CTF{REDACTED}'}``。
 #   结果是「solver 明明解对了，却提交了带杂质尾缀的错误 flag」，评分取 sha256
 #   比对 → 本该得分的题判失败。改为**非贪婪**到第一个 ``}`` 即止。
 # 取最短闭合的代价：flag 内部若含 ``}`` 会被截断——CTF flag 惯例不含该系统性
@@ -67,7 +67,7 @@ AUTO_CALLABLE = _PATH_SKILLS | _DIR_SKILLS | _NUMERIC_SKILLS
 # 2026-10-07 二次修正（前缀截断 bug）：原先前缀是**固定词表**
 #   ``(?:flag|FLAG|Flag|ctf|CTF|DASCTF|dasctf)``，当 flag 前缀是词表中某词的
 #   **后缀**时会吃掉前半截——实测 CSAW-Quals 2023 真题解出
-#   ``csawctf{1_d1dnt_kn0w_th1s_w0uld_w0rk}``，词表中的 ``ctf`` 在 ``csaw`` +
+#   ``csawctf{REDACTED}``，词表中的 ``ctf`` 在 ``csaw`` +
 #   ``ctf{`` 中间就匹配上了，抽出 ``ctf{...}`` → sha256 不匹配，**真解被判假阳**。
 #   改为：``{`` 之前允许 1–20 个字母/数字/下划线作为前缀（覆盖任意比赛前缀），
 #   花括号内不允许空白与 ``}``（避免吃掉跨行噪音）。

@@ -231,7 +231,7 @@ def run(payload: dict) -> dict:
     payload: {'text': 'UYTGBNM EDCV ...'} 或 {'path': '<附件文件>'}
              或 {'attachments': [...]}（统一契约，与 flag_scan/crypto_auto 一致，
              2026-09-01 补：修复 772d5c1 强制路由传 attachments 键不生效的问题）
-    返回: {'decoded': 'CLCKOUTHK', 'flag': 'flag{CLCKOUTHK}', 'ascii': str, 'source': ...}
+    返回: {'decoded': 'CLCKOUTHK', 'flag': 'flag{REDACTED}', 'ascii': str, 'source': ...}
     """
     text = payload.get("text")
     path = payload.get("path")

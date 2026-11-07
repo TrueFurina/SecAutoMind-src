@@ -699,7 +699,7 @@ class MainAgent:
         ctx._last_chance_done = True
         # 2026-10-26 口径修复：本兜底**不受** CTF_AGENT_INTERNAL_PRESOLVE 管辖，
         # 导致「纯 LLM」跑批（--presolve-skip + INTERNAL_PRESOLVE=off）在放弃前
-        # 仍被确定性管线直出（实测 ext_gctf2022_cycling → CTF{Recycling_Is_Great}，
+        # 仍被确定性管线直出（实测 ext_gctf2022_cycling → CTF{REDACTED}，
         # 记为 solved_by=presolve）。量测 LLM 独立贡献时必须能整体关掉。
         # 默认 on，保持既有基线行为不变。
         if os.getenv("CTF_AGENT_LAST_CHANCE_PRESOLVE", "1").strip().lower() in (

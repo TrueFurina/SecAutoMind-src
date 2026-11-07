@@ -10,9 +10,9 @@ A/B 类（路径/目录）。余下 6 个 C 类 skill 因"参数藏在附件源�
 
 本测试锁死四件事：
 ① **flag 抽取不得过度**（真实缺陷，Cycling 端到端发现）：
-   skill 多返回 Python dict 的 repr，如 ``{'flag': 'CTF{Recycling_Is_Great}'}``；
+   skill 多返回 Python dict 的 repr，如 ``{'flag': 'CTF{REDACTED}'}``；
    贪婪正则会一路吃到最外层 ``}`` 之后的 ``'}`` 尾巴 → 提交了
-   ``CTF{Recycling_Is_Great}'}`` 这种**带杂质尾缀的错误 flag**。
+   ``CTF{REDACTED}'}`` 这种**带杂质尾缀的错误 flag**。
    后果最坏：solver 明明解对，却因 sha256 不等判失败。必须非贪婪。
 ② 三个提取器对各自真产出**正确参数**（含 n/ct/e 与 pk/ct 的结构完整性）。
 ③ fail-closed 不变：拿不到必需参数 → None；

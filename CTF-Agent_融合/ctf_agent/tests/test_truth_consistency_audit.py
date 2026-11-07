@@ -46,7 +46,7 @@ class TestTruthConsistencyAudit(unittest.TestCase):
 
     def test_flag_re_matches_prefixed_flag(self):
         """带赛事前缀的 flag 必须被完整匹配（不截断前缀）。"""
-        for raw in (b"csawctf{st1ng_th30ry_a1nt_so_h4rd}",
+        for raw in (b"csawctf{REDACTED}",
                     b"flag{plain}",
                     b"DASCTF{Some_Thing}",
                     b"nssctf{abc123}"):
@@ -65,7 +65,7 @@ class TestTruthConsistencyAudit(unittest.TestCase):
 
     def test_flag_re_prefix_semantics_match_official(self):
         """前缀字符类必须与官方分层工具一致（防口径漂移）。"""
-        sample = b"csawctf{st1ng_th30ry_a1nt_so_h4rd} DASCTF{abc}"
+        sample = b"csawctf{REDACTED} DASCTF{abc}"
         mine = set(self.mod.FLAG_RE.findall(sample))
         off = set(self.off.FLAG_RE.findall(sample))
         self.assertEqual(mine, off, "FLAG_RE 与官方口径不一致")

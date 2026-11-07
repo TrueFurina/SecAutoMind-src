@@ -1,7 +1,7 @@
 """sha256 真值仲裁（2026-09-19 幻觉攻坚）单测。
 
 背景（heldout 预算 2x 对照跑实证）：dnui_keyboard 的 keyboard_path 解码不完整产出
-flag{CLCKOUTHK}（sha256 不符），无闸时被当"确定性预扫命中"直灌 candidate_flag →
+flag{REDACTED}（sha256 不符），无闸时被当"确定性预扫命中"直灌 candidate_flag →
 goal 记 flag=✅ → 主循环 8+ 次复读同一错答案直到预算耗尽（幻觉桶）。
 
 覆盖：

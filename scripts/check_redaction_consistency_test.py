@@ -484,6 +484,30 @@ def main() -> int:
     _staged_case("T51 暂存区只有普通文本 → 放行（0 处）",
                  "普通日志行，不含答案形状\n", _fake_known, 0)
 
+    # T52~T54 R15 说明型泄密：注释/docstring 里的答案没有「必须持有真值」的理由，
+    # 故单独立规则、不给债、不给豁免；同时**不许**把代码里的字面量误报成注释债。
+    def _r15_case(title: str, src: str, known: dict, expect_hits: int,
+                  expect_unparsed: int = 0) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            tp = Path(td)
+            (tp / "mod.py").write_text(src, encoding="utf-8")
+            hits, unparsed = C.scan_comment_docstring_leaks(tp, known)
+            ok = len(hits) == expect_hits and unparsed == expect_unparsed
+            RESULTS.append((title, ok, "hits=%d unparsed=%d ｜ %s"
+                            % (len(hits), unparsed,
+                               (hits[0][0] + " " + hits[0][1][:30]) if hits else "(无命中)")))
+
+    _c_known = {__import__("hashlib").sha256(b"flag{r15_comment_0001}").hexdigest(): ["fixture"]}
+    _r15_case("T52 注释里写着答案 → 命中（讲解可留、答案不可留）",
+              "# 解法说明：算出 flag{r15_comment_0001} 后提交\ndef f():\n    return 1\n",
+              _c_known, 1)
+    _r15_case("T53 同一答案写在**代码字面量**里 → R15 不误报（那是 R12 债的范围）",
+              'ANSWER = "flag{r15_comment_0001}"\n# 普通注释，不含答案形状\n'
+              "def f():\n    return ANSWER\n", _c_known, 0)
+    _r15_case("T54 语法坏掉的 .py → 不计命中但要计数（fail-closed，不静默放过）",
+              "def (:\n    pass\n", _c_known, 0, expect_unparsed=1)
+
     bad = 0
     for title, ok, detail in RESULTS:
         print("  [%s] %s" % ("PASS" if ok else "FAIL", title))

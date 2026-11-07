@@ -12,7 +12,7 @@ flag 仅本地 sha256 比对，绝不明文回显到 stdout 之外。
 已知局限（2026-09-15 实测，最终归类以人工复核 + 台账分类规则为准）：
   - 附件路径拼接对位于 ctf_agent/scripts/ 子目录的题会双拼 ctf_agent/，致该子类题
     未被自动附件扫描（vnctf_cm1 即属此类，已人工确认其 solver 为真 XXTEA 计算、非读泄露）。
-  - dnui_keyboard 因 flag 格式 flag{CLCKOUTHK} 与 description 纯 CLCKOUTHK 不匹配，
+  - dnui_keyboard 因 flag 格式 flag{REDACTED} 与 description 纯 CLCKOUTHK 不匹配，
     被漏判为 genuine；按其题面给答案属性归 D 类（不晋升，见台账收录边界规则）。
 """
 import asyncio

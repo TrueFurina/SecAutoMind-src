@@ -148,7 +148,7 @@ async def main(leak_guard: bool = True):
     # 二段反注水（oracle）：用本次扫描自己解出的答案，再判一次「题目材料是否自带答案」。
     # att_leak 靠附件里扫真值即可判；desc_leak 唯有拿到明文才能判出——例如
     # real_crypto_dnui_keyboard 题面直接写「解出 CLCKOUTHK」，presolve 返回
-    # flag{CLCKOUTHK} 并 MATCH：那不是解出，是把题面给的答案抄出来。
+    # flag{REDACTED} 并 MATCH：那不是解出，是把题面给的答案抄出来。
     if leak_guard and hits:
         rescan, desc_leaked, unk2 = split_by_leak(
             scannable, lambda q: _classify_provenance(q, hits))

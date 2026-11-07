@@ -208,7 +208,7 @@ def _is_real_flag_string(s) -> bool:
 
 
 # 源码/附件内明文 flag：题面 flag 字段是 64-hex 占位，但真 flag 明文写在附件文件内容里
-# （如 gongye_web2 的 index.php `// echo "flag{MBeGEaS67008RGb9}";`）。读源码即拿答案，
+# （如 gongye_web2 的 index.php `// echo "flag{REDACTED}";`）。读源码即拿答案，
 # 非真·未见。旧 _is_leaked_attachment 只拦 flag.txt 路径、_has_plaintext_flag_in_question
 # 只查题面字段，都漏掉这类 → 这里按「附件内容 flag 串 sha256 == 题面 flag_sha256」确定性命中。
 _SRC_FLAG_FULL_RE = re.compile(

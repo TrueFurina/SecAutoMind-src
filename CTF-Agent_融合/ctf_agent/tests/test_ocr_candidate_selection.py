@@ -5,7 +5,7 @@
     给出含非可打印字符（如 '§'）的伪命中时会被抢先返回，丢掉 psm6 给出的正确
     结果。实测 CSAW-Quals 2017 forensics「missed_registration」的 BMP：
         psm7 → '| FLAG{anm_LaunDR3Y_FL4E_L34k§_}'   （含 '§'，非 ASCII）
-        psm6 → 'FLAG{3Am_LaunDR3Y_FL4G_L34kz!}'     （正确）
+        psm6 → 'FLAG{REDACTED}'     （正确）
     旧实现选前者 → sha256 与题面真值不符；psm7 的 '§' 还会污染下游。
 
 本文件：纯函数单测（零外部依赖，不跑 tesseract）+ ocr_image 接线测试（monkeypatch）。

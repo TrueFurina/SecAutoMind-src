@@ -4,7 +4,7 @@
 
 背景（2026-10-26 实锤）：
   该脚本原先把 `real_reverse_js` 判成 `NO_MATCH` 并计入 `broken`（=真值矛盾）。
-  实算证明真值 `flag{cslhahldlnst0day}` 的 sha256 **完全正确**，
+  实算证明真值 `flag{REDACTED}` 的 sha256 **完全正确**，
   真正原因是声明的 `index.html` 已丢失（现存仅 31 字节空壳），答案随原件消失。
   幸存附件 `coso.js` 的 `delog()` 是诱导项，**本来就推不出真值** → 属题设，不是矛盾。
 
