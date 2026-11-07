@@ -37,6 +37,12 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# 仓库根：脚本在 CTF-Agent_融合/ctf_agent/scripts/ 下，上两级才是仓库根。
+# 2026-11-08 实测事故：题面里的 attachments 写的是「仓库根相对」路径（data/...），
+# 而 check() 用 ROOT（ctf_agent/）拼接 → 130 条声明全部报「载荷缺失」，
+# 其中 87 条的文件其实就在磁盘上。与 2026-10-13 的台账 bug 同一个病：路径指错层级
+# 不报错，只报「缺失」，于是这条红被长期当噪音忽略。
+REPO = ROOT.parent.parent
 OUT_DIR = ROOT / "benchmarks" / "external_unseen"
 # 已解出台账（排除源之一）——唯一活路径在 ctf_agent/ 内（git 跟踪、HEAD 树内）。
 # 2026-10-13 事故：此处曾写 ROOT.parent（仓库根），台账从未存在于根 →
@@ -277,6 +283,24 @@ def write_manifest(built: dict) -> dict:
     return manifest
 
 
+def resolve_attachment(a: str) -> Path | None:
+    """把题面声明的附件路径解析成真实文件；解析不到返回 None。
+
+    三批语料并存且基准不同（2026-11-08 实测）：
+      · gctf 批   → 仓库根相对      data/questions_external_bench/_attachments/<qid>/<file>
+      · nyu 批    → ctf_agent 相对  data/questions_ext/_attachments/<cat>/<name>/<file>
+      · cybench 批 → ctf_agent 相对 data/questions_ext_cybench/_attachments/<cat>/<name>/<file>
+    所以任何单一基准都会把另外一批判成「缺失」——这正是此前 130 条声明全报缺的真因。
+    判据只有这一处：check() 与 tests 都调它，避免两处各算一遍。
+    """
+    rel = str(a).replace("\\", "/").lstrip("/")
+    for base in (REPO, ROOT):
+        p = base / rel
+        if p.is_file():
+            return p
+    return None
+
+
 def check() -> tuple[bool, list[str]]:
     mpath = OUT_DIR / "MANIFEST.json"
     if not mpath.is_file():
@@ -294,7 +318,7 @@ def check() -> tuple[bool, list[str]]:
         if not HEX64.match(str(q.get("flag_sha256", ""))):
             problems.append(f"{f.stem}: flag_sha256 非法")
         for a in q.get("attachments", []):
-            if not (ROOT / a).is_file():
+            if not resolve_attachment(a):
                 problems.append(f"{f.stem}: 载荷缺失 {a}")
                 break
     return not problems, problems

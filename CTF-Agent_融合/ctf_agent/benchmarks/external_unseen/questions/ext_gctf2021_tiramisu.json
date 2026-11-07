@@ -7,14 +7,14 @@
  "flag": "e84aa3467a49873a3d402635ee9d5988a2489b958a44d4119e504efc9691b2d2",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\challenge.pb.go",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\challenge.proto",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\challenge_pb2.py",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\cipher.go",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\client_skel.py",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\pb_util.go",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\server.go",
-  "data\\questions_external\\crypto\\ext_gctf2021_tiramisu\\_attachments\\server_main.go"
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/challenge.pb.go",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/challenge.proto",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/challenge_pb2.py",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/cipher.go",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/client_skel.py",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/pb_util.go",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/server.go",
+  "data/questions_external_bench/_attachments/ext_gctf2021_tiramisu/server_main.go"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

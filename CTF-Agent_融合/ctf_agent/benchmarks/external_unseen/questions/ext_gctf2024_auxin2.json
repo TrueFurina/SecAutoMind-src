@@ -7,8 +7,8 @@
  "flag": "36bd44fae041e18a99298ab874f3cf9c08c9f038da8ebd19ad4e9ce502f9ea14",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\misc\\ext_gctf2024_auxin2\\_attachments\\auxin2.rom",
-  "data\\questions_external\\misc\\ext_gctf2024_auxin2\\_attachments\\run.py"
+  "data/questions_external_bench/_attachments/ext_gctf2024_auxin2/auxin2.rom",
+  "data/questions_external_bench/_attachments/ext_gctf2024_auxin2/run.py"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

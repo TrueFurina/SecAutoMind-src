@@ -7,10 +7,10 @@
  "flag": "2a4fdc4b4f3011e7c21d477297e2b7a5188908c36cd733254ed8652fb9512cdf",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\crypto\\ext_gctf2025_filtermaze\\_attachments\\filtermaze.py",
-  "data\\questions_external\\crypto\\ext_gctf2025_filtermaze\\_attachments\\flag",
-  "data\\questions_external\\crypto\\ext_gctf2025_filtermaze\\_attachments\\graph.json",
-  "data\\questions_external\\crypto\\ext_gctf2025_filtermaze\\_attachments\\lwe_pub_params.json"
+  "data/questions_external_bench/_attachments/ext_gctf2025_filtermaze/filtermaze.py",
+  "data/questions_external_bench/_attachments/ext_gctf2025_filtermaze/flag",
+  "data/questions_external_bench/_attachments/ext_gctf2025_filtermaze/graph.json",
+  "data/questions_external_bench/_attachments/ext_gctf2025_filtermaze/lwe_pub_params.json"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

@@ -7,7 +7,7 @@
  "flag": "0f5332246937ffa7aec17fe638320c346f95a4079f9189d3a338bddf38485b67",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\misc\\ext_gctf2023_totally-not-brute-force\\_attachments\\src\\Makefile"
+  "data/questions_external_bench/_attachments/ext_gctf2023_totally-not-brute-force/Makefile"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

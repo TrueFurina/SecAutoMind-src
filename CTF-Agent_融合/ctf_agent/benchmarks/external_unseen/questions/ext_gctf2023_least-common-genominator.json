@@ -7,10 +7,10 @@
  "flag": "69981daf9abdebef789ff622d1672c37c6a1e97737415369dc77a4ba6360fd96",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\dump.txt",
-  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\flag.txt",
-  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\generate.py",
-  "data\\questions_external\\crypto\\ext_gctf2023_least-common-genominator\\_attachments\\public.pem"
+  "data/questions_external_bench/_attachments/ext_gctf2023_least-common-genominator/dump.txt",
+  "data/questions_external_bench/_attachments/ext_gctf2023_least-common-genominator/flag.txt",
+  "data/questions_external_bench/_attachments/ext_gctf2023_least-common-genominator/generate.py",
+  "data/questions_external_bench/_attachments/ext_gctf2023_least-common-genominator/public.pem"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

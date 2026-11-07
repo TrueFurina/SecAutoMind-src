@@ -7,7 +7,7 @@
  "flag": "acee0feec01008a1ba26c5dc206a88325d7749b59a29e7bbf1f356ab2c3bb76f",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\misc\\ext_gctf2021_ican-tbelieveit-snotcrypto\\_attachments\\chal.py"
+  "data/questions_external_bench/_attachments/ext_gctf2021_ican-tbelieveit-snotcrypto/chal.py"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

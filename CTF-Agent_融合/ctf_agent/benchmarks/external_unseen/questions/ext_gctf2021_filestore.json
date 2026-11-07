@@ -7,7 +7,7 @@
  "flag": "dd86ea90cce467810a85c6fdd8bec23e4ff1e1a90042cf1bc791bed380e66f70",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\misc\\ext_gctf2021_filestore\\_attachments\\filestore.py"
+  "data/questions_external_bench/_attachments/ext_gctf2021_filestore/filestore.py"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

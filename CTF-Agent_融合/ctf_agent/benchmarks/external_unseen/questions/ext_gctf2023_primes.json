@@ -7,7 +7,7 @@
  "flag": "df18e59de0157907864737b5f2a3d1a0fb5ffc4fe7e64a5f467c92054a783d56",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\crypto\\ext_gctf2023_primes\\_attachments\\chal.sage"
+  "data/questions_external_bench/_attachments/ext_gctf2023_primes/chal.sage"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

@@ -7,7 +7,7 @@
  "flag": "a8665b054e21c5b63617befa0f5af67827c67b904403a14a27faf04158e1e009",
  "flag_pattern": "[A-Za-z0-9_]{1,20}\\{[^\\}\\s]{3,120}\\}",
  "attachments": [
-  "data\\questions_external\\misc\\ext_gctf2024_hwsim\\_attachments\\hwsim.py"
+  "data/questions_external_bench/_attachments/ext_gctf2024_hwsim/hwsim.py"
  ],
  "difficulty": "unknown",
  "source_pool": "questions_external"

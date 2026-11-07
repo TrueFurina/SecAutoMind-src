@@ -46,10 +46,15 @@ class TestBenchmarkManifestRules(unittest.TestCase):
             self.assertNotRegex(blob, r"flag\{[^\}]{2,}\}", f"{f.stem} 疑似明文答案")
 
     def test_benchmark_attachments_exist(self):
+        # 判据只有一个来源：bench.resolve_attachment()。
+        # 2026-11-08 事故：这里曾自己写 `(ROOT / a).is_file()`（ROOT=ctf_agent），
+        # 而 gctf 批的附件是「仓库根相对」→ 130 条声明全报缺失，其中 87 条文件就在磁盘上。
+        # 两处各算一遍基准，必然有一批被冤枉；所以此处改成调同一个函数。
         for f in (ROOT / "benchmarks" / "external_unseen" / "questions").glob("*.json"):
             q = json.loads(f.read_text(encoding="utf-8"))
             for a in q["attachments"]:
-                self.assertTrue((ROOT / a).is_file(), f"{f.stem} 载荷缺失: {a}")
+                self.assertIsNotNone(bench.resolve_attachment(a),
+                                     f"{f.stem} 载荷缺失: {a}")
 
     def test_check_passes_on_current_disk(self):
         ok, problems = bench.check()
