@@ -89,3 +89,28 @@ basis, please add funds or disable the "use free tier only" mode in the model pa
 
 这两条都是「跑批跑完了、但一个结果文件都没有」的形态，靠冒烟测试在 2 分钟内发现，
 而不是等 8 小时后才发现。
+
+## 7. 首个外部池纯 LLM 基线（step-3.5-flash，40 题）
+
+额度锁封住了 dashscope 通道，于是用 StepFun 跑出外部池第一个**纯 LLM 全池基线**
+（`--no-agentic`，max_tokens=16384，无工具）：
+
+- **读数 0/40**：34 题交了答案（全不中）、6 题空答。
+- 修复后的 A8 复跑（8 题，同预算）暴露真实原因：**6/8 题 `finish_reason=length`**
+  ——输出被 16384 预算切满。也就是说纯 LLM 在这个池上大量是「**想不完**」，
+  而不是「不会」。修复前这些全被记成「答错」，0/40 会被人读成能力读数。
+
+注意：full40 是在落账修复**前**跑的，其结果文件里 token=0、截断=0，
+三件事（答不出/被切断/接口挂）在该文件里不可区分；A8 是修复后跑的，
+落账完整。比对时不要把 full40 的 0/40 当作与 A8 同口径的数据。
+
+## 8. 顺带修掉的三个判据缺陷（提交 848870d / 46400ed）
+
+| 缺陷 | 现象 | 修法 |
+|---|---|---|
+| agentic 自曝造假 | stepfun `supports_tools=False`，结果文件仍写 `agentic: true`，而 `tool_calls` 恒为 0；历史 s1/s2 有 226 次工具调用 ⇒ 同参数在两个入口语义不同 | 抽出 `resolve_agentic()`，summary 拆成 `agentic / agentic_requested / agentic_effective / tools_available` 四字段 |
+| dashscope 跑不出纯对照 | `agentic = args.agentic or supports_tools`，不加 `--agentic` 也走工具 ⇒ 「算不动 vs 想不出来」消融永远做不了 | 新增 `--no-agentic`，优先级最高 |
+| 纯分支零落账 | 纯 LLM 分支直接 return，token/截断/接口失败全不可见 | 纯分支同样产出 `llm_rounds / truncated_rounds / api_error_rounds / *_tokens_total` 等字段；异常按 `_HardDeadline`/`TimeoutError` 区分 |
+
+回归：`test_ctf_orchestrator_agentic.py` 22 → 38 例；两处均做变异验证
+（把判据改回旧写法、把异常分支 api_error_rounds 写死 0，各有断言变红）。
