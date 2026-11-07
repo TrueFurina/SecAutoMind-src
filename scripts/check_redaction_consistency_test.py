@@ -461,6 +461,29 @@ def main() -> int:
     _vis_case("T48 public 却不写公开仓的限制 → 判红", "public", 1,
               dict(_vis_pub, github_public_constraints=[]))
 
+    # T49/T50 提交闸口：暂存区里出现已知答案必须拦（这是唯一还来得及的一刻）。
+    # 纯函数测试：注入一个已知哈希，造一段 diff 文本，不让真实答案落盘。
+    def _staged_case(title: str, content: str, known: dict, expect: int) -> None:
+        import tempfile
+        import subprocess as sp
+        with tempfile.TemporaryDirectory() as td:
+            tp = Path(td)
+            sp.run(["git", "init", "-q"], cwd=td, check=True)
+            sp.run(["git", "config", "user.email", "a@b"], cwd=td, check=True)
+            sp.run(["git", "config", "user.name", "a"], cwd=td, check=True)
+            (tp / "staged_fixture.txt").write_text(content, encoding="utf-8")
+            sp.run(["git", "add", "staged_fixture.txt"], cwd=td, check=True)
+            hits = C.scan_staged_added(tp, known)
+            RESULTS.append((title, len(hits) == expect,
+                            "staged hits=%d ｜ %s" % (len(hits),
+                             (hits[0][1][:40] if hits else "(无命中)"))))
+
+    _fake_known = {__import__("hashlib").sha256(b"flag{staged_guard_0001}").hexdigest(): ["fixture"]}
+    _staged_case("T50 暂存区新增行含已知答案 → 拦下（1 处）",
+                 "flag{staged_guard_0001}\n", _fake_known, 1)
+    _staged_case("T51 暂存区只有普通文本 → 放行（0 处）",
+                 "普通日志行，不含答案形状\n", _fake_known, 0)
+
     bad = 0
     for title, ok, detail in RESULTS:
         print("  [%s] %s" % ("PASS" if ok else "FAIL", title))

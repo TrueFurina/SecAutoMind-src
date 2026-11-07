@@ -384,6 +384,37 @@ def scan_patch_added(text: str, known: dict) -> list[tuple[str, str, str, list[s
     return hits
 
 
+def scan_staged_added(root: Path, known: dict) -> list[tuple[str, str, tuple]]:
+    """扫**已暂存**的新增行：这是「还没进历史、但下一次 commit 就会进」的那一步。
+
+    为什么要单独扫暂存区：历史泄漏一旦造成就不可撤回，而唯一还能拦住的时刻就是提交前。
+    实证（2026-11-08）：工作树里 96 个未跟踪文件含 795 处答案明文（含 stepfun 会话日志、
+    DENOMINATOR 文档、证据 raw.jsonl），全部门禁都看不见它们（门禁只扫 git 已跟踪文件），
+    一条 `git add -A` 就会把它们变成永久历史。本函数供 pre-commit 钩子调用。
+    """
+    out = _git_out(root, "diff", "--cached", "-U0", "--no-color", "--no-ext-diff")
+    if not out:
+        return []
+    hits: list[tuple[str, str, tuple]] = []
+    path = ""
+    for raw in out.splitlines():
+        if raw.startswith("diff --git "):
+            frag = raw[len("diff --git "):]
+            idx = frag.find(" b/")
+            path = frag[idx + 3:].strip() if idx >= 0 else frag.strip()
+            continue
+        if not raw.startswith("+") or raw.startswith("+++"):
+            continue
+        for m in ANSWER_SHAPE.finditer(raw):
+            cand = m.group(0)
+            if "REDACTED" in cand:
+                continue
+            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+            if h in known:
+                hits.append((path, cand, known[h]))
+    return hits
+
+
 def check(root: Path) -> tuple[int, list[str]]:
     lines: list[str] = []
     fails: list[str] = []
@@ -1151,6 +1182,8 @@ def main(argv=None) -> int:
                     help="全历史扫描，重写历史暴露事实表（R11 生成物）")
     ap.add_argument("--update-debt", action="store_true",
                     help="按当前扫描重写明文债表（R12；只许减少）")
+    ap.add_argument("--staged", action="store_true",
+                    help="只扫暂存区新增行（pre-commit 钩子用）：命中已知答案即拒绝提交")
     args = ap.parse_args(argv)
     if args.expires:
         try:
@@ -1177,6 +1210,20 @@ def main(argv=None) -> int:
     if args.update_ledger:
         return update_ledger(root, args.owner, args.expires,
                              renew=args.renew, reason=args.reason.strip())
+    if args.staged:
+        known = collect_answer_hashes(root, include_untracked=False)
+        hits = scan_staged_added(root, known)
+        if not hits:
+            print("[OK] 暂存区没有已知答案明文（%d 条已知答案参与比对）" % len(known))
+            return 0
+        print("[BLOCK] 暂存区里有 %d 处已知答案明文：提交后它们会永久进入公开历史。" % len(hits))
+        for path, cand, ids in hits[:20]:
+            print("  %s ｜ %s ｜ 命中 %s"
+                  % (path, "<REDACTED:sha256=%s>" % hashlib.sha256(
+                      cand.encode("utf-8")).hexdigest()[:12], ",".join(ids[:3])))
+        print("处理：① 脱敏成 <REDACTED:sha256=…>；② 或不要提交该文件（git restore --staged <path>）。"
+              "这条拦截在提交闸口，因为只有这一步还来得及。")
+        return 1
     code, lines = check(root)
     for ln in lines:
         print(ln)
