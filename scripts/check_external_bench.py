@@ -81,6 +81,27 @@ def sha256_of(path: str) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def collect_judgeable_entries(v, out: dict | None = None) -> dict:
+    """递归收集「可判分条目」题号 → pool（与 Go collectJudgeableEntries 同口径）。
+
+    只认同时含 id（非空串）与 flag_sha256 键的对象：那才是分母/判分真正消费的形态；
+    台账里的裸题号（action/KEEP 之类）不是"混入"。pool 缺失记空串。
+    """
+    if out is None:
+        out = {}
+    if isinstance(v, dict):
+        pid = v.get("id")
+        if isinstance(pid, str) and pid and "flag_sha256" in v:
+            pool = v.get("pool")
+            out[pid] = pool if isinstance(pool, str) else ""
+        for child in v.values():
+            collect_judgeable_entries(child, out)
+    elif isinstance(v, list):
+        for child in v:
+            collect_judgeable_entries(child, out)
+    return out
+
+
 def check_freeze(doc_path: str) -> list:
     """C10 产物冻结判据：堵住「只改题面/附件、不动台账」的篡改通道。
 
@@ -185,15 +206,53 @@ def check(problems: dict, honesty: dict, stats: dict, src: str | None) -> list:
             if not os.path.isfile(path):
                 fail("C3 %s/%s 登记在册但磁盘不存在——清单与实物脱节" % (pid, af.get("name")), out)
 
-    # C4 不得混入 KPI 基准
+    # C4 不得混入 KPI 基准（结构化，与 TestExternalBench_NotInKpiBenchmarks 同口径）
+    # 🔴 2026-11-08 修：原 `pid in text` 子串匹配把"以 pool:external 登记的外部题"
+    # （purellm_clean_benchmark*.json / purellm_full188.json 里的合法评测集引用）当成污染。
+    # 现改为结构化判定：只认「可判分条目」（同时含 id 与 flag_sha256 的对象），
+    # 且外部题必须标 external 池（或同为外采/对照池 ext88/cybench/heldout）；
+    # 改标/缺标为自产池 = 污染 → 红。裸题号（台账/日志里的引用）不算"混入"。
     kpi_files = sorted(glob.glob(os.path.join(ROOT, KPI_DIR, "*.json")))
     if not kpi_files:
         fail("C4 未找到 data/ctf_benchmark/*.json——无法核对混入，fail-closed", out)
+    audit_ledgers = 0
+    labelled = set()
+    checked = 0
     for f in kpi_files:
-        text = open(f, encoding="utf-8", errors="ignore").read()
+        base = os.path.basename(f)
+        if base == "history_exposure.json":
+            audit_ledgers += 1
+            continue
+        try:
+            with open(f, encoding="utf-8", errors="ignore") as fh:
+                raw = fh.read()
+                kpi = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            # 不是合法 JSON ⇒ 判据无法结构化，fail-closed
+            fail("C4 KPI 基准 %s 不是合法 JSON——判据无法结构化，fail-closed" % base, out)
+            continue
+        entries = collect_judgeable_entries(kpi)
+        for pid, pool in entries.items():
+            if pid not in problems:
+                continue
+            if pool in ("external", "ext88", "cybench", "heldout"):
+                labelled.add(pid)
+                continue
+            fail("C4 外部尺题目 %s 在 KPI 基准 %s 中未标注 external 池（pool=%r）——"
+                 "外部题被改标/并入自产集会污染能力分母" % (pid, base, pool), out)
+        # fail-closed（脱钩检测）：题号出现在全文、却未以"可判分条目"形态被认出
+        # （缺 id/flag_sha256）→ 判据与语料形态脱钩，无法确认未污染 → 红。
+        # 题号根本不出现 = 既无登记也无污染，不触发（与"看不见≠干净"区分）。
         for pid in problems:
-            if pid in text:
-                fail("C4 外部尺题目 %s 出现在 KPI 基准 %s" % (pid, os.path.basename(f)), out)
+            if pid in raw and pid not in labelled:
+                fail("C4 外部尺题目 %s 出现在 KPI 基准 %s 中但缺失 id/flag_sha256 可判分条目——"
+                     "判据与语料形态脱钩，无法确认未污染（fail-closed）" % (pid, base), out)
+        checked += 1
+    if labelled:
+        out.append("✅ C4 已核对 %d 个 KPI 语料文件（另跳过 %d 份审计台账）：外部尺 %d 题中 "
+                   "%d 题以外部池显式登记（不计能力分母），%d 题未出现在语料中（未登记不构成污染），"
+                   "0 题被改标为自产池" % (checked, audit_ledgers, len(problems), len(labelled),
+                                            len(problems) - len(labelled)))
 
     # C5 不得进对外汇总
     if os.path.isfile(os.path.join(ROOT, KPI_SUMMARY)):
