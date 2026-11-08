@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "owner": "agent",
+  "max_entries": 8,
+  "note": "已知且**本轮明确不修**的材料口径漂移。与 plaintext_debt.json 的区别：那份记「历史暴露量」，这份记「当下判据仍会红、但已裁定不动的对外数字」。登记不掩盖漂移 —— 门禁仍逐条打印这些位置，且双向钉死：登记项不再复现（漂移被修或判据被改）即红、过期即红、超上限即红、缺字段即红。",
+  "entries": [
+    {
+      "file": "官网/index.html",
+      "label": "非测试代码行数",
+      "got": 146571,
+      "reason": "用户 2026-11-08 明确裁定：官网无人阅读，本轮不动官网数字（原话「官网也就不用动了，因为其实也没人看」）。故不修数字、不改对外宣称，仅登记；同时禁止据官网旧数对外引用。",
+      "owner": "agent",
+      "decided_by": "user",
+      "decided_on": "2026-11-08",
+      "expires": "2027-05-08"
+    },
+    {
+      "file": "官网/index.html",
+      "label": "测试文件数（自动化×）",
+      "got": 387,
+      "reason": "同上：用户裁定本轮不修官网（官网写 387，真值以 count_stats 现跑为准）。到期未修则本门禁因过期判红，届时必须重新裁定。",
+      "owner": "agent",
+      "decided_by": "user",
+      "decided_on": "2026-11-08",
+      "expires": "2027-05-08"
+    },
+    {
+      "file": "官网/index.html",
+      "label": "internal 包数（前置）",
+      "got": 40,
+      "reason": "同上：用户裁定本轮不修官网（官网写 40 个 internal 包，真值 43）。",
+      "owner": "agent",
+      "decided_by": "user",
+      "decided_on": "2026-11-08",
+      "expires": "2027-05-08"
+    }
+  ]
+}

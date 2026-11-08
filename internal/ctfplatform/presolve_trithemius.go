@@ -20,15 +20,21 @@ func tryTrithemius(text string) []string {
 	}
 	var out []string
 	seen := map[string]bool{}
+	add := func(flags []string) {
+		for _, f := range flags {
+			if !trithemiusFlagLike(f) { // 🔴 见 trithemiusFlagLike：内层短/句子态一律不认
+				continue
+			}
+			if !seen[f] {
+				seen[f] = true
+				out = append(out, f)
+			}
+		}
+	}
 	try := func(decode func(string) string) {
 		dec := decode(text)
 		if flags := scanFlags(dec); len(flags) > 0 {
-			for _, f := range flags {
-				if !seen[f] {
-					seen[f] = true
-					out = append(out, f)
-				}
-			}
+			add(flags)
 		}
 	}
 	try(func(s string) string { return trithemiusShift(s, +1) })
@@ -44,20 +50,28 @@ func tryTrithemius(text string) []string {
 	// 被当密文移位后的产物照单全收，产出 `HTB{Snkbpdgxk, lvnf'c…}` 这类混合/小写
 	// 假命中（实测外部尺 5 题）。本引擎的 HTB 包装只服务 dynastic 型（裸大写明文，
 	// 如 DID_YOU_KNOW_ABOUT_THE_TRITHEMIUS_CIPHER），故要求全大写以区分真密文与题面噪音。
-	try(func(s string) string {
-		dec := trithemiusShift(s, -1)
-		if trithemiusPlausible(dec) && isAllUpper(dec) {
-			return "HTB{" + dec + "}"
+	// 🔴 2026-11-08 第二层：包装分支**不走** trithemiusFlagLike 的句读禁令。
+	// 真实 dynastic 明文本身就带题源标点（`DID_YOU_KNOW_ABOUT_THE_TRITHEMIUS_CIPHER?!`），
+	// 若和"代码巧合"共用同一套严格判据，会把真答案一起拦掉（实测 TestTryTrithemiusDynasticShape 当场红）。
+	// 包装分支自己的门禁更强也更贴它的用途：可读性 + 全大写 + **内层不得含空白**
+	// （dynastic 明文是下划线分词；含空格的"整句包裹"就是假命中）。
+	addWrapped := func(dec string) {
+		if !trithemiusPlausible(dec) || !isAllUpper(dec) || len(dec) < 8 {
+			return
 		}
-		return ""
-	})
-	try(func(s string) string {
-		dec := trithemiusShift(s, +1)
-		if trithemiusPlausible(dec) && isAllUpper(dec) {
-			return "HTB{" + dec + "}"
+		for _, c := range dec {
+			if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+				return // 含空白 = 句子，不是 flag 内层
+			}
 		}
-		return ""
-	})
+		flag := "HTB{" + dec + "}"
+		if !seen[flag] {
+			seen[flag] = true
+			out = append(out, flag)
+		}
+	}
+	addWrapped(trithemiusShift(text, -1))
+	addWrapped(trithemiusShift(text, +1))
 	// 词级变体：每行/每词重置位置计数（部分实现按块重置）
 	if len(out) == 0 {
 		for _, sep := range []string{"\n", " "} {
@@ -68,12 +82,48 @@ func tryTrithemius(text string) []string {
 			}
 			joined := strings.Join(shifted, sep)
 			if flags := scanFlags(joined); len(flags) > 0 {
-				try(func(string) string { return joined })
-				break
+				add(flags)
+				if len(out) > 0 {
+					break
+				}
 			}
 		}
 	}
 	return out
+}
+
+// trithemiusFlagLike 判一个候选是否**真的像 flag**（位置移位是整个文本一起移，
+// 任意含 `{` 的代码/散文移位后都可能凑出一个 `XXX{abc}` 形状）。
+//
+// 2026-11-08 实证三副面孔：
+//   - `HTB{Snkbpdgxk, lvnf'c uvxj…}` —— 整句被包进花括号（内层含空格/逗号/撇号）；
+//   - `VNA{cjzg}` / `IAN{pwmt}` —— 代码里标识符+`{` 移位后的 4 字符巧合。
+//
+// 判据：内层不得含空白，不得含句读（, . ' " ; ! ?），长度 ≥8，且整串不含换行。
+// 这不是"提高门槛凑绿"，而是 flag 本身的形态约束（真 flag 不会是一句英文，
+// 也不会只有 4 个字符——4 字符答案靠"别写这串字"根本不可能保密）。
+func trithemiusFlagLike(f string) bool {
+	open := strings.Index(f, "{")
+	if open <= 0 || open > 16 || !strings.HasSuffix(f, "}") {
+		return false
+	}
+	inner := f[open+1 : len(f)-1]
+	if len(inner) < 8 || len(inner) > 160 {
+		return false
+	}
+	for _, c := range inner {
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			return false
+		}
+		switch c {
+		case ',', '.', '\'', '"', ';', '!', '?', ':':
+			return false
+		}
+		if c < 0x21 || c > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // trithemiusPlausible 裸明文包装前的可读性门禁：可打印率 ≥0.9 且含 ≥2 个

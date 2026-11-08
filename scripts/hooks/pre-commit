@@ -1,21 +1,49 @@
 #!/bin/sh
-# 提交闸口的答案明文拦截。
+# 提交闸口（唯一一份）：答案明文 / 真实凭证 / workflow YAML 有效性，三件一起拦。
 #
-# 为什么钩子必须存在：脱敏门禁只扫「git 已跟踪的文件」，而工作树里还有未跟踪文件带着
-# 答案明文（2026-11-08 实测：96 个文件 / 795 处）。这些文件门禁全都不看，一条
-# `git add -A` 就会把它们变成永久公开历史——历史推上去就撤不回来。唯一还来得及拦住
-# 的时刻就是 commit 之前。
+# 为什么合并：本仓曾同时存在 scripts/git-hooks/pre-commit（只拦密钥）与
+# scripts/hooks/pre-commit（只拦答案明文）两份钩子——两份钩子 = 两份漂移，
+# 换机后装哪份全看运气，另一条防线就静默消失。
 #
-# 只拦「新增行里的已知答案」，不拦已登记在 plaintext_debt.json 里的存量，
-# 因此不会让正常提交（含修改已有文件）无故失败。
+# 为什么钩子必须进版本控制：脱敏门禁只扫「git 已跟踪的文件」，而工作树里的未跟踪
+# 文件仍可能带着答案明文。一次 `git add -A` 就能把它们变成永久公开历史——推上去撤不回。
+# 唯一还来得及拦的时刻就是 commit 之前。所以钩子本体入库（scripts/hooks/），
+# 由 `python scripts/install_git_hooks.py` 装进 .git（core.hooksPath），
+# CI 的 `hook-armed` job 断言「新克隆装完一定生效」（跑真提交，不只看配置文件）。
+#
+# 语义：任一检查非 0 = 阻止提交（fail-closed）。确属误报才允许 --no-verify 并留痕。
+set -u
+
 HOOK_DIR=$(dirname "$0")
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || repo=$(cd "$HOOK_DIR/../.." && pwd)
+
 export PYTHONIOENCODING=utf-8
 CASE_PY="/c/Users/Lenovo/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
-if [ -n "$PYTHON" ]; then
+if [ -n "${PYTHON:-}" ]; then
   PY="$PYTHON"
 elif [ -x "$CASE_PY" ]; then
   PY="$CASE_PY"
 else
   PY=python
 fi
-exec "$PY" -X utf8 "$HOOK_DIR/../../scripts/check_redaction_consistency.py" --staged
+
+block() {
+  echo ""
+  echo "[pre-commit] $1 判定 rc=$2 —— 本次提交被阻止（fail-closed）。"
+  echo "[pre-commit] $3"
+  exit 1
+}
+
+"$PY" -X utf8 "$repo/scripts/check_redaction_consistency.py" --staged
+rc=$?
+[ "$rc" -eq 0 ] || block "答案明文" "$rc" "把新增行里的已知答案换成指纹（处置见上方报告）。"
+
+"$PY" "$repo/scripts/secret_guard.py" --allow-no-fingerprint
+rc=$?
+[ "$rc" -eq 0 ] || block "secret_guard" "$rc" "先按上方报告清理真实凭证；确属误报才允许 --no-verify 并留痕。"
+
+"$PY" "$repo/scripts/check_workflows_yaml.py"
+rc=$?
+[ "$rc" -eq 0 ] || block "workflow YAML" "$rc" "给含冒号的 name/run 值加引号；本机装 PyYAML 可获得完整校验。"
+
+exit 0

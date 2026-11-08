@@ -37,6 +37,32 @@ func TestTryTrithemiusNonAlphaPreserved(t *testing.T) {
 	}
 }
 
+// 假阳性钉子（2026-11-08 外部尺实测三副面孔）：位置移位会把整个文本一起移，
+// 任何含 `{` 的代码/散文都可能凑出一个 `XXX{...}` 形状。用真实形态做反例。
+func TestTryTrithemiusRejectsJunkCandidates(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+	}{
+		// 代码形态：标识符 + `{`，移位后的内层只有 4 字符（VNA{cjzg} / IAN{pwmt} 同源）
+		{"短内层代码巧合", "package main\nfunc main() { AA{bc} }\n"},
+		// 散文形态：整句被包进花括号（内层含空格/逗号/撇号）
+		{"整句被包裹", "some prose HTB{hello, world's ending}\n"},
+	}
+	for _, c := range cases {
+		if flags := tryTrithemius(c.text); len(flags) != 0 {
+			t.Errorf("%s：仍产出候选 %v（应被 trithemiusFlagLike 拦下）", c.name, flags)
+		}
+	}
+	// 反向：形态合格的候选必须仍被接受（别把门禁做成"什么都不认"）
+	if !trithemiusFlagLike("FlagExam{THE_QUICK_BROWN_FOX}") {
+		t.Fatal("形态合格的长内层候选被误拦——门禁过紧")
+	}
+	if trithemiusFlagLike("VNA{cjzg}") {
+		t.Fatal("4 字符内层的巧合候选未被拦下")
+	}
+}
+
 func containsStr(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

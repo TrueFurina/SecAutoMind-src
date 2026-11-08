@@ -460,6 +460,64 @@ LEDGER_REL = os.path.join("docs", "口径修复清单.md")
 LEDGER_STATUS_RE = re.compile(r"^当前门禁状态：\s*(PASS|FAIL)\s*$", re.MULTILINE)
 
 
+KNOWN_DRIFT_REL = os.path.join("data", "ctf_benchmark", "material_known_drift.json")
+
+
+def load_known_drift():
+    """读「已知且明确不修」的漂移登记，返回 (entries, issues)。缺文件=空表（合法）。
+
+    为什么必须有这份登记（而不是让门禁一直红或把官网移出扫描范围）：
+      - 用户 2026-11-08 明确裁定「官网不用动」，于是三处数字漂移**本轮不会被修**；
+      - 但永久红的门禁最终结局是被整段注释掉（AGENTS.md 第四条已经写过这个死法）；
+      - 悄悄把官网移出 SCAN_DIRS 更糟：那是**用判据躲开问题**，属于"看不见=没问题"。
+    所以折中是显式登记 + 双向钉死：
+      * 登记项必须在本轮真复现（file+label+数值全对上），否则「登记已过期」→ 红；
+      * 过期（expires）→ 红；
+      * 条数超上限 → 红（防止把台账写成万能豁免）。
+    必须字段齐全，缺一个就当没登记（fail-closed）。
+    """
+    path = os.path.join(ROOT, KNOWN_DRIFT_REL)
+    if not os.path.isfile(path):
+        return [], []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError) as e:
+        return [], ["%s 不是合法 JSON：%s（登记无法解析，fail-closed）"
+                    % (KNOWN_DRIFT_REL, e)]
+    ents = doc.get("entries")
+    if not isinstance(ents, list):
+        return [], ["%s 缺 entries 数组" % KNOWN_DRIFT_REL]
+    cap = doc.get("max_entries")
+    if not isinstance(cap, int) or cap <= 0:
+        return [], ["%s 缺 max_entries（正整数）—— 无上限的豁免等于没有判据"
+                    % KNOWN_DRIFT_REL]
+    issues = []
+    if len(ents) > cap:
+        issues.append("已知漂移登记 %d 条，超过上限 %d —— 台账正在变成万能豁免"
+                      % (len(ents), cap))
+    required = ("file", "label", "got", "reason", "owner", "expires", "decided_by")
+    ok_ents = []
+    for i, e in enumerate(ents, 1):
+        miss = [f for f in required if not e.get(f)]
+        if miss:
+            issues.append("已知漂移第 %d 条缺字段 %s（缺字段=没登记）" % (i, miss))
+            continue
+        try:
+            exp = datetime.strptime(str(e["expires"]), "%Y-%m-%d").date()
+        except ValueError:
+            issues.append("已知漂移第 %d 条 expires=%r 不是 YYYY-MM-DD"
+                          % (i, e["expires"]))
+            continue
+        if exp < today_cn():
+            issues.append("已知漂移第 %d 条（%s %s）已于 %s 过期 —— 到期必须重新裁定"
+                          "（过期条目比新增条目更危险：它看起来已经被批准过）"
+                          % (i, e["file"], e["label"], e["expires"]))
+            continue
+        ok_ents.append(e)
+    return ok_ents, issues
+
+
 def check_ledger(verdict):
     """`docs/口径修复清单.md` 若存在，其声明的门禁状态必须与本次一致。
 
@@ -593,6 +651,29 @@ def main():
             "  常见原因：目录名写错 / 目录被 .gitignore 排除 / SCAN_EXT 被改空。\n"
             "  门禁绝不把「没扫到」当成「没问题」放行。" % (SCAN_DIRS,))
 
+    # ── 已知且明确不修的漂移：逐条对上才放行，对不上/过期/超限都红 ──
+    # 匹配键是 (文件, 锚点名, 材料里的数值) 三元组，**不是**行号：
+    # 行号会随无关编辑漂移（与 dead_code_ledger 不用行号做键同一条教训）。
+    # 同一登记项可能命中多行（官网 146,571 出现在 181/225/311 三行），必须全部按这一项处理，
+    # 否则"只放过第一行、其余仍红"——那是最难察觉的半吊子豁免。
+    drift_entries, drift_issues = load_known_drift()
+    known_drift, kept_hits, matched_drift = [], [], set()
+    for h in anchor_hits:
+        hit_key = (h[0], h[2].split("（HTML 属性值）")[0], h[3])
+        for idx, e in enumerate(drift_entries):
+            if hit_key == (e["file"], e["label"], e["got"]):
+                known_drift.append((h[0], h[1], h[2], h[3], h[4], e))
+                matched_drift.add(idx)
+                break
+        else:
+            kept_hits.append(h)
+    for idx, e in enumerate(drift_entries):
+        if idx not in matched_drift:
+            drift_issues.append(
+                "登记项已不再复现：%s %s=%s —— 漂移已修或判据已改，"
+                "请从 %s 删除该条（过期台账会让判据对环境变化失明）"
+                % (e["file"], e["label"], e["got"], KNOWN_DRIFT_REL))
+
     print("=" * 70)
     print("材料口径门禁 · 真值来自 scripts/count_stats.py --json")
     print("  锚定 HEAD: %s" % truth.get("head"))
@@ -618,15 +699,29 @@ def main():
     else:
         print("  [PASS] 无已作废旧口径")
 
-    if anchor_hits:
-        print("  [FAIL] 材料数字与真值不符 %d 处：" % len(anchor_hits))
-        for fp, ln, label, got, want, txt in anchor_hits[:MAX_SHOW]:
+    if kept_hits:
+        print("  [FAIL] 材料数字与真值不符 %d 处：" % len(kept_hits))
+        for fp, ln, label, got, want, txt in kept_hits[:MAX_SHOW]:
             # 体积锚点是 1 位小数，计数字段是整数 —— 统一按「谁带小数按两位以内输出」
             fmt = "%g" if isinstance(got, float) or isinstance(want, float) else "%d"
             print(("    %s:%d  %s=" + fmt + "，真值=" + fmt) % (fp, ln, label, got, want))
             print("        %s" % txt)
+    elif known_drift:
+        print("  [PASS] 材料数字与真值一致（除下列已登记的已知漂移）")
     else:
         print("  [PASS] 材料数字与真值一致")
+
+    if known_drift:
+        print("  [已知漂移] %d 处按裁定**不修**（登记不掩盖：这些数字仍与真值不符，"
+              "禁止据其对外引用）：" % len(known_drift))
+        for fp, ln, label, got, want, e in known_drift[:MAX_SHOW]:
+            print("    %s:%d  %s=%s，真值=%s  裁定人=%s 到期=%s"
+                  % (fp, ln, label, got, want, e.get("decided_by"), e.get("expires")))
+            print("        理由：%s" % e.get("reason"))
+    if drift_issues:
+        print("  [FAIL] 已知漂移登记有问题 %d 处：" % len(drift_issues))
+        for x in drift_issues:
+            print("    " + x)
 
     if frozen_skipped:
         print("  [冻结] %d 个文件按用户令豁免校验（PPT 永久冻结，数字停在冻结基线）："
@@ -634,7 +729,7 @@ def main():
         for f in sorted(frozen_skipped):
             print("        %s" % f)
 
-    verdict = "FAIL" if (banned_hits or anchor_hits) else "PASS"
+    verdict = "FAIL" if (banned_hits or kept_hits or drift_issues) else "PASS"
     ledger_issues = check_ledger(verdict)
     if ledger_issues:
         print("  [FAIL] 口径修复清单状态与本次门禁不符 %d 处：" % len(ledger_issues))
@@ -644,9 +739,9 @@ def main():
         print("  [PASS] 口径修复清单状态与本次门禁一致（或未提供该可选件）")
 
     print("=" * 70)
-    if banned_hits or anchor_hits or ledger_issues:
-        print("  结论：FAIL —— 口径漂移（或清单过期），禁止合入/打包。")
-        if anchor_hits and not banned_hits:
+    if banned_hits or kept_hits or drift_issues or ledger_issues:
+        print("  结论：FAIL —— 口径漂移（或清单/登记过期），禁止合入/打包。")
+        if kept_hits and not banned_hits:
             # 锚点漂移是**纯机械**的：数字本来就该等于 count_stats 真值。
             # 与其让人肉 grep 11 处，不如给一条可执行的修复命令（修复器复用本门禁的
             # ANCHORS 表，判定口径与这里逐字相同，不存在"两套规则"）。

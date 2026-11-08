@@ -24,6 +24,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import shutil
 import sys
@@ -78,10 +79,13 @@ CLEAN_DOC = """# 规模一览
 """
 
 
-def run_gate(ve_files, scan_dirs=("docs",), truth=None, extra_root_files=None):
+def run_gate(ve_files, scan_dirs=("docs",), truth=None, extra_root_files=None,
+             drift=None):
     """在临时仓库里跑门禁，返回 (rc_or_SystemExit_code, 输出)。
 
     ve_files: {相对 docs/ 的文件名: 内容}。scan_dirs 里的目录若写入 None 表示不创建。
+    drift: 已知漂移台账内容（dict，落到 data/ctf_benchmark/material_known_drift.json）；
+           None 表示不创建该文件（= 空台账，与真实仓库缺文件同义）。
     """
     tmp = tempfile.mkdtemp(prefix="cmn_probe_")
     try:
@@ -96,6 +100,11 @@ def run_gate(ve_files, scan_dirs=("docs",), truth=None, extra_root_files=None):
         for name, text in (extra_root_files or {}).items():
             with open(os.path.join(tmp, name), "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(text)
+        if drift is not None:
+            p = os.path.join(tmp, "data", "ctf_benchmark", "material_known_drift.json")
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(drift, fh, ensure_ascii=False)
         cm = load_gate()
         cm.ROOT = tmp
         cm.SCAN_DIRS = list(d for d in scan_dirs if d is not None)
@@ -370,16 +379,53 @@ def main():
         failures.append("普通文档的漂移没被判红（rc=%s）——冻结豁免被写成了全局放行，"
                         "门禁等于失效" % rc_normal)
 
+    # ---- 26..28. 已知漂移台账（2026-11-08 新增机制）双向钉 ----
+    # 背景：用户裁定「官网不动」后，官网的三处真漂移会永久红。既不能一直红（会被注释掉），
+    # 也不能偷偷从 SCAN_DIRS 移除（那是用判据躲开问题）。故引入"登记 + 双向钉死"，
+    # 下面三条分别证明：对上=放行、过期=红、不再复现=红。
+    drift_doc = "非测试代码行数 111,933 行\n"   # 111,933 是在 BANNED 里的旧口径，换一个纯锚点漂移
+    drift_doc = "非测试代码行数 129,000 行\n"   # 夹具真值 non_test_lines=129955
+    base_entry = {
+        "file": "docs/scale.md", "label": "非测试代码行数", "got": 129000,
+        "reason": "夹具：用户裁定本轮不修", "owner": "agent",
+        "decided_by": "user", "decided_on": "2026-11-08", "expires": "2099-01-01",
+    }
+    drift = {"schema": 1, "owner": "agent", "max_entries": 8, "entries": [base_entry]}
+
+    print("\n[26/28] 已知漂移：登记项对上 → 放行（否则永久红会被注释掉）")
+    rc, out = run_gate({"docs/scale.md": drift_doc}, drift=drift)
+    ok = (rc == 0 and "已知漂移" in out)
+    print("  %s 返回 %s（期望 0 且输出含「已知漂移」）" % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("登记项对上却仍判红（rc=%s）——机制没生效或输出没显式报出" % rc)
+
+    print("\n[27/28] 已知漂移过期 → 必须判红（过期条目比新增条目更危险）")
+    expired = dict(base_entry, expires="2020-01-01")
+    rc, out = run_gate({"docs/scale.md": drift_doc},
+                       drift={"schema": 1, "max_entries": 8, "entries": [expired]})
+    ok = (rc == 1 and "过期" in out)
+    print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("过期登记项仍放行（rc=%s）——台账变成了终身豁免" % rc)
+
+    print("\n[28/28] 登记项不再复现 → 必须判红（过期台账会让判据对环境变化失明）")
+    rc, out = run_gate({"docs/other.md": "142 运行时工具\n"},
+                       drift={"schema": 1, "max_entries": 8, "entries": [base_entry]})
+    ok = (rc == 1 and "已不再复现" in out)
+    print("  %s 返回 %s（期望 1）" % ("PASS" if ok else "FAIL", rc))
+    if not ok:
+        failures.append("悬空登记项没被判红（rc=%s）——漂移修好后台账仍留着白条" % rc)
+
     print("\n" + "=" * 66)
     if failures:
         print("FAIL —— %d 项不达标：" % len(failures))
         for f in failures:
             print("  - " + f)
         return 1
-    print("PASS —— check_material_numbers 门禁 25/25 用例通过"
+    print("PASS —— check_material_numbers 门禁 28/28 用例通过"
           "（零覆盖 fail-closed + 恒红防护 + 豁免机制未退化 + 清单过期双向钉死 + "
           "体积/cgo 断言双向钉 + 预解组件/N-N 测试包双向钉 + 比例语义防误伤 + 26/26 双语义 + "
-          "PPT 冻结豁免与其边界变异）。")
+          "PPT 冻结豁免与其边界变异 + 已知漂移台账三向钉（对上放行/过期红/悬空红）。")
     return 0
 
 

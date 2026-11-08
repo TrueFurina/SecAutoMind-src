@@ -302,15 +302,18 @@ func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
 		externalIDs[id] = true
 	}
 	kpiFiles, _ := filepath.Glob(filepath.Join("..", "..", "data", "ctf_benchmark", "*.json"))
-	// 🔴 2026-11-08 范围收窄：data/ctf_benchmark/ 混放「真 KPI 基准」与「非基准产物」
-	// （pure-LLM 评测集 purellm_*、明文泄露审计台账 history_exposure.json）。后者合法引用
-	// 外部尺题号（作为评测目标 / 审计对象），并非把外部题搬进 KPI 分母；原 glob 把它们当
-	// KPI 查属误报。本钉子的保护意图是「外部题不得污染 KPI 分母」，故剔除这两类非基准文件，
-	// 仍逐题核对真基准文件（benchmark.json / real_benchmark.json / 各 *_benchmark.json / 台账类）。
+	// 🔴 2026-11-08 又一次自伤（同一个钉子内）：上一版把 `purellm_*` 一律排除，
+	// 理由是"那是评测集不是 KPI 基准"。但实测 `data/ctf_benchmark/purellm_clean_benchmark.json`
+	// / `purellm_clean_benchmark_v2.json`（都已入仓、denominator=160、按 pool 分池）**正是**
+	// 外部题被登记的地方（40 题里 39 题以 pool=external 登记在这两份里）。排除它们之后，
+	// 判据看到的语料里一条外部题都没有，于是打印「0 题混入、0 题登记」——把"看不见"当成了
+	// "干净"。判据把该看的东西关在门外，比没有判据更危险。
+	// 现在只排除**审计台账**（记录"过去暴露过什么"，不是判分语料），其余逐份核对。
 	filtered := make([]string, 0, len(kpiFiles))
+	auditLedgers := 0
 	for _, f := range kpiFiles {
-		base := filepath.Base(f)
-		if strings.HasPrefix(base, "purellm_") || base == "history_exposure.json" {
+		if filepath.Base(f) == "history_exposure.json" {
+			auditLedgers++
 			continue
 		}
 		filtered = append(filtered, f)
@@ -356,9 +359,19 @@ func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
 		}
 		checked++
 	}
+	// fail-closed：语料里一条外部题的可判分条目都看不见 ⇒ 判据与语料形态脱钩，
+	// 这时 PASS 只证明"我什么都没看见"，不证明"没混入"（AGENTS.md 第零类假绿）。
+	if len(labelled) == 0 {
+		t.Fatalf("外部尺 %d 题在 %d 个 KPI 语料文件里**一条可判分条目都没找到**——"+
+			"判据（collectJudgeableEntries 认的 {id, flag_sha256, pool} 形态）与语料已经脱钩，"+
+			"此时 PASS 只表示看不见，不表示没混入（fail-closed）",
+			len(externalIDs), checked)
+	}
 	if violations == 0 {
-		t.Logf("已核对 %d 个 KPI 语料文件：外部尺 %d 题中 %d 题以外部池显式登记"+
-			"（不计能力分母），0 题被改标为自产池", checked, len(externalIDs), len(labelled))
+		t.Logf("已核对 %d 个 KPI 语料文件（另跳过 %d 份审计台账）：外部尺 %d 题中 %d 题以外部池"+
+			"显式登记（不计能力分母），%d 题未出现在语料中（未登记不构成污染），0 题被改标为自产池",
+			checked, auditLedgers, len(externalIDs), len(labelled),
+			len(externalIDs)-len(labelled))
 	}
 }
 

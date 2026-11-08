@@ -1175,6 +1175,27 @@ jobs:
       - name: Artifact injection guard (incl. mutation checks)
         run: python scripts/test_artifact_inject.py
 
+  # 提交闸口「装完即生效」断言（2026-11-08 接入）。
+  # 背景：钩子入库 ≠ 钩子生效 —— `.git/hooks/` 不受版本控制，core.hooksPath 也是仓库级配置，
+  # 任何新克隆（包括公开仓的读者、CI 机器、并行工作树）默认**没有任何拦截**。
+  # 此前本仓钩子只存在于某台机器的 .git/hooks/ 里，等于对所有人不设防而自己以为设了。
+  # 本 job 在**临时克隆**里做变异验证：钩子改成 exit 1 后真 commit 必须失败（证明 git 真在调用它），
+  # 还原后正常提交必须成功（证明不误拦），并断言钩子本体含三道检查（防止合并时漏一条）。
+  hook-armed-gate:
+    name: Commit hook armed (mutation-verified)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # hook_armed_test.py 用 git clone 临时库，需完整历史
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install hooks then prove a commit is actually blocked
+        run: |
+          python scripts/install_git_hooks.py
+          python scripts/hook_armed_test.py
+
   # CTF-Agent 全量 pytest 门禁（2026-10-31 接入）。
   # 背景：pytest.ini 早已定义正式口径 `-m "not slow and not local"`，scripts/_ci_local.sh
   # 也实现了它，但**从未接进 CI** —— 2212 个用例长期靠人记得跑（属于「写好却没接线」，
