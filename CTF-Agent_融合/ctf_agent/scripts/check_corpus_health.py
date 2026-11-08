@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -81,8 +82,32 @@ def benchmark_ok() -> tuple[bool, str]:
     return ok, ("；".join(problems[:3]) if problems else "OK")
 
 
+def pool_in_vcs(pool: str) -> "bool | None":
+    """该池是否有文件被 git 跟踪。None = 无法判定（git 不可用/不在工作树）。
+
+    🔴 为什么「池消失」要先问这个（2026-11-08 服务器实证）：
+      基线里 `questions_ext_A_20261001 = 11 题`、`questions_real_kpi9 = 0 题` 这类池，
+      **一个文件都没入库**（`git ls-files` 为 0），它们只存在于记录基线的那台机器上。
+      于是任何克隆/服务器上跑健康门禁都会得到「池消失（曾有 11 题）」并阻断 ——
+      而这句话把「你机器上有一份私有副本」读成「题目被人删了」。
+      与 `payload_not_in_vcs` 同一条原则：**不由仓库复现的东西，不能进跨机比较**。
+
+      判据顺序很重要：先问 git 有没有跟踪，再决定这是回归还是「本机私有池」。
+      git 不可用时返回 None ⇒ 仍按回归处理（fail-closed，不拿"不知道"当"没问题"）。
+    """
+    try:
+        r = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--", f"data/{pool}"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    return bool((r.stdout or "").strip())
+
+
 def compare(cur: dict, base: dict) -> dict:
-    regressions, improvements = [], []
+    regressions, improvements, local_only = [], [], []
     for pool, c in cur.items():
         b = base.get(pool)
         if b is None:
@@ -100,8 +125,17 @@ def compare(cur: dict, base: dict) -> dict:
             # 「曾有 0 题」在语义上不可能丢失任何题目。
             if base[pool].get("total", 0) <= 0:
                 continue
+            # 🔴 2026-11-08 补充：0 题的池不是唯一一种「本机私有池」。
+            # `questions_ext_A_20261001` 基线 11 题、`git ls-files` 为 0 ⇒ 任何克隆都没有它，
+            # 报「池消失」等于把「你有私有副本」读成「题目被删」。先问 git 再定性。
+            if pool_in_vcs(pool) is False:
+                local_only.append(
+                    f"{pool}: 不在版本库（基线 {base[pool]['total']} 题来自某台机器的私有副本，"
+                    f"任何克隆都没有它；不参与跨机比较）")
+                continue
             regressions.append(f"{pool}: 池消失（曾有 {base[pool]['total']} 题）")
-    return {"regressions": regressions, "improvements": improvements}
+    return {"regressions": regressions, "improvements": improvements,
+            "local_only_pools": local_only}
 
 
 def apply_audit_errors(diff: dict, audit_errors: dict) -> dict:
@@ -214,6 +248,8 @@ def main() -> int:
         print(f"[health] 正式基准校验: {'通过' if bench_ok else '失败'}（{bench_msg}）")
         for r in diff["regressions"]:
             print("  ❌ 回归:", r)
+        for r in diff.get("local_only_pools", []):
+            print("  ℹ️  本机私有池（不参与跨机比较）:", r)
         if loss_msgs and not args.strict_loss:
             for w in loss_msgs:
                 print("  ⚠️  数据丢失（默认不阻断；--strict-loss 可阻断）:", w)

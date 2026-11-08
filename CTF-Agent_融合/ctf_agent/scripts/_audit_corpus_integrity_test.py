@@ -118,6 +118,48 @@ def main() -> int:
                   "attachments": ["att_a\\enigma", "att_a\\messages\\flag.ciphertext.txt"]}
             got = missing_attachments(q4, qpath, tmp, tmp)
             results.append(("windows_backslash_etoe", got == [], f"expect=[] got={got}"))
+
+        # ⑧ `check-ignore` 的返回值语义：**否定规则命中也是 rc=0**。
+        #    2026-11-08 实测：`data/questions_real/**` 被 `!data/questions_real/**` 重新放行，
+        #    但 `git check-ignore` 仍返回 0（因为它确实匹配到了一条规则）⇒ 若按 rc 判，
+        #    93 道题的附件会**全部**被当成"被忽略"。只用不带 -v 的 stdout 才是"真被忽略"。
+        #    变异验证：改回 `rc==0 → 全判忽略`，本用例立刻红（两个都进集合）。
+        try:
+            import scripts._audit_corpus_integrity as _aci
+            probe = _aci.vcs_ignored_paths(
+                ["data/questions_real/_attachments/reverse/real_reverse_upx/helloupx11",
+                 "data/questions_real/_attachments/misc/real_misc_vnctf_vnloan/flag.txt"],
+                [CTF_ROOT])
+            want = {"data/questions_real/_attachments/reverse/real_reverse_upx/helloupx11"}
+            results.append(("check_ignore_negation_not_ignored", probe == want,
+                            f"expect={sorted(want)} got={sorted(probe) if probe else probe}"))
+        except OSError:
+            results.append(("check_ignore_negation_not_ignored", True, "SKIP 无 git"))
+
+        # ⑨ 池整体不在版本库时，**不得**把整池题目判成"附件不在库"
+        #    （`data/*` 目录级规则会让池里每条路径都命中忽略；实测把 A 池 11 题打成坏题）。
+        #    ⚠️ 必须自建一个 git 仓库再放池子：放系统 temp 里 git 根本回答不了
+        #    （`rev-parse --show-toplevel` 失败 ⇒ vcs_check=unavailable），
+        #    那样测的是"没仓库"，不是"池未入库"——第一版就写成这样，红的是用例不是代码。
+        import subprocess as _sp
+        repo = tmp / "repo_untracked_pool"
+        (repo / "data" / "questions_syn" / "q1").mkdir(parents=True)
+        (repo / "data" / "questions_syn" / "q1" / "a.txt").write_text("x", encoding="utf-8")
+        (repo / "data" / "questions_syn" / "q1.json").write_text(
+            json.dumps({"id": "q1", "attachments": ["q1/a.txt"],
+                              "flag_sha256": "a" * 64}), encoding="utf-8")
+        (repo / ".gitignore").write_text("data/*\n", encoding="utf-8")
+        _sp.run(["git", "init", "-q", str(repo)], check=False,
+                capture_output=True, timeout=60)
+        rep = _aci.audit(repo / "data" / "questions_syn", repo)
+        results.append(("untracked_pool_not_flagged",
+                        rep["vcs_check"] == "pool_not_tracked"
+                        and rep["by_level"].get("ok") == 1,
+                        f"vcs_check={rep['vcs_check']} levels={rep['by_level']}"))
+        # ⑨b 反向：已入库的池必须是 True（否则上一条的"False"根本没意义）
+        results.append(("tracked_pool_detected",
+                        _aci.pool_is_tracked(CTF_ROOT / "data" / "questions_real") is True,
+                        f"got={_aci.pool_is_tracked(CTF_ROOT / 'data' / 'questions_real')}"))
     finally:
         # 清理失败不得影响判定结果：某些运行环境（本仓库 agent 沙箱）会注入审计钩子，
         # 在 shutil.rmtree 上抛 PermissionError，**即使传了 ignore_errors=True**
