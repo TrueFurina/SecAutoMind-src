@@ -67,7 +67,6 @@ var systemPrefixes = []string{
 // pathFence 判定一段代码是否越出了允许的工作区。
 type pathFence struct {
 	allowed []string // 已 Clean 的绝对目录前缀
-	deny    []string // 即使落在 allowed 内也一律拒绝的**敏感片段**（答案文件/密钥/版本库）
 	enabled bool
 }
 

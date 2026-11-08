@@ -371,51 +371,6 @@ func (h *NotificationHandler) loadC2SessionOnlineEvents(sinceMs int64, limit int
 	return items, len(items), nil
 }
 
-func (h *NotificationHandler) loadFailedExecutionItems(sinceMs int64, limit int, english bool) ([]NotificationSummaryItem, int, error) {
-	sinceSec := normalizedSinceSec(sinceMs)
-	rows, err := h.db.Query(`
-		SELECT
-			id,
-			tool_name,
-			COALESCE(CAST(strftime('%s', start_time) AS INTEGER), 0)
-		FROM tool_executions
-		WHERE status = 'failed'
-		  AND CAST(strftime('%s', start_time) AS INTEGER) > ?
-		ORDER BY start_time DESC
-		LIMIT ?
-	`, sinceSec, limit)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-	items := make([]NotificationSummaryItem, 0, limit)
-	count := 0
-	for rows.Next() {
-		var id, toolName string
-		var startSec int64
-		if err := rows.Scan(&id, &toolName, &startSec); err != nil {
-			continue
-		}
-		count++
-		if strings.TrimSpace(toolName) == "" {
-			toolName = i18nText(english, "未知工具", "unknown")
-		}
-		items = append(items, NotificationSummaryItem{
-			ID:          "exec_failed:" + id,
-			Level:       "p0",
-			Type:        "task_failed",
-			Title:       i18nText(english, "任务执行失败", "Task Execution Failed"),
-			Desc:        i18nText(english, "工具 "+toolName+" 执行失败", "Tool "+toolName+" execution failed"),
-			Ts:          unixSecToRFC3339(startSec),
-			Count:       1,
-			Actionable:  false,
-			Read:        false,
-			ExecutionID: id,
-		})
-	}
-	return items, count, nil
-}
-
 func (h *NotificationHandler) summarizeLongRunningTasks(threshold time.Duration, english bool, access database.RBACListAccess) ([]NotificationSummaryItem, int) {
 	if h.agentHandler == nil || h.agentHandler.tasks == nil {
 		return nil, 0

@@ -22,16 +22,6 @@ import (
 	"strings"
 )
 
-// halfPrimeCandidate 一题的输入材料。
-type halfPrimeCandidate struct {
-	n      *big.Int
-	ctHex  string
-	pKnown map[int]int // 十进制低位索引 → 数字（Lp-1-2i）
-	qKnown map[int]int
-}
-
-var halfPrimeNumRe = regexp.MustCompile(`(?m)^\s*(?:n|ct|p|q)\s*=\s*([0-9a-fx]+)`)
-
 // tryHalfPrimeOAEP 从题面文本识别 n/ct/p 半串/q 半串并尝试恢复+解密。
 // 成功返回 flag 候选（经 scanFlags 过滤）。
 func tryHalfPrimeOAEP(text string) []string {

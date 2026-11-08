@@ -922,16 +922,6 @@
       "reviewed_by": "张敏杰"
     },
     {
-      "key": "internal/handler/notification.go::(*NotificationHandler).loadFailedExecutionItems",
-      "file": "internal/handler/notification.go",
-      "symbol": "(*NotificationHandler).loadFailedExecutionItems",
-      "auto_class": "dead_root",
-      "verdict": "investigate",
-      "reason": "handler 内旧入口：多为重构后遗留的第二套实现（如 loadExecutions vs loadExecutionsWithPagination、finalizeAgentRunForDelivery 系列）。文档里仍有引用（docs/zh-CN/agent-finalization-best-practices.md），需确认「删入口」还是「把调用方切过来」。",
-      "reviewed_on": "2026-10-22",
-      "reviewed_by": "张敏杰"
-    },
-    {
       "key": "internal/handler/robot.go::(*RobotHandler).sendWecomReply",
       "file": "internal/handler/robot.go",
       "symbol": "(*RobotHandler).sendWecomReply",
