@@ -1,0 +1,14 @@
+{
+  "report": "ctf_agent/heldout_evidence/benchmark_report_clean2_20260922_deepseek.json",
+  "as_of": "2026-11-08",
+  "owner": "agent",
+  "expires": "2027-11-04",
+  "newly_verifiable_ids": [
+    "real_anxun2020_BeCare4",
+    "real_anxun2020_depressed",
+    "real_anxun2020_easyzip",
+    "real_anxun2020_love_letter"
+  ],
+  "cause": "这 4 道安洵杯2020真题原先只把明文 flag 写在题面 JSON 里、没有 flag_sha256，在 select_candidates(require_sha256=True) 下被判「不可验证」而排除在能力分母之外。2026-11-08 按 R9 脱敏把题面明文改成 flag=None + flag_sha256（判分真值不变，Question.expected_sha256 与基准逐条一致 8/8），它们从此可验证 → 进入能力分母。同一口径下 real_crypto_dnui_keyboard 因 desc_leak 被剔除。故 当前分母 = 历史报告池数 - desc_leak题数 + 本清单可验证题数；历史 clean2 报告未重测，本清单就是这段差异的逐题凭据。",
+  "how_to_clear": "重跑 held-out 实测并产出新报告后，删除本文件与相关引用。"
+}

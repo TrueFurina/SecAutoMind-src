@@ -5,7 +5,8 @@
   "category": "misc",
   "title": "安洵杯2020 MISC BeCare4（零宽隐写+SilentEye）",
   "description": "npmtxt 含零宽度字符隐写，解出压缩包密码 RealV1siBle，解 flag.7z 得图片，SilentEye 解码得 flag。二进制原题见官方仓库。",
-  "flag": "D0g3{1nV1sible_flag_Can_You_find?!}",
+  "flag": null,
+  "flag_sha256": "cc52e2806a885fb89d542ea9dd04a4e6cea5960f503d0a4984da2d79ca2dcffa",
   "flag_pattern": "D0g3\\{[^}]+\\}",
   "attachments": ["data/questions_real/_attachments/anxun2020/misc/BeCare4.md"],
   "difficulty": "MEDIUM"

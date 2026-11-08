@@ -291,8 +291,14 @@ def test_heldout_pool_matches_machine_denominator():
     desc_leak 的 real_crypto_dnui_keyboard（题面自带答案，读描述即得、非自主推理），
     而严格能力分母已将其剔除。故报告 pool_total 与分母可合法分歧——但分歧量必须恰好等于
     报告结果中的 desc_leak 题数，且 canonical 声明须显式说明该剔除（防静默漂移）。
+
+    2026-11-08 口径补强（脱敏 R9 的连带）：4 道 anxun2020 真题原先把明文 flag 写在题面
+    JSON、无 flag_sha256，被 select_candidates(require_sha256=True) 判不可验证而排除在分母外；
+    按 R9 把题面明文改成 flag=None + flag_sha256 后它们变成可测题 → 分母 2→5。
+    这段差异必须是**逐题清单**（data/ctf_benchmark/heldout_pool_delta.json，含 owner/到期日），
+    而不是一个手写数字；清单里每题还要在当前候选池里真实存在（防陈旧凭据）。
     """
-    from scripts.benchmark_heldout import desc_leak_ids
+    from scripts.benchmark_heldout import desc_leak_ids, select_candidates
     from scripts._kpi_canonical import _HELDOUT_CLEAN_REPORT
     st = heldout_status()
     denom = count_heldout_candidates()
@@ -303,13 +309,28 @@ def test_heldout_pool_matches_machine_denominator():
     report = json.loads(Path(_HELDOUT_CLEAN_REPORT).read_text(encoding="utf-8"))
     dl = desc_leak_ids()
     n_dl_in_report = sum(1 for r in report.get("results", []) if r.get("question_id") in dl)
-    assert diff == n_dl_in_report, (
-        f"报告池数 {st['pool_total']} 与能力分母 {denom} 的分歧({diff}) "
-        f"≠ 报告结果中的 desc_leak 题数({n_dl_in_report})——存在未解释的口径漂移")
+    delta_path = Path(__file__).resolve().parents[3] / "data/ctf_benchmark/heldout_pool_delta.json"
+    declared = []
+    if delta_path.is_file():
+        doc = json.loads(delta_path.read_text(encoding="utf-8"))
+        declared = [str(i) for i in doc.get("newly_verifiable_ids", [])]
+        assert doc.get("owner") and doc.get("expires"), (
+            f"{delta_path.name} 缺少 owner/expires——差异凭据必须有人负责、有到期日")
+        cand, _ = select_candidates()
+        now_ids = {str(c.get("id") or c.get("question_id")) for c in cand}
+        stale = [i for i in declared if i not in now_ids]
+        assert stale == [], (
+            f"{delta_path.name} 登记的题已不在候选池：{stale}——凭据过期须重测或删除")
+    expected = st["pool_total"] - n_dl_in_report + len(declared)
+    assert denom == expected, (
+        f"报告池数 {st['pool_total']} − desc_leak {n_dl_in_report} + 已登记可验证题 "
+        f"{len(declared)} = {expected}，但能力分母是 {denom}——存在未登记的口径漂移"
+        f"（分歧 {diff}；新增可验证题只能逐题登记在 {delta_path.name}）")
     stmt = canonical_kpi()["statement"]
     assert "desc_leak" in stmt, "desc_leak 剔除未在 canonical 声明中说明（静默漂移）"
     print(f"✓ test_heldout_pool_matches_machine_denominator (pool={st['pool_total']} "
-          f"含 {n_dl_in_report} 道 desc_leak → 分母 {denom}，分歧已解释)")
+          f"含 {n_dl_in_report} 道 desc_leak、另 {len(declared)} 道已登记可验证题 → "
+          f"分母 {denom})")
 
 
 def test_summarize_benchmark_report_follows_input():

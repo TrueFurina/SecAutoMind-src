@@ -35,7 +35,10 @@ for b in pad:
     img[r*8:(r+1)*8, c*8:(c+1)*8] = block_to_pixels(b[5], b[6])
 strip = np.rot90(img, 1)
 
-FLAG = "CTF{rearview-monorail-mullets-backroom-stopped}"
+import os  # noqa: E402
+FLAG = os.environ.get("PAPAPAPA_FLAG", "")  # 逐字符对齐要用真值：不入仓，走环境变量
+if not FLAG:
+    raise SystemExit("需要真 flag 才能逐字符对齐：先设 PAPAPAPA_FLAG 环境变量")
 THR = 200
 mask = strip < THR
 col_ink = mask.any(axis=0)
