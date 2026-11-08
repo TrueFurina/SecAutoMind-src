@@ -65,6 +65,30 @@ def test_missing_returns_none_not_fake_path(monkeypatch, tmp_path):
     assert got is None, f"未找到时必须返回 None，实际 {got!r}"
 
 
+def test_user_level_local_bin_is_searched(monkeypatch, tmp_path):
+    """用户级 `~/.local/bin/<tool>` 必须被找到（无 root 时的标准安装落点）。
+
+    2026-11-08 服务器实证：非交互 ssh 的 PATH 里没有 `~/.local/bin`
+    （实测 `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`），
+    tesseract 明明装在 `~/.local/bin/tesseract`（→ conda env），`shutil.which`
+    仍恒失败 ⇒ 报「未找到」，OCR 能力被误判为不存在。假"缺能力"和真缺一样贵。
+
+    变异验证：删掉 find_tool 里 POSIX 的 `~/.local/bin` 分支，本用例立刻红。
+    """
+    if os.name == "nt":
+        return  # POSIX 专属约定（Windows 走 _USER_LEVEL_NT）
+    home = tmp_path / "home"
+    bindir = home / ".local" / "bin"
+    bindir.mkdir(parents=True)
+    exe = _make_exe(bindir / "bkcrack")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("PATH", "")
+    for k in ("BKCRACK", "BKCRACK_BIN", "BKRACK_BIN"):
+        monkeypatch.delenv(k, raising=False)
+    got = find_tool("bkcrack")
+    assert got == exe, f"~/.local/bin 未被搜索: {got!r}"
+
+
 def test_missing_message_says_where_it_looked(monkeypatch):
     """缺失话术必须列出查过的地方（env / PATH / 平台位置），而非只报一个路径。"""
     msg = describe_missing("bkcrack")

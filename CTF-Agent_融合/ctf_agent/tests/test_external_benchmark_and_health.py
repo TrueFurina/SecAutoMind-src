@@ -140,10 +140,25 @@ class TestHealthBaselineGate(unittest.TestCase):
         self.assertEqual(len(health.compare(better, base)["improvements"]), 1)
 
     def test_disappeared_pool_is_regression(self):
-        base = {"p1": {"total": 3, "ok": 3, "leaky": 0, "broken": 0},
-                "p2": {"total": 5, "ok": 5, "leaky": 0, "broken": 0}}
-        cur = {"p1": base["p1"]}
-        self.assertTrue(any("p2" in r for r in health.compare(cur, base)["regressions"]))
+        """池消失的判据分两种（2026-11-08 口径修正）：
+
+        ① **已入库的池**消失 ⇒ 回归（有人删了题）。用真的入过库的 `questions_ext`
+           当例子 —— 旧写法用虚构名 `p2`，它本来就不在 git 里，测不出这条契约。
+        ② **从没入库的池**消失 ⇒ 不是回归，只进 `local_only_pools`。
+           实证：`questions_ext_A_20261001` 基线 11 题、`git ls-files` 为 0，
+           任何克隆都没有它；旧判据把它读成「题目被删」并阻断门禁。
+        """
+        base = {"questions_ext": {"total": 37, "ok": 33, "leaky": 0, "broken": 4}}
+        d = health.compare({}, base)
+        self.assertTrue(any("questions_ext" in r for r in d["regressions"]), d)
+        self.assertEqual(d["local_only_pools"], [], "入库的池不该走 local_only 分支")
+
+        base2 = {"questions_zzz_never_in_vcs":
+                 {"total": 11, "ok": 11, "leaky": 0, "broken": 0}}
+        d2 = health.compare({}, base2)
+        self.assertEqual(d2["regressions"], [], d2)
+        self.assertTrue(any("questions_zzz_never_in_vcs" in r
+                            for r in d2["local_only_pools"]), d2)
 
     def test_baseline_file_exists_and_covers_tracked_pools(self):
         b = ROOT / "benchmarks" / "corpus_health_baseline.json"

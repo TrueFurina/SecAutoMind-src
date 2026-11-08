@@ -122,10 +122,21 @@ def find_tool(name: str, extra: Optional[list] = None) -> Optional[str]:
         if os.path.isfile(p):
             return p
 
-    # ⑤ Windows 用户级安装（~ 推导）
+    # ⑤ 用户级安装（~ 推导）
+    home = os.path.expanduser("~")
     if plat == "nt":
-        home = os.path.expanduser("~")
         for rel in _USER_LEVEL_NT.get(key, []):
+            p = os.path.join(home, rel)
+            if os.path.isfile(p):
+                return p
+    else:
+        # 🔴 POSIX 的 `~/.local/bin`（XDG 约定）：无 root 时的标准落点——官方安装脚本、
+        # pip --user、以及 `conda create -p ~/xxx` 后的手工软链都放这里。
+        # 2026-11-08 服务器实证：非交互 ssh 的 PATH 里**没有** `~/.local/bin`
+        # （实测只有 /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin），
+        # 于是 `shutil.which` 恒失败、tesseract 装了也报「未找到」。
+        for rel in (os.path.join(".local", "bin", key),
+                    os.path.join("bin", key)):
             p = os.path.join(home, rel)
             if os.path.isfile(p):
                 return p
