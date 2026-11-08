@@ -2,7 +2,20 @@
 name = "ctf-agent"
 version = "0.1.0"
 description = "西湖论剑 AI-Agent 自动解 CTF 系统（1主1监架构，解出率优先）"
-requires-python = ">=3.13"
+# 原写 ">=3.13"，但唯一实际跑题的环境是服务器 172.16.222.99 的 /usr/bin/python3
+# = 3.12.13（2026-11-08 实测）；CI 也从未测过 3.12。声明高于生产 ⇒ 部署机按
+# 声明判断会认为服务器「不合规」，而服务器正是跑出所有历史数字的那台。
+# 放宽前先验证了 3.12 真实可用（不是猜）：
+#   ① 语法：ctf_agent 全树 710 个 .py 用 3.12 ast.parse，709 通过，唯一失败是
+#      赛题附件 data/questions_external/.../_attachments/chal.py（Python 2 脚本，
+#      非项目代码）；
+#   ② API：3.13 专属（typing.override / itertools.batched / copy.replace /
+#      Path.full_match / typing.ReadOnly / typing.TypeIs / warnings.deprecated）
+#      全仓零使用；
+#   ③ 实跑：3.12.13 下默认门禁 2156 passed（那批代码落后 HEAD 37 个 commit，
+#      见 docs/evidence/跑批副本落后37commit_与依赖缺失_20261108.md）。
+# 下限如果将来被误用到 3.13 特性，CI 的 3.12 腿会红 —— 这是保留 3.12 腿的理由。
+requires-python = ">=3.12"
 dependencies = [
     # 核心异步/HTTP
     "aiohttp>=3.9",
@@ -27,6 +40,11 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-timeout>=2.2",
+    # tests/test_pcap_probe.py 有 6 个 async 用例。缺这个插件时它们不是 skip 而是
+    # **FAILED**（"async def functions are not natively supported"），而 dev extra
+    # 原本只列了 pytest + pytest-timeout ⇒ 按 pyproject 装依赖的人拿不到绿门禁。
+    # 2026-11-08 服务器实证：装齐前 6 failed，装上后 35 passed。
+    "pytest-asyncio>=0.23",
 ]
 # 可选：本地 OCR（tesseract 需系统级安装，未装则视觉兜底走 LLM）
 vision = [

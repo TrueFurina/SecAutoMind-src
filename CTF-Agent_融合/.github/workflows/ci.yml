@@ -12,10 +12,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 dropped: ctf_agent/pyproject.toml declares requires-python >= 3.13 and
-        # the pinned numpy (2.5.2) itself requires >= 3.12 (no cp311 wheel exists),
-        # so the 3.11 leg could only ever fail once the numpy dep was honoured.
-        python-version: ["3.13"]
+        # 3.11 dropped: numpy (2.5.2) needs >= 3.12, so a 3.11 leg could only ever
+        # fail once the numpy dep was honoured.
+        # 3.12 added (2026-11-08): pyproject used to declare >= 3.13, but the only
+        # machine that actually runs the agent is the 3.12.13 server — CI was testing
+        # a version nobody runs. requires-python lowered to >= 3.12 after verifying
+        # syntax (709/710 files parse under 3.12; the one failure is a Py2 challenge
+        # attachment) and zero use of 3.13-only APIs. Keep the 3.13 leg as the
+        # forward-looking one.
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 

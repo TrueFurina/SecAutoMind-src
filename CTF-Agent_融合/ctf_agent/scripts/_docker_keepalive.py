@@ -67,7 +67,10 @@ class KeepAlive(threading.Thread):
         #   · 3.12.3（服务器）→ 本文件 6 条用例全红，正是该 TypeError；
         #   · 3.13.14（本机）  → 12 条全绿，因为 3.13 移除了 `_wait_for_tstate_lock`，
         #     不再内部调用 `self._stop()` —— 于是这个 bug 被**版本差异静默掩盖**。
-        # pyproject 声明 requires-python >=3.13，但服务器/CI 环境未必满足；
+        # pyproject 曾声明 requires-python >=3.13，而服务器跑的是 3.12.13 —— 声明高于
+        # 生产，导致「只在 3.12 上出现的 bug」被当成不归我们管。2026-11-08 已把声明
+        # 放宽到 >=3.12 并给 CI 加了 3.12 腿，理由就是下面这个对照：同一个缺陷，
+        # 3.12 全红、3.13 全绿，**版本差异会静默掩盖 bug**，只测高版本等于不测。
         # 改名为 `_stop_evt` 后与基类彻底解耦，两个版本都正确。
         self._stop_evt = threading.Event()
         self.pokes = 0

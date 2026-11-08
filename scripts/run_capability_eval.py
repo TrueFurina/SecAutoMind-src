@@ -257,15 +257,93 @@ def attachment_dependency_selftest():
     return passed == len(cases)
 
 
-def _fixed_temperature_proven():
-    """代码级证据：orchestrator 请求体是否显式固定 temperature。"""
-    if not os.path.isfile(ORCH):
-        return False, "orchestrator 不存在"
-    src = open(ORCH, encoding="utf-8", errors="replace").read()
-    vals = re.findall(r'["\']temperature["\']\s*:\s*([0-9.]+)', src)
-    if len(vals) >= 2 and len(set(vals)) == 1:
-        return True, "请求体显式固定 temperature=%s（%d 处），非 provider 默认" % (vals[0], len(vals))
-    return False, "请求体未显式固定 temperature（vals=%r）" % vals
+def _fixed_temperature_proven(path=None):
+    """请求体是否显式固定 temperature —— 用 AST 判，不看源码文字。
+
+    实证（2026-11-08）：旧实现用正则 `["']temperature["']\\s*:\\s*([0-9.]+)` 扫
+    orchestrator 源码。2026-11-07 为了按模型做条件发送（kimi 系列 400 不认
+    temperature），请求体从 dict 字面量 `{"temperature": 0.2}` 改成下标赋值
+    `payload["temperature"] = 0.2`。**行为一模一样，正则却从 2 命中掉到 0 命中**
+    ⇒ preflight 判 `temperature_fixed=False`，而落盘 evidence 里还写着 `True`
+    （那份是用旧代码生成的，此后从未重跑）。
+    反方向同样成立：把 `{"temperature": 0.2}` 写进注释或字符串，旧正则会判 True，
+    而真实请求体里根本没有这个字段。
+    一个判据同时能出假红和假绿，说明它测的是**文字**而不是**行为**。
+
+    修法：AST 层面数两件事，再交叉比对——
+      · 请求体字面量:含 `"model"` 与 `"messages"` 两个 key 的 dict
+        （实测两处:纯 LLM 请求 + 工具轮请求）；
+      · temperature 覆盖:`<x>["temperature"] = <num>` 下标赋值 + dict 字面量里的
+        `"temperature": <num>`。
+    判据 = 覆盖数 >= 请求体数 且 取值唯一。新增一条请求路径却忘加 temperature、
+    或把值改掉，都会红；只写在注释里不计入（AST 看不到注释）。
+    """
+    import ast
+
+    target = path or ORCH
+    if not os.path.isfile(target):
+        return False, "orchestrator 不存在: %s" % target
+    try:
+        src = open(target, encoding="utf-8", errors="replace").read()
+        tree = ast.parse(src)
+    except (OSError, SyntaxError) as exc:
+        # 解析不了就 fail-closed：判据失效不许当成「已验证」。
+        return False, "orchestrator 不可读/不可解析:%s（判据失效 ⇒ fail-closed）" % exc
+
+    def _num(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) \
+                and not isinstance(node.value, bool):
+            return float(node.value)
+        return None
+
+    def _is_const(node, want):
+        return isinstance(node, ast.Constant) and node.value == want
+
+    # ① 请求体字面量:同时含 "model" 与 "messages"
+    req_dicts = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Dict):
+            keys = {k.value for k in n.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            if {"model", "messages"} <= keys:
+                req_dicts.append(n)
+
+    # ② temperature 覆盖:下标赋值 + dict 字面量
+    covered = []          # (行号, 值, 是否条件发送)
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, ast.Subscript) and _is_const(t.slice, "temperature"):
+                    v = _num(n.value)
+                    if v is not None:
+                        covered.append((n.lineno, v))
+        elif isinstance(n, ast.Dict):
+            for k, v in zip(n.keys, n.values):
+                if _is_const(k, "temperature"):
+                    num = _num(v)
+                    if num is not None:
+                        covered.append((n.lineno, num))
+
+    if not req_dicts:
+        return False, "未找到任何请求体字面量（含 model+messages）——形状变化，判据失效（fail-closed）"
+    if len(covered) < len(req_dicts):
+        return False, ("请求体 %d 处，只固定了 %d 处 temperature（行 %s）"
+                       "⇒ 存在未固定温度的请求路径"
+                       % (len(req_dicts), len(covered),
+                          ",".join(str(ln) for ln, _ in covered) or "无"))
+    vals = sorted({v for _, v in covered})
+    if len(vals) != 1:
+        return False, "temperature 取值不唯一:%r（行 %s）" % (
+            vals, ",".join(str(ln) for ln, _ in covered))
+    return True, ("AST:请求体 %d 处全部显式固定 temperature=%s（%d 处赋值，行 %s；"
+                  "条件发送见 `_accepts_temperature`：不支持该参数的模型不带此字段）"
+                  % (len(req_dicts), _fmt_num(vals[0]), len(covered),
+                     ",".join(str(ln) for ln, _ in covered)))
+
+
+def _fmt_num(x):
+    """0.2 而不是 0.20000000000000001。"""
+    return ("%g" % x)
 
 
 def claim_scope_for_pool(pool_path=POOL, audit_path=PRIOR_AUDIT, bound_pool_sha=None,
@@ -772,6 +850,106 @@ def _registry_threaded_proven():
                           "（行 %s）" % ",".join(str(n.lineno) for n in bad)))
 
 
+def temperature_selftest():
+    """合成源码验证 temperature 判据：能判真、能判假、且**不被注释骗**。
+
+    最后一个变体是核心对照 —— `comment_only` 里的请求体没有任何 temperature，
+    但注释中留着 `{"temperature": 0.2}`。旧正则看到它会判 True（假绿），
+    AST 判据判 False。同一段合成源码上同时跑两种判据，把「测文字 vs 测行为」
+    的差别钉死在自测里，而不是靠文档提醒。
+    """
+    os.makedirs(WORKDIR, exist_ok=True)
+
+    good = (
+        'def call_llm(model):\n'
+        '    payload = {"model": model, "messages": [], "stream": False}\n'
+        '    if ok(model):\n'
+        '        payload["temperature"] = 0.2\n'
+        '    return payload\n'
+        '\n'
+        'def call_tools(model):\n'
+        '    payload = {"model": model, "messages": []}\n'
+        '    if ok(model):\n'
+        '        payload["temperature"] = 0.2\n'
+        '    return payload\n'
+    )
+    drop_one = (
+        'def call_llm(model):\n'
+        '    payload = {"model": model, "messages": [], "stream": False}\n'
+        '    if ok(model):\n'
+        '        payload["temperature"] = 0.2\n'
+        '    return payload\n'
+        '\n'
+        'def call_tools(model):\n'
+        '    payload = {"model": model, "messages": []}\n'
+        '    return payload\n'
+    )
+    # 显式写全，不用 str.replace 构造变体 —— 实测 replace 会因换行数不对而静默
+    # 不生效，变体没变却"通过"，等于自测在空转。
+    mixed = (
+        'def call_llm(model):\n'
+        '    payload = {"model": model, "messages": [], "stream": False}\n'
+        '    if ok(model):\n'
+        '        payload["temperature"] = 0.2\n'
+        '    return payload\n'
+        '\n'
+        'def call_tools(model):\n'
+        '    payload = {"model": model, "messages": []}\n'
+        '    if ok(model):\n'
+        '        payload["temperature"] = 0.9\n'
+        '    return payload\n'
+    )
+    comment_only = (
+        'def call_llm(model):\n'
+        '    # 曾经这么写过：{"temperature": 0.2}\n'
+        '    payload = {"model": model, "messages": [], "stream": False}\n'
+        '    return payload\n'
+        '\n'
+        'def call_tools(model):\n'
+        '    # payload["temperature"] = 0.2\n'
+        '    payload = {"model": model, "messages": []}\n'
+        '    return payload\n'
+    )
+    broken = 'def f(model):\n    payload = {"model": model, "messages": []\n'
+    no_req = 'def f(x):\n    payload = {"a": 1}\n    return payload\n'
+
+    cases = [
+        ("baseline_two_paths", good, True),
+        ("missing_one_path", drop_one, False),
+        ("mixed_values", mixed, False),
+        ("comment_only", comment_only, False),
+        ("syntax_broken", broken, False),
+        ("no_request_dict", no_req, False),
+    ]
+    passed = 0
+    for name, src, want in cases:
+        path = os.path.join(WORKDIR, "_temp_selftest_%s.py" % name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(src)
+        try:
+            got, note = _fixed_temperature_proven(path)
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        ok = got == want
+        passed += int(ok)
+        print("  %s %-20s got=%-5s want=%-5s %s"
+              % ("PASS" if ok else "FAIL", name, got, want, note[:110]))
+
+    # 核心对照：comment_only 上旧正则的结论（应为 True = 假绿）
+    old = re.findall(r'["\']temperature["\']\s*:\s*([0-9.]+)', comment_only)
+    old_says = bool(old)
+    ctl = old_says is True
+    passed += int(ctl)
+    print("  %s %-20s 旧正则看到注释里的 %r ⇒ 会判 True（假绿实证）"
+          % ("PASS" if ctl else "FAIL", "old_regex_fooled", old))
+
+    print("temperature 判据变异验证：%d/%d" % (passed, len(cases) + 1))
+    return passed == len(cases) + 1
+
+
 def pipeline_selftest():
     """链路自测：判据层 + 入口层都能在合规条件下给出正向结论。
 
@@ -833,8 +1011,10 @@ def pipeline_selftest():
     reg_ok, reg_why = _registry_threaded_proven()
     print("  %s adjudicate 调用全部透传 registry（%s）"
           % ("PASS" if reg_ok else "FAIL", reg_why))
+    print("=== I. temperature 判据（AST，合成源码）===")
+    temp_ok = temperature_selftest()
     all_ok = (rc == 0 and ok and scope_rc == 0 and gap_ok
-              and runbind_ok and airgap_scope_ok and attdep_ok and reg_ok)
+              and runbind_ok and airgap_scope_ok and attdep_ok and reg_ok and temp_ok)
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
