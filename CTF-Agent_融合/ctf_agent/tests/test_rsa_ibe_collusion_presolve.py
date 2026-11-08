@@ -20,7 +20,7 @@ import pytest
 from core.presolve import _try_rsa_ibe_collusion
 
 _REAL_DIR = "data/questions_ext/_attachments/crypto/2018q-cry-collusion"
-_REAL_FLAG = "flag{flag_created_in_validation_mission_payload}"
+_REAL_SHA = "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec"
 _REAL_SHA = "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec"
 
 # 两个确定的素数（M61 与 2^64-59），仅供测试构造 N=pq
@@ -109,9 +109,9 @@ def test_positive_synthetic_collusion(tmp_path):
 def test_positive_validation_prefix_convention(tmp_path):
     # 明文非 flag 形态，真值是 benchmark 的「重生成 flag」前缀包装 → 由 sha 选定
     _build(tmp_path, b"mission payload")
-    sha = hashlib.sha256(b"flag{flag_created_in_validation_mission_payload}").hexdigest()
+    sha = _REAL_SHA
     got = _run(_Q(_atts(tmp_path), flag_sha256=sha))
-    assert got == "flag{flag_created_in_validation_mission_payload}"
+    assert hashlib.sha256(got.encode()).hexdigest() == sha
 
 
 def test_positive_no_sha_extract_literal_flag(tmp_path):
@@ -159,5 +159,5 @@ def test_real_challenge_collusion():
                   flag_sha256=_REAL_SHA,
                   flag_pattern=r"[A-Za-z0-9_]{1,12}\{[^}\s]{3,120}\}",
                   description="decrypt the message to A"))
-    assert got == _REAL_FLAG
+    assert hashlib.sha256(got.encode()).hexdigest() == _REAL_SHA
     assert hashlib.sha256(got.encode()).hexdigest() == _REAL_SHA

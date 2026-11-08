@@ -4,68 +4,10 @@
   "owner": "agent",
   "expires": "2027-11-04",
   "note": "明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。不在本表里的明文一律判红。每条带 kind 说明它属于哪一类：doc_prose 必须为 0（叙事里不该有答案）；target_artifact / test_fixture 是结构性真值；external_public_question / source_literal 应逐步改成按哈希比对。",
-  "head": "66cfb9e",
-  "total_hits": 153,
-  "raw_hits": 175,
+  "head": "f56bf3d",
+  "total_hits": 126,
+  "raw_hits": 148,
   "entries": [
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_sha256_arbitration.py",
-      "kind": "test_fixture",
-      "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
-      ],
-      "hits": 7
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_rsa_ibe_collusion_presolve.py",
-      "kind": "test_fixture",
-      "flag_sha256": "f2f037fd6d9e354ca4a6d28312fccb2335f83e42399ff77c8e8cd0834cf9edec",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2018q_cry_collusion",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2018q_cry_collusion"
-      ],
-      "hits": 3
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_leak_provenance.py",
-      "kind": "test_fixture",
-      "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_presolve_answer_check.py",
-      "kind": "test_fixture",
-      "flag_sha256": "7799cc74e49f7e4ea7c7b215bfc6241426362fc3168696e8e3a3d79f7dd7a10d",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_easyzip",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_easyzip"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_skill_dispatch_numeric_params.py",
-      "kind": "test_fixture",
-      "flag_sha256": "acbe3fcecd1f7bdfda277fc41a8df3a24d02f19f0d6a20936b61aeb50cef3f3d",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2022_cycling",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2022_cycling"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_skill_dispatch_numeric_params.py",
-      "kind": "test_fixture",
-      "flag_sha256": "d02cc7d165021ac275773ffc743880968716f0474c6aece8a6071084296d967d",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_1black0white",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_1black0white"
-      ],
-      "hits": 2
-    },
     {
       "file": "data/ctf_benchmark/live_target/web_range_hints.py",
       "kind": "target_artifact",
@@ -457,16 +399,6 @@
       "hits": 1
     },
     {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_almost_xor_presolve.py",
-      "kind": "test_fixture",
-      "flag_sha256": "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_cry_almost_xor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_cry_almost_xor"
-      ],
-      "hits": 1
-    },
-    {
       "file": "CTF-Agent_融合/ctf_agent/tests/test_answer_key_filter.py",
       "kind": "test_fixture",
       "flag_sha256": "b1ecd2fb216a148f0d45783e3a8b6c41538064f550a9449f0e8df19e93744da2",
@@ -477,91 +409,12 @@
       "hits": 1
     },
     {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_crypto_keyboard_path.py",
-      "kind": "test_fixture",
-      "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_crypto_knapsack_mhk.py",
-      "kind": "test_fixture",
-      "flag_sha256": "57fadd46d13972fee45dd5da37db06be6f5781e9bfa7c12a4044273cc2595a8e",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_mhk2",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_mhk2"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_crypto_primes.py",
-      "kind": "test_fixture",
-      "flag_sha256": "df18e59de0157907864737b5f2a3d1a0fb5ffc4fe7e64a5f467c92054a783d56",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_primes",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_primes"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_ecxor_presolve.py",
-      "kind": "test_fixture",
-      "flag_sha256": "0e063f15a4c24ca6e9d9277225fdf5f8ff7b9ea61d66e0a111eae4919d6a489f",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017f_cry_ecxor",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017f_cry_ecxor"
-      ],
-      "hits": 1
-    },
-    {
       "file": "CTF-Agent_融合/ctf_agent/tests/test_emoji_binary.py",
       "kind": "test_fixture",
       "flag_sha256": "ce5aff49a6411c3ded733575a1f4dc6f419039baf3bd04501beb04b1091cae87",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_emoji",
         "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_nibble_b64_presolve.py",
-      "kind": "test_fixture",
-      "flag_sha256": "b3c9db6b888f9118ff301d8b0122faad5f43bd9a31a21c159ffd87046229c237",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_for_br3akth3vau1t"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_ocr_candidate_selection.py",
-      "kind": "test_fixture",
-      "flag_sha256": "b0e408d1da7e9310fd1c9818c0690a3df85fe52bf609912e4688407432a5b22e",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2017q_for_missed_registration",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2017q_for_missed_registration"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_presolve_answer_check.py",
-      "kind": "test_fixture",
-      "flag_sha256": "81dd6bd94dde9d9c78c99c7489bffc718516ea4ac809ef45827d46a76c3bea41",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_reverse_vnctf_timeflies",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_reverse_vnctf_timeflies"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_presolve_answer_check.py",
-      "kind": "test_fixture",
-      "flag_sha256": "637b377493441132e12eb8712731c6983f8f234f461e0245fb43983a4b933737",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023q_rev_baby_s_third"
       ],
       "hits": 1
     },

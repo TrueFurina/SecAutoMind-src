@@ -28,7 +28,7 @@ from skills import svg_path_text as S  # noqa: E402
 
 # 实测候选（真题 pcap 的 BMP OCR 输出）
 _PSM7_BAD = "| FLAG{anm_LaunDR3Y_FL4E_L34k\u00a7_}"   # '§' = U+00A7
-_PSM6_GOOD = "FLAG{3Am_LaunDR3Y_FL4G_L34kz!}\nz!"
+_PSM6_GOOD = "FLAG{fixture_ocr_g0od_01}\nz!"
 
 
 # ------------------------------------------------------------------ 评分

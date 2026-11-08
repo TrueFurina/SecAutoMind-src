@@ -38,8 +38,8 @@ class TestSha256Matches(unittest.TestCase):
 
     def test_mismatch_is_false(self):
         # dnui_keyboard 实证错候选：任何大小写/包裹形态都不匹配真值
-        self.assertIs(sha256_matches("flag{CLCKOUTHK}", TRUTH), False)
-        self.assertIs(sha256_matches("CLCKOUTHK", TRUTH), False)
+        self.assertIs(sha256_matches("flag{DECOYFIXTURE01}", TRUTH), False)
+        self.assertIs(sha256_matches("DECOYFIXTURE01", TRUTH), False)
 
     def test_no_truth_is_none(self):
         self.assertIsNone(sha256_matches("flag{X}", None))
@@ -68,7 +68,7 @@ class TestExtractFlagArbitration(unittest.TestCase):
     def test_truth_mismatch_rejected_even_in_tool_output(self):
         # dnui_keyboard 病理：错候选即使出现在工具产出里也被确定性拒绝 + 记反幻觉
         ctx = _ctx(flag_sha256=TRUTH)
-        out = "keyboard decoded: flag{CLCKOUTHK}"
+        out = "keyboard decoded: flag{DECOYFIXTURE01}"
         self.assertIsNone(
             extract_flag(SimpleNamespace(checker=None), ctx, {"output": out}))
         self.assertTrue(ctx._extract_failed)
@@ -78,10 +78,10 @@ class TestExtractFlagArbitration(unittest.TestCase):
         # 无真值题面：工具（keyboard skill）真实解出 flag → 工具产出即放行
         # （2026-09-22 反幻觉闸：act 须带 kind=tool 表示此输出来自工具，而非 LLM 文本瞎猜）
         ctx = _ctx(flag_sha256=None)
-        out = "keyboard decoded: flag{CLCKOUTHK}"
+        out = "keyboard decoded: flag{DECOYFIXTURE01}"
         self.assertEqual(
             extract_flag(SimpleNamespace(checker=None), ctx, {"kind": "tool", "output": out}),
-            "flag{CLCKOUTHK}")
+            "flag{DECOYFIXTURE01}")
         self.assertFalse(ctx._extract_failed)
 
 
@@ -91,7 +91,7 @@ class TestKeyboardPathGate(unittest.TestCase):
                                flag_sha256=flag_sha256, attachments=[att])
 
     def _run_kb(self, flag_sha256):
-        fake = {"decoded": "CLCKOUTHK", "flag": "flag{CLCKOUTHK}"}
+        fake = {"decoded": "DECOYFIXTURE01", "flag": "flag{DECOYFIXTURE01}"}
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
             f.write("dummy")
             att = f.name
@@ -108,7 +108,7 @@ class TestKeyboardPathGate(unittest.TestCase):
 
     def test_no_truth_passthrough(self):
         # 无真值题面保持既有行为（无法确定性证伪，放行原逻辑）
-        self.assertEqual(self._run_kb(None), "flag{CLCKOUTHK}")
+        self.assertEqual(self._run_kb(None), "flag{DECOYFIXTURE01}")
 
 
 # --------------------------------------------------------------------------
@@ -154,7 +154,7 @@ class TestBroadPatternSha256Fallback(unittest.TestCase):
     def test_declared_pattern_still_wins_when_matching(self):
         # 回归：声明 pattern 能匹配时走原路径，兜底不介入（真值不符 → 确定性拒绝）
         ctx = _ctx(flag_sha256=TRUTH)
-        out = "keyboard decoded: flag{CLCKOUTHK}"
+        out = "keyboard decoded: flag{DECOYFIXTURE01}"
         self.assertIsNone(
             extract_flag(SimpleNamespace(checker=None), ctx, {"output": out}))
 

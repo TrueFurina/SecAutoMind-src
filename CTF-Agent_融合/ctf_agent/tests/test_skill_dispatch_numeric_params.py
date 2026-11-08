@@ -66,8 +66,8 @@ class TestExtractFlagNotGreedy(unittest.TestCase):
     def test_dict_repr_flag_has_no_trailing_quote(self):
         """这是发现的真实缺陷：字典 repr 输出不得把 ``'}`` 尾巴抽进来。"""
         self.assertEqual(
-            self.extract_flag("{'flag': 'CTF{Recycling_Is_Great}'}"),
-            "CTF{Recycling_Is_Great}")
+            self.extract_flag("{'flag': 'CTF{fixture_recycle_01}'}"),
+            "CTF{fixture_recycle_01}")
 
     def test_dict_repr_with_other_keys(self):
         self.assertEqual(
@@ -98,8 +98,8 @@ class TestExtractFlagNotGreedy(unittest.TestCase):
         会在 ``csaw`` + ``ctf{`` **中间**匹配上，抽出 ``ctf{...}``
         → sha256 不匹配，**真解被误判为假阳**（实测本该 +1 题）。
         """
-        got = self.extract_flag(b"csawctf{1_d1dnt_kn0w_th1s_w0uld_w0rk}")
-        self.assertEqual(got, "csawctf{1_d1dnt_kn0w_th1s_w0uld_w0rk}")
+        got = self.extract_flag(b"csawctf{fixture_didnt_know_01}")
+        self.assertEqual(got, "csawctf{fixture_didnt_know_01}")
         # 前缀由任意字母数字组成时都应完整保留
         self.assertEqual(self.extract_flag("hkcert23{abc}"), "hkcert23{abc}")
         self.assertEqual(self.extract_flag("picoCTF{x_1}"), "picoCTF{x_1}")

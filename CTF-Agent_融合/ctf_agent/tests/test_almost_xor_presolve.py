@@ -16,7 +16,6 @@ import pytest
 from core.presolve import _try_almost_xor
 
 _REAL_DIR = "data/questions_ext/_attachments/crypto/2017q-cry-almost_xor"
-_REAL_FLAG = "flag{>x0r_i5_Add1+10n-m0D-2,'bU+_+h15_Wa5_m0d=8}"
 _REAL_SHA = "6bb0e2756e56c8edb2fab669e3c244bb1db1ff018cee55321972e1bfc169f407"
 
 
@@ -138,5 +137,4 @@ def test_real_challenge_almost_xor():
     atts = [os.path.join(_REAL_DIR, n) for n in ("almostxor.py", "ciphertext")
             if os.path.exists(os.path.join(_REAL_DIR, n))]
     got = _run(_Q(atts, qid="ext_nyu_ctf_bench_2017q_cry_almost_xor", flag_sha256=_REAL_SHA))
-    assert got == _REAL_FLAG
     assert hashlib.sha256(got.encode()).hexdigest() == _REAL_SHA

@@ -23,6 +23,7 @@ n=256 单把公钥恢复约 150s（两把 300s），放进 CI 不可接受。实
 
 from __future__ import annotations
 
+import hashlib
 import random
 import sys
 from pathlib import Path
@@ -217,7 +218,6 @@ def test_decrypt_requires_both_public_keys():
 # --------------------------------------------------------------------------
 # 4. 慢层：真实题目端到端（默认跳过，--run-slow 开启）
 # --------------------------------------------------------------------------
-REAL_FLAG = "CTF{faNNYPAcKs_ARe_4maZiNg_AnD_und3Rr@t3d}"
 
 
 @pytest.mark.slow
@@ -236,4 +236,6 @@ def test_real_mhk2_end_to_end():
     lines = [l for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
     pk, ct = ast.literal_eval(lines[0]), ast.literal_eval(lines[1])
     out = decrypt_mhk2({"a1": pk["a1"], "a2": pk["a2"]}, ct, verbose=True)
-    assert out == REAL_FLAG, f"真实题解密不符：{out!r}"
+    assert hashlib.sha256(out.encode()).hexdigest() == (
+        "57fadd46d13972fee45dd5da37db06be6f5781e9bfa7c12a4044273cc2595a8e"), \
+        f"真实题解密不符：{out!r}"

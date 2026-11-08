@@ -55,9 +55,9 @@ def test_answer_only_in_description_is_desc_leak(tmp_path):
 
 def test_desc_inner_token_via_oracle_is_desc_leak(tmp_path):
     """题面只写裸答案（无 flag{} 外壳）时，靠 oracle 命中内层 token。"""
-    q = _mkq(tmp_path, desc="每组字母连线的形状对应一个字母，解出 CLCKOUTHK。",
-             att_name="cipher.txt", att_data=b"deadbeef", flag="flag{CLCKOUTHK}")
-    r = lp.classify(q, tmp_path, oracle={"t_leak_1": "flag{CLCKOUTHK}"})
+    q = _mkq(tmp_path, desc="每组字母连线的形状对应一个字母，解出 fixturetok_zz。",
+             att_name="cipher.txt", att_data=b"deadbeef", flag="flag{fixturetok_zz}")
+    r = lp.classify(q, tmp_path, oracle={"t_leak_1": "flag{fixturetok_zz}"})
     assert r["provenance"] == "desc_leak"
 
 

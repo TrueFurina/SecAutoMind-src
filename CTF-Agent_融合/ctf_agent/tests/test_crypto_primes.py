@@ -191,7 +191,6 @@ def test_solve_primes_real_gctf2023_matches_flag_sha256():
     i = msg.index("CTF{")
     flag = msg[i:msg.index("}", i) + 1]
     assert hashlib.sha256(flag.encode()).hexdigest() == REAL_FLAG_SHA256
-    assert flag == "CTF{w0W_c0Nt1nUed_fr4Ct10ns_suR3_Ar3_fUn_Huh}"
 
 
 @pytest.mark.slow

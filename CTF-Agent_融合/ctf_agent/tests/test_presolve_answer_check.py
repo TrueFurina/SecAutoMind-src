@@ -67,7 +67,7 @@ class TestSha256AwareAnswerCheck:
     def test_decoy_flag_from_other_question_rejected(self):
         """跨题串扰场景：候选是别题的真 flag，sha256 必不符。"""
         answers = {"t1": _sha("flag{this_is_t1_truth}")}
-        other = "VNCTF{TimeFl20211205ightMachine}"
+        other = "VNCTF{fixture_other_q_01}"
         assert _passes_answer_check(_q(), other, answers) is False
 
     def test_sha256_shape_candidate_equal_to_expected_passes(self):
@@ -84,8 +84,8 @@ class TestSha256AwareAnswerCheck:
 # ---------------------------------------------------------------- 明文口径
 class TestPlaintextAnswerCheck:
     def test_plaintext_match_passes(self):
-        answers = {"t1": "flag{zip&crc_we_can_do_it}"}
-        assert _passes_answer_check(_q(), "flag{zip&crc_we_can_do_it}", answers) is True
+        answers = {"t1": "flag{fixture_zip_crc_01}"}
+        assert _passes_answer_check(_q(), "flag{fixture_zip_crc_01}", answers) is True
 
     def test_plaintext_mismatch_rejected(self):
         answers = {"t1": "flag{truth}"}
@@ -216,7 +216,7 @@ class TestPlausibleFlagPlaceholder:
         """回归锁：正常 flag（含短 inner）不受影响。"""
         assert _is_plausible_flag("flag{a1b2c3}") is True
         assert _is_plausible_flag("DASCTF{70854278-ea0c-462e-bc18-468c7a04a505}") is True
-        assert _is_plausible_flag("csawctf{st1ng_th30ry_a1nt_so_h4rd}") is True
+        assert _is_plausible_flag("csawctf{fixture_plausible_01}") is True
         assert _is_plausible_flag("flag{A}") is True
 
 

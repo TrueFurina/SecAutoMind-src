@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 import os
+import hashlib
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +34,8 @@ def test_run_on_real_attachment():
     # 独立从附件推导出 flag（不读题面答案），sha256 与官方真值一致
     r = run({"path": ATT})
     assert r["decoded"] == "CLCKOUTHK"
-    assert r["flag"] == "flag{CLCKOUTHK}"
+    assert hashlib.sha256(r["flag"].encode()).hexdigest() == (
+        "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc")  # 真值 sha256
 
 
 def test_decode_token_known():
