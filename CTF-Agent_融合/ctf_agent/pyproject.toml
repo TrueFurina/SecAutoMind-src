@@ -45,6 +45,13 @@ dev = [
     # 原本只列了 pytest + pytest-timeout ⇒ 按 pyproject 装依赖的人拿不到绿门禁。
     # 2026-11-08 服务器实证：装齐前 6 failed，装上后 35 passed。
     "pytest-asyncio>=0.23",
+    # 🔴 `scripts/_gate_static.py` 对 ruff **fail-closed**（未装 ⇒ 返回 2 =「无法判定」，
+    # 而 `test_run_all_gates.py::test_passes_now` 要求全门禁 rc=0）。ruff 只在
+    # `[tool.ruff]` 里配置、从不在这张清单里声明 ⇒ 按 pyproject 装依赖的人**永远**
+    # 拿不到全绿门禁。2026-11-08 服务器实测：`ruff 未安装或不可执行（fail-closed）`
+    # 直接把「当前应全过」打成红。
+    # 判据是「声明的依赖必须够跑门禁」，不是「装得上就行」。
+    "ruff>=0.6",
 ]
 # 可选：本地 OCR（tesseract 需系统级安装，未装则视觉兜底走 LLM）
 vision = [

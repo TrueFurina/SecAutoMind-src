@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -30,7 +31,8 @@ from pathlib import Path
 CTF_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(CTF_ROOT))
 
-from scripts._audit_corpus_integrity import missing_attachments  # noqa: E402
+from scripts._audit_corpus_integrity import (  # noqa: E402
+    missing_attachments, normalize_declared_path)
 
 
 def main() -> int:
@@ -73,6 +75,49 @@ def main() -> int:
         got = missing_attachments(q2, qpath, tmp, tmp)
         results.append(("dirlike_real_files", got == [],
                         f"expect=[] got={got}"))
+
+        # ⑦ Windows 反斜杠声明（2026-11-08 实证）：服务器（Linux）上 39/42 道外部题
+        #    被判 payload_missing，根因是 `Path("data\\questions_external\\...")` 在 POSIX
+        #    被当成**一个文件名**。
+        #
+        #    ⚠️ 本机（Windows）**无法**用端到端断言证明这件事：`Path` 在 Windows 上
+        #    把反斜杠也当分隔符，删掉归一那一行照样绿 —— 实测过，第一次写的就是这种
+        #    无分辨力的假测试。故改三层：
+        #      ⑦a 纯函数（平台无关）
+        #      ⑦b 接线探针：把 normalize_declared_path 换成记录器，断言 _resolve_attachment
+        #         真的调了它 —— 删掉调用即红，Windows/Linux 都成立
+        #      ⑦c 端到端（仅 POSIX 有分辨力，Windows 上显式 skip 并写明原因）
+        results.append(("normalize_backslash",
+                        normalize_declared_path("a\\b\\c") == "a/b/c",
+                        f"got={normalize_declared_path('a' + chr(92) + 'b')!r}"))
+        results.append(("normalize_posix_passthrough",
+                        normalize_declared_path("a/b/c") == "a/b/c",
+                        f"got={normalize_declared_path('a/b/c')!r}"))
+
+        import scripts._audit_corpus_integrity as aci
+        calls: list[str] = []
+        orig = aci.normalize_declared_path
+
+        def _spy(v):  # noqa: ANN001
+            calls.append(str(v))
+            return orig(v)
+
+        try:
+            aci.normalize_declared_path = _spy  # type: ignore[assignment]
+            aci._resolve_attachment("att_a\\enigma", qpath, tmp, tmp)  # noqa: SLF001
+        finally:
+            aci.normalize_declared_path = orig  # type: ignore[assignment]
+        results.append(("wiring_calls_normalizer", calls == ["att_a\\enigma"],
+                        f"expect=['att_a\\\\enigma'] got={calls}"))
+
+        if os.name == "nt":
+            results.append(("windows_etoe_skipped", True,
+                            "SKIP 理由: Windows 上反斜杠即分隔符，本用例无分辨力（POSIX 才有）"))
+        else:
+            q4 = {"id": "winsep",
+                  "attachments": ["att_a\\enigma", "att_a\\messages\\flag.ciphertext.txt"]}
+            got = missing_attachments(q4, qpath, tmp, tmp)
+            results.append(("windows_backslash_etoe", got == [], f"expect=[] got={got}"))
     finally:
         # 清理失败不得影响判定结果：某些运行环境（本仓库 agent 沙箱）会注入审计钩子，
         # 在 shutil.rmtree 上抛 PermissionError，**即使传了 ignore_errors=True**

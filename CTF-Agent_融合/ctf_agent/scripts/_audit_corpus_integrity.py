@@ -57,6 +57,30 @@ def _matches(cand: bytes, truth: str) -> bool:
     return bool(m) and sha_hex(m.group(1)) == truth
 
 
+def normalize_declared_path(rel: str) -> str:
+    """把题面声明的附件路径归一成 POSIX 分隔符（`\\` → `/`）。
+
+    🔴 2026-11-08 实证（Linux 上 39/42 道外部题被判 payload_missing）：
+      外部池的 `attachments` 是在 Windows 上生成的，写的是
+      `data\\questions_external\\crypto\\ext_gctf2021_h1\\_attachments\\chall.py`。
+      POSIX 的 `Path` **不把反斜杠当分隔符**，整串被当成一个 59 字符的文件名，
+      于是 `base/rel`、`root/rel` 五个候选全落空 —— 附件明明在磁盘上（同样的
+      221 个文件已入库），却被判"载荷缺失"。
+
+    后果不是"多一条警告"：`check_corpus_health` 据此报
+    「questions_external 可用题 39 → 0（-39）」与「坏题 3 → 42（+39）」，
+    把一次**路径风格差异**读成 39 道题丢失；反向更糟 —— 若真丢题，读数与这条
+    假告警长得一模一样，告警就失去分辨力。
+
+    为什么不做数据迁移（把 221 个 json 里的反斜杠改掉）：
+      Windows 的 `Path` 两种分隔符都认，改数据只是把同一个兼容性负担搬到数据侧，
+      且会动 221 个已入库文件（大 diff、易冲突）。在**解析单点**归一，Windows/Linux
+      两侧都通。同一做法已存在于 `_bench_adapter.py:196`（`decl.replace("\\\\","/")`），
+      此前只有审计这一处漏了。
+    """
+    return str(rel or "").replace("\\", "/")
+
+
 def _resolve_attachment(rel: str, fp: Path, root: Path,
                         att_root: "Path | None" = None) -> "Path | None":
     """解析单个附件声明路径 → 磁盘实际文件/目录；找不到返回 None。
@@ -78,6 +102,7 @@ def _resolve_attachment(rel: str, fp: Path, root: Path,
     的内容有效性范畴，不在本函数职责内。
     """
     base = att_root or Path.cwd()
+    rel = normalize_declared_path(rel)
     cands = [base / rel, Path(rel), root / rel, root.parent / rel, base.parent / rel]
 
     def _usable(c: Path) -> bool:

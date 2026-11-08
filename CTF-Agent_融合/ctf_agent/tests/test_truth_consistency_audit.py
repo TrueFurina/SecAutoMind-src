@@ -22,6 +22,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 
@@ -93,7 +94,34 @@ class TestTruthConsistencyAudit(unittest.TestCase):
                          "本护栏需同步更新")
 
     def test_real_data_baby_third_is_l0_match(self):
-        """真实数据回归：baby_s_third 附件明文应判 A_MATCH（L0 送分层）。"""
+        """真实数据回归：baby_s_third 附件明文应判 A_MATCH（L0 送分层）。
+
+        ⚠️ 2026-11-08 前提修正（服务器实测红的根因）：
+          该附件**被 `ctf_agent/.gitignore:155` 有意排除**——它和另外 4 个文件同列在
+          「含真实答案的 5 个文件」里。原写法 `assertTrue(atts, "附件不在库")`
+          等于要求每台机器都留一份答案明文，于是：
+            本机（有本地副本）绿，任何干净检出/服务器**必红**。
+          这是最贵的一类假红——它在别人机器上红，在作者机器上看不见。
+
+        改判两条互相独立的断言：
+          ① 该附件**必须仍在 ignore 列表里**（有人把它提交进版本库 ⇒ 答案入 git ⇒ 红）
+          ② 本机确有副本时才做内容回归，没有则 skip 并写明原因
+        """
+        target = os.path.join(_CTF, "data", "questions_ext", "_attachments", "rev",
+                              "2023q-rev-baby_s_third", "babysthird")
+        try:
+            top = subprocess.run(["git", "-C", _CTF, "rev-parse", "--show-toplevel"],
+                                 capture_output=True, text=True, timeout=30)
+            ignored = subprocess.run(["git", "-C", _CTF, "check-ignore", "-q", target],
+                                     capture_output=True, text=True, timeout=30).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            self.skipTest("无 git 可用，无法验证该附件的排除规则")
+        if top.returncode != 0:
+            self.skipTest("不在 git 工作树内，无法验证该附件的排除规则")
+        self.assertTrue(ignored,
+                        "该附件含真实答案，必须仍被 .gitignore 排除（否则明文答案进版本库）")
+        if not os.path.isfile(target):
+            self.skipTest("本机无该附件副本（有意不入库）：内容回归只在保留副本的机器上跑")
         hits = glob.glob(os.path.join(_CTF, "data", "**",
                                       "ext_nyu_ctf_bench_2023q_rev_baby_s_third.json"),
                          recursive=True)
@@ -101,9 +129,7 @@ class TestTruthConsistencyAudit(unittest.TestCase):
             self.skipTest("baby_s_third 题面不在库")
         with open(hits[0], encoding="utf-8") as _jf:
             d = json.load(_jf)
-        atts = glob.glob(os.path.join(_CTF, "data", "**", "babysthird"), recursive=True)
-        self.assertTrue(atts, "baby_s_third 附件不在库")
-        with open(atts[0], "rb") as _af:
+        with open(target, "rb") as _af:
             raw = _af.read()
         cands = self.mod.FLAG_RE.findall(raw)
         self.assertTrue(any(self.mod.matches_truth(c, d["flag_sha256"]) for c in cands),
