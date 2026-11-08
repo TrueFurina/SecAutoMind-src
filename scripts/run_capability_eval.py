@@ -257,6 +257,94 @@ def attachment_dependency_selftest():
     return passed == len(cases)
 
 
+_FP_DEPS = ("gmpy2", "scapy", "brotli", "zstandard", "sympy", "fastapi", "pycryptodome")
+
+
+def _run_capture(cmd, cwd):
+    """跑一条命令拿 (rc, stdout, stderr)，任何异常都不抛。"""
+    try:
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=20)
+        return p.returncode, (p.stdout or "").strip(), (p.stderr or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        return -1, "", "%s: %s" % (type(exc).__name__, exc)
+
+
+def _dep_versions(names):
+    """关键依赖版本。**未安装记 None，不省略键** —— 省掉键等于把「缺依赖」这一
+    事实从指纹里删掉，而缺依赖会改变结论（服务器实测：缺 scapy+brotli 时 pcap
+    通道根本不存在，同一份代码跑出来的数不是同一件事）。"""
+    out = {}
+    try:
+        from importlib import metadata
+    except ImportError:  # pragma: no cover
+        return out
+    for n in names:
+        try:
+            out[n] = metadata.version(n)
+        except Exception:  # noqa: BLE001
+            out[n] = None
+    return out
+
+
+def code_fingerprint(root=None):
+    """本次跑批所用代码的指纹：commit + 工作区脏度 + 解释器 + 关键依赖版本。
+
+    为什么必须有（2026-11-08 实测）：服务器 `~/sam` 落后仓库 HEAD **37 个 commit /
+    207 个文件**，服务器上另有 4 份无 git 的副本（`ctf_run`/`SecAutoMind`/
+    `_p3_003_patch_ctfrun`/`sam_s1`），而历史结果文件里**没有一个字段**能区分
+    「跑的是哪份代码」—— 88.3% 那批至今无法回溯到代码版本。
+    这与「无指纹永不可归因」是同一个根：不是缺文档，是缺字段。
+
+    三条刻意的设计：
+
+      1. **脏工作区必须记出来，且不许当干净**。服务器工作区正是「落后 37 commit +
+         手工粘贴的新文件」这种形态；只记 commit 会让指纹撒谎。所以
+         `clean_checkout` 同时要求「有 commit」且「未提交改动数 == 0」。
+      2. **解释器与依赖一起记**。同一份代码在缺 scapy 的机器上 pcap 通道不存在，
+         跑出来的数不是同一件事。
+      3. **任何一步失败都返回 available=False + 原因，不抛异常**。评测入口不能因为
+         `git` 不在 PATH 就崩，但也绝不能因此假装自己有指纹（fail-closed 只关
+         `clean_checkout` 这一个布尔，不是把错误吞掉）。
+    """
+    root = root or ROOT
+    fp = {
+        "root": root,
+        "python": "%d.%d.%d" % tuple(sys.version_info[:3]),
+        "implementation": getattr(sys.implementation, "name", ""),
+        "commit": "",
+        "branch": "",
+        "dirty_files": -1,
+        "dirty": None,
+        "clean_checkout": False,
+        "deps": {},
+        "available": False,
+        "error": "",
+        "note": "",
+    }
+    rc, out, err = _run_capture(["git", "rev-parse", "HEAD"], root)
+    if rc != 0 or not out:
+        fp["error"] = "git 不可用或非仓库：%s" % (err or out)[:160]
+        return fp
+    fp["commit"] = out.splitlines()[0]
+    rc2, out2, _ = _run_capture(["git", "rev-parse", "--abbrev-ref", "HEAD"], root)
+    fp["branch"] = out2.splitlines()[0] if rc2 == 0 and out2 else ""
+    rc3, out3, err3 = _run_capture(["git", "status", "--porcelain"], root)
+    if rc3 != 0:
+        fp["error"] = "git status 失败：%s" % err3[:160]
+        fp["deps"] = _dep_versions(_FP_DEPS)
+        return fp
+    dirty_lines = [ln for ln in out3.splitlines() if ln.strip()]
+    fp["dirty_files"] = len(dirty_lines)
+    fp["dirty"] = bool(dirty_lines)
+    fp["deps"] = _dep_versions(_FP_DEPS)
+    fp["available"] = True
+    fp["clean_checkout"] = not dirty_lines
+    if dirty_lines:
+        fp["note"] = ("工作区有 %d 个未提交改动 ⇒ 本次跑批**不能**等价于 commit %s"
+                      % (len(dirty_lines), fp["commit"][:12]))
+    return fp
+
+
 def _fixed_temperature_proven(path=None):
     """请求体是否显式固定 temperature —— 用 AST 判，不看源码文字。
 
@@ -538,6 +626,14 @@ def preflight(args):
     checks = []
     mode = args.mode
 
+    # 代码指纹先算一次，供 chk 与 evidence 共用同一个值（避免两次调用拿到不一致状态，
+    # 例如中间有人改了文件）。
+    # warn=True 的理由：脏工作区在开发中很常见，一票否决会让评测入口不可用；但
+    # 它必须**可见**并且写进 evidence —— 只记 commit 的指纹会撒谎。
+    cfp = code_fingerprint()
+    _deps_brief = ",".join("%s=%s" % (k, v if v else "MISS")
+                           for k, v in (cfp.get("deps") or {}).items())
+
     def chk(name, ok, note, na=False, warn=False):
         checks.append({"item": name, "ok": bool(ok), "note": str(note),
                        "na": bool(na), "warn": bool(warn)})
@@ -659,6 +755,18 @@ def preflight(args):
         warn=True)
     pool_tracked = tracked
 
+    # 代码指纹：不阻断（脏树在开发中常见），但必须可见 + 写进 evidence。
+    # `available=False` 时也要报，且 note 说明原因 —— 不能因为 git 不可用就静默跳过
+    # 这一条，否则「没有指纹」会看起来像「指纹合格」。
+    chk("代码指纹（commit + 工作区脏度 + 依赖）",
+        cfp.get("clean_checkout") is True,
+        ("commit=%s branch=%s dirty=%s python=%s deps[%s]%s"
+         % (cfp.get("commit") or "N/A", cfp.get("branch") or "N/A",
+            cfp.get("dirty_files"), cfp.get("python"), _deps_brief,
+            ("；" + cfp["note"]) if cfp.get("note") else
+            ("；" + cfp["error"]) if cfp.get("error") else "")),
+        warn=True)
+
     ok = all(c["ok"] for c in checks if not c.get("na") and not c.get("warn"))
     ev = {
         "run_id": "capability_eval_%s" % datetime.datetime.now().strftime("%Y%m%dT%H%M%S"),
@@ -675,10 +783,18 @@ def preflight(args):
         "pool_path": os.path.relpath(pool_path, ROOT).replace("\\", "/"),
         "statement_tainted_in_selected_pool": tainted,
         "pool_in_version_control": pool_tracked,
+        # 跑批代码的指纹。历史结果文件缺这个字段 ⇒ 那批数字无法回溯到代码版本
+        # （服务器实测落后 HEAD 37 commit / 207 文件，且有 4 份无 git 副本）。
+        # 只在 evidence 里记、不在 verdict 里用就成了死数据；judge_run 会把整个
+        # evidence 原样带进 verdict（verdict["evidence"]["code_fingerprint"]），
+        # 所以「结果 → 代码版本」这条链从这一版起才真正通。
+        "code_fingerprint": cfp,
         "caveats": [
             "pool_tracked_and_clean 只证明「指纹一致+门禁覆盖」，不等于题池入库；对外引用前须入库",
             "temperature 显式固定 ≠ 逐位可复现；provider 采样与版本仍会带来方差",
             "pure_llm 无工具出口 ≠ 无先验知识，模型记忆与公开 writeup 无法由本链路排除",
+            "code_fingerprint.clean_checkout=false 时，本次数值不能等价于该 commit；"
+            "deps 里任一值为 null 表示该依赖未安装（缺依赖会改变结论，不只是少条通道）",
         ],
         "preflight_passed": ok,
         "_usage": "preflight_passed=false 时本证据只能用于「把历史批次判为不可归因」，禁止用于放行任何新跑批",
@@ -950,6 +1066,73 @@ def temperature_selftest():
     return passed == len(cases) + 1
 
 
+def code_fingerprint_selftest():
+    """合成仓库验证代码指纹判据：干净 / 脏 / 非仓库 / 依赖键完整。
+
+    每条都对应一个真实会犯的错：
+      · 干净仓库必须判 True —— 否则判据把正常情况也拦了，久了就被当噪音忽略；
+      · **加一个未跟踪文件必须变脏** —— 服务器工作区正是「旧 commit + 手工粘贴的
+        新文件」，只记 commit 的指纹会撒谎，这是本判据存在的全部理由；
+      · 非 git 目录必须 available=False 且**带原因**，不许静默当成有指纹；
+      · deps 必须每个键都在（未装为 None）—— 省掉键等于把「缺依赖」从指纹里删掉。
+    """
+    import tempfile
+
+    cases = []
+    tmprepo = tempfile.mkdtemp(prefix="_cfp_selftest_repo_")
+    tmpnogit = tempfile.mkdtemp(prefix="_cfp_selftest_nogit_")
+    gitbase = ["git", "-c", "user.name=selftest",
+               "-c", "user.email=selftest@example.invalid"]
+    try:
+        rc, _, err = _run_capture(gitbase + ["init", "-q"], tmprepo)
+        if rc != 0:
+            print("  [i] git 不可用，本段跳过（%s）" % (err or "unknown")[:100])
+            return True
+        with open(os.path.join(tmprepo, "a.txt"), "w", encoding="utf-8") as f:
+            f.write("a\n")
+        _run_capture(gitbase + ["add", "a.txt"], tmprepo)
+        rc, _, err = _run_capture(gitbase + ["commit", "-q", "-m", "init"], tmprepo)
+        if rc != 0:
+            print("  [i] 合成仓库无法 commit，本段跳过（%s）" % (err or "unknown")[:100])
+            return True
+
+        fp = code_fingerprint(tmprepo)
+        cases.append(("clean_repo", fp.get("clean_checkout") is True,
+                      "commit=%s dirty=%s err=%s"
+                      % (fp.get("commit", "")[:8], fp.get("dirty_files"),
+                         fp.get("error", ""))))
+
+        with open(os.path.join(tmprepo, "b_untracked.txt"), "w", encoding="utf-8") as f:
+            f.write("b\n")
+        fp2 = code_fingerprint(tmprepo)
+        cases.append(("untracked_flips_dirty",
+                      fp2.get("clean_checkout") is False and fp2.get("dirty_files") == 1,
+                      "dirty=%s note=%s"
+                      % (fp2.get("dirty_files"), fp2.get("note", "")[:80])))
+
+        fp3 = code_fingerprint(tmpnogit)
+        cases.append(("non_git_is_unavailable",
+                      fp3.get("available") is False and bool(fp3.get("error")),
+                      "available=%s error=%s"
+                      % (fp3.get("available"), fp3.get("error", "")[:80])))
+
+        deps = (fp.get("deps") or {})
+        cases.append(("deps_keys_complete",
+                      set(deps) == set(_FP_DEPS),
+                      "缺失键=%s" % (set(_FP_DEPS) - set(deps))))
+    finally:
+        import shutil
+        for d in (tmprepo, tmpnogit):
+            shutil.rmtree(d, ignore_errors=True)
+
+    passed = 0
+    for name, ok, detail in cases:
+        passed += int(ok)
+        print("  %s %-24s %s" % ("PASS" if ok else "FAIL", name, detail))
+    print("代码指纹判据变异验证：%d/%d" % (passed, len(cases)))
+    return passed == len(cases) and bool(cases)
+
+
 def pipeline_selftest():
     """链路自测：判据层 + 入口层都能在合规条件下给出正向结论。
 
@@ -1013,8 +1196,11 @@ def pipeline_selftest():
           % ("PASS" if reg_ok else "FAIL", reg_why))
     print("=== I. temperature 判据（AST，合成源码）===")
     temp_ok = temperature_selftest()
+    print("=== J. 代码指纹判据（合成仓库）===")
+    cfp_ok = code_fingerprint_selftest()
     all_ok = (rc == 0 and ok and scope_rc == 0 and gap_ok
-              and runbind_ok and airgap_scope_ok and attdep_ok and reg_ok and temp_ok)
+              and runbind_ok and airgap_scope_ok and attdep_ok and reg_ok
+              and temp_ok and cfp_ok)
     print("链路自测：%s" % ("PASS" if all_ok else "FAIL"))
     return 0 if all_ok else 1
 
