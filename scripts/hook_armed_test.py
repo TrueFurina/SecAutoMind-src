@@ -106,7 +106,10 @@ def main() -> int:
               (r.stdout + r.stderr)[-300:])
 
         # 还原 → 同一次 commit 必须成功
-        shutil.copyfile(hook_src, hook_in_clone)
+        # 用前面读到的原文写回，不 shutil.copyfile(hook_src, ...)：src 与 dst 现在是同一个
+        # 文件（都指向克隆里那份），copyfile 会抛 SameFileError（实测过一次）。
+        with open(hook_in_clone, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(body)
         r = git("commit", "-m", "hook-armed restore probe", cwd=clone)
         check("还原钩子后正常提交成功（不误拦）", r.returncode == 0,
               (r.stdout + r.stderr)[-300:])
