@@ -200,19 +200,23 @@ _API_FAIL_MARKS = (
 )
 
 
-def _rounds_all_failed(detail):
-    """这一题**有没有任何一轮模型调用成功**。
+def api_call_failed(detail):
+    """这一次调用有没有**成功过任何一轮**模型调用。单一实现，两处调用方共用。
 
     只认**正面证据**，字段缺失一律返回 False（= 无法判定，不当成"失败"）。
     理由：`docs/evidence/private_pool_v1_20261107` 与 `private_pool_v2_20261107`
     的结果文件整份没有 `llm_rounds`；若把"缺字段"读成"没有成功轮次"，88.3% 那批
     会被自己的判据判废。缺字段是**不知道**，不是**否定**。
 
-    返回 True 的两种情形，都要求证据在设计上不可能由"答错"产生：
-      ① `llm_rounds` 非空，且**每一轮**的 finish_reason 都是 error/timeout；
-      ② 有轮次明细且 `api_error_rounds` 等于轮次数（同一事实的另一种记法）。
-    生产侧还可以直接声明 `all_rounds_api_failed=True`（2026-11-08 起写入），
-    声明与结构两者任一成立即认——声明是为了让读的人不必反推。
+    返回 True 的三种情形，都要求证据在设计上不可能由"答错"产生：
+      ① 生产侧直接声明 `all_rounds_api_failed=True`；
+      ② `llm_rounds` 非空，且**每一轮**的 finish_reason 都是 error/timeout；
+      ③ **没有**轮次明细时，`api_error_first` 命中调用层失败关键字。
+
+    🔴 ③ 必须限定在"没有轮次明细"。有明细就以结构为准 —— 否则「第 2 轮 402、
+    第 3 轮成功」会被文本判成调用失败，把一次真实尝试剔出分母。这个分叉我第一版
+    就写错了（`analyze_retry_recoverability.is_api_failed` 无条件读文本），
+    自测里那条「有一轮成功的行不算调用失败」当场转红才发现。
     """
     if detail.get("all_rounds_api_failed") is True:
         return True
@@ -220,10 +224,17 @@ def _rounds_all_failed(detail):
     if isinstance(rounds, list) and rounds:
         good = [r for r in rounds if isinstance(r, dict)
                 and str(r.get("finish_reason") or "") not in ("error", "timeout", "")]
-        if not good:
-            return True
-        return False
+        return not good
+    first = str(detail.get("api_error_first") or "")
+    if first and any(k in first.lower() for k in _API_FAIL_MARKS):
+        n_err = detail.get("api_error_rounds")
+        return isinstance(n_err, int) and n_err > 0
     return False
+
+
+# 兼容旧名（本文件内多处以 `_rounds_all_failed` 引用）。
+def _rounds_all_failed(detail):
+    return api_call_failed(detail)
 
 
 def _effective(detail):
@@ -232,7 +243,7 @@ def _effective(detail):
     判据（全部满足才算分母）：
       · `latency`/`seconds` > 0（0 秒空跑不算）
       · `error` 不是调用层失败（限额/鉴权/限流，见 `_API_FAIL_MARKS`）
-      · 有轮次明细时，**至少一轮**不是 error/timeout（`_rounds_all_failed`）
+      · 不是 `api_call_failed()`（全轮 error/timeout，或只有文本证据）
     """
     if not isinstance(detail, dict):
         return False
@@ -245,19 +256,7 @@ def _effective(detail):
     # 生产侧（ctf_stepfun_orchestrator）过去把 `error` 无条件写成 ""：
     # 全部轮次都在 API 层失败时，`error` 仍是空串，失败只留在
     # `llm_rounds[].error` / `api_error_first` 里 ⇒ 上面那行永远不命中。
-    # 所以这里还要看轮次结构，并顺带扫一遍 `api_error_first` 的原文
-    # （覆盖只有 first 没有轮次明细的旧文件）。
-    if _rounds_all_failed(detail):
-        return False
-    first = str(detail.get("api_error_first") or "")
-    if first and any(k in first.lower() for k in _API_FAIL_MARKS):
-        n_err = detail.get("api_error_rounds")
-        rounds = detail.get("llm_rounds")
-        # 只有在「记了错误轮数」且「没有轮次明细」时才据此剔除；
-        # 有明细的情形已由 _rounds_all_failed 结构判定，避免文本误杀。
-        if isinstance(n_err, int) and n_err > 0 and not (isinstance(rounds, list) and rounds):
-            return False
-    return True
+    return not api_call_failed(detail)
 
 
 def judge_one(detail, prob, ctx):
@@ -269,12 +268,8 @@ def judge_one(detail, prob, ctx):
     if not _effective(detail):
         # 区分两种"没跑成"：0 秒空跑 vs 调用层失败。后者的 rate 若被算进分母，
         # 就是把「余额不足」当成「模型不会」—— 一句 rate=0.0 里藏着一个假红。
-        if _rounds_all_failed(detail) or any(
-                k in str(detail.get("api_error_first") or "").lower()
-                for k in _API_FAIL_MARKS):
-            reasons.append("api_call_failed_no_successful_round")
-        else:
-            reasons.append("ineffective_run")
+        reasons.append("api_call_failed_no_successful_round" if api_call_failed(detail)
+                       else "ineffective_run")
     for key, label in ctx.get("evidence_keys") or AGENTIC_EVIDENCE_KEYS:
         if ctx["evidence"].get(key) is not True:
             reasons.append("missing_evidence:%s(%s)" % (key, label))
@@ -350,9 +345,7 @@ def judge_run(result, questions, evidence, leak_ids, leak_available,
     # 旧判据把它们判成 CLEAN_FAIL ⇒ `rate=0.0 / claimable=True / blocking=[]`。
     # 这不是"保守的坏消息"，是把一次没问出口的调用印成 0% 解出率 ——
     # 与「换池洗白」同源，只是方向相反：分母被塞进了从未发生的尝试。
-    api_failed = [d for d in details if _rounds_all_failed(d)
-                  or any(k in str(d.get("api_error_first") or "").lower()
-                         for k in _API_FAIL_MARKS)]
+    api_failed = [d for d in details if api_call_failed(d)]
     # 分母只含「可归因」题：NOT_ATTRIBUTABLE 的题必须剔除，不能混进能力率。
     attributable = verdicts[LLM_SOLVED] + verdicts[CLEAN_FAIL]
     claimable = bool(details) and effective > 0 and attributable > 0 and all_evidence \
@@ -703,7 +696,8 @@ def main():
     verdict = judge_run(result, questions, evidence, ids, leak_available,
                         trained, trained_available)
     if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
+        # newline="\n"：verdict 要跨机器可比；Windows 文本模式会写 \r\n。
+        with open(args.out, "w", encoding="utf-8", newline="\n") as f:
             json.dump(verdict, f, ensure_ascii=False, indent=2)
 
     brief = {k: verdict[k] for k in ("run_id", "total", "effective_runs", "verdicts",

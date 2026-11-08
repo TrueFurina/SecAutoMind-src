@@ -1,9 +1,9 @@
 {
   "tool": "scripts/audit_writeup_answer.py",
-  "generated_at": "2026-11-06T10:52:33+08:00",
+  "generated_at": "2026-11-08T18:41:08+08:00",
   "glob": "data\\ctf_benchmark\\*benchmark*.json",
-  "files_scanned": 31,
-  "problems_scanned": 557,
+  "files_scanned": 35,
+  "problems_scanned": 627,
   "answer_in_statement_total": 6,
   "self_disclosing_wording_count": 5,
   "by_pool": {

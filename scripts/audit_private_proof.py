@@ -404,8 +404,12 @@ def main() -> int:
         d = os.path.dirname(args.out)
         if d:
             os.makedirs(d, exist_ok=True)
-        json.dump(result, open(args.out, "w", encoding="utf-8"),
-                  ensure_ascii=False, indent=2, sort_keys=True)
+        # 🔴 `newline="\n"` 不能省：Windows 上 `open(..., "w")` 会把 \n 翻成 \r\n，
+        # 于是"同一条命令"在两台机器上写出**不同字节**的证据文件 —— 一提交就是
+        # 整文件 34 行 diff，而 git 里那份等价内容在 Linux 上永远复现不出来。
+        # 2026-11-08 实锤：重生成后 17 行全变，实质只改了 3 个字段。
+        with open(args.out, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2, sort_keys=True)
         print("证据已写：%s" % os.path.relpath(args.out, ROOT))
     if args.require_proof and not result["anchored"]:
         print("FAIL: 未达成私有性外部锚点，禁止发布能力率")

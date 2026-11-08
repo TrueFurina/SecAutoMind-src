@@ -165,7 +165,9 @@ def main() -> int:
         return 0 if same else 1
     ev = audit()
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    # `newline="\n"`：Windows 的文本模式会写 \r\n ⇒ 同一份证据在 Linux 上复现
+    # 不出来，提交时整文件 83 行全变（2026-11-08 实锤，实质只改了 2 个计数）。
+    with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(ev, f, ensure_ascii=False, indent=2)
         f.write("\n")
     print("题面自曝答案审计 → %s" % os.path.relpath(args.out, REPO_ROOT))

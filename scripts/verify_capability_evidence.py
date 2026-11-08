@@ -183,6 +183,51 @@ def cross_check(ev_dir=EV, verdict_paths=None):
     return errs
 
 
+def writers_missing_newline(scripts_dir=None):
+    """找出「把产物写到 --out 却没指定 newline」的调用点。返回 [(file, line), ...]。
+
+    🔴 为什么要这条（2026-11-08 实锤）：Windows 的文本模式把 `\\n` 翻成 `\\r\\n`，
+    同一条命令在两台机器上写出**不同字节**的证据文件。表现是重生成后 git diff
+    整文件 34 行全变、实质只改 3 个字段；更糟的是「Linux 上复现不出来」——
+    评审核对不上，会被归因成"数据被改过"。
+
+    判据用 AST 不用正则：正则会把注释里的 `open(args.out, "w")` 当成真实调用
+    （同族前科：`_registry_threaded_proven` 被注释骗成假阳性）。
+    """
+    import ast
+
+    scripts_dir = scripts_dir or os.path.join(ROOT, "scripts")
+    offenders = []
+    for name in sorted(os.listdir(scripts_dir)):
+        if not name.endswith(".py"):
+            continue
+        try:
+            with open(os.path.join(scripts_dir, name), "rb") as f:
+                tree = ast.parse(f.read(), filename=name)
+        except (SyntaxError, OSError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            if not (isinstance(fn, ast.Name) and fn.id == "open") or not node.args:
+                continue
+            first = node.args[0]
+            if not (isinstance(first, ast.Attribute) and first.attr == "out"):
+                continue
+            mode = None
+            if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+                mode = node.args[1].value
+            for kw in node.keywords:
+                if kw.arg == "mode" and isinstance(kw.value, ast.Constant):
+                    mode = kw.value.value
+            if not isinstance(mode, str) or "w" not in mode:
+                continue          # 只读打开不在此列
+            if not any(kw.arg == "newline" for kw in node.keywords):
+                offenders.append((name, node.lineno))
+    return offenders
+
+
 def check():
     errs = cross_check()
     bad = 0
@@ -191,6 +236,14 @@ def check():
         print("  · %s" % e)
     print("  %s（%d 条异常）" % ("FAIL" if errs else "PASS", len(errs)))
     if errs:
+        bad += 1
+    print("=== 1b/2 证据写入可复现性（--out 必须指定 newline）===")
+    off = writers_missing_newline()
+    for name, line in off:
+        print("  · %s:%d 写 --out 未指定 newline=\"\\n\"（Windows 会写 CRLF，"
+              "证据跨机器不可复现）" % (name, line))
+    print("  %s（%d 处）" % ("FAIL" if off else "PASS", len(off)))
+    if off:
         bad += 1
     print("=== 2/2 现成断言入口统一接线（%d 条）===" % len(EXTERNAL_GATES))
     for label, argv in EXTERNAL_GATES:
@@ -263,9 +316,34 @@ def selftest():
         probe("删除 IP 直连证据", lambda d: os.remove(
             os.path.join(d, "airgap_ip_direct_proof_20261106.json")), True)
 
+    # AST 判据的变异：合成两份脚本，只有「写 --out 不带 newline」那份该被抓到。
+    # 放在 tempdir 里跑，既证明会红、也证明不会把 `open(args.out, "rb")` 误判成红。
+    with tempfile.TemporaryDirectory() as sd:
+        with open(os.path.join(sd, "bad.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('import json\n'
+                    'def main(args):\n'
+                    '    with open(args.out, "w", encoding="utf-8") as f:\n'
+                    '        json.dump({}, f)\n'
+                    '    # 注释里也写一句 open(args.out, "w") 骗正则\n')
+        with open(os.path.join(sd, "good.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('MSG = "open(args.out, \'w\') 长这样也不要被骗"\n'
+                    'def main(args):\n'
+                    '    with open(args.out, "w", encoding="utf-8", newline="\\n") as f:\n'
+                    '        f.write("x")\n'
+                    '    with open(args.out, "rb") as f:\n'
+                    '        f.read()\n')
+        bad_hits = writers_missing_newline(sd)
+        cases.append(("写 --out 缺 newline 被抓到（含注释诱饵）",
+                      [(os.path.basename(f), ln) for f, ln in bad_hits],
+                      [("bad.py", 3)], []))
+        cases.append(("带 newline / 只读打开不误判",
+                      [f for f, _ in bad_hits if f == "good.py"], [], []))
+
     passed = 0
     for label, blocked, want, errs in cases:
-        good = blocked is want
+        # 用 `==` 而不是 `is`：新增的两条断言比的是列表（AST 命中位置），
+        # 布尔用例用 `==` 同样成立。
+        good = blocked == want
         passed += 1 if good else 0
         print("  [%s] %-38s %s"
               % ("OK" if good else "FAIL", label,

@@ -218,7 +218,7 @@ def main() -> int:
         body = render(infos)
 
     if a.out:
-        with open(a.out, "w", encoding="utf-8") as f:
+        with open(a.out, "w", encoding="utf-8", newline="\n") as f:
             f.write(body)
         print(f"written: {a.out} ({len(body)} B, {len(infos)} logs)", file=sys.stderr)
     else:

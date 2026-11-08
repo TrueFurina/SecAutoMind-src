@@ -9,10 +9,10 @@
   "public_pools_missing": [],
   "public_truth_hashes_loaded": 214,
   "reasons": [
-    "no_registry: 私有性无外部锚点，题面自证一律不采信"
+    "registry_pool_sha256_mismatch"
   ],
-  "registry_path": "E:\\Program\\SecAutoMind\\data\\ctf_benchmark\\private_pool_registry.json",
-  "registry_sha256": null,
+  "registry_path": "data/ctf_benchmark/private_pool_registry.json",
+  "registry_sha256": "9776a80e850a69c146ed3f8e66cfdd714fab7323a22d2a6fe765d115a1fd7097",
   "tool": "scripts/audit_private_proof.py::assess",
   "total": 154
 }

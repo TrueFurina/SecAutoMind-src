@@ -70,7 +70,22 @@ def verify_one(path):
     fresh = rce.claim_scope_for_pool(pool_path=pool_path,
                                      audit_path=audit_path,
                                      bound_pool_sha=bound)
+    # 🔴 说明性文本不是"声明"：`private_proof_reason` 随环境演进必然变，而结论不变。
+    # 2026-11-08 实锤：注册表 11-07 才入库，同一个 v2 池的理由从
+    # 「no_registry（注册表不存在）」变成「registry_pool_sha256_mismatch」，
+    # 而 anchored 一直是 False、0/154 一直没变。逐键全等会把**所有**历史 verdict
+    # 永久判红 —— 门禁从此只能靠"别动环境"保持绿，那不是判据是枷锁。
+    # 豁免只作用于文本：绑定的布尔一旦分歧照旧报红（见下面 EXPLANATORY 检查），
+    # 且「没锚定却没写理由」也算红。
+    EXPLANATORY = {"private_proof_reason": "private_proof_anchored"}
     for k in sorted(set(cs) | set(fresh)):
+        if k in EXPLANATORY:
+            bool_key = EXPLANATORY[k]
+            if cs.get(bool_key) != fresh.get(bool_key):
+                errs.append("claim_scope.%s 与代码重算不一致" % bool_key)
+            elif (not fresh.get(bool_key)) and not str(cs.get(k) or "").strip():
+                errs.append("claim_scope.%s 缺失（未锚定却不写理由）" % k)
+            continue
         if cs.get(k) != fresh.get(k):
             errs.append("claim_scope.%s 与代码重算不一致" % k)
 
@@ -158,6 +173,8 @@ def selftest():
            lambda d: d["claim_scope"].__setitem__("private_proof_anchored", True))
     attack("篡改题面自曝计数",
            lambda d: d["claim_scope"].__setitem__("statement_tainted_count", -1))
+    attack("未锚定却删掉理由（豁免不等于放行空理由）",
+           lambda d: d["claim_scope"].__setitem__("private_proof_reason", ""))
 
     passed = 0
     for label, blocked, errs in cases:
@@ -166,8 +183,22 @@ def selftest():
         print("  [%s] %-40s %s"
               % ("OK" if good else "FAIL", label,
                  "" if good else "未被拦住！errs=%s" % errs[:2]))
+    # 反向断言：只改说明性文本、结论未变 ⇒ **必须放行**（否则豁免形同虚设，
+    # 而"豁免形同虚设"与"豁免过宽"都是错的，两边都要钉）。
+    d = json.loads(json.dumps(original))
+    d["claim_scope"]["private_proof_reason"] = "（环境演进后的新措辞）"
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "verdict.json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False)
+        allow_ok, allow_errs = verify_one(p)
+    passed += 1 if allow_ok else 0
+    print("  [%s] %-40s %s"
+          % ("OK" if allow_ok else "FAIL", "只改理由文本、结论不变 => 放行",
+             "" if allow_ok else "误杀！errs=%s" % allow_errs[:2]))
+
     passed += 1 if ok else 0
-    total = len(cases) + 1
+    total = len(cases) + 2
     print("verdict 篡改变异自测：%d/%d" % (passed, total))
     return 0 if passed == total else 1
 

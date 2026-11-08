@@ -1124,7 +1124,7 @@ def main():
         "by_category": by_cat,
     }
     out = {"summary": summary, "details": results}
-    with open(args.out, "w", encoding="utf-8") as f:
+    with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     # 单独落盘审计（可逐题复现"有没有抄答案"）
     audit_path = args.out + ".audit.json"

@@ -293,7 +293,7 @@ def main():
 
     ev = audit(args.pool, args.attachments)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(ev, f, ensure_ascii=False, indent=1)
     if args.json:
         print(json.dumps({k: ev[k] for k in ("pool", "total", "counts",

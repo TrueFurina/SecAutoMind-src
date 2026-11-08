@@ -383,7 +383,7 @@ def main(argv=None) -> int:
     results = batch(manifest, args.timeout)
 
     if args.out:
-        with open(args.out, "w", encoding="utf-8") as fh:
+        with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
             for r in results:
                 fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 

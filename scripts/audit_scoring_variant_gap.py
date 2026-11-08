@@ -252,7 +252,7 @@ def main():
         return 2
     ev = audit(args.result)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(ev, f, ensure_ascii=False, indent=2)
         f.write("\n")
     print("判分不去壳假阴性 → %s" % os.path.relpath(args.out, ROOT))

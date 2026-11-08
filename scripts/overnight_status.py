@@ -164,7 +164,7 @@ def main():
         L.append("```")
         L.append("")
 
-    with open(a.out, "w", encoding="utf-8") as f:
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(L) + "\n")
     print("\n".join(L[:8]))
 
