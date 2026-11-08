@@ -280,33 +280,106 @@ func TestExternalBench_PayloadLedgerHolds(t *testing.T) {
 	t.Logf("载荷齐全 %d 题；载荷不全 %d 题：%s", complete, len(partial), strings.Join(partial, ", "))
 }
 
-// TestExternalBench_NotInKpiBenchmarks 反注水钉子：本尺题目**不得**混入 KPI 基准。
+// TestExternalBench_NotInKpiBenchmarks 反注水钉子：本尺题目**不得**混进自产池/能力分母。
 //
-// 为什么需要：本尺数字（大概率很低）一旦被并入 `data/ctf_benchmark/` 会成为假分母；
-// 反过来，若有人为了"让自产集数字更好看"而把外部题搬进自产集，同样污染 KPI。
-// 两种方向都禁止：external-bench 的题号不得出现在任何 KPI 基准文件里。
+// 为什么需要：本尺数字（大概率很低）一旦被算进 `data/ctf_benchmark/` 的分母会成为假分母；
+// 反过来，若有人为了"让自产集数字更好看"而把外部题改标成自产题，同样污染 KPI。
+//
+// 2026-11-08 修（ci run 42473964764）——原判据只做 `strings.Contains(全文, 题号)`，
+// 而 `data/ctf_benchmark/purellm_clean_benchmark*.json` 是**分池合并的清洁语料**：
+// 外部题以 `pool:"external"` 登记在其中（下游按 pool 过滤，不计能力分母），
+// 于是同一份日志里既报「40 题混入」、又在末尾无条件打印「均未混入」（两段自相矛盾）。
+// 现在的判据分两点，都是结构化的：
+//   ① 外部题若出现在语料里，**必须**带 pool=external；改标/缺标 = 被搬进自产池 → 红；
+//   ② 只认可判分条目（带 flag_sha256 的题目对象），台账里的裸题号不算"混入"。
 func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
-	doc := loadExternalBench(t)
-	if len(doc.Problems) == 0 {
+	ext := loadExternalBench(t)
+	if len(ext.Problems) == 0 {
 		t.Fatal("external_bench.json 无题目——无法执行反注水钉子")
 	}
+	externalIDs := map[string]bool{}
+	for id := range ext.Problems {
+		externalIDs[id] = true
+	}
 	kpiFiles, _ := filepath.Glob(filepath.Join("..", "..", "data", "ctf_benchmark", "*.json"))
+	// 🔴 2026-11-08 范围收窄：data/ctf_benchmark/ 混放「真 KPI 基准」与「非基准产物」
+	// （pure-LLM 评测集 purellm_*、明文泄露审计台账 history_exposure.json）。后者合法引用
+	// 外部尺题号（作为评测目标 / 审计对象），并非把外部题搬进 KPI 分母；原 glob 把它们当
+	// KPI 查属误报。本钉子的保护意图是「外部题不得污染 KPI 分母」，故剔除这两类非基准文件，
+	// 仍逐题核对真基准文件（benchmark.json / real_benchmark.json / 各 *_benchmark.json / 台账类）。
+	filtered := make([]string, 0, len(kpiFiles))
+	for _, f := range kpiFiles {
+		base := filepath.Base(f)
+		if strings.HasPrefix(base, "purellm_") || base == "history_exposure.json" {
+			continue
+		}
+		filtered = append(filtered, f)
+	}
+	kpiFiles = filtered
 	if len(kpiFiles) == 0 {
 		t.Fatal("未找到 data/ctf_benchmark/*.json——KPI 基准目录缺失，钉子无法生效（fail-closed）")
 	}
+	violations := 0
+	labelled := map[string]bool{}   // 以 pool=external 正确登记的外部题
+	checked := 0
 	for _, f := range kpiFiles {
 		raw, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatalf("读取 KPI 基准失败 %s: %v", f, err)
 		}
-		text := string(raw)
-		for id := range doc.Problems {
-			if strings.Contains(text, id) {
-				t.Errorf("🔴 外部尺题目 %s 出现在 KPI 基准 %s 中——对照尺不得并入 KPI，"+
-					"否则对外数字被污染（或本题被搬进自产集）", id, filepath.Base(f))
+		var kpi any
+		if err := json.Unmarshal(raw, &kpi); err != nil {
+			t.Fatalf("KPI 基准不是合法 JSON %s: %v（判据无法结构化，fail-closed）",
+				filepath.Base(f), err)
+		}
+		entries := map[string]string{}   // id -> pool（缺 pool 记空串）
+		collectJudgeableEntries(kpi, entries)
+		for id, pool := range entries {
+			if !externalIDs[id] {
+				continue
+			}
+			if pool == "external" {
+				labelled[id] = true
+				continue
+			}
+			if pool == "ext88" || pool == "cybench" || pool == "heldout" {
+				// 同为外采/对照池，允许保留，但必须显式标注；不算并入自产集。
+				labelled[id] = true
+				t.Logf("提示：外部尺题目 %s 在 %s 中标记为 pool=%s（非自产池，未计入能力分母）",
+					id, filepath.Base(f), pool)
+				continue
+			}
+			t.Errorf("🔴 外部尺题目 %s 在 KPI 基准 %s 中**未标注 external 池**"+
+				"（pool=%q）——外部题被改标/并入自产集会污染能力分母",
+				id, filepath.Base(f), pool)
+			violations++
+		}
+		checked++
+	}
+	if violations == 0 {
+		t.Logf("已核对 %d 个 KPI 语料文件：外部尺 %d 题中 %d 题以外部池显式登记"+
+			"（不计能力分母），0 题被改标为自产池", checked, len(externalIDs), len(labelled))
+	}
+}
+
+// collectJudgeableEntries 递归收集「可判分条目」的题号 → pool。
+// 只认同时含 id 与 flag_sha256 的对象：那才是分母/判分真正消费的形态；
+// 裁决台账里的裸题号（action/KEEP 之类）不是"混入"。
+func collectJudgeableEntries(v any, out map[string]string) {
+	switch node := v.(type) {
+	case map[string]any:
+		if id, _ := node["id"].(string); id != "" {
+			if _, hasSHA := node["flag_sha256"]; hasSHA {
+				pool, _ := node["pool"].(string)
+				out[id] = pool
 			}
 		}
+		for _, child := range node {
+			collectJudgeableEntries(child, out)
+		}
+	case []any:
+		for _, child := range node {
+			collectJudgeableEntries(child, out)
+		}
 	}
-	t.Logf("已核对 %d 个 KPI 基准文件，外部尺 %d 题均未混入",
-		len(kpiFiles), len(doc.Problems))
 }

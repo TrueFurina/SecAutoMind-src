@@ -44,11 +44,17 @@ import re
 import sys
 from pathlib import Path
 
+# 2026-11-08 修（ci truth-source-gate 判「评测池解析到 0 题」）：
+# 判据原先解析 internal/ctfplatform/live_target_test.go 里的 newLiveCases()，但该函数后来
+# 改成从 NewLiveTargetSpecs() 组装（`id:/title:/flag:` 小写字段形态消失），正则与源码形态
+# 脱钩 —— 门禁 fail-closed 报红，却**一题都没校验**。这类"判据原地不动、语料已经搬家"
+# 是本仓反复出现的自伤，故解析目标直接对准单一真值源 live_targets.go（ID:/Title:/Flag:）。
 CASE_RE = re.compile(
-    r'id:\s*"(?P<id>[^"]+)"\s*,\s*title:\s*"(?P<title>[^"]+)"\s*,\s*flag:\s*"(?P<flag>[^"]+)"',
+    r'\{ID:\s*"(?P<id>[^"]+)"\s*,[^\n]*?Title:\s*"(?P<title>[^"]+)"'
+    r'[^\n]*?Flag:\s*"(?P<flag>[^"]+)"',
     re.DOTALL,
 )
-POOL_FILE = Path("internal/ctfplatform/live_target_test.go")
+POOL_FILE = Path("internal/ctfplatform/live_targets.go")
 
 
 def sha(s: str) -> str:

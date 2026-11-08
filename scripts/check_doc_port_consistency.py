@@ -61,6 +61,20 @@ EXEMPTIONS = [
 ]
 MAX_EXEMPTIONS = 5
 
+# 🔴 行内显式标注（2026-11-08 修 doc-port-gate 9 处假红）：
+# 证据目录里大量端口**不是本服务端点**——靶机地址、模型自造的 SSRF payload、
+# 复述"故意指向不可达端口"的失败日志原文。把这些改成 18086 等于**伪造证据**，
+# 松掉全局规则又等于关掉门禁。故引入行内标注：端口与标注**必须同一行**，
+# 且只在 `docs/evidence/` 下生效（证据目录按定义在记录别人/别处的端口）。
+# 标注有上限（防止靠标注把门禁镀绿）；未标注的偏离照样红。
+CITE_TAG = "[非本服务端口]"
+CITE_PREFIX = "docs/evidence/"
+MAX_CITES = 40
+
+
+def is_cited(rel_to_root, line):
+    return rel_to_root.startswith(CITE_PREFIX) and CITE_TAG in line
+
 
 def exemption_for(finding):
     """finding['file'] 是相对被扫目录的路径，豁免清单写的是仓内相对路径 —— 用后缀对齐。"""
@@ -101,6 +115,7 @@ def scan_dir(base, allowed):
                 continue
             path = os.path.join(dirpath, fn)
             rel = os.path.relpath(path, base).replace("\\", "/")
+            rel_root = os.path.relpath(path, ROOT).replace("\\", "/")
             if any(("/%s/" % s) in ("/" + rel) or rel.startswith(s + "/") for s in SKIP_DIRS):
                 skipped += 1
                 continue
@@ -118,6 +133,7 @@ def scan_dir(base, allowed):
                             findings.append({
                                 "file": rel, "line": i, "kind": label,
                                 "port": g, "text": line.strip()[:130],
+                                "cited": is_cited(rel_root, line),
                             })
     return findings, scanned, skipped
 
@@ -139,22 +155,29 @@ def main():
     findings, scanned, skipped = scan_dir(base, allowed)
 
     # 豁免过滤（透明：被豁免的照样打印，只是不算失败）
-    exempted, real = [], []
+    exempted, cited, real = [], [], []
     for f in findings:
         why = exemption_for(f)
         if why:
             f["exempt_reason"] = why
             exempted.append(f)
+        elif f.get("cited"):
+            cited.append(f)
         else:
             real.append(f)
     findings = real
     ok = not findings
 
+    if len(cited) > MAX_CITES:
+        print("  [FAIL] 行内标注 %d 处 > 上限 %d：标注已泛滥，收敛后再谈放行"
+              % (len(cited), MAX_CITES))
+        return 1
+
     if args.json:
         print(json.dumps({
             "truth_source": "config.share.yaml: server.port=%s, mcp.port=%s" % (server, mcp),
             "root": base, "scanned": scanned, "skipped_dirs": skipped,
-            "ok": ok, "findings": findings, "exempted": exempted,
+            "ok": ok, "findings": findings, "exempted": exempted, "cited": cited,
         }, ensure_ascii=False, indent=2))
         return 0 if ok else 1
 
@@ -169,12 +192,17 @@ def main():
     for f in exempted:
         print("  [SKIP] %s:%d 端口 %s —— 已豁免：%s"
               % (f["file"], f["line"], f["port"], f["exempt_reason"]))
+    for f in cited:
+        print("  [CITE] %s:%d 端口 %s —— 行内已标注「%s」（不是本服务端点，不改写）"
+              % (f["file"], f["line"], f["port"], CITE_TAG))
+        print("         %s" % f["text"])
     for f in findings:
         print("  [FAIL] %s:%d [%s] 端口 %s（应为 %s）"
               % (f["file"], f["line"], f["kind"], f["port"], server))
         print("         %s" % f["text"])
     if ok:
-        print("  [PASS] docs 内服务端点端口与交付配置一致")
+        print("  [PASS] docs 内服务端点端口与交付配置一致"
+              "（另有 %d 处行内标注为非本服务端口，未计入失败）" % len(cited))
     else:
         print("  [BLOCK] %d 处端口偏离（照文档操作会连不上服务）" % len(findings))
     return 0 if ok else 1

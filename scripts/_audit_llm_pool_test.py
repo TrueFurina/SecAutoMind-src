@@ -48,7 +48,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 GATE = os.path.join(HERE, "_audit_llm_pool.py")
 
-POOL_REL = os.path.join("internal", "ctfplatform", "live_target_test.go")
+POOL_REL = os.path.join("internal", "ctfplatform", "live_targets.go")
 BENCH_DIR = os.path.join("data", "ctf_benchmark")
 
 _results = []
@@ -66,11 +66,12 @@ def _write(root, relpath, content):
 
 
 def _write_pool(root, cases):
-    """写一份形如 newLiveCases() 的 Go 源（只被 CASE_RE 正则解析，无需可编译）。"""
+    """写一份形如 NewLiveTargetSpecs() 的 Go 源（只被 CASE_RE 正则解析，无需可编译）。"""
     body = ("package ctfplatform\n\n"
-            "func newLiveCases() []liveCase {\n\treturn []liveCase{\n")
+            "func NewLiveTargetSpecs() []LiveTargetSpec {\n\treturn []LiveTargetSpec{\n")
     for cid, title, flag in cases:
-        body += '\t\t{id: "%s", title: "%s", flag: "%s"},\n' % (cid, title, flag)
+        body += '\t\t{ID: "%s", Title: "%s", Desc: "题面", Flag: "%s", Handler: noop},\n' % (
+            cid, title, flag)
     body += "\t}\n}\n"
     _write(root, POOL_REL, body)
 
@@ -122,8 +123,8 @@ def fx_dup_flag(root):
 
 def fx_zero_cases(root):
     _write(root, POOL_REL,
-           "package ctfplatform\n\nfunc newLiveCases() []liveCase {\n"
-           "\treturn []liveCase{}\n}\n")
+           "package ctfplatform\n\nfunc NewLiveTargetSpecs() []LiveTargetSpec {\n"
+           "\treturn []LiveTargetSpec{}\n}\n")
 
 
 # ---------------------------------------------------------------- cases
