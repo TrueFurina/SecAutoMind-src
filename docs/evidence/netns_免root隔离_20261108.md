@@ -92,6 +92,27 @@
 6. `wrap()` 不可用时必须抛，不许降级
 7. `prepare_cwd()` 拒绝改 home 权限
 
+## 真实跑批尝试：两个 provider 都 402（未花成 token）
+
+用私池 v2 起真实批次（`--netns-isolate require`），两次都在**第一次 LLM 调用**就失败：
+
+| provider | 结果 | 逐题分类 |
+|---|---|---|
+| stepfun（`--agentic` 需经 `run_agentic_stepfun.py` 打 patch） | `HTTP 402 exceeded your current quota` | 3/3 `api_error_rounds=1` |
+| tokenrhythm（`jiyuan` key） | `HTTP 402 账户余额不足，请充值后重试` | 2/2 `api_error_rounds=1` |
+
+**这批的 `solved 0/5` 不是能力读数**：每题都记了 `api_error_rounds=1` + 原文，
+按既有口径必须整批从能力读数里剔除（"API 层失败 ≠ 答错"）。
+
+它证明的事只有两件，但两件都要紧：
+
+1. `--netns-isolate require` 走通了：`summary.netns_isolation.available=True`
+   `decisive_targets=2`，且**没有**在花额度之前退出 ⇒ 机制与接线都对；
+2. 架构上"父进程出网调 LLM / 子进程零路由"是分开的：402 是父进程拿到的 HTTP 响应，
+   说明 LLM 通道正常，而工具子进程那一侧仍是 ENETUNREACH。
+
+至于"隔离下解题率是多少"，**本轮没有数据**，须等额度恢复后重跑。
+
 ## 仍缺 / 未验
 
 - 隔离跑批**尚未**用真实 API 跑过一整批（本轮只做机制层与工具调用层烟测，未花额度）。`supports_tools` 在 `PROVIDERS` 里对 stepfun 仍是 `False`，`--agentic` 会被 `resolve_agentic` 降级 ⇒ 要真跑 agentic 批次，仍需 `scripts/run_agentic_stepfun.py` 的那层 patch，或把 `supports_tools` 改成实测值。
