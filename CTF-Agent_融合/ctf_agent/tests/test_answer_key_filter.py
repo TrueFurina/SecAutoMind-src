@@ -56,7 +56,10 @@ class TestAnswerKeyFilter(unittest.TestCase):
 
     # ── ① 明文答案附件（flag.txt，带 \\r\\n）应被剔除 ──
     def test_plaintext_answer_flagtxt_stripped(self):
-        flag = "flag{27033a89-55dd-46dc-82b9-cd89a4da957d}"
+        # 合成答案，**故意不用真题明文**：本用例自带 `fs = _sha256(flag)`，被测的是
+        # 「内容与 flag_sha256 匹配即剔除」这条机制，与答案取自哪道题无关。
+        # 曾经这里硬编码某道真题的真值 → 入仓明文一条（plaintext_debt 记 test_fixture）。
+        flag = "flag{synthetic-answer-key-fixture-0001}"
         fs = _sha256(flag)
         path = self._write("flag.txt", (flag + "\r\n").encode())
         q = _Q(flag_sha256=fs)

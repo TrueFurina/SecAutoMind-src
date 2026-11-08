@@ -2,40 +2,10 @@
   "schema": 1,
   "generated_by": "scripts/check_redaction_consistency.py --update-debt",
   "owner": "agent",
-  "expires": "2027-11-04",
+  "expires": "2027-11-08",
   "note": "明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。不在本表里的明文一律判红。每条带 kind 说明它属于哪一类：doc_prose 必须为 0（叙事里不该有答案）；target_artifact / test_fixture 是结构性真值；external_public_question / source_literal 应逐步改成按哈希比对。",
-  "head": "3bf9e05",
-  "total_hits": 3,
-  "raw_hits": 126,
-  "entries": [
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_answer_key_filter.py",
-      "kind": "test_fixture",
-      "flag_sha256": "b1ecd2fb216a148f0d45783e3a8b6c41538064f550a9449f0e8df19e93744da2",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_chunqiu2022_checkin",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_chunqiu2022_checkin"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_emoji_binary.py",
-      "kind": "test_fixture",
-      "flag_sha256": "ce5aff49a6411c3ded733575a1f4dc6f419039baf3bd04501beb04b1091cae87",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_nyu_ctf_bench_2023f_for_emoji",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_nyu_ctf_bench_2023f_for_emoji"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/tests/test_scan_kpi_leak_guard.py",
-      "kind": "test_fixture",
-      "flag_sha256": "0629c8d6eb02789e4c252c9c67090366f00d4a171be1da9a5bb4c1b18732f9bc",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_dnui_keyboard"
-      ],
-      "hits": 1
-    }
-  ]
+  "head": "6be8b71",
+  "total_hits": 0,
+  "raw_hits": 123,
+  "entries": []
 }

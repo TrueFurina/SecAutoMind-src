@@ -27,7 +27,10 @@ _REAL_TXT = (_POOL_DIR / "_attachments" / "forensics" / "2023f-for-emoji"
 _REAL_PNG = (_POOL_DIR / "_attachments" / "forensics" / "2023f-for-emoji"
              / "emoji.png")
 _REAL_QID = "ext_nyu_ctf_bench_2023f_for_emoji"
-_REAL_FLAG = "csawctf{emoji_game_on_fleeeeeeeeeek}"
+# 真题真值**不入仓**（脱敏纪律 R12/R13）：这里只留 flag_sha256，断言一律按哈希比对。
+# 早先此处硬编码了明文 → 入仓一条 test_fixture 明文债；换成哈希后判定强度不变
+# （sha256 命中即等价于字符串相等，而弱形态：只比长度/前缀的通不过哈希）。
+_RANK_GOOD = "csawctf{synthetic_rank_lowercase_body_ok}"
 _j = _POOL_DIR / "forensics" / f"{_REAL_QID}.json"
 
 
@@ -121,7 +124,7 @@ def test_rejects_too_few_distinct_symbols():
 
 # ------------------------------------------------------------------ 求解逻辑
 def test_rank_prefers_lowercase_prefix():
-    good = _REAL_FLAG
+    good = _RANK_GOOD
     mixed = "cqavctF{Emgja_cale^oj_ble%eaee%eaej}"
     assert E._rank(good) > E._rank(mixed)
 
@@ -154,7 +157,8 @@ def test_solve_real_question_matches_sha256():
 def test_solve_real_question_with_expected_sha():
     flag = E.solve(str(_REAL_TXT), expected_sha256=_REAL_SHA)
     assert flag is not None
-    assert flag.decode() == _REAL_FLAG
+    # 走的是 expected_sha256 分支（与上一条不带 sha 的路径不同），断言仍按哈希比对
+    assert hashlib.sha256(flag).hexdigest() == _REAL_SHA
 
 
 @_need_real
@@ -179,8 +183,9 @@ def test_run_accepts_path_raw_and_expected():
     assert E.run({"raw": stream.encode("utf-8")}) == _SYN_FLAG.encode()
     assert E.run({"raw": "not emoji"}) is None
     assert E.run("bad-params") is None
-    if _REAL_TXT.exists():
-        assert E.run({"path": str(_REAL_TXT)}) == _REAL_FLAG.encode()
+    if _REAL_TXT.exists() and _REAL_SHA:
+        out = E.run({"path": str(_REAL_TXT)})
+        assert out is not None and hashlib.sha256(out).hexdigest() == _REAL_SHA
 
 
 # ------------------------------------------------------------- 变异验证
@@ -196,8 +201,9 @@ def test_mutation_bit_order_reversed(monkeypatch):
 
     monkeypatch.setattr(E, "_search_bytes", _reversed_search)
     assert E.decode(_build_stream(_SYN_FLAG)) != _SYN_FLAG
-    if _REAL_TXT.exists():
-        assert E.solve(str(_REAL_TXT)) != _REAL_FLAG.encode()
+    if _REAL_TXT.exists() and _REAL_SHA:
+        out = E.solve(str(_REAL_TXT))
+        assert out is None or hashlib.sha256(out).hexdigest() != _REAL_SHA
 
 
 def test_mutation_rank_disabled(monkeypatch):
@@ -215,7 +221,10 @@ def test_mutation_rank_disabled(monkeypatch):
     first = cands[0]
     monkeypatch.setattr(E, "decode", lambda text, expected_sha256=None: (
         first if E._FLAG_RE.fullmatch(first) else None))
-    assert E.decode(_REAL_TXT.read_text(encoding="utf-8")) != _REAL_FLAG
+    mutated = E.decode(_REAL_TXT.read_text(encoding="utf-8"))
+    assert mutated is not None, "变异后仍应给出候选（否则测的是崩溃不是择优失效）"
+    assert hashlib.sha256(mutated.encode()).hexdigest() != _REAL_SHA, \
+        "关掉择优后首候选恰好等于真值 ⇒ 本变异无意义"
 
 
 def test_mutation_detector_too_loose(monkeypatch):

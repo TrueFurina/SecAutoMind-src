@@ -128,18 +128,52 @@ def test_real_att_leak_question_is_excluded():
 
 
 @pytest.mark.skipif(not _have_pool(), reason=_SKIP_POOL)
-def test_real_desc_leak_needs_oracle_pass():
-    """裸 token 题面泄漏：无 oracle 判不出、有 oracle 才判得出。
+def test_real_desc_leak_without_oracle_stays_scannable():
+    """裸 token 题面泄漏：**无 oracle 时判不出** ⇒ 该题落在可扫集。
 
-    这正是扫描器必须做「二段判定」的原因 —— 断言无 oracle 时可扫，
-    是为了把"为什么需要二段"钉死；若将来单段就能判出，本断言会红，属信号不是噪声。
+    这条断言的意义就是把「为什么必须二段」钉死：将来若单段（只看 sha256 / 附件）
+    就能判出 desc_leak，本断言会红 —— 那是信号，不是噪声。
+    「有 oracle 才判得出」那一半由下面同形的合成用例锁（真题明文不入仓）。
     """
     q = _load_real("real_crypto_dnui_keyboard")
-    first, _, _ = split_by_leak([q], _classify_provenance)
+    first, leaked, _ = split_by_leak([q], _classify_provenance)
     assert [x.id for x in first] == [q.id], "无 oracle 时该题落在可扫集（故必须二段）"
+    assert leaked == []
+
+
+class _SynQ:
+    """最小题目替身：只给 classify 读取的属性。"""
+
+    def __init__(self, qid: str, description: str) -> None:
+        self.id = qid
+        self.category = "crypto"
+        self.description = description
+        self.attachments = []
+        # 关键形态：**不存 sha256、不存明文** ⇒ 单段判据（附件扫描 / 哈希比对）
+        # 对它完全失效，与「题面只写裸 token」的真题同形。
+        self.flag_sha256 = None
+
+
+def test_desc_leak_needs_oracle_pass():
+    """二段判定机制：同一道题，有 oracle 才判 desc_leak（合成题镜像真题形态）。
+
+    原用例把某道真题的真值明文（`flag{...}`）直接写在测试里：既入仓一条明文
+    （plaintext_debt.json 的 test_fixture 债），又把「机制证明」绑死在单题数据上。
+    改为合成题面 + 合成 oracle 后，锁的仍是机制本身：
+        无 oracle → none（必须二段）／有 oracle → desc_leak（二段成立）
+    与答案取自哪道题无关。走的是与真题相同的**裸 token 分支**
+    （_leak_provenance.classify 第 178~183 行：明文整体不在题面时，退到 ``_TOKEN`` 取裸 token）。
+    """
+    token = "SINTH3T1C9T0K3N"          # 裸 token（题面只写这个，不写 flag{} 外壳）
+    answer = f"flag{{{token}}}"         # oracle 里才是完整答案
+    q = _SynQ("syn_desc_leak", f"题目说明：解出 {token} 后提交。")
+
+    first, leaked, _ = split_by_leak([q], _classify_provenance)
+    assert [x.id for x in first] == [q.id], "无 oracle 时判不出（故必须二段）"
+    assert leaked == []
 
     second, leaked, _ = split_by_leak(
-        [q], lambda x: _classify_provenance(x, {q.id: "flag{CLCKOUTHK}"}))
+        [q], lambda x: _classify_provenance(x, {x.id: answer}))
     assert second == [], "题面写出答案的题不得进入候选扫描"
     assert [p for _, p in leaked] == ["desc_leak"]
 
