@@ -4,9 +4,9 @@
   "owner": "agent",
   "expires": "2027-11-04",
   "note": "明文债棘轮：这些（文件,答案哈希）是入仓明文的**已记账旧债**，允许存在但只许减少。不在本表里的明文一律判红。每条带 kind 说明它属于哪一类：doc_prose 必须为 0（叙事里不该有答案）；target_artifact / test_fixture 是结构性真值；external_public_question / source_literal 应逐步改成按哈希比对。",
-  "head": "f56bf3d",
-  "total_hits": 126,
-  "raw_hits": 148,
+  "head": "aeba1f5",
+  "total_hits": 104,
+  "raw_hits": 135,
   "entries": [
     {
       "file": "data/ctf_benchmark/live_target/web_range_hints.py",
@@ -18,97 +18,8 @@
       "hits": 2
     },
     {
-      "file": "scripts/audit_scoring_variant_gap.py",
-      "kind": "source_literal",
-      "flag_sha256": "d0799edfbba5e4898f5275c568774d624d84537ee95dfa942b7b90288eafa35f",
-      "ids": [
-        "data/ctf_benchmark/private_benchmark_v2.json#pp_v2_30_vm_bytecode_trace"
-      ],
-      "hits": 2
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/calib2.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/calibrate.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/calibrate_templates.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/dp_ocr.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/font_calib.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/font_id.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
       "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/gen_templates.py",
       "kind": "target_artifact",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/make_templates.py",
-      "kind": "source_literal",
-      "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_papapapa"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/data/questions_external/misc/ext_gctf2023_papapapa/_analysis/search_align.py",
-      "kind": "source_literal",
       "flag_sha256": "7f0a7016faa59671855edf5d995e43abc51f9ef8bd7a84a38fdb704fb9b957b8",
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_papapapa",
@@ -365,36 +276,6 @@
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_misc_longjian2023_baby_forensics3",
         "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_misc_longjian2023_baby_forensics3"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/scripts/_solve_changan_ezpy.py",
-      "kind": "source_literal",
-      "flag_sha256": "f7494167e4c3fc8e6b36525c5c12a5c73077b5f6fdd6f75dd205903b0779b181",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_crypto_changan2021_ezpy",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_crypto_changan2021_ezpy"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/scripts/_solve_changan_soeasy.py",
-      "kind": "source_literal",
-      "flag_sha256": "95a8f144fd20374d4231e799f4d281c62e3802ae47c11deed9c004e4dba45a9c",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_web_changan2021_soeasy",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_web_changan2021_soeasy"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "CTF-Agent_融合/ctf_agent/scripts/_solve_hws_peach.py",
-      "kind": "source_literal",
-      "flag_sha256": "13c42279aade7f573945437b0b3a46d5a1fcf6f143d2ac19d2b8274e591ee37f",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#real_pwn_hws2022_peach",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_pwn_hws2022_peach"
       ],
       "hits": 1
     },
@@ -1089,88 +970,6 @@
       "ids": [
         "data/ctf_benchmark/purellm_clean_benchmark.json#real_anxun2020_love_letter",
         "data/ctf_benchmark/purellm_clean_benchmark_v2.json#real_anxun2020_love_letter"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/blind_oob_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "296f47ea854adbc65a6d008ddbef74256f11fdf0c0d87a9ebb173010bd320be3",
-      "ids": [
-        "data/ctf_benchmark/blind_oob_benchmark.json#oob_exfil_basic"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/crc64_parity_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "f249b88fda6733bc0e93a13b6d74c0a65acd3f54f71535fd89a91644a5140160",
-      "ids": [
-        "data/ctf_benchmark/crc64_benchmark.json#crc64_bitflip"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/ecb_parity_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "051a10bf567318164c940a72ed813a22ba3c707388984a77ad3f66f652dce3a3",
-      "ids": [
-        "data/ctf_benchmark/ecb_benchmark.json#ecb_penguin"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/gcm_nonce_reuse_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "8f02e405a60daf86b223bdfbef6304abb28c25cb193243e322af4b55cd7186c4",
-      "ids": [
-        "data/ctf_benchmark/gcm_nonce_reuse_benchmark.json#gcm_nr_basic"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/padding_oracle_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "817b2b921415c3965fafa4a7cd68732eef13a976424b67993a26a3fe1f1c0119",
-      "ids": [
-        "data/ctf_benchmark/padding_oracle_benchmark.json#cbc_padding_oracle_basic"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/xss_parity_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "d9ccc3f3b415a8625476e080e88c4afadebcf4f9882310284ed4b6cb68f6e8b1",
-      "ids": [
-        "data/ctf_benchmark/xss_benchmark.json#xss_reflected"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/xss_parity_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "b26f122bedfa035138b30315ef1844fae0c3b5613363dd9f5dd97f2d39dc210b",
-      "ids": [
-        "data/ctf_benchmark/xss_benchmark.json#xss_stored"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "internal/ctfplatform/xss_parity_test.go",
-      "kind": "test_fixture",
-      "flag_sha256": "1343c6051a94ef3edd8030ba08f992a9ddd0389f61aaceac05f2e75376e97fe5",
-      "ids": [
-        "data/ctf_benchmark/xss_benchmark.json#xss_to_sqli"
-      ],
-      "hits": 1
-    },
-    {
-      "file": "scripts/verify_flag_positive_control.py",
-      "kind": "source_literal",
-      "flag_sha256": "8185f0adaafb18b0f95d0ee11fd8e5cf3225cccfb117457bef7defa8b6482e7f",
-      "ids": [
-        "data/ctf_benchmark/purellm_clean_benchmark.json#ext_gctf2023_cursved",
-        "data/ctf_benchmark/purellm_clean_benchmark_v2.json#ext_gctf2023_cursved"
       ],
       "hits": 1
     }

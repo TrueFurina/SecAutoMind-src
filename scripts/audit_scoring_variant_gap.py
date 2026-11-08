@@ -15,7 +15,7 @@ sha256(裸内容 X) 而模型按题面要求输出 `flag{X}` 时，永远判不�
 旧 verdict 保留原值，重算结果只在本审计产物里。
 
 第二类漏洞（2026-11-07 新增，此前从未被测到）：
-`pp_v2_30_vm_bytecode_trace` 交 `flag{00004908}`，值 0x4908 正确，
+`pp_v2_30_vm_bytecode_trace` 交 `flag{00001234}`，值 0x4908 正确，
 但题面要求 16 位零填充 ⇒ 原判未命中，而**本审计也报 false_negative_count=0**。
 检测器跟着判分器一起错，等于空洞绿。现分两类报：
   - false_negative（`flag{X}` vs 真值 sha256(X)）—— 判分口径缺陷，已修；
@@ -210,25 +210,25 @@ def selftest():
 
     # ── 格式 gap 类（2026-11-07 新增：此前检测器自身漏报）─────────────
     # 真值 16 位零填充，模型交 8 位 —— 值对、宽度错
-    wide = hashlib.sha256("flag{0000000000004908}".encode()).hexdigest()
+    wide = hashlib.sha256("flag{0000000000001234}".encode()).hexdigest()
     fg = [
         ("8 位 vs 16 位零填充真值 → 记为 format_gap",
-         row("flag{00004908}", wide), True, inspect_format_gap),
+         row("flag{00001234}", wide), True, inspect_format_gap),
         ("format_gap 不得计入 false_negative",
-         row("flag{00004908}", wide), False, inspect_row),
+         row("flag{00001234}", wide), False, inspect_row),
         ("非十六进制答案 → 不产生 pad 变体、不误报",
          row("flag{not_hex_at_all}", wide), False, inspect_format_gap),
         ("已命中 → 不计 format_gap",
-         row("flag{0000000000004908}", wide, solved=True), False, inspect_format_gap),
+         row("flag{0000000000001234}", wide, solved=True), False, inspect_format_gap),
     ]
     for name, r, want, fn in fg:
         got = fn(r) is not None
         ok += int(got == want)
         print("%s %-48s got=%-5s want=%s" %
               ("PASS" if got == want else "FAIL", name, got, want))
-    ok += int(inspect_row(row("flag{00004908}", wide)) is None)
+    ok += int(inspect_row(row("flag{00001234}", wide)) is None)
     print("%s 格式 gap 不被 inspect_row 吞掉（两类互不重叠）"
-          % ("PASS" if inspect_row(row("flag{00004908}", wide)) is None else "FAIL"))
+          % ("PASS" if inspect_row(row("flag{00001234}", wide)) is None else "FAIL"))
 
     ev = inspect_row(row("flag{%s}" % secret, bare))
     no_plain = ev is not None and secret not in json.dumps(ev, ensure_ascii=False)

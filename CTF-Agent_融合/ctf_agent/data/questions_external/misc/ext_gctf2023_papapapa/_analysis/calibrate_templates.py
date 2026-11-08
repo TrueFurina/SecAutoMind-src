@@ -15,7 +15,10 @@ sys.path.insert(0, str(HERE.parents[4]))
 from skills import misc_jpeg_padding_stego as S  # noqa: E402
 
 JPG = HERE.parents[0] / "_attachments" / "white.jpg"
-FLAG = "CTF{rearview-monorail-mullets-backroom-stopped}"  # dev-only alignment key
+import os  # noqa: E402
+FLAG = os.environ.get("PAPAPAPA_FLAG", "")  # 逐字符对齐要用真值：不入仓，走环境变量
+if not FLAG:
+    raise SystemExit("需要真 flag 才能逐字符对齐：先设 PAPAPAPA_FLAG 环境变量")
 
 data = JPG.read_bytes()
 info = S._parse_jpeg(data)

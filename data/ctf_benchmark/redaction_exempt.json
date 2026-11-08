@@ -19,6 +19,48 @@
       "reason": "执行基准工件生成器 v2：磁盘镜像 / 内存 dump / pcap 日志三类题的答案必须明文嵌进生成的二进制工件，solver 才有东西可 carve、strings、grep；生成器只拿哈希就出不了含答案的工件。2026-11-08 曾误把它当注释答案删掉，随即发现工件会变空、题目不成立，故改登记豁免。判分仍只走 execution_benchmark.json 的 flag_sha256。",
       "owner": "agent",
       "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/blind_oob_test.go",
+      "reason": "时间盲注靶机夹具：blindOOBSecret 是 mock 靶机持有的 secret，solver 逐字符爆破后必须与它逐字对上；靶机不持有真 secret，盲注场景就不成立。改成哈希等于把靶机换成空壳。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/crc64_parity_test.go",
+      "reason": "CRC64 靶场夹具：crc64TargetFlag 是靶场路由返回/校验的口令，solver 只能从与靶机的交互里还原它；夹具只存哈希则靶机无答案可还原。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/ecb_parity_test.go",
+      "reason": "AES-ECB 靶场夹具：ecbTargetFlag 是被加密进工件的答案，solver 靠 ECB 块拼图还原；夹具换哈希则工件里没有答案。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/gcm_nonce_reuse_test.go",
+      "reason": "GCM nonce 复用夹具：secret 就是被加密的明文，密文由它派生；solver 的验证方式正是还原这段明文，换成哈希就没有可还原的明文。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/padding_oracle_test.go",
+      "reason": "CBC padding oracle 夹具：flag 拼进 oracle 的明文再加密，solver 逐字节恢复明文才拿到答案；夹具去掉明文等于题目无解。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "internal/ctfplatform/xss_parity_test.go",
+      "reason": "XSS 三场景靶场夹具：反射/存储/转 SQLi 三个 flag 分别注入三个 mock 靶场（回显、落库、拼进查询），solver 从响应与库内容里读出；夹具只留哈希则三个靶场都没有答案。",
+      "owner": "agent",
+      "expires": "2027-11-04"
+    },
+    {
+      "file": "scripts/verify_flag_positive_control.py",
+      "reason": "判分阳性对照：POSITIVE 里唯一一条必须是 Google CTF 2023 cursved 的官方真 flag，「sha256 与题库 flag_sha256 一致」正是它能当对照的全部理由。换成哈希就只剩自证（自己比自己的哈希），等于取消外部认知源；题库其余 39 题无公开 flag，本就无法逐题自证，这条是唯一的锚。",
+      "owner": "agent",
+      "expires": "2027-11-04"
     }
   ]
 }

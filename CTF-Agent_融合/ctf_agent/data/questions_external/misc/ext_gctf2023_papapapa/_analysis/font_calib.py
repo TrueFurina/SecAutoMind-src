@@ -34,7 +34,10 @@ for i, b in enumerate(db):
 img = np.rot90(img, 1)
 strip = (img < 200)
 
-FLAG = "CTF{rearview-monorail-mullets-backroom-stopped}"
+import os  # noqa: E402
+FLAG = os.environ.get("PAPAPAPA_FLAG", "")  # 逐字符对齐要用真值：不入仓，走环境变量
+if not FLAG:
+    raise SystemExit("需要真 flag 才能逐字符对齐：先设 PAPAPAPA_FLAG 环境变量")
 FONTS = [
     "/c/Windows/Fonts/times.ttf",
     "/c/Windows/Fonts/constan.ttf",

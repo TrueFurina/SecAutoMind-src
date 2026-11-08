@@ -3,7 +3,10 @@
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-FLAG = "CTF{rearview-monorail-mullets-backroom-stopped}"
+import os  # noqa: E402
+FLAG = os.environ.get("PAPAPAPA_FLAG", "")  # 逐字符对齐要用真值：不入仓，走环境变量
+if not FLAG:
+    raise SystemExit("需要真 flag 才能逐字符对齐：先设 PAPAPAPA_FLAG 环境变量")
 # 实测段宽（THR=200, 新装配）
 OBS = {"C":7, "T":8, "F":6, "r":5, "e":7, "a":8, "v":8, "i":2, "w":12, "m":12, "o":7, "n":7,
        "l":2, "s":6, "b":7, "c":5, "k":7, "p":7, "d":7, "u":7, "t":5, "{":5, "-":3, "}":4}

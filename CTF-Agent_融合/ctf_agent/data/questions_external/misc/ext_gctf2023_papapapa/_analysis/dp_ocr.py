@@ -45,7 +45,10 @@ cols = np.where(bw.any(axis=0))[0]
 x0, x1 = cols.min(), cols.max() + 1
 print(f"strip {W_strip}x{H_strip}, ink cols {x0}..{x1}")
 
-FLAG = "CTF{rearview-monorail-mullets-backroom-stopped}"
+import os  # noqa: E402
+FLAG = os.environ.get("PAPAPAPA_FLAG", "")  # 逐字符对齐要用真值：不入仓，走环境变量
+if not FLAG:
+    raise SystemExit("需要真 flag 才能逐字符对齐：先设 PAPAPAPA_FLAG 环境变量")
 CHARSET = "".join(sorted(set(FLAG)))
 
 # ---- bootstrap: font width model ----
