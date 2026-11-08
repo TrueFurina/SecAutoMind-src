@@ -20,6 +20,9 @@
 import hashlib
 import os
 
+# 「没传 uid」与「该平台没有 uid」必须是两个不同的值（见 self_check_binding 里的注释）。
+_AUTO_UID = object()
+
 
 def agentic_run_binding(proof, command):
     """§18 跨层绑定：机制证据 ≠ 本次跑批的解题子进程被隔离。
@@ -56,7 +59,7 @@ def agentic_run_binding(proof, command):
     return True, "机制证据 + 本次跑批子进程隔离绑定均成立"
 
 
-def self_check_binding(proof, argv, uid=None):
+def self_check_binding(proof, argv, uid=_AUTO_UID):
     """跑批进程的自证：我是不是被 proof 里那条命令启动的进程？
 
     与 agentic_run_binding() 的区别：外部门禁在**包装层**比对它 `--` 之后的
@@ -83,7 +86,13 @@ def self_check_binding(proof, argv, uid=None):
     if bound.get("subprocess_ip_direct_blocked") is not True:
         return False, "本次跑批解题子进程无 IP 直连拦截证据"
     # UID：caveats[0] —— 证据只对同 UID 的跑批成立。
-    if uid is None:
+    # ⚠️ 2026-11-08 修「自测在 CI 红、本地绿」：原来默认值写 None，函数内又把 None 当成
+    # 「请自行探测」（`os.getuid()`），于是"无 uid 平台"这个**语义值**根本没有表达方式：
+    # 在 Linux（有 getuid）传 None 会被当作"假装自动"，自测里那条"Windows 无 uid ⇒ 放行"
+    # 就以当前 runner 的真实 uid(1001) 去比 995，必红；Windows 上没 getuid 才碰巧过。
+    # 现在拆成两个不同的东西：不传参数 = 自动探测（`_AUTO_UID` 哨兵），
+    # 传 None = 该平台没有 uid 概念（Windows / uid 未知）⇒ 跳过这条并如实标注。
+    if uid is _AUTO_UID:
         uid = os.getuid() if hasattr(os, "getuid") else None
     if uid is not None and proof.get("uid") is not None and proof.get("uid") != uid:
         return False, "proof.uid=%s ≠ 当前 uid=%s（caveats[0]：跨 UID 证据无效）" % (

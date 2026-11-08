@@ -56,6 +56,10 @@ AUTO_CHECK_RE = re.compile(r"<!--\s*AUTO-CHECK:\s*total=(\d+)\s+payload_complete
 FLAG_CAND_RE = re.compile(r"([A-Za-z][A-Za-z0-9_]{0,14})\{[^{}\n]{1,200}\}")
 HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
+# 「外采/对照」池名。外部尺题目出现在 KPI 语料里时只认这几个 pool 值，
+# 其余（real / 空串 / 自造名）一律视为被并入自产集 → 污染能力分母。
+EXTERNAL_POOLS = frozenset({"external", "ext88", "cybench", "heldout"})
+
 
 def fail(msg: str, out: list) -> None:
     out.append("🔴 " + msg)
@@ -82,18 +86,24 @@ def sha256_of(path: str) -> str:
 
 
 def collect_judgeable_entries(v, out: dict | None = None) -> dict:
-    """递归收集「可判分条目」题号 → pool（与 Go collectJudgeableEntries 同口径）。
+    """递归收集「结构化题号记录」：id → {该 id 出现过的所有 pool 取值}（与 Go 同口径）。
 
-    只认同时含 id（非空串）与 flag_sha256 键的对象：那才是分母/判分真正消费的形态；
-    台账里的裸题号（action/KEEP 之类）不是"混入"。pool 缺失记空串。
+    🔴 2026-11-08 修（判据与语料形态脱钩）：上一版只认**同时**含 id 与 flag_sha256 的对象，
+    于是构建清单 `*.manifest.json`（actions 里 id+pool+action，**天然没有 flag_sha256**）
+    被判成"题号出现却无可判分条目"→ fail-closed 红了一片，而那份清单其实把 84 条外部题
+    老老实实标成了 external/ext88/cybench/heldout。
+    判 pool 才是真正要盯的事（denominator 就是在 pool 上定的），有没有哈希不是必要条件：
+      · 有 id + 有 pool → 直接判 pool；
+      · 有 id 但 pool 缺失/写成 real → 违规（改标/缺标）；
+      · id 只在裸文本里出现、没有任何结构化记录 → 才是"判据与语料脱钩"，fail-closed。
     """
     if out is None:
         out = {}
     if isinstance(v, dict):
         pid = v.get("id")
-        if isinstance(pid, str) and pid and "flag_sha256" in v:
+        if isinstance(pid, str) and pid:
             pool = v.get("pool")
-            out[pid] = pool if isinstance(pool, str) else ""
+            out.setdefault(pid, set()).add(pool if isinstance(pool, str) else "")
         for child in v.values():
             collect_judgeable_entries(child, out)
     elif isinstance(v, list):
@@ -232,21 +242,23 @@ def check(problems: dict, honesty: dict, stats: dict, src: str | None) -> list:
             fail("C4 KPI 基准 %s 不是合法 JSON——判据无法结构化，fail-closed" % base, out)
             continue
         entries = collect_judgeable_entries(kpi)
-        for pid, pool in entries.items():
+        for pid, pools in entries.items():
             if pid not in problems:
                 continue
-            if pool in ("external", "ext88", "cybench", "heldout"):
+            if pools & EXTERNAL_POOLS:
                 labelled.add(pid)
                 continue
-            fail("C4 外部尺题目 %s 在 KPI 基准 %s 中未标注 external 池（pool=%r）——"
-                 "外部题被改标/并入自产集会污染能力分母" % (pid, base, pool), out)
-        # fail-closed（脱钩检测）：题号出现在全文、却未以"可判分条目"形态被认出
-        # （缺 id/flag_sha256）→ 判据与语料形态脱钩，无法确认未污染 → 红。
+            fail("C4 外部尺题目 %s 在 KPI 基准 %s 中未标注 external 池（pool=%s）——"
+                 "外部题被改标/并入自产集会污染能力分母"
+                 % (pid, base, "/".join(sorted(p or "<缺失>" for p in pools))), out)
+        # fail-closed（脱钩检测）：题号出现在全文、却没有任何结构化记录（连 id 都没有）
+        # → 判据与语料形态脱钩，无法确认未污染 → 红。
         # 题号根本不出现 = 既无登记也无污染，不触发（与"看不见≠干净"区分）。
         for pid in problems:
-            if pid in raw and pid not in labelled:
-                fail("C4 外部尺题目 %s 出现在 KPI 基准 %s 中但缺失 id/flag_sha256 可判分条目——"
-                     "判据与语料形态脱钩，无法确认未污染（fail-closed）" % (pid, base), out)
+            if pid in raw and pid not in entries:
+                fail("C4 外部尺题目 %s 出现在 KPI 基准 %s 中但没有任何结构化记录"
+                     "（裸题号即投放形态）——判据与语料形态脱钩，无法确认未污染"
+                     "（fail-closed）" % (pid, base), out)
         checked += 1
     if labelled:
         out.append("✅ C4 已核对 %d 个 KPI 语料文件（另跳过 %d 份审计台账）：外部尺 %d 题中 "

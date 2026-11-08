@@ -323,7 +323,7 @@ func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
 		t.Fatal("未找到 data/ctf_benchmark/*.json——KPI 基准目录缺失，钉子无法生效（fail-closed）")
 	}
 	violations := 0
-	labelled := map[string]bool{}   // 以 pool=external 正确登记的外部题
+	labelled := map[string]bool{}   // 以外部池正确登记的外部题
 	checked := 0
 	for _, f := range kpiFiles {
 		raw, err := os.ReadFile(f)
@@ -335,35 +335,43 @@ func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
 			t.Fatalf("KPI 基准不是合法 JSON %s: %v（判据无法结构化，fail-closed）",
 				filepath.Base(f), err)
 		}
-		entries := map[string]string{}   // id -> pool（缺 pool 记空串）
+		entries := map[string]map[string]bool{}   // id -> 该 id 出现过的所有 pool 取值
 		collectJudgeableEntries(kpi, entries)
-		for id, pool := range entries {
+		for id, pools := range entries {
 			if !externalIDs[id] {
 				continue
 			}
-			if pool == "external" {
-				labelled[id] = true
-				continue
-			}
-			if pool == "ext88" || pool == "cybench" || pool == "heldout" {
+			if pools["external"] || pools["ext88"] || pools["cybench"] || pools["heldout"] {
 				// 同为外采/对照池，允许保留，但必须显式标注；不算并入自产集。
 				labelled[id] = true
-				t.Logf("提示：外部尺题目 %s 在 %s 中标记为 pool=%s（非自产池，未计入能力分母）",
-					id, filepath.Base(f), pool)
 				continue
 			}
-			t.Errorf("🔴 外部尺题目 %s 在 KPI 基准 %s 中**未标注 external 池**"+
-				"（pool=%q）——外部题被改标/并入自产集会污染能力分母",
-				id, filepath.Base(f), pool)
+			t.Errorf("🔴 外部尺题目 %s 在 KPI 基准 %s 中**未标注外部池**"+
+				"（pool=%v）——外部题被改标/并入自产集会污染能力分母",
+				id, filepath.Base(f), sortedKeys(pools))
 			violations++
+		}
+		// 脱钩检测（与 scripts/check_external_bench.py::C4 同口径）：
+		// 题号出现在全文里、却没有任何结构化记录（连 {"id": ...} 都没有）→ 判据看不见它，
+		// 此时 PASS 只是"我没找见"，不是"没混入"。
+		for id := range externalIDs {
+			if _, ok := entries[id]; ok {
+				continue
+			}
+			if strings.Contains(string(raw), id) {
+				t.Errorf("🔴 外部尺题目 %s 出现在 KPI 基准 %s 中但没有任何结构化记录"+
+					"（裸题号即投放形态）——判据与语料形态脱钩，fail-closed",
+					id, filepath.Base(f))
+				violations++
+			}
 		}
 		checked++
 	}
-	// fail-closed：语料里一条外部题的可判分条目都看不见 ⇒ 判据与语料形态脱钩，
+	// fail-closed：语料里一条外部题的登记记录都看不见 ⇒ 判据与语料形态脱钩，
 	// 这时 PASS 只证明"我什么都没看见"，不证明"没混入"（AGENTS.md 第零类假绿）。
 	if len(labelled) == 0 {
-		t.Fatalf("外部尺 %d 题在 %d 个 KPI 语料文件里**一条可判分条目都没找到**——"+
-			"判据（collectJudgeableEntries 认的 {id, flag_sha256, pool} 形态）与语料已经脱钩，"+
+		t.Fatalf("外部尺 %d 题在 %d 个 KPI 语料文件里**一条登记记录都没找到**——"+
+			"判据（collectJudgeableEntries 认的 {id, pool} 形态）与语料已经脱钩，"+
 			"此时 PASS 只表示看不见，不表示没混入（fail-closed）",
 			len(externalIDs), checked)
 	}
@@ -375,17 +383,25 @@ func TestExternalBench_NotInKpiBenchmarks(t *testing.T) {
 	}
 }
 
-// collectJudgeableEntries 递归收集「可判分条目」的题号 → pool。
-// 只认同时含 id 与 flag_sha256 的对象：那才是分母/判分真正消费的形态；
-// 裁决台账里的裸题号（action/KEEP 之类）不是"混入"。
-func collectJudgeableEntries(v any, out map[string]string) {
+// collectJudgeableEntries 递归收集「结构化题号记录」：id → 该 id 出现过的所有 pool 取值。
+//
+// 🔴 2026-11-08 改（原判据与语料形态脱钩）：上一版只认同时含 id 与 flag_sha256 的对象，
+// 于是构建清单 `*.manifest.json`（actions 里是 id+pool+action，**天然没有 flag_sha256**）
+// 被当成"题号出现却无条目"→ fail-closed 红一片，而那份清单其实把 84 条外部题
+// 老老实实标成了 external/ext88/cybench/heldout。
+// 真正要盯的是 pool（能力分母就定在 pool 上），哈希不是必要条件：
+//   · 有 id + 有 pool → 判 pool；
+//   · 有 id 但 pool 缺失/写成 real → 违规；
+//   · id 只在裸文本里出现、没有任何结构化记录 → 脱钩，fail-closed（由调用方判）。
+func collectJudgeableEntries(v any, out map[string]map[string]bool) {
 	switch node := v.(type) {
 	case map[string]any:
 		if id, _ := node["id"].(string); id != "" {
-			if _, hasSHA := node["flag_sha256"]; hasSHA {
-				pool, _ := node["pool"].(string)
-				out[id] = pool
+			pool, _ := node["pool"].(string)
+			if out[id] == nil {
+				out[id] = map[string]bool{}
 			}
+			out[id][pool] = true
 		}
 		for _, child := range node {
 			collectJudgeableEntries(child, out)
@@ -395,4 +411,18 @@ func collectJudgeableEntries(v any, out map[string]string) {
 			collectJudgeableEntries(child, out)
 		}
 	}
+}
+
+// sortedKeys 让报错里的 pool 取值顺序稳定（map 遍历顺序随机会让同一问题两种输出）。
+func sortedKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		if k == "" {
+			keys = append(keys, "<缺失>")
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
