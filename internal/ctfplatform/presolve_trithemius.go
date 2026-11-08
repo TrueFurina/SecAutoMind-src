@@ -39,16 +39,21 @@ func tryTrithemius(text string) []string {
 	// 抢过 xor_known_plaintext(37) 成为 best，sha256 不匹配致 parity 断言红。
 	// 门禁：解码后可打印比例 ≥0.9 且含至少 2 个下划线/单词结构（dynastic
 	// 明文是语义句子），否则不包装。
+	// HTB 包装分支的可读性门禁：解码结果须**全大写**才允许硬包 HTB{}。
+	// 🔴 2026-11-08 回归：旧门禁（printable≥0.9 + ≥2 空格/下划线）对英文题面
+	// 被当密文移位后的产物照单全收，产出 `HTB{Snkbpdgxk, lvnf'c…}` 这类混合/小写
+	// 假命中（实测外部尺 5 题）。本引擎的 HTB 包装只服务 dynastic 型（裸大写明文，
+	// 如 DID_YOU_KNOW_ABOUT_THE_TRITHEMIUS_CIPHER），故要求全大写以区分真密文与题面噪音。
 	try(func(s string) string {
 		dec := trithemiusShift(s, -1)
-		if trithemiusPlausible(dec) {
+		if trithemiusPlausible(dec) && isAllUpper(dec) {
 			return "HTB{" + dec + "}"
 		}
 		return ""
 	})
 	try(func(s string) string {
 		dec := trithemiusShift(s, +1)
-		if trithemiusPlausible(dec) {
+		if trithemiusPlausible(dec) && isAllUpper(dec) {
 			return "HTB{" + dec + "}"
 		}
 		return ""
@@ -87,6 +92,21 @@ func trithemiusPlausible(s string) bool {
 		}
 	}
 	return float64(printable)/float64(len(s)) >= 0.9 && us >= 2
+}
+
+// isAllUpper 全大写判定（须含至少一个字母）。HTB 包装门禁用：本引擎的 HTB 包装只服务
+// dynastic 型裸大写明文；英文题面移位产物是小写/混合，须被排除，否则产出假命中。
+func isAllUpper(s string) bool {
+	hasLetter := false
+	for _, c := range s {
+		if c >= 'a' && c <= 'z' {
+			return false
+		}
+		if c >= 'A' && c <= 'Z' {
+			hasLetter = true
+		}
+	}
+	return hasLetter
 }
 
 // trithemiusShift 位置移位：字母位 `c ± pos`。pos = **全串字符索引**（含非
