@@ -1,0 +1,95 @@
+{
+ "generated_at": "2026-11-08T10:14:57.700383+00:00",
+ "host": "ubantu",
+ "python": "/usr/bin/python3",
+ "with_isolation": {
+  "mechanism": "unshare -Un (user+net namespace)",
+  "available": true,
+  "checked_at": "2026-11-08T10:14:54.583211+00:00",
+  "targets": [
+   "14.103.2.83:443",
+   "1.1.1.1:443",
+   "8.8.8.8:53"
+  ],
+  "unshare": "/usr/bin/unshare",
+  "egress": [
+   {
+    "target": "14.103.2.83:443",
+    "connected": false,
+    "errno": 101,
+    "strerror": "Network is unreachable"
+   },
+   {
+    "target": "1.1.1.1:443",
+    "connected": false,
+    "errno": 101,
+    "strerror": "Network is unreachable"
+   },
+   {
+    "target": "8.8.8.8:53",
+    "connected": false,
+    "errno": 101,
+    "strerror": "Network is unreachable"
+   }
+  ],
+  "uid": 65534,
+  "loopback_ok": true,
+  "loopback_port": 51531,
+  "control_outside": {
+   "egress": [
+    {
+     "target": "14.103.2.83:443",
+     "connected": true,
+     "errno": 0
+    },
+    {
+     "target": "1.1.1.1:443",
+     "connected": false,
+     "errno": null,
+     "strerror": "TimeoutError"
+    },
+    {
+     "target": "8.8.8.8:53",
+     "connected": true,
+     "errno": 0
+    }
+   ],
+   "uid": 1000,
+   "loopback_ok": true,
+   "loopback_port": 36621
+  },
+  "per_target": [
+   {
+    "target": "14.103.2.83:443",
+    "inside_connected": false,
+    "inside_errno": 101,
+    "inside_strerror": "Network is unreachable",
+    "outside_connected": true,
+    "outside_errno": 0
+   },
+   {
+    "target": "1.1.1.1:443",
+    "inside_connected": false,
+    "inside_errno": 101,
+    "inside_strerror": "Network is unreachable",
+    "outside_connected": false,
+    "outside_errno": null
+   },
+   {
+    "target": "8.8.8.8:53",
+    "inside_connected": false,
+    "inside_errno": 101,
+    "inside_strerror": "Network is unreachable",
+    "outside_connected": true,
+    "outside_errno": 0
+   }
+  ],
+  "decisive_targets": [
+   "14.103.2.83:443",
+   "8.8.8.8:53"
+  ],
+  "leaked": [],
+  "why": "2 个目标外面可连、里面 ENETUNREACH，loopback 正常"
+ },
+ "conclusion": "隔离生效：2 个目标在普通进程里可连、在 netns 内 ENETUNREACH；loopback 正常（uid=65534）"
+}
