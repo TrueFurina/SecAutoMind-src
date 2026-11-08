@@ -75,8 +75,31 @@ LEDGER_REL = "data/ctf_benchmark/redaction_ledger.json"
 MANIFEST_REL = "scripts/arena_manifest.json"
 BASELINE_REL = "docs/benchmark_baseline.json"
 
-REDACTED_TOKEN = re.compile(r"flag\{REDACTED_[A-Za-z0-9_]+\}")
-ANY_FLAG = re.compile(r"flag\{[^}]{3,}\}")
+# 2026-11-08 改：大小写盲区（flag-eval-gate 判红 A 类）。
+# 原写法只认小写 `flag{...}`：语料里把答案写成大写 `FLAG{...}` 时，R5「同题残留」看不见，
+# 导致 9 处真题答案明文长期躺在证据日志里而门禁报绿。答案形态不因大小写而不再是答案，
+# 故两个正则一律 case-insensitive。
+REDACTED_TOKEN = re.compile(r"flag\{REDACTED_[A-Za-z0-9_]+\}", re.IGNORECASE)
+ANY_FLAG = re.compile(r"flag\{[^}]{3,}\}", re.IGNORECASE)
+
+# 比对口径统一源（2026-11-08，flag-eval-gate 判红 B 类）：候选的「原文/小写/前缀归一/裸内容」
+# 变体由 scripts/experiments/flag_util.py::candidate_variants 生成，本门禁不再自己写第二套。
+# 建模依据：真值登记有 flag{...} 与裸内容两种口径，且模型输出常把前缀写成大写——
+# 只按原文算 sha256，这三种情况全部漏判（morse_hello 实锤）。
+sys.path.insert(0, str(Path(__file__).resolve().parent / "experiments"))
+try:
+    from flag_util import candidate_variants, strip_shell   # noqa: E402
+except ImportError as _e:                      # fail-closed：宁可红，不许退回原文比对
+    candidate_variants = None
+    strip_shell = None
+    _FLAG_UTIL_ERR = str(_e)
+
+# 裸内容比对的**最短长度**（2026-11-08 实测定的，不是拍的）：
+# 打开裸内容变体后全文命中 123 → 325，多出的 202 处里绝大多数是短答案的巧合——
+# 例如某题真值就是裸内容 "1"，于是任何写着 `flag{1}` 的说明文字都被判成泄密。
+# 一个 1~7 字符的答案本来就不可能靠"别写这串字"来保密（它在任何日志里都会自然出现），
+# 强行判红只会把门禁变成噪声源；而 ≥8 字符的内容具备可识别性，写成什么形态都算暴露。
+BARE_MIN_LEN = 8
 VALID_STATUS = {"synced", "accepted_debt"}
 # 到期日上限：脱敏是「临时遮住」，不是「永久封存」。超过一年的到期日等同于没有到期日，
 # 而「填个很久以后的日子」正是把记账动作做空的最省力方式，故由机器卡死。
@@ -311,6 +334,27 @@ def _scan_files(root: Path) -> list[str]:
     return files
 
 
+def answer_hit(cand: str, known: dict) -> list[str] | None:
+    """候选是否命中已知答案 → 命中对应的来源列表（未命中 None）。
+
+    走统一口径（flag_util.candidate_variants）的全部形态：原文 / 全小写 /
+    前缀归一 / 前缀归一+小写 / 裸内容 / 裸内容+小写。
+    「大小写换了、前缀换了」不等于「答案没暴露」——泄密判定只看内容是否可见，
+    不看它被写成什么形态。缺模块时抛 SystemExit（fail-closed），不许静默退回原文比对。
+    """
+    if candidate_variants is None:
+        raise SystemExit("FATAL: 无法导入 scripts/experiments/flag_util.py，"
+                         "拒绝在缺统一口径的情况下判定（%s）" % _FLAG_UTIL_ERR)
+    bare = strip_shell(cand) if strip_shell else cand
+    for v in candidate_variants(cand):
+        if len(bare) < BARE_MIN_LEN and v == bare:
+            continue                       # 短裸内容的巧合命中，不算暴露（见 BARE_MIN_LEN）
+        h = hashlib.sha256(v.encode("utf-8")).hexdigest()
+        if h in known:
+            return known[h]
+    return None
+
+
 def scan_answer_plaintext(root: Path, known: dict) -> tuple[list[tuple[str, str, list[str]]], int]:
     """返回 (命中列表, 被跳过的超限文件数)。跳过数要显式报出，不许静默放过。"""
     hits = []
@@ -330,9 +374,9 @@ def scan_answer_plaintext(root: Path, known: dict) -> tuple[list[tuple[str, str,
             cand = m.group(0)
             if "REDACTED" in cand:
                 continue
-            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-            if h in known:
-                hits.append((rel.replace("\\", "/"), cand, known[h]))
+            src = answer_hit(cand, known)
+            if src:
+                hits.append((rel.replace("\\", "/"), cand, src))
     return hits, skipped
 
 
@@ -393,9 +437,9 @@ def scan_comment_docstring_leaks(root: Path, known: dict) -> tuple[list[tuple[st
                 cand = m.group(0)
                 if "REDACTED" in cand:
                     continue
-                h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-                if h in known:
-                    hits.append(("%s:%d" % (rel.replace("\\", "/"), ln), cand, known[h]))
+                src = answer_hit(cand, known)
+                if src:
+                    hits.append(("%s:%d" % (rel.replace("\\", "/"), ln), cand, src))
     return hits, unparsed
 
 
@@ -450,9 +494,9 @@ def scan_patch_added(text: str, known: dict) -> list[tuple[str, str, str, list[s
             cand = m.group(0)
             if "REDACTED" in cand:
                 continue
-            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-            if h in known:
-                hits.append((commit, where, cand, known[h]))
+            src = answer_hit(cand, known)
+            if src:
+                hits.append((commit, where, cand, src))
     return hits
 
 
@@ -481,9 +525,9 @@ def scan_staged_added(root: Path, known: dict) -> list[tuple[str, str, tuple]]:
             cand = m.group(0)
             if "REDACTED" in cand:
                 continue
-            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
-            if h in known:
-                hits.append((path, cand, known[h]))
+            src = answer_hit(cand, known)
+            if src:
+                hits.append((path, cand, src))
     return hits
 
 
@@ -1184,6 +1228,10 @@ def update_exposure(root: Path, owner: str) -> int:
             cand = m.group(0)
             if "REDACTED" in cand:
                 continue
+            # 这里**故意**保持原文精确比对，不走 answer_hit 的变体匹配：
+            # 本段产出的是历史暴露事实表（348 条 / 3269 命中已入账），换成变体口径
+            # 会把历史读数整体改写，让"过去到底暴露了多少"变得不可比。
+            # 拦（R9/R10/暂存/R15）要尽量宽，记账（R11）要跨时间稳定，两者判据不同源是刻意的。
             h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
             # 匹配用「入仓 ∪ 磁盘」的并集：否则在途题库里的真值答案在历史里扫不到，
             # 事实表会把它们凭空漏掉（record 的完整性比「只看入仓」更要紧）。

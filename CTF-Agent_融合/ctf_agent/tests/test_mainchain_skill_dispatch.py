@@ -182,7 +182,7 @@ class TestSkillDispatchAdapter(unittest.TestCase):
 
     def test_extract_flag_from_various_shapes(self):
         import re
-        fake_flag = "flag{ABC123}"
+        fake_flag = "flag{X9Y7Z5}"
         self.assertEqual(
             self.disp.extract_flag(fake_flag.encode()), fake_flag)
         self.assertEqual(self.disp.extract_flag(fake_flag), fake_flag)

@@ -50,7 +50,7 @@ class TestTruthConsistencyAudit(unittest.TestCase):
         for raw in (b"csawctf{REDACTED}",
                     b"flag{plain}",
                     b"DASCTF{Some_Thing}",
-                    b"nssctf{abc123}"):
+                    b"nssctf{sample_value}"):
             hits = self.mod.FLAG_RE.findall(raw)
             self.assertTrue(hits, "未抓到候选: %r" % raw)
             self.assertIn(raw, hits, "候选被截断: %r -> %r" % (raw, hits))

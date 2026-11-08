@@ -7,7 +7,7 @@
     仓库里 10 个评测脚本有 9 个用小写-only 正则（形如 flag 后接 { }）。
     但基准 72 个 flag 全是小写 `flag{`，而 LLM 输出常见大写 `FLAG{...}`。
     结果：模型明明解对，却因前缀大小写被判未命中（morse_hello 即此例，
-    模型输出 `FLAG{MORSE_CODE_HELLO}`，原口径判 False，真实为 True）。
+    模型输出 `FLAG{SAMPLE_UPPER_OK}`，原口径判 False，真实为 True）。
 
 纪律：
     - 校验一律用 flag_sha256，绝不读取/比对 benchmark 的 flag 明文。
@@ -173,9 +173,9 @@ def _self_test() -> int:
     ok = True
 
     # 1) 大小写不敏感：模型输出大写，基准为小写 —— 必须命中
-    t = "解码结果是 FLAG{MORSE_CODE_HELLO} 完毕"
-    hit, m = flag_sha256_hit(t, sha("flag{MORSE_CODE_HELLO}"))
-    ok &= hit and m == "flag{MORSE_CODE_HELLO}"
+    t = "解码结果是 FLAG{SAMPLE_UPPER_OK} 完毕"
+    hit, m = flag_sha256_hit(t, sha("flag{SAMPLE_UPPER_OK}"))
+    ok &= hit and m == "flag{SAMPLE_UPPER_OK}"
     print(f"[1] 大写输出 vs 小写基准 -> hit={hit} matched={m}")
 
     # 2) 混写 Flag{...} 也要命中
@@ -210,8 +210,8 @@ def _self_test() -> int:
     print(f"[7] 旧小写-only 正则在用例1上漏判 -> {missed} (应为 True，证明本修复必要)")
 
     # 8) flag_verdict：命中返回归一化候选，未命中保留首个原始候选（迁移语义对齐）
-    c, h = flag_verdict(t, sha("flag{MORSE_CODE_HELLO}"))
-    ok &= (h and c == "flag{MORSE_CODE_HELLO}")
+    c, h = flag_verdict(t, sha("flag{SAMPLE_UPPER_OK}"))
+    ok &= (h and c == "flag{SAMPLE_UPPER_OK}")
     c2, h2 = flag_verdict("输出: FLAG{wrong_x}", sha("flag{right_y}"))
     ok &= ((not h2) and c2 == "FLAG{wrong_x}")
     c3, h3 = flag_verdict("完全没有候选", sha("flag{x}"))

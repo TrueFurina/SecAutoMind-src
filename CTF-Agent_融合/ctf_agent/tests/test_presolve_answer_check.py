@@ -215,7 +215,7 @@ class TestPlausibleFlagPlaceholder:
     def test_normal_flags_still_plausible(self):
         """回归锁：正常 flag（含短 inner）不受影响。"""
         assert _is_plausible_flag("flag{a1b2c3}") is True
-        assert _is_plausible_flag("DASCTF{70854278-ea0c-462e-bc18-468c7a04a505}") is True
+        assert _is_plausible_flag("DASCTF{00000000-1111-2222-3333-444444444444}") is True
         assert _is_plausible_flag("csawctf{fixture_plausible_01}") is True
         assert _is_plausible_flag("flag{A}") is True
 

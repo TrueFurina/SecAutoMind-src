@@ -508,6 +508,27 @@ def main() -> int:
     _r15_case("T54 语法坏掉的 .py → 不计命中但要计数（fail-closed，不静默放过）",
               "def (:\n    pass\n", _c_known, 0, expect_unparsed=1)
 
+    # T55~T56 大小写 / 前缀盲区（2026-11-08 实修）。fixture 的**真值登记为小写**，
+    # 而语料里写的是大写 / 换了前缀——原文 sha256 不等，旧判据必然漏；只有走统一口径
+    # 的变体比对才命中。T55 里顺手做一次反证：原文哈希**确实**不在已知表里，
+    # 所以这条用例在旧实现下会红（这就是变异验证，不是自证）。
+    import hashlib as _hl
+    _v_known = {_hl.sha256(b"flag{r15_case_0001}").hexdigest(): ["fixture"]}
+    _cand_up = "FLAG{R15_CASE_0001}"
+    _cand_pre = "synt{r15_case_0001}"
+    if _hl.sha256(_cand_up.encode()).hexdigest() not in _v_known:
+        RESULTS.append(("T55 反证：大写候选的原文哈希确实不在已知表（旧实现必漏）", True,
+                        "sha256(原文) 未登记"))
+    else:
+        RESULTS.append(("T55 反证：大写候选的原文哈希确实不在已知表（旧实现必漏）", False,
+                        "fixture 构造有误"))
+    _r15_case("T55 注释里写着大写形态的答案 → 命中（大小写不改变「答案是答案」）",
+              "# 实验记录：模型输出 " + _cand_up + "，旧口径判未命中\n"
+              "def f():\n    return 1\n", _v_known, 1)
+    _r15_case("T56 注释里换了前缀但内容是答案 → 命中（前缀不是保密手段）",
+              "# 调试：外带回来的 " + _cand_pre + " 与归一化后一致\n"
+              "def f():\n    return 1\n", _v_known, 1)
+
     bad = 0
     for title, ok, detail in RESULTS:
         print("  [%s] %s" % ("PASS" if ok else "FAIL", title))

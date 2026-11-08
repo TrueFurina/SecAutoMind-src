@@ -41,7 +41,7 @@
     },
     {
       "id": "pp_v1_03_vigenere_known_key",
-      "code": "# Verify by encrypting back\nplaintext = \"FLAG{B6C37DD96C79}\"\nkey = \"SECAUTOMIND\"\n\ndef char_to_num(c):\n    return ord(c.upper()) - ord('A')\n\ndef num_to_char(n):\n    return chr(n % 26 + ord('A'))\n\nkey_index = 0\nciphertext_check = []\n\nfor char in plaintext:\n    if char.isalpha():\n        p_num = char_to_num(char)\n        k_num = char_to_num(key[key_index % len(key)])\n        c_num = (p_num + k_num) % 26\n        ciphertext_check.append(num_to_char(c_num))\n        key_index += 1\n    else:\n        ciphertext_check.append(char)\n\nprint(''.join(ciphertext_check))",
+      "code": "# Verify by encrypting back\nplaintext = \"FLAG{REDACTED_b3f85f841966}\"\nkey = \"SECAUTOMIND\"\n\ndef char_to_num(c):\n    return ord(c.upper()) - ord('A')\n\ndef num_to_char(n):\n    return chr(n % 26 + ord('A'))\n\nkey_index = 0\nciphertext_check = []\n\nfor char in plaintext:\n    if char.isalpha():\n        p_num = char_to_num(char)\n        k_num = char_to_num(key[key_index % len(key)])\n        c_num = (p_num + k_num) % 26\n        ciphertext_check.append(num_to_char(c_num))\n        key_index += 1\n    else:\n        ciphertext_check.append(char)\n\nprint(''.join(ciphertext_check))",
       "allowed": true,
       "reasons": [],
       "artifact_mode": false

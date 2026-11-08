@@ -16,10 +16,10 @@ def _rec(cmd: str, stdout: str = "", stderr: str = "", rc: int = 0, ts: str = "2
 
 
 def test_extract_flag():
-    rec = _rec("python solve.py", stdout="congrats flag{ABC123} done")
+    rec = _rec("python solve.py", stdout="congrats flag{X9Y7Z5} done")
     facts = _extract_facts(rec, 1)
     flags = [f for f in facts if f.kind == "flag"]
-    assert flags and flags[0].text == "flag{ABC123}"
+    assert flags and flags[0].text == "flag{X9Y7Z5}"
 
 
 def test_extract_error():

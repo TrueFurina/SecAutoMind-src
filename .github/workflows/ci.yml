@@ -907,7 +907,7 @@ jobs:
   # flag 评测口径门禁（2026-10-28 建立）。
   # 为什么需要：基准 72 个 flag 全是小写 flag{，而 LLM 常输出大写 FLAG{...}；仓库里 10 个
   # 评测脚本有 9 个用小写-only 正则提取候选且直接拿原文算 sha256 —— 模型答对也被判未命中
-  # （morse_hello 实锤：输出 FLAG{MORSE_CODE_HELLO} 被判 False）。这是**静默错误**：不报错，
+  # （morse_hello 实锤：输出 FLAG{SAMPLE_UPPER_OK} 被判 False）。这是**静默错误**：不报错，
   # 只让覆盖率数字安静偏低。S1–S4 报的数字可能因此被系统性低估。
   # 统一口径：scripts/experiments/flag_util.py::flag_sha256_hit
   #   （大小写不敏感提取 + 前缀归一 + 变体比对 + target 为空 fail-closed）

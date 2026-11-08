@@ -69,7 +69,7 @@
     },
     {
       "id": "pp_v1_06_encoding_nest",
-      "code": "# Step 4: ROT13 over lowercase ASCII letters only\ndef rot13_lowercase(s):\n    result = []\n    for c in s:\n        if 'a' <= c <= 'z':\n            # ROT13 for lowercase\n            result.append(chr((ord(c) - ord('a') + 13) % 26 + ord('a')))\n        else:\n            result.append(c)\n    return ''.join(result)\n\nstep3_str = \"synt{1938428676}\"\nstep4 = rot13_lowercase(step3_str)\nprint(\"Step 4 (ROT13 lowercase):\", step4)\n",
+      "code": "# Step 4: ROT13 over lowercase ASCII letters only\ndef rot13_lowercase(s):\n    result = []\n    for c in s:\n        if 'a' <= c <= 'z':\n            # ROT13 for lowercase\n            result.append(chr((ord(c) - ord('a') + 13) % 26 + ord('a')))\n        else:\n            result.append(c)\n    return ''.join(result)\n\nstep3_str = \"synt{REDACTED_7bc4b993c3a6}\"\nstep4 = rot13_lowercase(step3_str)\nprint(\"Step 4 (ROT13 lowercase):\", step4)\n",
       "allowed": true,
       "reasons": [],
       "artifact_mode": false
