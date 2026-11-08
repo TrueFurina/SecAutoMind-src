@@ -800,20 +800,33 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
                 wall_budget=wall_budget, max_tokens=max_tokens, stats=stats)
             got, solved, mode = verify_flag(search_text, expected_sha)
             blocked = sum(1 for a in audit if not a["allowed"])
+            # 🔴 2026-11-08：过去这里无条件写 `"error": ""`。当**每一轮**都在
+            # API 层失败（402 余额不足 / 限流 / 鉴权）时，`error` 仍是空串，失败
+            # 只留在 llm_rounds[].error 与 api_error_first 里。于是任何按 `error`
+            # 判"这次跑成了没有"的消费方（判分器就是）都读不到失败，把一次
+            # 没问出口的调用算进分母 —— 实测被判成 `rate=0.0 / claimable=True`。
+            # 失败必须在**所有消费方都会看的那一格**里。
+            api_err_rounds = sum(1 for x in stats if x.get("finish_reason") == "error")
+            first_err = next((x.get("error") for x in stats
+                              if x.get("finish_reason") == "error"), "")
+            all_failed = bool(stats) and api_err_rounds == len(stats)
             return {
                 "id": pid, "category": category, "model": model, "agentic": True, "tool_used": tool_used,
                 "expected_sha256": expected_sha, "got": got, "solved": solved, "hit_mode": mode,
                 "tool_calls": len(audit), "blocked_calls": blocked,
-                "raw_head": search_text[-800:], "latency": round(time.time() - t0, 2), "error": "",
+                "raw_head": search_text[-800:], "latency": round(time.time() - t0, 2),
+                "error": (str(first_err)[:300] if all_failed else ""),
+                # 显式标记：不必再从 error 文本或轮次明细反推。
+                "all_rounds_api_failed": all_failed,
                 "audit": audit,
                 "llm_rounds": stats,
                 "truncated_rounds": sum(1 for x in stats if x.get("finish_reason") == "length"),
                 # API 层失败 ≠ 答错。有这些的题必须从"能力读数"里剔除，
                 # 否则额度耗尽/限流会伪装成 0 分解出率（2026-11-07 qwen 403 事故）。
-                "api_error_rounds": sum(1 for x in stats if x.get("finish_reason") == "error"),
+                # 复用上面的变量，不重算：同一事实两处计算迟早会不一致。
+                "api_error_rounds": api_err_rounds,
                 "timeout_rounds": sum(1 for x in stats if x.get("finish_reason") == "timeout"),
-                "api_error_first": next((x.get("error") for x in stats
-                                         if x.get("finish_reason") == "error"), ""),
+                "api_error_first": first_err,
                 "prompt_tokens_total": sum((x.get("prompt_tokens") or 0) for x in stats),
                 "completion_tokens_total": sum((x.get("completion_tokens") or 0) for x in stats),
                 # 自证配置：附件到底喂了多少字符进 prompt。没有这个字段，事后无法区分
@@ -828,6 +841,12 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
                 "expected_sha256": expected_sha, "got": "", "solved": False, "hit_mode": "",
                 "tool_calls": len(audit), "blocked_calls": sum(1 for a in audit if not a["allowed"]),
                 "raw_head": "", "latency": round(time.time() - t0, 2), "error": str(e)[:200],
+                # 整个调用抛异常：失败要按同样的键落账，别让消费方靠猜。
+                "all_rounds_api_failed": not any(
+                    x.get("finish_reason") not in ("error", "timeout") for x in stats),
+                "api_error_rounds": sum(1 for x in stats if x.get("finish_reason") == "error"),
+                "api_error_first": next((x.get("error") for x in stats
+                                         if x.get("finish_reason") == "error"), str(e)[:300]),
                 "audit": audit, "llm_rounds": stats,
             }
         finally:
@@ -837,6 +856,7 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
         body = call_llm(cfg, api_key, model, prompt, timeout, max_tokens=max_tokens)
         text = ""; reasoning = ""
         finish = ""; usage = {}
+        no_choice = False
         try:
             choice = body["choices"][0]
             msg = choice["message"]
@@ -846,28 +866,41 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
             usage = body.get("usage") or {}
         except Exception:
             text = json.dumps(body, ensure_ascii=False)
+            # 🔴 200 + 错误信封（网关/代理常见）：没有 choices 就**不是**模型回答。
+            # 旧代码把它当正文、finish 记成 "stop"、api_error_rounds 硬编码 0 ⇒
+            # 一次失败被记成"模型答了一段 JSON 但没答对"，混进能力分母。
+            no_choice = True
+            finish = "error"
         # 纯 LLM 分支过去完全不记 stats，导致：①接口失败被当成「空答」；
         # ②finish_reason=length 的截断看不见；③token 成本无从核算。
         # 2026-11-07 跑 step 纯 LLM 全池基线时 40 题全是 prompt=0k/completion=0k 才暴露。
         pstats = [{
             "round": 1,
             "finish_reason": finish or "stop",
+            "error": (text[:300] if no_choice else ""),
             "prompt_tokens": usage.get("prompt_tokens") or 0,
             "completion_tokens": usage.get("completion_tokens") or 0,
         }]
-        search_text = text + "\n" + reasoning
+        api_err = sum(1 for x in pstats if x.get("finish_reason") == "error")
+        first_err = next((x.get("error") for x in pstats
+                          if x.get("finish_reason") == "error"), "")
+        all_failed = bool(pstats) and api_err == len(pstats)
+        # 没有模型输出就没有可校验的答案：不在错误信封里找 flag。
+        search_text = "" if no_choice else (text + "\n" + reasoning)
         got, solved, mode = verify_flag(search_text, expected_sha)
         return {
             "id": pid, "category": category, "model": model,
             "expected_sha256": expected_sha, "got": got, "solved": solved, "hit_mode": mode,
             "tool_calls": 0, "blocked_calls": 0,
-            "raw_head": (text or reasoning)[:300], "latency": round(time.time() - t0, 2), "error": "",
+            "raw_head": (text or reasoning)[:300], "latency": round(time.time() - t0, 2),
+            "error": (first_err[:300] if all_failed else ""),
+            "all_rounds_api_failed": all_failed,
             "audit": [],
             "llm_rounds": pstats,
             "truncated_rounds": sum(1 for x in pstats if x.get("finish_reason") == "length"),
-            "api_error_rounds": 0,
-            "timeout_rounds": 0,
-            "api_error_first": "",
+            "api_error_rounds": api_err,
+            "timeout_rounds": sum(1 for x in pstats if x.get("finish_reason") == "timeout"),
+            "api_error_first": first_err,
             "prompt_tokens_total": sum((x.get("prompt_tokens") or 0) for x in pstats),
             "completion_tokens_total": sum((x.get("completion_tokens") or 0) for x in pstats),
             "inline_chars": len(str((artifact_info or {}).get("inline") or "")),
@@ -890,6 +923,8 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
             "api_error_rounds": 0 if is_timeout else 1,
             "timeout_rounds": 1 if is_timeout else 0,
             "api_error_first": "" if is_timeout else str(e)[:300],
+            # 唯一一轮就是 error/timeout ⇒ 没有任何模型输出，不能算"答错"。
+            "all_rounds_api_failed": True,
             "prompt_tokens_total": 0,
             "completion_tokens_total": 0,
             "inline_chars": len(str((artifact_info or {}).get("inline") or "")),

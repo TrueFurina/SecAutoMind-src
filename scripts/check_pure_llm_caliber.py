@@ -190,16 +190,73 @@ def load_questions(path):
     return {}, False
 
 
+#: 调用层面的失败关键字。命中即说明「模型没被真正问到」，不是答错。
+_API_FAIL_MARKS = (
+    "no available channel", "cooldown", "quota", "403", "429",
+    # 2026-11-08 实证：402 是余额不足，不是限流。旧表里没有它，于是
+    # 「全批一次调用都没成功」被判成 CLEAN_FAIL、rate=0.0、claimable=True。
+    "402", "payment required", "insufficient", "余额不足", "额度",
+    "401", "unauthorized", "invalid api key", "authentication",
+)
+
+
+def _rounds_all_failed(detail):
+    """这一题**有没有任何一轮模型调用成功**。
+
+    只认**正面证据**，字段缺失一律返回 False（= 无法判定，不当成"失败"）。
+    理由：`docs/evidence/private_pool_v1_20261107` 与 `private_pool_v2_20261107`
+    的结果文件整份没有 `llm_rounds`；若把"缺字段"读成"没有成功轮次"，88.3% 那批
+    会被自己的判据判废。缺字段是**不知道**，不是**否定**。
+
+    返回 True 的两种情形，都要求证据在设计上不可能由"答错"产生：
+      ① `llm_rounds` 非空，且**每一轮**的 finish_reason 都是 error/timeout；
+      ② 有轮次明细且 `api_error_rounds` 等于轮次数（同一事实的另一种记法）。
+    生产侧还可以直接声明 `all_rounds_api_failed=True`（2026-11-08 起写入），
+    声明与结构两者任一成立即认——声明是为了让读的人不必反推。
+    """
+    if detail.get("all_rounds_api_failed") is True:
+        return True
+    rounds = detail.get("llm_rounds")
+    if isinstance(rounds, list) and rounds:
+        good = [r for r in rounds if isinstance(r, dict)
+                and str(r.get("finish_reason") or "") not in ("error", "timeout", "")]
+        if not good:
+            return True
+        return False
+    return False
+
+
 def _effective(detail):
-    """有效开跑：seconds/latency > 0 且无致命 error（0 秒空跑不算分母）。"""
+    """有效开跑：有模型响应、且不是一次都没问到。
+
+    判据（全部满足才算分母）：
+      · `latency`/`seconds` > 0（0 秒空跑不算）
+      · `error` 不是调用层失败（限额/鉴权/限流，见 `_API_FAIL_MARKS`）
+      · 有轮次明细时，**至少一轮**不是 error/timeout（`_rounds_all_failed`）
+    """
     if not isinstance(detail, dict):
         return False
     secs = detail.get("latency", detail.get("seconds"))
     if not isinstance(secs, (int, float)) or secs <= 0:
         return False
     err = str(detail.get("error") or "")
-    if err and any(k in err.lower() for k in ("no available channel", "cooldown", "quota", "403", "429")):
+    if err and any(k in err.lower() for k in _API_FAIL_MARKS):
         return False
+    # 生产侧（ctf_stepfun_orchestrator）过去把 `error` 无条件写成 ""：
+    # 全部轮次都在 API 层失败时，`error` 仍是空串，失败只留在
+    # `llm_rounds[].error` / `api_error_first` 里 ⇒ 上面那行永远不命中。
+    # 所以这里还要看轮次结构，并顺带扫一遍 `api_error_first` 的原文
+    # （覆盖只有 first 没有轮次明细的旧文件）。
+    if _rounds_all_failed(detail):
+        return False
+    first = str(detail.get("api_error_first") or "")
+    if first and any(k in first.lower() for k in _API_FAIL_MARKS):
+        n_err = detail.get("api_error_rounds")
+        rounds = detail.get("llm_rounds")
+        # 只有在「记了错误轮数」且「没有轮次明细」时才据此剔除；
+        # 有明细的情形已由 _rounds_all_failed 结构判定，避免文本误杀。
+        if isinstance(n_err, int) and n_err > 0 and not (isinstance(rounds, list) and rounds):
+            return False
     return True
 
 
@@ -210,7 +267,14 @@ def judge_one(detail, prob, ctx):
     solved = bool(detail.get("solved"))
 
     if not _effective(detail):
-        reasons.append("ineffective_run")
+        # 区分两种"没跑成"：0 秒空跑 vs 调用层失败。后者的 rate 若被算进分母，
+        # 就是把「余额不足」当成「模型不会」—— 一句 rate=0.0 里藏着一个假红。
+        if _rounds_all_failed(detail) or any(
+                k in str(detail.get("api_error_first") or "").lower()
+                for k in _API_FAIL_MARKS):
+            reasons.append("api_call_failed_no_successful_round")
+        else:
+            reasons.append("ineffective_run")
     for key, label in ctx.get("evidence_keys") or AGENTIC_EVIDENCE_KEYS:
         if ctx["evidence"].get(key) is not True:
             reasons.append("missing_evidence:%s(%s)" % (key, label))
@@ -280,10 +344,20 @@ def judge_run(result, questions, evidence, leak_ids, leak_available,
     # 全局证据齐备 + 分母有效，才允许给出能力率。缺一即 null。
     all_evidence = all(evidence.get(k) is True for k, _ in keys)
     effective = sum(1 for d in details if _effective(d))
+    # 🔴 2026-11-08：全批一次调用都没成功的批次不得给读数。
+    # 实测：v2 池 2 题在 stepfun / tokenrhythm 上都返回 HTTP 402（余额不足），
+    # 每题的 `error` 都被生产者写成 ""，失败只留在 `api_error_first`。
+    # 旧判据把它们判成 CLEAN_FAIL ⇒ `rate=0.0 / claimable=True / blocking=[]`。
+    # 这不是"保守的坏消息"，是把一次没问出口的调用印成 0% 解出率 ——
+    # 与「换池洗白」同源，只是方向相反：分母被塞进了从未发生的尝试。
+    api_failed = [d for d in details if _rounds_all_failed(d)
+                  or any(k in str(d.get("api_error_first") or "").lower()
+                         for k in _API_FAIL_MARKS)]
     # 分母只含「可归因」题：NOT_ATTRIBUTABLE 的题必须剔除，不能混进能力率。
     attributable = verdicts[LLM_SOLVED] + verdicts[CLEAN_FAIL]
     claimable = bool(details) and effective > 0 and attributable > 0 and all_evidence \
-        and leak_available and trained_available and answer_is_in_statement is not None
+        and leak_available and trained_available and answer_is_in_statement is not None \
+        and len(api_failed) < len(details)
 
     blocking = []
     for k, label in keys:
@@ -295,8 +369,17 @@ def judge_run(result, questions, evidence, leak_ids, leak_available,
         blocking.append("训练白名单未加载")
     if not details or effective == 0:
         blocking.append("有效分母为 0（空跑批次）")
+    if details and len(api_failed) == len(details):
+        blocking.append("全批 LLM 调用均在 API 层失败（%d/%d 题），"
+                        "本次不产生能力读数" % (len(api_failed), len(details)))
 
     hits = [r for r in rows if r["solved_raw"]]
+    # 分母被"调用失败"缩小时必须自己说出来。部分失败仍是合法读数（那些题确实没被问到），
+    # 但如果只写在 effective_runs 里，读的人得自己做减法才知道分母为什么变小。
+    notes = []
+    if details and 0 < len(api_failed) < len(details):
+        notes.append("分母提示：%d/%d 题因调用层失败（余额/限流/鉴权）被剔出，"
+                     "本文 rate 的分母是 %d" % (len(api_failed), len(details), attributable))
     return {
         "run_id": evidence.get("run_id") or result.get("summary", {}).get("slice") or "unknown",
         "contract": "fail-closed / sha256命中仅为候选 / 不可归因时rate为null",
@@ -304,6 +387,8 @@ def judge_run(result, questions, evidence, leak_ids, leak_available,
         "evidence_contract": [k for k, _ in keys],
         "total": len(details),
         "effective_runs": effective,
+        # 调用层失败的题数：可见即可审计。为 0 才说明这批题"真的被问过"。
+        "api_call_failed_runs": len(api_failed),
         "verdicts": verdicts,
         "raw_solved_hits": len(hits),
         "hits": hits,
@@ -314,6 +399,7 @@ def judge_run(result, questions, evidence, leak_ids, leak_available,
         "capability_rate": (round(verdicts[LLM_SOLVED] / attributable, 6)
                             if claimable and attributable else None),
         "blocking_reasons": blocking,
+        "notes": notes,
         "evidence": evidence,
         "rows": rows,
     }
@@ -522,6 +608,52 @@ def selftest():
                             {**pl_ok, "pool_in_version_control": False,
                              "pool_tracked_and_clean": True},
                             {"x"}, True, set(), True)["claimable"], False))
+
+    # ── 调用层失败不得伪装成 0% 解出率（2026-11-08 实证：全批 HTTP 402）──
+    def api_dead(pid, lat=3.99, msg="HTTP 402 Payment Required: 账户余额不足，请充值后重试。"):
+        """真实字段形状：`error` 为空串，失败只在 llm_rounds / api_error_first 里。"""
+        return {"id": pid, "solved": False, "latency": lat, "error": "",
+                "llm_rounds": [{"finish_reason": "error", "error": msg,
+                                "completion_tokens": 0, "prompt_tokens": 0,
+                                "content_chars": 0, "tool_calls": 0}],
+                "api_error_rounds": 1, "api_error_first": msg, "hit_mode": "",
+                "tool_calls": []}
+
+    dead = api_dead("t1")
+    cases.append(("全轮 API 失败 => 该题不算有效开跑", _effective(dead), False))
+    cases.append(("全轮 API 失败 => 不可归因（不是 CLEAN_FAIL）",
+                  judge_one(dead, plain_prob, ctx(evidence=pl_ok))[0], NOT_ATTRIBUTABLE))
+    dead_run = judge_run({"details": [dead, {**dead, "id": "t2"}]},
+                         {"t1": plain_prob, "t2": {**plain_prob, "id": "t2"}},
+                         pl_ok, {"x"}, True, set(), True)
+    cases.append(("全批 API 失败 => rate 为 null 而非 0.0", dead_run["capability_rate"], None))
+    cases.append(("全批 API 失败 => 不可引用", dead_run["claimable"], False))
+    cases.append(("全批 API 失败 => 明确写进阻断理由",
+                  any("API 层失败" in b for b in dead_run["blocking_reasons"]), True))
+    # 反向（防洗白方向）：只有 1/3 题调用失败时，其余 2 题仍要出率，
+    # 且失败那题不计入分母 —— 否则"剔除"会变成把分母做小的工具。
+    partial = judge_run({"details": [dead, hit, miss]},
+                        {"t1": plain_prob}, pl_ok, {"x"}, True, set(), True)
+    cases.append(("1/3 题调用失败 => 仍出率且分母=2", partial["claimable_denominator"], 2))
+    cases.append(("1/3 题调用失败 => rate 仍是 0.5", partial["capability_rate"], 0.5))
+    cases.append(("失败题数可见", partial["api_call_failed_runs"], 1))
+    cases.append(("分母被调用失败缩小 => 必须自己说明",
+                  any("分母提示" in n for n in partial["notes"]), True))
+    # 历史兼容：v1/v2 私池结果文件**整份没有** llm_rounds ⇒ 不得因此判废。
+    legacy = {"id": "t1", "solved": True, "latency": 8.9, "error": ""}
+    cases.append(("缺 llm_rounds 的历史文件仍是有效开跑（缺失≠否定）",
+                  _effective(legacy), True))
+    cases.append(("缺 llm_rounds 的历史命中仍是 LLM_SOLVED",
+                  judge_one(legacy, plain_prob, ctx(evidence=pl_ok))[0], LLM_SOLVED))
+    # 轮次中有一轮成功 ⇒ 有效（哪怕其余轮次 402）
+    mixed_rounds = {"id": "t1", "solved": False, "latency": 30.0, "error": "",
+                    "llm_rounds": [{"finish_reason": "error", "error": "HTTP 402"},
+                                   {"finish_reason": "stop", "content_chars": 10}],
+                    "api_error_rounds": 1, "api_error_first": "HTTP 402"}
+    cases.append(("有一轮成功 ⇒ 有效开跑", _effective(mixed_rounds), True))
+    # 402 文本变了也不该漏：结构判据不依赖措辞
+    cases.append(("换代措辞('payment required' 之外的 402) 仍被结构判据抓到",
+                  _effective(api_dead("t1", msg="HTTP 402 账单未结清")), False))
 
     failed = 0
     for name, got, want in cases:
