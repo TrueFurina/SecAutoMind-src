@@ -41,6 +41,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from agentic_binding import self_check_binding  # §18 跨层绑定判据（单点实现）
+import netns_isolation  # 工具子进程的网络隔离（免 root netns，见该模块头注释）
 import urllib.request
 import urllib.error
 import zipfile
@@ -539,6 +540,39 @@ _TOOL_OUTPUT_CHARS = 8000
 # 一种看起来自证、实际伪证的情况。
 CODE_SHA256 = hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest()
 
+#: 工具子进程网络隔离的全局开关（由 main() 在**花任何 API 额度之前**初始化）。
+#: use=False 时 run_python_tool 行为与旧版完全一致（不改变既有跑批语义）。
+NETNS = {"mode": "off", "use": False, "report": None, "walls": [], "cwd": None}
+
+
+def init_netns(mode="auto"):
+    """初始化隔离：mode ∈ {off, auto, require}。返回 report dict。
+
+    · off      —— 不隔离（老行为）
+    · auto     —— 探测可用就用，不可用就退回不隔离并**记录原因**
+    · require  —— 不可用则抛 SystemExit(2)：在花 API 额度之前退出（fail-closed）
+
+    `auto` 也不许静默：report 会进 summary，跑完能看出这批到底隔离了没有。
+    """
+    NETNS["mode"] = mode
+    if mode == "off":
+        NETNS["report"] = {"mode": mode, "available": False, "why": "显式关闭"}
+        return NETNS["report"]
+    rep = netns_isolation.probe()
+    rep["mode"] = mode
+    NETNS["report"] = rep
+    NETNS["use"] = bool(rep["available"])
+    if rep["available"]:
+        # 无工件模式时也需要一个可进（uid=65534）的工作目录：默认 cwd 是仓库目录，
+        # home 权限 0750 ⇒ 隔离后连 cwd 都进不去，工具调用于是全变 "(no output)"。
+        ws = tempfile.mkdtemp(prefix="ns_ws_")
+        prep = netns_isolation.prepare_cwd(ws)
+        NETNS["walls"].append(prep)
+        NETNS["cwd"] = ws if prep.get("ok") else None
+    if mode == "require" and not rep["available"]:
+        raise SystemExit("netns 隔离不可用（--netns-isolate require）：" + rep.get("why", ""))
+    return rep
+
 
 def _audit_code(code, artifact_mode=False):
     """返回 (allowed, reasons)。检测读盘/出网/子进程/答案路径访问。
@@ -554,15 +588,21 @@ def _audit_code(code, artifact_mode=False):
     return (len(reasons) == 0), reasons
 
 
-def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False):
+def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False,
+                    isolate=False):
     """隔离执行模型生成的纯计算代码（-I 隔象模式）。带守卫 + 审计留痕。
 
     cwd: 工件模式下的工作目录（= 本题解压目录），使相对路径天然限于本题工件内。
+    isolate: 把子进程放进**新的 network namespace**（`unshare -Un`，免 root）。
+        正则层（_audit_code）可以被绕过（第 13 轮实证：IP 直连 `172.16.222.99:22`
+        绕过了正则），netns 绕不过 —— 子进程根本没有路由。
+        ⚠️ 隔离后 uid=65534，cwd 必须 world 可读写（见 netns_isolation.prepare_cwd），
+        否则工具调用会"成功但读不到文件"。
     """
     allowed, reasons = _audit_code(code, artifact_mode=artifact_mode)
     if audit is not None:
         audit.append({"code": (code or "")[:1500], "allowed": allowed, "reasons": reasons,
-                      "artifact_mode": artifact_mode})
+                      "artifact_mode": artifact_mode, "isolated": bool(isolate)})
     if not allowed:
         tip = ("工件模式：只允许用**相对文件名**打开本题附件（如 open(\"a.bin\",\"rb\")），"
                "禁止绝对路径、\"..\"、列目录、出网、子进程。" if artifact_mode else
@@ -576,9 +616,17 @@ def run_python_tool(code, timeout=30, audit=None, cwd=None, artifact_mode=False)
     env["PYTHONIOENCODING"] = "utf-8"
     # 工件模式：注入运行时 audit hook（精确拦 open 越界；正则层已不再拦 ".."）
     exec_code = (_ARTIFACT_RUNTIME_GUARD + code) if artifact_mode else code
+    argv = [exe, "-I", "-c", exec_code]
+    if isolate:
+        try:
+            argv = netns_isolation.wrap(argv)
+        except RuntimeError as exc:
+            # fail-closed：要求隔离却隔离不了，绝不能静默降级成"没隔离接着跑"——
+            # 那正是第 13 轮跨层假绿的形态（判据说隔离了，实际 IP 直连照通）。
+            return "(ISOLATION-UNAVAILABLE: %s)" % str(exc)[:300]
     try:
         proc = subprocess.run(
-            [exe, "-I", "-c", exec_code],
+            argv,
             capture_output=True, text=True, timeout=timeout, cwd=cwd,
             encoding="utf-8", errors="replace", env=env,
         )
@@ -717,7 +765,9 @@ def call_llm_agentic(cfg, api_key, model, prompt, timeout, max_iter=6, audit=Non
                 args = {}
             code = args.get("code", "")
             res = run_python_tool(code, timeout=30, audit=audit,
-                                  cwd=artifact_cwd, artifact_mode=artifact_mode)
+                                  cwd=artifact_cwd or NETNS["cwd"],
+                                  artifact_mode=artifact_mode,
+                                  isolate=NETNS["use"])
             all_text.append(res)
             messages.append({"role": "tool", "tool_call_id": tc.get("id"), "content": res})
         attempt += 1
@@ -734,6 +784,10 @@ def solve_one(cfg, api_key, item, timeout, override_model=None, agentic=False, a
     artifact_cwd, artifact_info = (None, None)
     if artifact_dir:
         artifact_cwd, artifact_info = prepare_artifacts(artifact_dir, pid, problem.get("zip"))
+        if artifact_cwd and NETNS["use"]:
+            # 隔离后子进程 uid=65534：工件目录是 mkdtemp 的 0700，不放开就**读不到**，
+            # 表现为"工具调用成功但返回空" —— 一种会被误读成模型不会读文件的功能性故障。
+            netns_isolation.prepare_cwd(artifact_cwd)
     prompt = build_prompt(problem, artifact_info)
     audit = []
     stats = []
@@ -886,6 +940,11 @@ def main():
     ap.add_argument("--require-airgap", action="store_true",
                     help="与 --airgap-proof 同用：绑定不成立则在花任何 API 额度之前退出(RC=2)，"
                          "fail-closed。agentic 模式下强制要求 --airgap-proof 传入且绑定成立")
+    ap.add_argument("--netns-isolate", choices=("off", "auto", "require"), default="off",
+                    help="工具子进程放进新的 network namespace（unshare -Un，**免 root**）。"
+                         "off=老行为；auto=可用则用、不可用记录原因；"
+                         "require=不可用则退出。与 --airgap-proof 互补：那条证的是"
+                         "iptables/UID 层，这条是**每个子进程各自没有路由**（不跨重启、无状态）")
     args = ap.parse_args()
 
     cfg = PROVIDERS[args.provider]
@@ -896,6 +955,13 @@ def main():
     # 结果文件声称「agentic」而工具调用恒为 0、llm_rounds 为空 —— 配置自曝造假。
     tools_available = bool(cfg.get("supports_tools", False))
     agentic = resolve_agentic(args.agentic, args.no_agentic, tools_available)
+
+    # 工具子进程的网络隔离：在花任何 API 额度**之前**探测并定档（--netns-isolate require
+    # 时不可用直接退出）。不隔离也必须留下原因，避免"结果里看不出来有没有隔离"。
+    netns_report = init_netns(args.netns_isolate)
+    if agentic and not netns_report.get("available"):
+        print("[netns] ⚠️ 本次跑批**未**做网络隔离：%s" % netns_report.get("why"),
+              file=sys.stderr)
 
     # §18 跨层绑定自证（fail-closed，且在花任何 API 额度**之前**判）：
     # 机制证据只证明闸门在探测二进制上生效，不证明「本次跑批的解题子进程」被隔离。
@@ -1012,6 +1078,10 @@ def main():
         # §18 跨层绑定自证结论：None=未提供证据（行为同旧版）；na=True 表示纯 LLM
         # 路径无解题子进程，绑定不适用（与 run_capability_eval preflight 口径一致）。
         "airgap_binding": airgap_binding,
+        # 工具子进程网络隔离（免 root netns）：逐目标"外面能连/里面连不上"的对照表。
+        # 与 airgap_binding 互补且**互不替代**：那条证 iptables+UID 层绑定，
+        # 这条证"每个工具子进程各自没有路由"（无状态、不跨重启、不需要 root）。
+        "netns_isolation": netns_report,
         "sandbox": ("run_python fail-closed guard + full code audit" if agentic
                     else "disabled (pure LLM, no tool)"),
         "tool_calls_total": len(audit_all),
