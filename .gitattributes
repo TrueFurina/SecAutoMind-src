@@ -33,6 +33,19 @@
 # 会得到不同哈希 → 本地 anchored=True、线上 False。故对池与 manifest 关闭转换。
 data/ctf_benchmark/private_benchmark_*.json           -text
 
+# ── 公开干净池同样必须锁死（2026-11-08 实锤）──────────────────────
+# 上面那条只覆盖了私池，**漏了公池**，于是 `purellm_clean_benchmark*.json` 的
+# 字节随 checkout 漂移：本机（core.autocrlf=true）是 CRLF、CI/服务器是 LF。
+# 后果不是"哈希难看"，是整条证据链在别的机器上不成立：
+#   · 本机 pool_sha256 = 0835c1f2…（CRLF）—— 全部证据与 4 份 verdict 记的是这个；
+#   · 服务器同一文件 = 6dcfbe48…（LF）⇒ claim_scope 判 unverified ⇒
+#     "题源审计证据与代码重算不一致"，门禁在服务器上永远红。
+#   · 这正是上面 2026-11-07 那段注释预言的症状（"本地 anchored=True、线上 False"），
+#     只是当时只修了私池。
+# 处置：把**已经被全部证据引用的那套字节**（CRLF）冻结下来，而不是反过来重算
+# 43 处指纹（verdict 是历史跑批记录，无法重新生成）。入库即字节。
+data/ctf_benchmark/purellm_clean_benchmark*.json      -text
+
 # ── 证据文件字节级稳定（2026-11-07）──────────────────────────────
 # verdict 里登记了 result_file_sha256 / pool_sha256 等文件哈希，作为证据链的一环。
 # Windows 工作树是 core.autocrlf=true，若不锁死行尾，同一份证据在本地（CRLF）与
