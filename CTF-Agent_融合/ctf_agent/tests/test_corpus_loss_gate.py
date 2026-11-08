@@ -82,7 +82,10 @@ class TestMainEndToEnd(unittest.TestCase):
                 bl = Path(td) / "b.json"
                 bl.write_text(json.dumps({"pools": base_pools}), encoding="utf-8")
                 health.BASELINE = bl
-                health.snapshot = lambda: cur          # noqa: E731
+                # 桩的签名必须与生产签名逐字一致（2026-11-08 snapshot 增加了
+                # `errors` 出参以区分「审计崩溃」与「池消失」）。写成 `lambda *a, **k`
+                # 会让将来的签名变更悄悄通过，所以这里显式列出参数。
+                health.snapshot = lambda errors=None: cur  # noqa: E731
                 health.benchmark_ok = lambda: (True, "OK")  # noqa: E731
                 sys.argv = ["check_corpus_health.py"] + list(extra or [])
                 buf = io.StringIO()

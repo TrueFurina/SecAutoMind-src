@@ -153,6 +153,27 @@ def audit_question(q: dict, fp: Path, root: Path, att_root: Path | None = None) 
             "attachments": len(atts), "payload_on_disk": payload_on_disk}
 
 
+def _in_support_dir(fp: Path, root: Path) -> bool:
+    """`_` 前缀目录（`_attachments/`、`_archive/` 等）里的是**支持文件**目录。
+
+    注意：只用来决定「非题目形态的文件要不要跳过」，**不**用来整体排除目录 ——
+    池里确实有题目定义放在 `_` 目录之外、清单放在 `_attachments/` 里；
+    把整个 `_` 目录排掉会让 `total` 无故变小，而 `total` 变小正是「数据丢失」的判据
+    （实测：整体排除会让 questions_external 42→39、questions_ext 37→34，
+    凭空多出两条「题目池缩水」警告）。
+
+    为什么这个函数存在（2026-11-08 实证）：`data/questions_real/_attachments/
+    _hygiene_manifest.json` 是一个 JSON **数组**（清单，不是题目）。旧实现把池里
+    所有 `*.json` 都当题目，于是 `audit_question()` 对 list 调 `.get()` 抛
+    AttributeError → 整池审计崩溃 → 上游 `check_corpus_health.snapshot()` 的
+    `except Exception: continue` 把它吞成「该池不在快照里」→ 门禁报
+    **「questions_real: 池消失（曾有 93 题）」**。一条清单文件伪造了一场数据丢失。
+    基线里 `questions_real.total = 93` 而磁盘上有 94 个 json，差的正是这一个。
+    """
+    rel = fp.relative_to(root)
+    return any(part.startswith("_") for part in rel.parts[:-1])
+
+
 def audit(root: Path, att_root: Path | None = None) -> dict:
     rows = []
     for fp in sorted(root.rglob("*.json")):
@@ -162,6 +183,16 @@ def audit(root: Path, att_root: Path | None = None) -> dict:
             rows.append({"id": fp.stem, "file": str(fp), "level": "broken",
                          "issues": [f"parse_error:{exc}"], "attachments": 0,
                          "payload_on_disk": 0})
+            continue
+        if not isinstance(q, dict):
+            if _in_support_dir(fp, root):
+                # 支持目录里的清单/索引：不是题目，也不是坏题 —— 不计数
+                continue
+            # 非对象形态无法当题目判：记 broken（可见），绝不静默跳过——
+            # 静默跳过会让 total 悄悄变小，而 total 变小正是「数据丢失」的判据。
+            rows.append({"id": fp.stem, "file": str(fp), "level": "broken",
+                         "issues": [f"not_question_object:{type(q).__name__}"],
+                         "attachments": 0, "payload_on_disk": 0})
             continue
         rows.append(audit_question(q, fp, root, att_root))
     levels = Counter(r["level"] for r in rows)

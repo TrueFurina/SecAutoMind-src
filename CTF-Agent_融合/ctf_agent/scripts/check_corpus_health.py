@@ -42,7 +42,14 @@ def _auditor():
     return m
 
 
-def snapshot() -> dict:
+def snapshot(errors: dict | None = None) -> dict:
+    """对每个受管池取一次审计快照。
+
+    `errors`（可选，出参）：审计抛异常的池 → 异常文本。**必须**由调用方区分于
+    「池不存在」，否则一个脚本 bug 会被读成一场数据丢失（见 `_audit_corpus_integrity.
+    _is_question_file` 里 2026-11-08 的实证：一个清单文件让 `questions_real`
+    整池审计崩溃，门禁报出「池消失（曾有 93 题）」）。
+    """
     aci = _auditor()
     out = {}
     for pool in TRACKED_POOLS:
@@ -51,7 +58,13 @@ def snapshot() -> dict:
             continue
         try:
             rep = aci.audit(d, ROOT)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            # 不再静默 continue：崩溃要留痕，且由 main() 报成「审计崩溃」而非「池消失」
+            if errors is not None:
+                errors[pool] = f"{type(exc).__name__}: {exc}"
+            else:
+                print(f"  ⚠️  {pool}: 审计崩溃（{type(exc).__name__}: {exc}）",
+                      file=sys.stderr)
             continue
         lv = rep["by_level"]
         out[pool] = {"total": rep["total"], "ok": lv.get("ok", 0),
@@ -89,6 +102,24 @@ def compare(cur: dict, base: dict) -> dict:
                 continue
             regressions.append(f"{pool}: 池消失（曾有 {base[pool]['total']} 题）")
     return {"regressions": regressions, "improvements": improvements}
+
+
+def apply_audit_errors(diff: dict, audit_errors: dict) -> dict:
+    """把「审计崩溃」从 compare() 的「池消失」里摘出来，换成独立措辞。
+
+    🔴 为什么必须分开：审计崩溃与真实数据丢失在旧实现里同形，都是一句
+    「`<pool>`: 池消失（曾有 N 题）」。于是：
+      - 脚本 bug（如一个 list 形状的清单文件让整池审计抛异常）会被读成**丢题库**；
+      - 反过来，真丢题时也会被当成「那个脚本又崩了吧」而放过 —— 假红养出假绿。
+    分离后两者都仍然阻断（fail-closed），只是措辞指向真正的处理人。
+    """
+    for pool, err in audit_errors.items():
+        diff["regressions"] = [
+            r for r in diff["regressions"] if not r.startswith(pool + ": 池消失")
+        ]
+        diff["regressions"].append(
+            f"{pool}: 审计崩溃（{err}）—— 不是数据丢失，修脚本后重跑")
+    return diff
 
 
 def detect_corpus_loss(cur: dict, base: dict) -> tuple[list[str], set[str]]:
@@ -132,7 +163,8 @@ def main() -> int:
     ap.add_argument("--strict-loss", action="store_true",
                     help="把「题目池缩水」判为回归（默认仅警告，不阻断）")
     args = ap.parse_args()
-    cur = snapshot()
+    audit_errors: dict[str, str] = {}
+    cur = snapshot(audit_errors)
     bench_ok, bench_msg = benchmark_ok()
 
     if args.update:
@@ -158,6 +190,8 @@ def main() -> int:
 
     base = json.loads(BASELINE.read_text(encoding="utf-8"))["pools"] if BASELINE.is_file() else {}
     diff = compare(cur, base)
+    if audit_errors:
+        diff = apply_audit_errors(diff, audit_errors)
     loss_msgs, loss_pools = detect_corpus_loss(cur, base)
     if loss_pools:
         # 池缩水时的「坏题下降」不是改善，而是被丢失掩盖 ⇒ 抑制误报的 improvement 提示
@@ -172,6 +206,7 @@ def main() -> int:
     ok = not diff["regressions"] and bench_ok
     rep = {"ok": ok, "current": cur, "baseline": base, **diff,
            "corpus_loss": loss_msgs, "strict_loss": args.strict_loss,
+           "audit_errors": audit_errors,
            "benchmark_check": {"ok": bench_ok, "detail": bench_msg}}
     if args.json:
         print(json.dumps(rep, ensure_ascii=False, indent=1))

@@ -72,6 +72,55 @@ def main() -> int:
     regs = health.compare(cur, base)["regressions"]
     results.append(("mixed_empty_and_normal", regs == [], f"expected [] got={regs}"))
 
+    # ⑤ 审计崩溃 ≠ 池消失（2026-11-08 实证：一个 list 形状的清单文件让整池
+    #    审计抛 AttributeError，被 snapshot() 的 `except: continue` 吞掉后，
+    #    compare() 报「questions_real: 池消失（曾有 93 题）」—— 一条清单文件
+    #    伪造了一场数据丢失）。分离后：不得再出现「池消失」，必须以「审计崩溃」出现。
+    diff = health.compare({}, {"questions_real": {"total": 93, "ok": 9, "broken": 82}})
+    merged = health.apply_audit_errors(diff, {"questions_real": "AttributeError: boom"})
+    joined = " | ".join(merged["regressions"])
+    ok = ("池消失" not in joined) and ("审计崩溃" in joined)
+    results.append(("audit_error_not_loss", ok, f"got={joined}"))
+
+    # ⑥ 分离不等于放行：审计崩溃仍然是阻断回归（fail-closed）
+    results.append(("audit_error_still_blocks",
+                    bool(merged["regressions"]), f"got={merged['regressions']}"))
+
+    # ⑦ 无崩溃时不得凭空加「审计崩溃」条目（防止修成只会加红）
+    diff2 = health.compare({"p": {"total": 1, "ok": 1, "broken": 0}},
+                           {"p": {"total": 1, "ok": 1, "broken": 0}})
+    merged2 = health.apply_audit_errors(diff2, {})
+    results.append(("no_error_no_extra", merged2["regressions"] == [],
+                    f"got={merged2['regressions']}"))
+
+    # ⑧ 审计器自身：非题目形态的清单（JSON 数组）不得让整池审计崩溃；
+    #    `_` 支持目录里的清单不计数；池根部的非对象文件必须记 broken（可见）。
+    import json as _json
+    import tempfile as _tmp
+    with _tmp.TemporaryDirectory() as td:
+        root = Path(td) / "pool"
+        (root / "_attachments").mkdir(parents=True)
+        (root / "q1.json").write_text(_json.dumps({"id": "q1", "flag_sha256": "a" * 64}),
+                                      encoding="utf-8")
+        (root / "_attachments" / "_manifest.json").write_text(_json.dumps(["a", "b"]),
+                                                             encoding="utf-8")
+        (root / "q2_stray.json").write_text(_json.dumps(["not", "a", "question"]),
+                                            encoding="utf-8")
+        spec = importlib.util.spec_from_file_location(
+            "aci", ROOT / "scripts" / "_audit_corpus_integrity.py")
+        aci = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(aci)  # type: ignore[union-attr]
+        try:
+            rep = aci.audit(root, root)
+            ids = {r["id"] for r in rep["rows"]}
+            ok = (rep["total"] == 2 and "_manifest" not in ids
+                  and any("not_question_object" in i for r in rep["rows"]
+                          for i in r["issues"]))
+            results.append(("audit_tolerates_list_manifest", ok,
+                            f"total={rep['total']} ids={sorted(ids)}"))
+        except Exception as exc:  # noqa: BLE001
+            results.append(("audit_tolerates_list_manifest", False, f"raised {exc!r}"))
+
     failed = [r for r in results if not r[1]]
     for name, ok, msg in results:
         print(f"{'PASS' if ok else 'FAIL'}  {name:24} {msg}")
