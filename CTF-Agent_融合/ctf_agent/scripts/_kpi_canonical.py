@@ -131,11 +131,41 @@ def count_offline_verified() -> int:
     return int(_c())
 
 
+def _counts_toward_corpus(p: Path) -> bool:
+    """该 json 是否算分母里的一道题。
+
+    背景（2026-11-08 实证）：`data/questions_real/_attachments/_hygiene_manifest.json`
+    是一个 JSON **数组**（附件卫生清单，不是题目）。旧实现只数 `rglob("*.json")`，
+    把它也算成一道题 ⇒ `real_corpus = 94`，而真实题数是 **93**。
+
+    为什么这不是"差一个数"这么轻：README.zh.md 写的 93 本来是**对的**，被闸门按 94
+    判成"计数漂移"——**正确的文档被判红、错误的分母被当成真值**，一路流进
+    `coverage_of_corpus` 这类比率（X/94）。同一份清单还曾让题库健康门禁反向误报
+    "questions_real: 池消失（曾有 93 题）"（见 `scripts/_audit_corpus_integrity.py`
+    的同名修复）。一处清单文件，两个门禁各错一个方向。
+
+    判据只认"能不能当题目对象"（dict），**不做目录名白名单**——否则将来真放进
+    `_` 目录的题会被悄悄漏掉。
+    """
+    try:
+        with p.open(encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, ValueError):
+        # 读不出/解析失败：**保留计数**。宁可分母偏大，也不静默缩小——分母变小会
+        # 直接抬高覆盖率，是危险方向。损坏该由题库健康门禁去报，不在这里吞掉。
+        return True
+    return isinstance(payload, dict)
+
+
 def count_real_corpus() -> int:
-    """递归统计 data/questions_real/**/*.json（真题全集，含子目录）。"""
+    """递归统计 data/questions_real/**/*.json（真题全集，含子目录）。
+
+    只数**题目对象**；附件目录里的清单（数组/标量 json）不计入分母。
+    """
     if not QUESTIONS_REAL.exists():
         return 0
-    return sum(1 for p in QUESTIONS_REAL.rglob("*.json") if p.is_file())
+    return sum(1 for p in QUESTIONS_REAL.rglob("*.json")
+               if p.is_file() and _counts_toward_corpus(p))
 
 
 def count_heldout_candidates() -> int:
@@ -417,6 +447,31 @@ def render_md(k: dict) -> str:
     return "\n".join(L)
 
 
+# ── 有意分叉的前门文档（2026-11-08）──────────────────────────────────────
+# `CTF-Agent_融合/README.md` 在 2026-10-24 融合时被改写为《CTF-Agent 融合留存说明》
+# （见 `MIGRATION_DELTA_20261024.md` 第 14 行「有意分叉」：两边各自保留，不回灌、不覆盖），
+# 它**不再是项目门面文档**，因此不承载 KPI / held-out 声明。项目文档正本是 README.zh.md。
+#
+# 判定不靠「文件名白名单」，而靠文档**自证**：首个一级标题必须含「融合留存说明」。
+# 于是这份豁免自带失效条件——有人把真 README 放回来（标题一改），豁免立刻消失，
+# 下面两项校验立即恢复 mandatory 并报「声明缺失」。正反两个方向各由一条测试看守
+# （tests/test_kpi_canonical.py::test_forked_front_readme_is_declared /
+#   ::test_fork_exemption_disappears_without_self_declaration）。
+_FORK_NOTE_MARK = "融合留存说明"
+
+
+def front_doc_is_fork_note(path) -> bool:
+    """该前门文档是否为本副本的《融合留存说明》（而非项目门面文档）。"""
+    try:
+        head = Path(path).read_text(encoding="utf-8", errors="replace")[:512]
+    except OSError:
+        return False
+    for line in head.splitlines():
+        if line.startswith("# "):
+            return _FORK_NOTE_MARK in line
+    return False
+
+
 # ── README 计数交叉校验（P0-5，2026-09-19）──────────────────────────────
 # 背景：README 里手写的计数（skills 52 / 回归 15-15 / 真题 92 …）随时会漂，
 # 且历史上正是这类数字漂过。本表把每个「声明位」绑到 canonical 机器真值上，
@@ -476,11 +531,12 @@ def check_readme_counts(readme_root: "Path | None" = None, truth: "dict | None" 
         path = root / fname
         if not path.exists():
             continue
+        fork_note = front_doc_is_fork_note(path)
         if fname not in cache:
             cache[fname] = path.read_text(encoding="utf-8", errors="replace")
         matches = list(re.finditer(pattern, cache[fname]))
         if not matches:
-            if mandatory:
+            if mandatory and not fork_note:
                 hits.append(
                     f"{fname}: 计数声明缺失——「{label}」未找到（期望 {key}={truth[key]}，"
                     f"机器真值见 scripts/_kpi_canonical.py）"
@@ -582,6 +638,8 @@ def check_readme_heldout(readme_root: "Path | None" = None,
             cache[fname] = path.read_text(encoding="utf-8", errors="replace")
         found = re.findall(pattern, cache[fname])
         if not found:
+            if front_doc_is_fork_note(path):
+                continue  # 有意分叉的留存说明：本就不承载 held-out 声明（见 _FORK_NOTE_MARK）
             hits.append(
                 f"{fname}: held-out 声明缺失——「{label}」未找到"
                 f"（期望匹配 `{pattern}`；机器真值见 scripts/_kpi_canonical.py:heldout_status）"

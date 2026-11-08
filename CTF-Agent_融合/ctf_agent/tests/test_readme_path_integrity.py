@@ -47,6 +47,31 @@ import scripts.release_export as rel  # noqa: E402
 README_EN = os.path.join(_ROOT, "README.md")
 README_ZH = os.path.join(_ROOT, "README.zh.md")
 
+
+def _is_fork_note(path: str) -> bool:
+    """该前门文档是否为《融合留存说明》（与 scripts/_kpi_canonical.front_doc_is_fork_note 同判据）。
+
+    只在本地复刻一份最小实现：本测试不想因为导入 scripts._kpi_canonical 而在收集期
+    拉起 KPI 真值计算。两处判据必须一致（都是「首个一级标题含 融合留存说明」），
+    由 test_fork_note_detector_agrees_with_kpi_canonical 钉住。
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            head = fh.read(512)
+    except OSError:
+        return False
+    for line in head.splitlines():
+        if line.startswith("# "):
+            return "融合留存说明" in line
+    return False
+
+
+# 项目**文档正本**：融合副本里 README.md 被有意改写成留存说明
+# （MIGRATION_DELTA_20261024.md 第 14 行），承载架构/KPI 声明的是 README.zh.md。
+# 需要「一份真实项目 README」的用例必须用这个解析结果，不能写死 README.md。
+DOC_OF_RECORD = README_ZH if _is_fork_note(README_EN) else README_EN
+
+
 # 围栏代码块（ASCII 架构图）不是引用，先剔除（保留行数以便行号对齐）
 _FENCE_RE = re.compile(r"^```.*?^```", re.S | re.M)
 # markdown 链接
@@ -68,6 +93,15 @@ ALLOWLIST: dict[str, str] = {
     "flag.png": "同上（flag.png 与 flag.txt 同句并列）",
     "index.php": "README.md:84/zh:84 描述**题面自带**的文件（real_web_gongye_web2 的 flag 在它提供的 index.php 里）"
                  "，不是仓库路径",
+    # ── 融合副本 README.md（《融合留存说明》）里的三条（2026-11-08）──
+    # 该文件是**有意分叉**的留存说明（MIGRATION_DELTA_20261024.md 第 14 行），结构上分
+    # 「迁入了什么」与「有意不迁什么」两张表；后一张表里出现的路径**正是在陈述不包含**。
+    "ctf_agent/logs/": "README.md「排除项」表：21GB 运行日志**有意不迁**（源仓 21G→triage 后 7.5M 有值，"
+                       "那部分已另迁 docs/2027决赛作战规划/evidence/）——在说明不收录",
+    "__pycache__/.venv/backups/worktree/_git_backup/":
+        "README.md「排除项」表：环境与备份目录**有意不迁**——在说明不收录（一行并列 5 类，故按整串登记）",
+    "ctf_agent/data/results/": "README.md 目录内容表已显式注明：该目录被 `.gitignore` 的 `/data/*` 排除，"
+                               "属**本地副本**内容、不在版本库内（克隆后不会有）——在陈述不收录",
 }
 
 
@@ -246,11 +280,29 @@ def test_no_dead_path_references(tracked, readme):
     """README 里每一个路径 token 都必须在 HEAD 树内 且 不被发布树剔除。"""
     text = _read(os.path.join(_ROOT, readme))
     v, n = collect_violations(text, tracked)
-    assert n >= 10, f"{readme} 只解析到 {n} 个路径 token（应 >=10）——解析器可能失效，fail-closed"
+    if _is_fork_note(os.path.join(_ROOT, readme)):
+        # README.md 是本副本的《融合留存说明》（有意分叉），2KB、只有 6 个路径 token。
+        # 旧断言写死 `n >= 10`，于是它报「只解析到 6 个 token（解析器可能失效）」——
+        # 一条**假红**，还指向错误原因（解析器没问题，是这份文件本来就不是项目 README）。
+        # 换成对**真实不变量**的断言：它必须自证是留存说明，且必须指明文档正本。
+        # 于是「有人把真 README 放回来」这种变化会让本分支失效、回到 >=10 的严格档。
+        assert n >= 3, f"{readme} 只解析到 {n} 个路径 token（留存说明至少该有 3 个）"
+        assert "README.zh.md" in text, "留存说明必须指明文档正本 README.zh.md"
+    else:
+        assert n >= 10, f"{readme} 只解析到 {n} 个路径 token（应 >=10）——解析器可能失效，fail-closed"
     assert not v, (f"{readme} 存在 {len(v)} 处死链/被剔除引用：\n"
                    + "\n".join(_fmt(x) for x in v)
                    + "\n处置：改 README 指向真实文件；或若在陈述「我们不包含它」，"
                      "把该路径加入 ALLOWLIST **并写明理由**；真缺陷请进 KNOWN_DEFECTS 并上报")
+
+
+def test_fork_note_detector_agrees_with_kpi_canonical():
+    """两份「留存说明」判据必须一致——否则一处免检、另一处仍判红，又是同形不同判。"""
+    from scripts._kpi_canonical import front_doc_is_fork_note
+    for name in ("README.md", "README.zh.md"):
+        p = os.path.join(_ROOT, name)
+        assert _is_fork_note(p) == front_doc_is_fork_note(p), \
+            f"{name}：本地判据与 _kpi_canonical 判据不一致"
 
 
 # ══════════════════════════ 两套基准（防误伤） ══════════════════════════
@@ -353,11 +405,11 @@ def test_mutation_adding_exclude_dir_flips_readme_to_red(tracked, monkeypatch):
 
     证明闸门与 `release_export.py` 的实现是**真耦合**，不是把剔除名单硬编码抄了一份。
     """
-    v0, _ = collect_violations(_read(README_EN), tracked)
+    v0, _ = collect_violations(_read(DOC_OF_RECORD), tracked)
     assert not v0, "基线应先是绿的，否则本变异无意义"
 
     monkeypatch.setattr(rel, "EXCLUDE_DIRS", list(rel.EXCLUDE_DIRS) + ["ctf_agent/skills"])
-    v, _ = collect_violations(_read(README_EN), tracked)
+    v, _ = collect_violations(_read(DOC_OF_RECORD), tracked)
     assert v, "把 ctf_agent/skills 加入 EXCLUDE_DIRS 后，README（引用 skills/ 与 skills/*.py）应立刻变红"
     assert any("skill" in x["token"] for x in v), f"变红项应来自 skills 相关引用：{[_fmt(x) for x in v]}"
 

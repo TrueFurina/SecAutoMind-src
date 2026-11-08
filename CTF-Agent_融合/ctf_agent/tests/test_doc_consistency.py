@@ -314,14 +314,34 @@ def _breakice_section(text):
     return "\n".join(lines[start:end])
 
 
+def _breakice_doc_text():
+    """承载 break-ice 实验段落的文档文本；本副本不含该段落 → 显式 skip。
+
+    🔴 边界（2026-11-08 查清）：融合副本的 `README.md` 是《融合留存说明》（有意分叉，
+    `MIGRATION_DELTA_20261024.md` 第 14 行），英文 break-ice 实验段落**没有随迁移进入副本**；
+    文档正本 `README.zh.md` 从未收录该实验。源仓库 `E:\\Program\\西湖论剑\\README.md`（已冻结，
+    保持不动）里那份仍在。
+
+    所以这不是"段落被谁删了"，是**副本本身的边界**：内容在，只是不在这个副本里。
+    旧实现直接 `next(...)` 找不到标题 → `StopIteration`（一条看不出所以然的红），
+    等于把"边界"报成了"代码坏了"。改成显式 skip 并把正本位置写进原因，
+    另由 test_breakice_absence_is_deliberate 把这条边界钉成可执行事实。
+    """
+    for name in ("README.md", "README.zh.md"):
+        text = dc._read_text(os.path.join(dc._repo_root(), name))
+        if text and "LLM reasoning break-ice experiment" in text:
+            return text
+    pytest.skip("融合副本不含 break-ice 实验段落（README.md 为留存说明、README.zh.md 未收录）"
+                "——正本在源仓库 西湖论剑/README.md；本副本内该限定语无对象可守")
+
+
 def test_live_repo_breakice_denominator_qualifier_present():
     """break-ice 段落必须带「15 是实验自身题集、与作废口径无关」的口径限定语。
 
     防回归锚（C①）：清掉上文的 `15 / 15` 后，若旁边的 `11/15`/`8/15` 不限定语，
     读者仍会把两个 15 当成同一个分母——等于白清。该限定语**只由本测试守**。
     """
-    text = dc._read_text(os.path.join(dc._repo_root(), "README.md"))
-    assert text is not None, "仓库根缺少 README.md"
+    text = _breakice_doc_text()
     section = _breakice_section(text)
     assert _BREAKICE_QUALIFIER_MARK in section, "break-ice 段落缺少分母口径限定语"
     # 要点 1：明说与该作废口径无关
@@ -339,8 +359,7 @@ def test_breakice_qualifier_not_gate_enforced(monkeypatch, tmp_path):
     限定语是散文性说明，既不是 `offline_verified=<n>` 习语，也不在含 contribution
     的行上，故闸门按设计不查它；防回归由 test_live_repo_..._qualifier_present 负责。
     """
-    real = dc._read_text(os.path.join(dc._repo_root(), "README.md"))
-    assert real is not None
+    real = _breakice_doc_text()
     qualifier = ("**Denominator caveat (do not conflate):** the `15` in `11/15` "
                  "and `8/15` ")
     assert qualifier in real
@@ -357,3 +376,32 @@ def test_breakice_qualifier_not_gate_enforced(monkeypatch, tmp_path):
     # 闸门不报 → 证明限定语不靠闸门守，只靠上面那条 present 测试守
     assert dc.check_kpi_number_consistency() == []
     assert dc.check_kpi_inline_idiom_drift() == []
+
+
+def test_breakice_absence_is_deliberate():
+    """把「本副本没有 break-ice 段落」钉成可执行事实，而不是一条静默的 skip。
+
+    两条断言，各堵一个方向：
+    1. 副本 README.md 必须自证是《融合留存说明》——这是「它不是项目 README」的依据。
+       哪天有人把真 README 放回来，本测试变红，逼他同时恢复 break-ice 的限定语检查
+       （test_live_repo_breakice_* 会自动重新生效，因为 `_breakice_doc_text()` 会找到段落）。
+    2. 两份 README 都不得出现 `11/15` / `8/15` 这类**实验数字**。
+       半截恢复最危险：数字贴回来了、限定语没跟回来 ⇒ 读者又把两个 15 当同一分母。
+       要么连限定语一起恢复，要么一个数字都别放。
+    """
+    root = dc._repo_root()
+    en = dc._read_text(os.path.join(root, "README.md"))
+    zh = dc._read_text(os.path.join(root, "README.zh.md"))
+    assert en is not None and zh is not None, "仓库根应同时存在 README.md 与 README.zh.md"
+
+    first_h1 = next((l for l in en.splitlines() if l.startswith("# ")), "")
+    assert "融合留存说明" in first_h1, (
+        "README.md 不再是融合留存说明——若已换回真 README，请同步恢复 break-ice 的"
+        "限定语检查（本测试的前提没了，必须重判）")
+
+    for name, text in (("README.md", en), ("README.zh.md", zh)):
+        for num in ("11/15", "8/15"):
+            assert num not in text, (
+                f"{name} 出现了 break-ice 实验数字 `{num}`，但本副本没有该实验的段落与"
+                f"「分母口径限定语」——半截恢复会让读者把两个 15 当同一分母。"
+                f"要么连限定语一起恢复，要么删掉数字")

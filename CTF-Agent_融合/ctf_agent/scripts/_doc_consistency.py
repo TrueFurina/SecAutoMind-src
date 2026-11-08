@@ -263,13 +263,24 @@ def check_kpi_number_consistency() -> List[str]:
 
     # ①b 公开声明文件必须保留声明行（2026-09-19 新增）——防「把声明行整行删掉」这种绕过。
     # 本次事故：README.zh.md 全文 0 次出现 offline_verified，旧闸门静默放行。
+    #
+    # 有意分叉的豁免（2026-11-08）：`CTF-Agent_融合/README.md` 融合时被改写成
+    # 《CTF-Agent 融合留存说明》（MIGRATION_DELTA_20261024.md 第 14 行），从此不承载
+    # KPI 声明；若不豁免，这条会一直红，而红的原因是「文档换了身份」不是「声明被删」。
+    # 豁免条件不是文件名，而是文档**自证**（首个一级标题含「融合留存说明」）——
+    # 标题一改豁免就消失，`test_forked_front_readme_is_declared` 与
+    # `test_fork_exemption_disappears_without_self_declaration` 正反两向钉住它。
     repo_root = _repo_root()
+    _kc = _load_gov_module("_kpi_canonical")
+    _is_fork = getattr(_kc, "front_doc_is_fork_note", None) if _kc else None
     for name in _KPI_DECL_MANDATORY:
         path = os.path.normpath(os.path.join(repo_root, name))
         if not os.path.isfile(path):
             continue  # 文件本身不存在 → 不是「删声明行」，交给别的门禁
         if matched_decl.get(path, False):
             continue
+        if _is_fork is not None and _is_fork(path):
+            continue  # 自证为融合留存说明：本就不承载 KPI 声明（见上）
         hits.append(
             f"{name}: KPI 声明缺失——公开声明文件必须在诚实 KPI 表格中保留 "
             f"`offline_verified` 声明行（期望 `| **offline_verified** ... | **{count}** |`）；"

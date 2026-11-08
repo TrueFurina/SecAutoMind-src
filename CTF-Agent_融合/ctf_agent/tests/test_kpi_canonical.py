@@ -421,9 +421,98 @@ def test_readme_heldout_skips_when_unmeasured():
     print("✓ test_readme_heldout_skips_when_unmeasured")
 
 
+def test_real_corpus_excludes_non_question_json():
+    """分母只数**题目对象**：附件目录里的清单（JSON 数组）不得算一道题。
+
+    2026-11-08 实证：`data/questions_real/_attachments/_hygiene_manifest.json` 是
+    一个 JSON **数组**（附件卫生清单）。旧实现 `rglob("*.json")` 把它也算进去 ⇒
+    机器真值 94，而实际题数 93。后果不是"多一个数"：README.zh.md 写的 93 本来是对的，
+    被闸门按 94 判成"计数漂移"——**正确文档被判红、错误分母被当真理**，还流进
+    `coverage_of_corpus`（X/94）。同一份清单在题库健康门禁那边反向误报
+    "93 题消失"（见 scripts/_audit_corpus_integrity.py）。
+    """
+    import scripts._kpi_canonical as kc
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        (root / "real_a.json").write_text('{"id": "a", "description": "x"}', encoding="utf-8")
+        (root / "sub").mkdir()
+        (root / "sub" / "real_b.json").write_text('{"id": "b"}', encoding="utf-8")
+        (root / "_attachments").mkdir()
+        # 清单：JSON 数组（不是题目）
+        (root / "_attachments" / "_hygiene_manifest.json").write_text(
+            '["a.json", "b.json"]', encoding="utf-8")
+        # 损坏的题文件：读不出 → **保留计数**（缩小分母会直接抬高覆盖率，是危险方向）
+        (root / "broken.json").write_text("{not json", encoding="utf-8")
+        old = kc.QUESTIONS_REAL
+        kc.QUESTIONS_REAL = root
+        try:
+            n = count_real_corpus()
+        finally:
+            kc.QUESTIONS_REAL = old
+        assert n == 3, f"应为 2 道题 + 1 个损坏文件（保留计数）= 3，实得 {n}"
+        # 锚点：真实题池的分母必须等于「题目对象数」，即 93 而不是 94。
+        k = canonical_kpi()
+        objs = 0
+        for p in sorted(kc.QUESTIONS_REAL.rglob("*.json")):
+            try:
+                objs += 1 if isinstance(json.loads(p.read_text(encoding="utf-8")), dict) else 0
+            except Exception:  # noqa: BLE001
+                objs += 1
+        assert k["real_corpus"] == objs, \
+            f"real_corpus={k['real_corpus']} 与题目对象数 {objs} 不一致（分母被清单污染？）"
+    print("✓ test_real_corpus_excludes_non_question_json")
+
+
+def test_forked_front_readme_is_declared():
+    """本副本 README.md 是《融合留存说明》（有意分叉）——必须自证且指向文档正本。
+
+    这条是 KPI/held-out 两项校验**免检 README.md** 的**唯一依据**：免检不是靠文件名
+    白名单，而是靠文档自证（首个一级标题含「融合留存说明」）。自证一旦失效，
+    下面 test_fork_exemption_disappears_without_self_declaration 会让豁免立刻消失。
+    依据：`MIGRATION_DELTA_20261024.md` 第 14 行「有意分叉：两边各自保留，不回灌、不覆盖」。
+    """
+    import scripts._kpi_canonical as kc
+    en = kc.ROOT.parent / "README.md"
+    zh = kc.ROOT.parent / "README.zh.md"
+    assert en.is_file() and zh.is_file(), "仓库根应同时存在 README.md 与 README.zh.md"
+    assert kc.front_doc_is_fork_note(en), \
+        "README.md 不再是《融合留存说明》——若已换回真 README，请删掉这份豁免与对应注释"
+    assert not kc.front_doc_is_fork_note(zh), \
+        "README.zh.md 被误认成留存说明——它是文档正本，不享受任何免检"
+    text = en.read_text(encoding="utf-8")
+    assert "README.zh.md" in text or "README.zh" in text, \
+        "留存说明必须指明文档正本（README.zh.md），否则读者找不到真正的项目说明"
+    print("✓ test_forked_front_readme_is_declared")
+
+
+def test_fork_exemption_disappears_without_self_declaration():
+    """【变异】README.md 换成普通标题 → 豁免必须立刻消失，重新报「声明缺失」。
+
+    证明「免检」是**有条件**的：条件就是文档自证。改标题即失效，不给静默常驻留口子。
+    """
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        # ① 两份都是普通 README（无自证）→ 10 条锚点全部报缺失
+        (root / "README.md").write_text("# Project\nprose only\n", encoding="utf-8")
+        (root / "README.zh.md").write_text("# 项目\n只有正文\n", encoding="utf-8")
+        hits = check_readme_counts(readme_root=root)
+        assert len(hits) == 10, f"无自证时应 10 条缺失，实得 {len(hits)}：{hits}"
+        # ② 只把 README.md 改成留存说明 → 它那 5 条消失，README.zh.md 的 5 条保留
+        (root / "README.md").write_text(
+            "# CTF-Agent 融合留存说明\n见 README.zh.md\n", encoding="utf-8")
+        hits2 = check_readme_counts(readme_root=root)
+        assert len(hits2) == 5, f"豁免应只作用于自证文件，实得 {len(hits2)}：{hits2}"
+        assert all("README.zh.md" in h for h in hits2), \
+            f"豁免扩散到了非自证文件：{[h for h in hits2 if 'README.zh.md' not in h]}"
+    print("✓ test_fork_exemption_disappears_without_self_declaration")
+
+
 if __name__ == "__main__":
     test_offline_verified_matches_machine_truth()
     test_real_corpus_is_recursive_json_count()
+    test_real_corpus_excludes_non_question_json()
+    test_forked_front_readme_is_declared()
+    test_fork_exemption_disappears_without_self_declaration()
     test_no_deceptive_heldout_ratio()
     test_kpi_and_heldout_sets_disjoint()
     test_deprecated_subset_anchor()

@@ -31,15 +31,24 @@ guard = _load("_structure_guard")
 
 class TestStructureGuardPaths(unittest.TestCase):
     def test_listing_is_repo_root_relative_from_subdir(self):
-        """子目录 cwd 下列举不得产出 cwd 相对路径（假阳之源，2026-10-13 事故形态）。"""
+        """子目录 cwd 下列举不得产出 cwd 相对路径（假阳之源，2026-10-13 事故形态）。
+
+        ⚠️ 基准是**git 顶层**，不是 `ctf_agent/`（2026-11-08 校正）：融合副本里
+        `ctf_agent/` 是子目录，git 顶层在上一层，故 `--full-name` 输出带
+        `CTF-Agent_融合/` 前缀。旧断言写死 `"ctf_agent/REAL_SOLVES_LEDGER.md"`，
+        在副本里必然红——**红的原因不是 `--full-name` 失效**，是断言把「仓库根」
+        和「ctf_agent」当成同一个目录。改为按后缀判定，`--full-name` 这条性质
+        （不得出现 cwd 相对路径）原样保留。
+        """
         prev = os.getcwd()
         os.chdir(ROOT)  # ctf_agent/ 下跑守卫即复现事故
         try:
             files = set(guard.all_tracked_and_untracked())
         finally:
             os.chdir(prev)
-        self.assertIn("ctf_agent/REAL_SOLVES_LEDGER.md", files,
-                      "列举漏掉了受跟踪的台账——--full-name 行为不对")
+        ledger_tail = "ctf_agent/REAL_SOLVES_LEDGER.md"
+        got = [f for f in files if f == ledger_tail or f.endswith("/" + ledger_tail)]
+        self.assertTrue(got, "列举漏掉了受跟踪的台账——--full-name 行为不对")
         self.assertNotIn("REAL_SOLVES_LEDGER.md", files,
                          "出现 cwd 相对路径：会被规则 1 误判为根级散落文件")
 

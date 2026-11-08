@@ -12,12 +12,26 @@
 输出: 解出的明文 bytes 或 None
 """
 
+import logging
+
+_log = logging.getLogger(__name__)
+
 try:
     import gmpy2
     from Crypto.Util.number import long_to_bytes
     HAS_DEPS = True
-except ImportError:
+    _DEP_ERR = ""
+except ImportError as _exc:  # noqa: BLE001
     HAS_DEPS = False
+    _DEP_ERR = str(_exc)
+
+# 缺依赖告警只发一次（每进程）。为什么非要喊这一声（2026-11-08）：
+# 缺 gmpy2 时本模块 `run()` 恒返回 None，而**调用方无法与「试过了但没解出」区分**
+# ——presolve 的 L2 RSA 确定性通道、crypto_toolkit 的十余处 fallback 全都在等这个
+# None。于是赛时表现是「模型解不出 RSA」，账记在模型能力上，真因是能力根本没装上。
+# 实测：本机（Python 3.14，pip 取不到 gmpy2）12 条 RSA 用例全红，而服务器（gmpy2 在）
+# 同样代码全绿。静默降级 ⇒ 错误归因，这比直接崩更贵。
+_DEPS_WARNED = False
 
 
 def _collect_pairs(params: dict) -> tuple:
@@ -63,6 +77,12 @@ def run(params):
         解出的明文 bytes 或 None
     """
     if not HAS_DEPS:
+        global _DEPS_WARNED
+        if not _DEPS_WARNED:
+            _DEPS_WARNED = True
+            _log.warning(
+                "[rsa_fermat_factor] 依赖缺失（%s）→ 全部 RSA 攻击路径恒返回 None。"
+                "这不是「解不出」，是能力不存在：装 gmpy2 后恢复。", _DEP_ERR or "gmpy2")
         return None
 
     n = int(params.get("n", 0))
