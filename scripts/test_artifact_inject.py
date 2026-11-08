@@ -122,12 +122,40 @@ def main() -> int:
         check("不传 info 时 prompt 无附件段", "本题附件" not in p0, "不该出现附件段")
 
         print("=== [7] 工具输出截断：头尾保留 + 中间省略 ===")
+        # 2026-11-08 修（ci Artifact inject guard 第 7 组假红）：
+        # 上限在 2026-11-07 已从 1900 抬到 8000 字符（模型读源码时只看到头尾会反复 open，
+        # 10 轮预算全耗在读文件上）。而自测仍按 5000 字符的入参 + `< 2100` 的旧上限断言，
+        # 于是"没触发截断"被判成"没有省略标记"——判据没跟着语料改，跟本轮主线同一类自伤。
+        # 现在断言的是**契约本身**：超过上限才截断、截断必须头尾都留且标明省略了多少、
+        # 未超上限不得截断（免得悄悄牺牲信息量）。
+        limit = getattr(orch, "_TOOL_OUTPUT_CHARS", 8000)
+        check("截断上限是显式常量", isinstance(limit, int) and limit > 0, "limit=%r" % (limit,))
+
+        small = orch.run_python_tool('print("SMALL_HEAD" + "y"*200)', timeout=30)
+        check("未超上限不截断（不牺牲信息量）",
+              "中间省略" not in small and "SMALL_HEAD" in small,
+              "len=%d" % len(small))
+
         big = orch.run_python_tool(
-            'print("HEAD_MARK" + "x"*5000 + "TAIL_MARK")', timeout=30)
+            'print("HEAD_MARK" + "x"*(%d) + "TAIL_MARK")' % (limit * 3), timeout=30)
         check("头部保留", "HEAD_MARK" in big, "头被截掉")
         check("尾部保留(报错/结论在此)", "TAIL_MARK" in big, "尾被截掉")
         check("含省略标记", "中间省略" in big, "无省略标记")
-        check("总长受控", len(big) < 2100, "len=%d" % len(big))
+        # 省略字数必须与真实缺口对得上（否则标记只是在"看起来截断了"）：
+        # 原始长度 = HEAD_MARK(9) + x*(3*limit) + TAIL_MARK(9) + 换行(1)
+        import re as _re
+        raw_len = 9 + limit * 3 + 9 + 1
+        marker_num = _re.search(r"中间省略 (\d+) 字符", big)
+        expect_gap = raw_len - limit + 1500
+        check("省略字数与真实缺口一致",
+              bool(marker_num) and int(marker_num.group(1)) == expect_gap,
+              "标记=%r 期望=%d 原始=%d" % (marker_num.group(1) if marker_num else None,
+                                     expect_gap, raw_len))
+        # 真实缺口 = 原始输出长度 - 上限；截断后长度 = 上限 + 标记本身长度
+        check("总长受控(≤上限+标记余量)", len(big) <= limit + 200,
+              "len=%d 上限=%d" % (len(big), limit))
+        check("仍是一次可读全文(≥上限-4000)", len(big) >= limit - 4000,
+              "len=%d 上限=%d" % (len(big), limit))
 
         print("=== [8] LLM 硬截止：降级不抛弃已积累推理（run4 事故）===")
         _orig = orch._post_json
