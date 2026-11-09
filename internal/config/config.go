@@ -10,9 +10,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
+	"secautomind-ai/internal/gatewaycompliance"
 	"secautomind-ai/internal/paths"
 	"secautomind-ai/internal/termout"
 
@@ -840,6 +842,60 @@ type OpenAIConfig struct {
 type AIConfig struct {
 	DefaultChannel string                     `yaml:"default_channel,omitempty" json:"default_channel,omitempty"`
 	Channels       map[string]AIChannelConfig `yaml:"channels,omitempty" json:"channels,omitempty"`
+	// Gateway AI 安全网关（终审硬约束接线，2026-11-09 拍板）。
+	// 此前配置段存在但零消费（"运行时统一改写"是空头宣称）；现在 required=true
+	// 时启动校验所有通道 base_url 同源（见 ValidateAIGateway），不接线改写、
+	// 不做隐式换 key——现场仍按文档把各通道 base_url 填成网关地址，校验只兜"漏填/夹带直连"。
+	Gateway AIGatewayConfig `yaml:"gateway,omitempty" json:"gateway,omitempty"`
+}
+
+// AIGatewayConfig 对应 config.share.yaml 的 ai.gateway 段。
+type AIGatewayConfig struct {
+	Enabled        bool   `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	BaseURL        string `yaml:"base_url,omitempty" json:"base_url,omitempty"`
+	APIKey         string `yaml:"api_key,omitempty" json:"api_key,omitempty"` // 仅占位登记，校验不比对 key 值
+	Required       bool   `yaml:"required,omitempty" json:"required,omitempty"`
+	TimeoutSeconds int    `yaml:"timeout_seconds,omitempty" json:"timeout_seconds,omitempty"`
+}
+
+// ValidateAIGateway server 侧对话通道的网关合规校验（单一判据源 = internal/gatewaycompliance，
+// 与 runner L3 闸门同口径）。返回 (warnings, fatal)：
+//   - enabled=false：一律放行（日常形态零行为变化）；
+//   - enabled=true 且 base_url 缺失/不可解析：fatal（配置写错即 fail-closed，第七条同风格）；
+//   - enabled=true 且 required=true：任何通道 base_url 非网关同源且非回环豁免 → fatal
+//     （终审"网关不可达时拒绝启动"的文档语义落地为"漏设/夹带直连时拒绝启动"）；
+//   - enabled=true 且 required=false：违规降级为 warnings（文档语义：告警并放行）。
+func ValidateAIGateway(ai AIConfig) (warnings []string, fatal error) {
+	g := ai.Gateway
+	if !g.Enabled {
+		return nil, nil
+	}
+	gwOrigin, err := gatewaycompliance.OriginOf(g.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("ai.gateway.enabled=true 但 base_url 无效（%q）：拒绝启动（fail-closed）", g.BaseURL)
+	}
+	ids := make([]string, 0, len(ai.Channels))
+	for id := range ai.Channels {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	var bad []string
+	for _, id := range ids {
+		c := ai.Channels[id]
+		if v := gatewaycompliance.Violation(gwOrigin, id, c.BaseURL); v != "" {
+			bad = append(bad, v)
+		}
+	}
+	if len(bad) == 0 {
+		return nil, nil
+	}
+	joined := strings.Join(bad, "、")
+	if g.Required {
+		return nil, fmt.Errorf("ai.gateway.required=true 但 %d 个通道未走网关（网关=%s）：%s —— 终审硬约束，拒绝启动",
+			len(bad), gwOrigin, joined)
+	}
+	return []string{fmt.Sprintf("ai.gateway 已启用但 %d 个通道直连（网关=%s）：%s（required=false，按文档语义告警放行）",
+		len(bad), gwOrigin, joined)}, nil
 }
 
 type AIChannelConfig struct {

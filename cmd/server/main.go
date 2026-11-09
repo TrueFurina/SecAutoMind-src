@@ -66,6 +66,18 @@ func main() {
 		fmt.Printf("Failed to load config: %v\n", err)
 		return
 	}
+	// AI 安全网关合规（2026-11-09 拍板接线）：终审 required=true 时通道漏设/夹带
+	// 直连一律拒绝启动；required=false 只告警（文档语义：降级直连放行）。
+	// 判据与 runner L3 闸门同源（internal/gatewaycompliance），杜绝两套口径。
+	// 放在 bootstrap/reset 之前：违规配置不允许借任何旁路把服务拉起来。
+	if gwWarns, gwErr := config.ValidateAIGateway(cfg.AI); gwErr != nil {
+		fmt.Fprintf(os.Stderr, "AI 网关合规校验失败：%v\n", gwErr)
+		os.Exit(1)
+	} else {
+		for _, w := range gwWarns {
+			fmt.Fprintf(os.Stderr, "[WARN] %s\n", w)
+		}
+	}
 	if localConfig.Created {
 		termout.PrintConfigCreated()
 	}

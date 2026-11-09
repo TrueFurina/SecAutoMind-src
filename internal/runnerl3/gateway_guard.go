@@ -2,10 +2,10 @@ package runnerl3
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
+	"secautomind-ai/internal/gatewaycompliance"
 	"secautomind-ai/internal/llmchannel"
 )
 
@@ -38,7 +38,7 @@ func CheckGatewayCompliance() error {
 	if gw == "" {
 		return fmt.Errorf("网关合规：CTF_GATEWAY_REQUIRED=true 但 AI_GATEWAY_BASE_URL 未设，无从校验（fail-closed）")
 	}
-	gwOrigin, err := originOf(gw)
+	gwOrigin, err := gatewaycompliance.OriginOf(gw)
 	if err != nil {
 		return fmt.Errorf("网关合规：AI_GATEWAY_BASE_URL 无法解析：%w", err)
 	}
@@ -47,13 +47,10 @@ func CheckGatewayCompliance() error {
 		ID:      "primary",
 		BaseURL: envOrDefault("RUNNER_LLM_BASE_URL", "https://api.deepseek.com/v1"),
 	}
-	po, err := originOf(primary.BaseURL)
-	if err != nil {
-		return fmt.Errorf("网关合规：RUNNER_LLM_BASE_URL 无法解析：%w", err)
-	}
-	if po != gwOrigin {
-		return fmt.Errorf("网关合规：主通道 %s 直连（%s），终审要求经网关 %s —— 把 RUNNER_LLM_BASE_URL 指向网关，或仅在非终审环境关掉 CTF_GATEWAY_REQUIRED",
-			primary.BaseURL, po, gwOrigin)
+	// 判据与 server 侧同源（internal/gatewaycompliance）：非网关 origin 且非回环豁免 = 违规。
+	if v := gatewaycompliance.Violation(gwOrigin, "主通道 "+primary.BaseURL, primary.BaseURL); v != "" {
+		return fmt.Errorf("网关合规：%s 直连未走网关 %s —— 把 RUNNER_LLM_BASE_URL 指向网关，或仅在非终审环境关掉 CTF_GATEWAY_REQUIRED",
+			v, gwOrigin)
 	}
 
 	// failover 通道集合：Resolve 的结果 = Solve 时会被真实拨打的通道（含匿名通道）
@@ -63,27 +60,14 @@ func CheckGatewayCompliance() error {
 		})
 		var bad []string
 		for _, c := range channels {
-			co, cerr := originOf(c.BaseURL)
-			if cerr != nil || co != gwOrigin {
-				bad = append(bad, fmt.Sprintf("%s(%s)", c.ID, c.BaseURL))
+			if v := gatewaycompliance.Violation(gwOrigin, c.ID, c.BaseURL); v != "" {
+				bad = append(bad, v)
 			}
 		}
 		if len(bad) > 0 {
-			return fmt.Errorf("网关合规：failover 含非网关直连通道 %d 个：%s —— 终审请 RUNNER_LLM_FAILOVER=false（内置免费通道均为公网直连；本地网关通道的合法性按主办方口径豁免）",
+			return fmt.Errorf("网关合规：failover 含非网关直连通道 %d 个：%s —— 终审请 RUNNER_LLM_FAILOVER=false（内置免费通道均为公网直连；本地回环网关按 2026-11-09 拍板口径豁免）",
 				len(bad), strings.Join(bad, "、"))
 		}
 	}
 	return nil
-}
-
-// originOf 提取 URL 的 scheme://host 形态（host 含端口），用于「是否指向同一接入点」判定。
-func originOf(raw string) (string, error) {
-	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil {
-		return "", err
-	}
-	if u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("非绝对 URL：%q", raw)
-	}
-	return u.Scheme + "://" + u.Host, nil
 }

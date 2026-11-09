@@ -100,6 +100,23 @@ func TestGatewayComplianceBlocksUnparseableGatewayURL(t *testing.T) {
 	}
 }
 
+// TestGatewayComplianceExemptsLoopbackLocalGateway 拍板口径（2026-11-09）：
+// ofm/ollama 这类回环本地网关转发器算"经网关接入"，豁免放行；判据源与 server 侧
+// 同为 internal/gatewaycompliance（单一口径）。failover 限定 Only=ofm（配 key 使其
+// 进拨打集合），主通道已指网关 → 集合内无公网直连 → 应放行。
+func TestGatewayComplianceExemptsLoopbackLocalGateway(t *testing.T) {
+	t.Setenv("CTF_GATEWAY_REQUIRED", "true")
+	t.Setenv("RUNNER_LLM_FALLBACK", "true")
+	t.Setenv("AI_GATEWAY_BASE_URL", gwTestURL)
+	t.Setenv("RUNNER_LLM_BASE_URL", gwTestURL)
+	t.Setenv("RUNNER_LLM_FAILOVER", "true")
+	t.Setenv("RUNNER_LLM_FAILOVER_CHANNELS", "ofm")
+	t.Setenv("OFM_API_KEY", "test-key-for-loopback-exemption")
+	if err := CheckGatewayCompliance(); err != nil {
+		t.Fatalf("回环本地网关必须按拍板口径豁免，实际拦截：%v", err)
+	}
+}
+
 // TestGatewayComplianceCurrentEnv 供 scripts/finals_preflight.py 以
 // `go test -run TestGatewayComplianceCurrentEnv ./internal/runnerl3/` 调用：
 // 按**当前真实环境**（不做任何 setenv，继承进程 env）执行网关合规校验。
