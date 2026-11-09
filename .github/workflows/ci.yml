@@ -1214,11 +1214,15 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install system tools (tesseract OCR)
-        # 🔴 2026-10-31：`tests/test_jpeg_png_ocr.py::test_tesseract_locatable` 是**硬断言**
-        # （assertIsNotNone，不 skip），而 ubuntu-latest 默认不带 tesseract →
-        # 本 job 若不装，会稳定红一条，且与代码质量无关。
-        # 这与服务器实测一致：服务器未装 tesseract 时该用例必红。
         # 装 OCR 引擎本体 + 英文语言包（skill 的 tessdata 探测要求 eng.traineddata）。
+        # 🔴 2026-11-09 注释勘误：原写「test_tesseract_locatable 是硬断言，不装必红」
+        # 是 10-31 的快照；11-08 该用例已改成**按 vision extra 声明判定**
+        # （pytesseract 未装 ⇒ skip；装了但找不到 tesseract 本体 ⇒ fail）。
+        # 服务器实测：`command -v tesseract` MISSING，但用户态
+        # `~/.local/bin/tesseract 5.5.3` 存在，该用例单跑 1 passed。
+        # 装系统 tesseract 仍有必要：让 OCR 相关用例尽量真跑而不是退化成 skip；
+        # `test_svg_path_text.py` 的端到端用例是否跳过，由测试内
+        # `_ocr_reads_braces()` 能力探测决定（花括号字形辨识），与本 step 无关。
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
