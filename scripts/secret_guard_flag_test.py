@@ -545,9 +545,16 @@ class TestShapeBlindSpotLocked(unittest.TestCase):
             if not rel or not p.is_file():
                 continue
             try:
-                text = p.read_bytes().decode("utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
+                raw = p.read_bytes()
+            except OSError as exc:
+                # 不许静默跳过：豁免文件读不到 = 覆盖率无从判定，直接红（不是"这题算通过"）
+                self.fail("豁免文件读不到，覆盖率无法判定：%s（%s）" % (rel, exc))
+            # 用 latin-1 逐字节映射（无损、永不抛错）：答案 token 全是 ASCII，逐字节对得上，
+            # 所以 .dd / .pcap / .dmp 这类二进制豁免文件里的明文也能扫到。
+            # 2026-11-09 修正：旧写法 `decode("utf-8")` + except 后 continue，静默跳过 4 个二进制
+            # 豁免文件 —— 测试自己只量到 121 处，而提交信息里报的是 123 处（那是另一套宽松解码
+            # 手工量出来的）。**判据量到的数和对外声明的数对不上**，正是本文件要防的那类自伤。
+            text = raw.decode("latin-1")
             for m in wide.finditer(text):
                 cand = m.group(0)
                 if not rc.answer_hit(cand, known):
@@ -564,6 +571,10 @@ class TestShapeBlindSpotLocked(unittest.TestCase):
                          "有 %d 处真答案明文**外形判据看不见**（覆盖率 %d/%d）：%s —— "
                          "它们现在只靠 R9 已知哈希通道兜底，属于「判据把该看的关在门外」"
                          % (invisible, seen - invisible, seen, "; ".join(missed)))
+        # 计数只做"非空 + 覆盖 100%"两个不变量断言，**不写死绝对处数**：
+        # 题库与豁免表会随并行会话增长（今日实测 41 文件 / 125 处，昨日是 123 处），
+        # 写死会让"数字过期"变成常态噪音，而真正要守的是"一处都看不见 = 红"。
+        # （也不要在这里加 `assertGreaterEqual(len(missed), 0)` 这类恒真占位——那是自证式装饰。）
 
 
 if __name__ == "__main__":
