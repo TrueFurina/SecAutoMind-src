@@ -237,18 +237,46 @@ def _rounds_all_failed(detail):
     return api_call_failed(detail)
 
 
+def _has_successful_round(detail):
+    """`llm_rounds` 里是否有一轮**确实返回过模型输出**。
+
+    与 `api_call_failed()` 互补：那个查「是不是全军覆没」，这个查「有没有
+    正面证据」。缺字段 / 字段坏掉一律 False —— 缺字段是「不知道」，不是否定，
+    也不是肯定（v1/v2 私池结果整份没有 llm_rounds，不会被这条误伤或洗白）。
+    """
+    rounds = detail.get("llm_rounds")
+    if not isinstance(rounds, list) or not rounds:
+        return False
+    return any(isinstance(r, dict)
+               and str(r.get("finish_reason") or "") not in ("error", "timeout", "")
+               for r in rounds)
+
+
 def _effective(detail):
     """有效开跑：有模型响应、且不是一次都没问到。
 
     判据（全部满足才算分母）：
-      · `latency`/`seconds` > 0（0 秒空跑不算）
+      · `latency`/`seconds` 是数值；为 0 时必须有**正面证据**（见下）
       · `error` 不是调用层失败（限额/鉴权/限流，见 `_API_FAIL_MARKS`）
       · 不是 `api_call_failed()`（全轮 error/timeout，或只有文本证据）
+
+    🔴 2026-11-09：墙钟是「跑没跑」的**代理指标**，不是证据本身。生产者写
+    `latency = round(dt, 2)`，<5ms 的响应落成 0.0（本地桩模型实测 6 次里 5 次），
+    于是「一道真答过的题」被判 NOT_ATTRIBUTABLE("ineffective_run")，
+    分母 2→1、rate 0.5→1.0。本地/内嵌模型会稳定触发，不是假想问题。
+    修法不用「提高精度」（只是把 5ms 挪到 0.5ms，不根治），更不许写
+    `max(0.01, dt)`（伪造实测值）：改成 0 秒时认 `llm_rounds` 的正面证据。
+
+    历史影响已实测而非推断：全部 19 份入库结果 / 349 格中 `latency<=0` 为 0 格，
+    旧判据与本判据逐格比对 0 分歧 ⇒ 存盘 verdict 不可能变。缺/坏墙钟仍
+    fail-closed（原样返回 False），不放宽。
     """
     if not isinstance(detail, dict):
         return False
     secs = detail.get("latency", detail.get("seconds"))
-    if not isinstance(secs, (int, float)) or secs <= 0:
+    if not isinstance(secs, (int, float)):
+        return False
+    if secs <= 0 and not _has_successful_round(detail):
         return False
     err = str(detail.get("error") or "")
     if err and any(k in err.lower() for k in _API_FAIL_MARKS):
@@ -647,6 +675,40 @@ def selftest():
     # 402 文本变了也不该漏：结构判据不依赖措辞
     cases.append(("换代措辞('payment required' 之外的 402) 仍被结构判据抓到",
                   _effective(api_dead("t1", msg="HTTP 402 账单未结清")), False))
+
+    # ---- 2026-11-09：latency 被 round(dt,2) 抹成 0 的边界 ----
+    # 生产者把小于 5ms 的响应记为 0.0；墙钟不是「模型有没有返回」的证据本身，
+    # llm_rounds 里一轮干净的 finish_reason 才是。以下同时钉住放宽与不放宽两侧。
+    clean_round = {"round": 1, "finish_reason": "stop", "error": "", "content_chars": 10}
+    zero_ok = {"id": "t1", "solved": False, "hit_mode": "", "latency": 0.0,
+               "error": "", "llm_rounds": [clean_round]}
+    cases.append(("0 秒 + 有一轮干净响应 => 仍算有效开跑",
+                  _effective(zero_ok), True))
+    cases.append(("0 秒 + 干净轮次 => 判 CLEAN_FAIL 而非不可归因",
+                  judge_one(zero_ok, plain_prob, ctx(evidence=pl_ok))[0], CLEAN_FAIL))
+    cases.append(("0 秒 + 无 llm_rounds => 仍判废（缺字段不洗白）",
+                  _effective({**zero_ok, "llm_rounds": []}), False))
+    cases.append(("0 秒 + 轮次全 error => 仍判废（不许放进调用失败）",
+                  _effective({**zero_ok,
+                              "llm_rounds": [{"finish_reason": "error", "error": "HTTP 402"}],
+                              "all_rounds_api_failed": True}), False))
+    cases.append(("0 秒 + 轮次 finish_reason 缺失 => 仍判废（无正面证据）",
+                  _effective({**zero_ok, "llm_rounds": [{"round": 1}]}), False))
+    cases.append(("latency 缺失但有干净轮次 => fail-closed（不放宽）",
+                  _effective({k: v for k, v in zero_ok.items() if k != "latency"}), False))
+    cases.append(("0 秒 + 干净轮次但自报全失败 => fail-closed",
+                  _effective({**zero_ok, "all_rounds_api_failed": True}), False))
+    cases.append(("0.01 秒仍有效（回归，未改原有路径）",
+                  _effective({**zero_ok, "latency": 0.01}), True))
+    # 变异：把正面证据分支拿掉（等价于修复前），同一格必须重新判废。
+    _orig_has = _has_successful_round
+    globals()["_has_successful_round"] = lambda d: False
+    try:
+        without_fix = _effective(zero_ok)
+    finally:
+        globals()["_has_successful_round"] = _orig_has
+    cases.append(("变异：拿掉正面证据分支 => 0 秒有效格重新判废",
+                  without_fix, False))
 
     failed = 0
     for name, got, want in cases:

@@ -38,7 +38,7 @@
 而它的落账形状与 `http402` 完全同路（外层 except → `all_rounds_api_failed=True`），
 加进来只增加时长不增加信息量。该分支由 `check_pure_llm_caliber.py --selftest` 覆盖。
 
-## 判据分四面
+## 判据分五面（13 条）
 
 1. **字段面**：每道题都有 `llm_rounds`；失败题的 `finish_reason == "error"`、
    `all_rounds_api_failed is True`、`error` 非空。任一条塌了，消费者就没有可靠信号。
@@ -46,7 +46,12 @@
    NOT_ATTRIBUTABLE 且理由含 `api_call_failed_no_successful_round`。
 3. **批次面**：混合批 3/5 失败 ⇒ claimable=True 但分母缩到 2、rate=0.5、
    notes 自报分母变化；全失败批 ⇒ claimable=False 且阻断理由写明「全批…失败」。
-4. **变异面**：把生产者退化回修复前的落账形状，1/2/3 必须变红。不变红即判据无效。
+4. **0 秒边界面**（2026-11-09 补，见证据文档 §8）：`latency` 被
+   `round(dt,2)` 抹成 0.0 时，有干净轮次仍算有效、无轮次仍 fail-closed；
+   另把失败题 `latency` 强制成 3.99（402 事故的真实条件）再判一次，
+   作为「退回修复前消费者」唯一不依赖本机快慢的证伪点。
+5. **变异面**：5 组，各自问不同问题。M1/M3/M4/M5 该红，M2 是负对照
+   （该红的字段面红、分类面必须仍绿）。该红不红、该绿却红都算判据无效。
 
 运行：
     python scripts/e2e_llm_contract_test.py --selftest     # 含变异验证，打印表格
@@ -63,7 +68,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -117,13 +121,11 @@ class _StubHandler(http.server.BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n).decode("utf-8") or "{}")
         except Exception:
             body = {}
-        # 桩模型要模拟真实网关的响应量级，不是零延迟的内存函数。
-        # 🔴 这不是为了「让测试变绿」而藏问题：生产者把 latency 写成
-        # `round(dt, 2)`，消费者 `_effective()` 要求 `secs > 0`；<5ms 的响应会被
-        # 记成 0.0，进而把一道**真答过**的题判成 NOT_ATTRIBUTABLE("ineffective_run")。
-        # 实测桩不睡时 6 次里 5 次触发。真实厂商端点不会这么快，故桩侧补偿到 20ms；
-        # 精度边界本身单列为已知限制（见文档），**不改判分口径**（会让历史 verdict 失效）。
-        time.sleep(0.02)
+        # 🔴 故意**不睡**：让 loopback 往返真的 <5ms，逼生产者把 latency 写成
+        # `round(dt, 2) = 0.0`。修复前 `_effective()` 只看墙钟，6 次里 5 次把
+        # 真答过的题判成 NOT_ATTRIBUTABLE("ineffective_run")（rate 0.5→1.0）。
+        # 2026-11-09 修好后这里反而成了**最锋利的回归探针**：不加睡眠才能保证
+        # 每次都跑到那条边界；加睡眠等于把刚修好的 bug 绕开。
         # 题号出现在 build_prompt 的「题目名称：<id>」里；直接对整份请求体做子串匹配，
         # 不做结构解析 —— 桩服务不该依赖生产者的 payload 结构。
         text = json.dumps(body, ensure_ascii=False)
@@ -251,15 +253,18 @@ def _by_id(result):
     return {str(d.get("id")): d for d in result.get("details") or []}
 
 
-def evaluate(orch=ORCH, workdir=None, judge_fn=None):
+def evaluate(orch=ORCH, workdir=None, judge_fn=None, judge_mod=None):
     """跑两批并返回 [(check_name, ok, detail), ...]。纯读，不改任何源文件。
 
-    `judge_fn` 只给变异用：把消费者换成修复前的版本，验证「生产者真实落盘的字节」
-    在旧判据下确实会被判错。默认走仓库里的真判据。
+    `judge_mod` 只给变异用：把消费者模块换成修复前的版本，验证「生产者真实
+    落盘的字节」在旧判据下确实会被判错。**所有**断言（含 0 秒边界）都必须走
+    同一个模块，否则变异改了判分器、边界断言却还在读真模块 ⇒ 假绿。
     """
     own = workdir is None
     workdir = workdir or tempfile.mkdtemp(prefix="e2e_llm_")
-    judge = judge_fn or _judge
+    mod = judge_mod or caliber
+    judge = judge_fn or (lambda r, q: mod.judge_run(
+        r, q, _evidence(), set(), True, set(), True))
     try:
         mixed, q_mixed, proc_m = _run_batch(orch, workdir, MIXED_PLAN, "mixed")
         allfail, q_af, _ = _run_batch(orch, workdir, ALLFAIL_PLAN, "allfail")
@@ -343,6 +348,8 @@ def evaluate(orch=ORCH, workdir=None, judge_fn=None):
 
     checks.append(("orchestrator_rc_zero", proc_m.returncode == 0,
                    "rc=%s stderr=%s" % (proc_m.returncode, (proc_m.stderr or "")[-300:])))
+    # 4) 0 秒边界：用真实落盘字节，把 latency 强制成 0.0 后仍须判对。
+    checks.extend(latency_boundary_checks(mixed, q_mixed, mod, judge)[0])
     return checks
 
 
@@ -369,17 +376,45 @@ MUTATIONS = {
     },
     "m2_producer_partial_erasure_redundancy": {
         "target": "producer",
+        # 只抹两处**失败标记**，保留 llm_rounds。2026-11-09 修复后 llm_rounds
+        # 同时是「0 秒格的正面证据」，把它也删掉就不再是纯净的负对照了
+        # （实测那样的 M2 会连带把成功题判废，语义混成两件事）。
         "edits": [('"all_rounds_api_failed": all_failed,',
                    '"all_rounds_api_failed": False,'),
                   ('"error": (first_err[:300] if all_failed else ""),',
-                   '"error": "",'),
-                  ('            "llm_rounds": pstats,\n', ''),
-                  ('            "llm_rounds": estats,\n', '')],
-        # 字段面必红；分类面必须仍绿 —— 这才是「冗余生效」的可测量形态。
-        "expect_red": {"producer_ledger_present", "producer_marks_api_fail"},
-        "expect_green": {"judge_api_failed_not_clean_fail",
+                   '"error": "",')],
+        # 分类面必须仍绿 ⇒ 三条失败判据的冗余真实生效。
+        "expect_red": {"producer_marks_api_fail"},
+        "expect_green": {"producer_ledger_present",
+                         "judge_api_failed_not_clean_fail",
                          "batch_partial_keeps_reduced_denominator",
-                         "batch_allfail_has_no_reading"},
+                         "batch_allfail_has_no_reading",
+                         "positive_latency_api_fail_not_clean_fail",
+                         "zero_latency_with_clean_round_is_effective",
+                         "zero_latency_row_still_clean_fail"},
+    },
+    # M5：新修复依赖 llm_rounds 当正面证据，那就必须能被「删掉它」证伪。
+    # 用强制 latency=0.0 的边界断言判定，不依赖本机往返快慢 ⇒ 不 flaky。
+    "m5_producer_no_rounds_kills_positive_evidence": {
+        "target": "producer",
+        "edits": [('            "llm_rounds": pstats,\n', ''),
+                  ('            "llm_rounds": estats,\n', '')],
+        "expect_red": {"producer_ledger_present",
+                       "zero_latency_with_clean_round_is_effective",
+                       "zero_latency_row_still_clean_fail"},
+        "expect_green": {"judge_api_failed_not_clean_fail",
+                         "batch_allfail_has_no_reading",
+                         "positive_latency_api_fail_not_clean_fail"},
+    },
+    # M4：把 2026-11-09 的正面证据分支拿掉，退回「只看墙钟」。
+    # 用真实生产者字节验这次修复是承重墙，不是自测里自己造的行。
+    "m4_consumer_wallclock_only": {
+        "target": "consumer",
+        "edits": [('    if secs <= 0 and not _has_successful_round(detail):',
+                   '    if secs <= 0:')],
+        "expect_red": {"zero_latency_with_clean_round_is_effective",
+                       "zero_latency_row_still_clean_fail"},
+        "expect_green": {"positive_latency_api_fail_not_clean_fail"},
     },
     "m3_consumer_pre_fix_effective": {
         "target": "consumer",
@@ -393,10 +428,12 @@ MUTATIONS = {
              '        return False'),
             ('    return not api_call_failed(detail)', '    return True'),
         ],
-        # 402 / envelope 的文本含 "quota"，旧表仍能挡住；401 挡不住 ⇒
-        # 这三格必须红，`batch_allfail` 因 judge_run 里的 api_failed 计数仍绿。
-        "expect_red": {"judge_api_failed_not_clean_fail",
-                       "batch_partial_keeps_reduced_denominator"},
+        # 402 / envelope 的文本含 "quota"，旧表仍能挡住；401 挡不住。
+        # 🔴 别用 `judge_api_failed_not_clean_fail` / `batch_partial` 当证伪点：
+        # 桩不睡时失败题常落成 latency=0.0，旧消费者靠「0 秒空跑」闸门
+        # 碰巧判对，实测 3 次里 1 次完全不变红（桶对、理由却是 ineffective_run）。
+        # 改用强制 latency=3.99 的那条 ⇒ 100% 确定，且不依赖本机快慢。
+        "expect_red": {"positive_latency_api_fail_not_clean_fail"},
         "expect_green": {"producer_ledger_present", "producer_marks_api_fail",
                          "judge_llm_solved", "judge_clean_fail",
                          "batch_allfail_has_no_reading"},
@@ -443,9 +480,7 @@ def run_mutations(workdir=None):
                 dest = os.path.join(sub, "caliber_mutated.py")
                 _mutated_copy(CALIBER, spec["edits"], dest)
                 mod = _load_consumer(dest, "caliber_mut_%s" % name)
-                res = evaluate(workdir=sub,
-                               judge_fn=lambda r, q: mod.judge_run(
-                                   r, q, _evidence(), set(), True, set(), True))
+                res = evaluate(workdir=sub, judge_mod=mod)
             red = {n for n, ok, _ in res if not ok}
             problems = []
             miss_red = spec["expect_red"] - red
@@ -485,21 +520,52 @@ def test_mutations_turn_checks_red():
         "  · %s: %s" % (n, why) for n, why in bad)
 
 
-def latency_precision_probe():
-    """已知限制（不是期望性质）：latency 2 位小数 × `_effective` 的 `secs > 0`。
+def latency_boundary_checks(result, questions, mod, judge):
+    """用**生产者真实落盘的字节**验 0 秒边界，返回 (checks, info)。
 
-    生产者写 `round(dt, 2)`；<5ms 的响应落成 0.0，消费者便把一道**真答过**
-    的题判成 NOT_ATTRIBUTABLE("ineffective_run")。真实厂商端点不会这么快，
-    但本地/内嵌模型会。这里只测量并留痕，**不改判分口径** —— 改口径会让
-    历史 verdict 失效，须由在途的判分口径工作统一处理。
+    `mod` / `judge` 由调用方注入（变异时是变异后的消费者），不允许在函数里
+    偷偷回退到全局 `caliber` —— 那会让消费者变异对边界断言完全失效。
+
+    刻意把 `latency` 强制改成 0.0（其余字段全来自真实结果文件），
+    这样不依赖本机快慢、每次都跑到边界；修复前这三条里前两条必红。
+
+    2026-11-09 前这里是「已知限制，只测量不改」；后来实测 19 份入库结果 /
+    349 格中 `latency<=0` 为 0 格、旧新判据逐格 0 分歧，才确认改消费者
+    对历史 verdict 零影响并真正修掉。别把「担心」当成「测量」。
     """
-    base = {"id": "p", "error": "", "all_rounds_api_failed": False,
-            "llm_rounds": [{"round": 1, "finish_reason": "stop", "error": ""}]}
-    fast = dict(base, latency=0.0)
-    slow = dict(base, latency=0.01)
-    return {"api_call_failed(fast)": caliber.api_call_failed(fast),
-            "_effective(latency=0.00)": caliber._effective(fast),
-            "_effective(latency=0.01)": caliber._effective(slow)}
+    rows = _by_id(result)
+    d = rows.get("e2e_wrong")
+    if not isinstance(d, dict):
+        return [("zero_latency_probe_has_real_row", False, "缺 e2e_wrong 行")], {}
+    zero = dict(d, latency=0.0)
+    no_rounds = dict(zero, llm_rounds=[])
+    one = judge({"summary": {}, "details": [zero]}, questions)
+    zero_count = sum(1 for x in (result.get("details") or [])
+                     if isinstance(x, dict) and x.get("latency") == 0)
+    eff_zero = mod._effective(zero)
+    eff_norounds = mod._effective(no_rounds)
+    # 🔴 402 事故的真实条件是「latency=3.99 又过了『0 秒空跑』那道闸」。
+    # 桩不睡时失败题可能落成 0.0，让修复前消费者**碰巧**判对（桶对但理由错）。
+    # 故强制把失败题的 latency 设成正数再判一次：这条不依赖本机快慢，
+    # 是 M3「退回修复前消费者」唯一稳定的证伪点。
+    pos_rows = [dict(rows[pid], latency=3.99) for pid in API_FAIL_IDS
+                if isinstance(rows.get(pid), dict)]
+    pos = judge({"summary": {}, "details": pos_rows}, questions)
+    pos_bad = [r["id"] for r in pos["rows"]
+               if r["verdict"] != caliber.NOT_ATTRIBUTABLE
+               or "api_call_failed_no_successful_round" not in r["reasons"]]
+    return [
+        ("positive_latency_api_fail_not_clean_fail",
+         not pos_bad, "latency=3.99 下被误判/误归因的题=%s" % pos_bad),
+        ("zero_latency_with_clean_round_is_effective",
+         eff_zero is True, "_effective=%r" % eff_zero),
+        ("zero_latency_row_still_clean_fail",
+         one["verdicts"][caliber.CLEAN_FAIL] == 1 and one["attributable_runs"] == 1,
+         "verdicts=%s denom=%s" % (one["verdicts"], one["claimable_denominator"])),
+        ("zero_latency_without_rounds_fail_closed",
+         eff_norounds is False,
+         "_effective=%r；本批真实 latency=0.0 的格数=%d" % (eff_norounds, zero_count)),
+    ], {"real_zero_latency_rows": zero_count}
 
 
 def main(argv=None):
@@ -517,13 +583,11 @@ def main(argv=None):
                                 "" if ok else "  ← %s" % detail))
         bad += 0 if ok else 1
     print("  %s（%d/%d）" % ("PASS" if not bad else "FAIL", len(res) - bad, len(res)))
-    print("=== 已知限制（只测量，不判分，不改口径）===")
-    for k, v in latency_precision_probe().items():
-        print("  %-34s %s" % (k, v))
+    print("  （0 秒边界已作为正式断言上表；桩不睡，真实往返会把 latency 压到 0.0）")
     if args.skip_mutations:
         return 0 if not bad else 1
 
-    print("=== 变异验证：M1/M3 应红，M2 负对照的分类面应仍绿 ===")
+    print("=== 变异验证：M1/M3/M4/M5 应红，M2 负对照的分类面应仍绿 ===")
     mbad = 0
     for name, ok, red, why in run_mutations():
         print("  %-40s %s  变红=%s%s" % (name, "PASS" if ok else "FAIL", red,

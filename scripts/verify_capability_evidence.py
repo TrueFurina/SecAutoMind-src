@@ -78,7 +78,8 @@ GAP_BINDINGS = {
 
 # 现成断言入口。此前 ci.yml 只接了最后一条（且是单独一个 step）。
 EXTERNAL_GATES = [
-    ("判据本体变异验证 19/19", ["scripts/check_pure_llm_caliber.py", "--selftest"]),
+    # 标签不写死通过数：自测会随新增判据增长（32→41），写「19/19」是无源数字。
+    ("判据本体变异验证", ["scripts/check_pure_llm_caliber.py", "--selftest"]),
     ("判分假阴性变异验证 7/7", ["scripts/audit_scoring_variant_gap.py", "--selftest"]),
     ("题源先验变异验证 9/9", ["scripts/audit_pool_prior.py", "--selftest"]),
     ("题面自曝变异验证 7/7", ["scripts/audit_writeup_answer.py", "--selftest"]),
