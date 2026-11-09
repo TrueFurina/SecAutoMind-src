@@ -1206,7 +1206,7 @@ jobs:
   # 故采用「精确 deselect + 记账表 + 清单自测」：14 条逐条写根因，上限 20，
   # 悬空节点/超限/无因/口径漂移四种腐化各有一条变异用例守着（证明门禁真能变红）。
   ctf-agent-pytest-gate:
-    name: CTF-Agent pytest (2212 cases, deselect ledger)
+    name: CTF-Agent pytest (deselect ledger)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1231,8 +1231,15 @@ jobs:
         # 实测在干净 venv 里 collect 阶段就有 6 个 ModuleNotFoundError
         # （PIL / fastapi / httpx / Crypto / Crypto）与若干 async 用例报
         # "async def functions are not natively supported"——即**这个 job 一上线就会红**。
-        # 现按全仓 import 实扫结果补全（scripts/_scan_third_party_imports.py），
-        # 并显式区分「必需」与「可选」：可选缺失只降级不失败，故不装也不影响门禁，
+        # 🔴 2026-11-09 勘误：原写「现按全仓 import 实扫结果补全
+        # (scripts/_scan_third_party_imports.py)」，但**该脚本从未入库**，
+        # 全仓 grep 只有这一行注释；清单实为 10-31 一次性结果后手工维护
+        # （2026-11-09 还因此漏补 python-flint，见证据文档）。
+        # 之所以不必再补一道「清单 vs import」门禁，是实测过的：
+        #   · 普通 import 缺包 ⇒ collect 阶段 ModuleNotFoundError / RC=2，门禁必红；
+        #   · 唯一会静默缩小收集集的是 pytest.importorskip ⇒ 已由
+        #     check_ci_optional_deps.py（AST 扫 17 处 / 9 个完整模块路径）守住。
+        # 显式区分「必需」与「可选」：可选缺失只降级不失败，故不装也不影响门禁，
         # 但 pytest-asyncio 是**必需**（56 个 async 用例全靠它）。
         # 版本取下界而非锁死：与 pyproject 声明一致，避免 CI 与本地装出两套版本。
         run: |
