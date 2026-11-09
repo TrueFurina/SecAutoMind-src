@@ -161,6 +161,11 @@ scripts/deploy_baidu.py
 scripts/diagnose_gcc.py
 range_scan/
 
+# 一次性运维脚本的本地配置（含凭据，NEVER commit）。
+# scripts/change_pw.py 经 SAMA_OPS_CONFIG 指向这类文件；文件名可换，后缀须保持。
+# 2026-11-10 P0：该类配置曾以字面量写进源码并随 public 仓库公开。
+*_ops_config.json
+
 # 本地运维指南（含明文钉钉凭证，禁止入库）
 dingtalk-setup-guide.html
 

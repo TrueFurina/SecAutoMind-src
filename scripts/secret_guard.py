@@ -80,7 +80,25 @@ PATTERNS = [
 # 这些路径下的命中属于测试夹具 / CTF 真题语料，本就该含假凭证，
 # 不阻塞交付，但单独列为「可疑」交人工确认，避免真凭证藏在其中被忽略。
 SUSPECT_PATH = re.compile(
-    r"_test\.go$|data/ctf_benchmark/|/tests?/|/testdata/|_example|\.example",
+    # (?:^|/) 让根级 tests/ 目录也被识别：scan_dir 的 rel 在 --dir 临时树下
+    # 可能以 "tests/..." 开头（无前导斜杠），旧写法 /tests?/ 会漏，把本该
+    # 降级为 suspect 的测试夹具误判成 BLOCK。全仓提交态根级 tests/ 文件 0 个
+    # ⇒ 对真实仓库 verdict 零影响，只修边界。
+    r"_test\.go$|data/ctf_benchmark/|(?:^|/)tests?/|/testdata/|_example|\.example",
+    re.I,
+)
+
+# 🔴 2026-11-10 P0：public 仓库曾把「SSH 连接串 + root 明文密码」写进
+#    scripts/change_pw.py，而 PATTERNS 只认带前缀的密钥形态（sk-/ghp_/xox-/
+#    app_secret…）；短明文密码没有任何可识别特征 ⇒ 门禁全程 RC=0、零告警。
+#    立尺方式：不按「值长什么样」（会误伤教学语料/测试断言），而按
+#    「连接调用同一行里出现 username/password 字面量赋值」这一上下文。
+#    全仓提交态实测：带此上下文的命中仅 1 处（即该 P0 文件），
+#    测试夹具常量赋值与断言字符串内容（`=` 后非引号字面量）均不匹配。
+#    值不会被捕获进 finding（见 scan_dir ③），只登记 文件:行。
+NETWORK_PASSWORD_RE = re.compile(
+    r'''\b(?:connect|sshclient|sftp|psycopg2|pymysql|create_engine)\b'''
+    r'''[^\n]{0,160}?\b(?:password|passwd|pwd)\s*=\s*['"][^'"{}$\n]{4,80}['"]''',
     re.I,
 )
 
@@ -950,6 +968,21 @@ def scan_dir(root, fps=None):
                             "suspect": suspect,
                             "forced": False,
                         })
+                # ③ 连接调用里的明文密码（2026-11-10 P0，见 NETWORK_PASSWORD_RE 注释）。
+                #    🔴 值绝不进 masked：mask() 对 <=12 字符只保留前 3 位，
+                #       短密码打码后仍可辨，等于二次泄露。这里只报 文件:行，
+                #       由人去本地核对并**轮换**（删文件/清历史都撤不回已公开凭据）。
+                #    与 ② 同口径：测试夹具目录降级为 suspect，不阻塞但留痕。
+                if NETWORK_PASSWORD_RE.search(line):
+                    findings.append({
+                        "file": rel,
+                        "line": lineno,
+                        "kind": "连接调用中的明文密码",
+                        "masked": "<值不输出：短密码打码仍可辨，按 P0 轮换处理>",
+                        "placeholder": False,
+                        "suspect": bool(SUSPECT_PATH.search(rel)),
+                        "forced": False,
+                    })
     return scanned, findings
 
 
