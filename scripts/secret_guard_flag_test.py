@@ -459,5 +459,112 @@ class TestEndToEnd(unittest.TestCase):
                          "测试运行改动了真基线文件（污染）")
 
 
+class TestShapeBlindSpotLocked(unittest.TestCase):
+    """把这条外形判据的两个边界**钉成测试**，防它被悄悄放宽或收紧。
+
+    背景（2026-11-09 实测，提交态 fa2fb6c、4214 个已跟踪文件，只读测量）：
+      · 现状 `FLAG_CAND_RE` 对仓内**真实存在的**答案明文覆盖率 **100%**（100/100 条）；
+      · 放宽字符集：放行空格 → 已跟踪命中 2077→2399（+322）；再放行冒号分号 → 3503（+1426），
+        增量里绝大多数是 Go 结构体字面量（`ServerConfig{Desc: h}` 之类）。
+        误报洪水就是这道门禁上次被当噪音关掉的方式，不能重走；
+      · 收紧 body 下限 4→8：命中 2077→1484（-593），而丢掉的那 593 里 **26 处哈希命中题库真值**
+        —— 收紧会真真切切把答案打出视野。
+    结论：现在的正则就是这条判据的**最优点**，两边都有实测代价。谁要动它，
+    必须先把上面这组数字重测一遍并同步 docs/GATES.md，否则这几条断言先红给他看。
+    """
+
+    def test_known_blind_shapes_stay_blind(self):
+        """三种形态是对外明示的盲区（含空格 / 含冒号分号 / 单字符前缀），必须仍然是盲的。
+
+        盲着不算失职：答案若在题库里，R9 的哈希通道不看外形也能抓。
+        真正的残余风险是「**不在题库**的新答案恰好长成这三种样子」，这一条写在
+        docs/GATES.md 的盲区小节里，不许靠"我加了个门禁"把它糊过去。
+        """
+        sg = _load_guard()
+        blind = [
+            _mk("flag", "has space inside"),   # 含空格
+            _mk("flag", "a:b;c"),              # 含冒号/分号
+            _mk("x", "abcdefgh"),              # 单字符前缀
+        ]
+        for s in blind:
+            self.assertIsNone(sg.FLAG_CAND_RE.search(s),
+                              "这个形态此前是**已知盲区**，现在被看见了（%r）——判据被放宽了，"
+                              "请先重测噪声：实测放行空格 +322 处、再放行冒号分号 +1426 处" % sg.mask(s))
+        # 反向：该看见的必须看得见，否则"钉住盲区"会变成"钉住全瞎"
+        for s in (_mk("flag", "selftest_visible_body"), _mk("DASCTF", "selftest_uuid_0000")):
+            self.assertIsNotNone(sg.FLAG_CAND_RE.search(s), "正常形态反而看不见：%r" % s)
+
+    def test_short_body_is_not_tightened_away(self):
+        """body 下限必须留在 4：提到 8 会丢 593 处命中，其中 26 处是题库真答案。"""
+        sg = _load_guard()
+        for body in ("abcd", "a_b_c", "abcdef"):
+            s = _mk("flag", body)
+            self.assertIsNotNone(sg.FLAG_CAND_RE.search(s),
+                                 "body 下限被提高了（实测会丢 26 处真答案）：%r" % s)
+
+    def test_every_in_repo_answer_plaintext_is_visible_by_shape(self):
+        """仓里真实存在的答案明文，外形判据必须 100% 看得见。
+
+        做法（快且不依赖全仓扫描）：答案明文实际就住在**豁免文件**里（R9 全域命中的分布如此），
+        于是只扫这 41 个文件；用一条**更宽**的候选正则（放行空格/冒号/分号、前缀≥2）把候选捞出来，
+        凡哈希命中题库（走 `check_redaction_consistency.answer_hit` 的统一变体口径）就算真答案明文，
+        再要求现状 `FLAG_CAND_RE` 也匹配它。
+
+        少一条就红：那意味着"有一条真答案长成了外形判据看不见的样子"。
+        它眼下只靠 R9 已知哈希通道兜底 —— 那条通道一旦被削弱（比如豁免又退回整文件放行），
+        这条答案就彻底裸奔。这正是本仓反复出现的那类自伤。
+        """
+        import json as _json
+        import re as _re
+
+        if str(SCRIPTS) not in sys.path:
+            sys.path.insert(0, str(SCRIPTS))
+        try:
+            import check_redaction_consistency as rc
+        except SystemExit as e:
+            self.fail("R9 判据模块导入失败（缺统一口径模块），无法判定覆盖率：%s" % e)
+
+        known = rc.collect_answer_hashes(ROOT)
+        if not known:
+            self.fail("题库答案哈希为 0 条：覆盖率无从判定（不许静默跳过）")
+
+        exempt = ROOT / rc.EXEMPT_REL
+        if not exempt.is_file():
+            self.fail("缺豁免表 %s，无法取到答案明文落点" % rc.EXEMPT_REL)
+        entries = _json.loads(exempt.read_text(encoding="utf-8")).get("entries") or []
+
+        # 宽口径候选（只为把「可能是答案」的东西捞全，判"是不是真答案"仍走题库哈希）
+        wide = _re.compile(r"([A-Za-z0-9_]{2,})\{[^}\n\"]{4,200}\}")
+
+        sg = _load_guard()
+        seen = invisible = 0
+        missed = []
+        for e in entries:
+            rel = e.get("file") or ""
+            p = ROOT / rel
+            if not rel or not p.is_file():
+                continue
+            try:
+                text = p.read_bytes().decode("utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            for m in wide.finditer(text):
+                cand = m.group(0)
+                if not rc.answer_hit(cand, known):
+                    continue          # 不是题库答案（多为占位/夹具），不参与覆盖率
+                seen += 1
+                if not sg.FLAG_CAND_RE.search(cand):
+                    invisible += 1
+                    if len(missed) < 6:
+                        missed.append("%s:%d %s" % (rel, text.count("\n", 0, m.start()) + 1,
+                                                    sg.mask(cand)))
+
+        self.assertGreater(seen, 0, "一个真答案明文都没捞到：夹具或豁免表口径变了，不许当作通过")
+        self.assertEqual(invisible, 0,
+                         "有 %d 处真答案明文**外形判据看不见**（覆盖率 %d/%d）：%s —— "
+                         "它们现在只靠 R9 已知哈希通道兜底，属于「判据把该看的关在门外」"
+                         % (invisible, seen - invisible, seen, "; ".join(missed)))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
