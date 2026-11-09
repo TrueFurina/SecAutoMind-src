@@ -40,6 +40,7 @@
 | R15 | 开赛、跑 CTF 引擎、赛前预检、runner 起不来、靶机 409 | 赛时运维（**外部项目**） | `docs/zh-CN/competition-2026/快闪赛开赛操作卡_20261024.md` · `docs/runbooks/赛前检查清单_事故模式库_20261024.md` | 三件套在 `E:\Program\ctf-agent\scripts\`（**不在本仓**），备份在 `docs/evidence/1024快闪赛_20261024/engine_mods/`；改脚本后必跑 `ctf-agent\scripts\selftest_ops.py`（6 项因果测试）；**判活别用 `$proc.HasExited`**（python 双层进程，见 AGENTS.md 第十一条） |
 | R16 | 判题命中、flag 提取、`FLAG_RE`、覆盖率数字对不上、怀疑"答对却判未命中" | 评测口径 | `scripts/experiments/flag_util.py` · `scripts/check_flag_eval_regex.py` · `scripts/flag_eval_allowlist.json` | 🔴 **基准 72 个 flag 全小写 `flag{`，LLM 常输出大写 `FLAG{...}`**：小写-only 正则 + 直接比原文 sha256 会**答对也判未命中**（不报错，只让数字静默偏低，2026-10-28 实锤 morse_hello）。一律用 `flag_util.flag_sha256_hit`；**22 处挂账已于 2026-10-28 全部迁移、归零** |
 | R17 | 起服务/跑批前占位、端口被抢、两个会话跑同一批题、并发池超限 | 并发调控 | `scripts/session_registry.py`（占位状态落在运行时生成的 data/session_registry.json，该文件不入库，CI 检出里没有属正常） | 🔴 **跑批前必须 `claim`**：同 (host,port) 互斥、同 slice 互斥、活跃会话 ≤ **5**（**账号级并发池，换机器不增加容量**）。心跳 > 45 分钟视为僵尸不占位（`gc` 清理）。跑完 `release`。忘了 claim = 可能抢掉别人的实例（真实事故：S5 起的实例 3 分钟后被别的会话杀掉） |
+| R18 | 网关合规判据（终审"模型调用必须经 AI 安全网关"）、ofm/ollama 本地网关豁免、哪些通道算直连 | 合规闸门 | `internal/gatewaycompliance/`（**判据单一真值源**）· `internal/runnerl3/gateway_guard.go`（runner L3 启动闸门）· `internal/config/config.go` 的 `ValidateAIGateway`（server 对话通道）· `scripts/finals_preflight.py` ⑧ | 判据只此一份，**别在调用点复刻第二套口径**（同 `scripts/` 清单双写教训）；新接线一律默认关 + 配"零调用"反向对照；live 平台测试须 `RUN_LIVE_TESTS=1`（见 `internal/ctfplatform/live_gate_test.go`，否则 ./... 会真打平台占靶机额度） |
 
 ---
 
