@@ -76,6 +76,43 @@ GAP_BINDINGS = {
     "verdict_full154_v2.json": "scoring_variant_gap_v2.json",
 }
 
+# 🔴 防缩水登记（2026-11-10 补）：本脚本的职责是「把写了却没锁进 CI 的断言入口
+# 接齐」，但此前 **EXTERNAL_GATES 自己没有任何防删锁** —— 有人删掉一条，
+# check() 只是少跑一条，其余全绿 ⇒ 恒 PASS，与 F-11「写了没接 CI」是同一个
+# 失效模式递归到门禁自身（AGENTS.md 第四条：失效的门禁比没有门禁更危险）。
+#
+# 设计（不写死「14 条」）：登记**不可缺席的入口集合**，check() 只断言
+# 「必需 ⊆ 当前」，反向不约束 ⇒ 新增断言入口不假红、删除任一必需入口必红。
+# 这份登记必须保持静态、不从 EXTERNAL_GATES 自动派生，否则删代码时锁会一起消失。
+# 用完整 argv 元组而非脚本路径做键：同一脚本有多条参数化入口（audit_pool_prior
+# 的 --selftest / --verify / --verify --pool v2），删掉其中一条也必须被抓到。
+REQUIRED_GATE_ARGV = frozenset([
+    ("scripts/check_pure_llm_caliber.py", "--selftest"),
+    ("scripts/audit_scoring_variant_gap.py", "--selftest"),
+    ("scripts/audit_pool_prior.py", "--selftest"),
+    ("scripts/audit_writeup_answer.py", "--selftest"),
+    ("scripts/build_clean_benchmark_v2.py", "--selftest"),
+    ("scripts/audit_pool_prior.py", "--verify"),
+    ("scripts/audit_pool_prior.py", "--verify", "--pool", POOL_V2, "--out", PRIOR_V2),
+    ("scripts/audit_writeup_answer.py", "--verify"),
+    ("scripts/build_clean_benchmark.py", "--verify"),
+    ("scripts/build_clean_benchmark_v2.py", "--verify"),
+    ("scripts/audit_private_proof.py", "--verify"),
+    ("scripts/prove_airgap_ip_direct.py", "--check"),
+    ("scripts/e2e_llm_contract_test.py", "--selftest"),
+    ("CTF-Agent_融合/ctf_agent/scripts/check_ci_optional_deps.py",),
+])
+
+
+def gate_coverage_errors(gates=None):
+    """返回门禁清单的缩水描述列表（空 = 完整）。注入 gates 供变异自测。"""
+    current = EXTERNAL_GATES if gates is None else gates
+    present = {tuple(argv) for _, argv in current}
+    missing = sorted(REQUIRED_GATE_ARGV - present)
+    return ["断言入口被删除或改写，证据面接线不完整：%s" % (" ".join(a),)
+            for a in missing]
+
+
 # 现成断言入口。此前 ci.yml 只接了最后一条（且是单独一个 step）。
 EXTERNAL_GATES = [
     # 标签不写死通过数：自测会随新增判据增长（32→41），写「19/19」是无源数字。
@@ -272,8 +309,17 @@ def writers_missing_newline(scripts_dir=None):
 
 
 def check():
-    errs = cross_check()
     bad = 0
+    print("=== 0/2 断言入口清单完整性（防删一条后静默全绿）===")
+    cover = gate_coverage_errors()
+    for e in cover:
+        print("  · %s" % e)
+    print("  %s（%d 条缺失 / 登记 %d 条必需入口 / 当前 %d 条）"
+          % ("FAIL" if cover else "PASS", len(cover),
+             len(REQUIRED_GATE_ARGV), len(EXTERNAL_GATES)))
+    if cover:
+        bad += 1
+    errs = cross_check()
     print("=== 1/2 证据集完整性 + 交叉一致性 ===")
     for e in errs:
         print("  · %s" % e)
@@ -304,10 +350,27 @@ def check():
 
 
 def selftest():
-    """变异攻击：证明交叉校验对改证/删件确实会变红，不是恒绿。"""
+    """变异攻击：证明交叉校验对改证/删件确实会变红，不是恒绿。
+
+    2026-11-10 补：另证「断言入口清单」自身的防缩水锁能变红 —— 删一条
+    必需入口必须报缺失，原件必须放行，新增一条不该被误判（反向不约束）。
+    """
     verdict_files = sorted(glob.glob(os.path.join(EV, "verdict_*.json")))
     all_names = REQUIRED + [os.path.basename(p) for p in verdict_files]
     cases = []
+    # 门禁清单自身的变异：删一条必需入口 ⇒ 必红；原件 / 新增一条 ⇒ 放行。
+    cases.append(("断言入口清单原件不误报（非永远红灯）",
+                  bool(gate_coverage_errors()), False, []))
+    cases.append(("删掉一条必需断言入口 ⇒ 防缩水锁报红",
+                  bool(gate_coverage_errors(EXTERNAL_GATES[:-1])), True, []))
+    cases.append(("删掉判据本体 --selftest ⇒ 防缩水锁报红",
+                  bool(gate_coverage_errors(
+                      [g for g in EXTERNAL_GATES
+                       if g[1][0] != "scripts/check_pure_llm_caliber.py"])), True, []))
+    cases.append(("新增一条断言入口不误报（反向不约束）",
+                  bool(gate_coverage_errors(
+                      EXTERNAL_GATES + [("新增探针", ["scripts/does_not_matter.py"])])),
+                  False, []))
     with tempfile.TemporaryDirectory() as td:
         ev = os.path.join(td, "ev")
         os.makedirs(ev)
