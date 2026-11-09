@@ -273,6 +273,11 @@ func main() {
 	// 排行榜快照（2026-10-28 接线，P0-3 终报一环）：停轮打终报快照，默认关
 	pc.ScoreboardSnapshot = envBool("CTF_SCOREBOARD_SNAPSHOT", false)
 	pc.ScoreboardInterval = envDurationMs("CTF_SCOREBOARD_INTERVAL", 0)
+	// 时间窗驱动（2026-11-10 第二轮，取证 docs/evidence/match_info双平台字段实探_时间窗第一轮_20261110.md）：
+	// 首血窗口按平台 start/end 推导 + status=ended 判停。默认双关；平台未实现
+	// MatchWindowProvider（如 DASCTF 字段未证实）时 inert 并告警，不影响既有手工配置。
+	pc.DeriveWindowFromMatchInfo = envBool("CTF_DERIVE_MATCH_WINDOW", false)
+	pc.StopOnPlatformEnd = envBool("CTF_STOP_ON_PLATFORM_END", false)
 	pc.SubmitAfterSolve = envBool("CTF_AUTOSOLVE_SUBMIT", true) // 赛时默认自动提交
 	pc.AutoBuildEnv = envBool("CTF_AUTO_BUILD_ENV", true)
 	pc.AutoFetchAttachment = envBool("CTF_AUTO_FETCH_ATTACHMENT", false)

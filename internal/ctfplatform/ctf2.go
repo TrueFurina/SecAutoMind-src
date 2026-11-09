@@ -986,6 +986,48 @@ func (p *CTF2Platform) GetMatchInfo(ctx context.Context) (map[string]interface{}
 	return compResp.Data, nil
 }
 
+// MatchWindowInfo 是 CTF² 比赛时间窗的类型化视图（2026-11-10 时间窗驱动·第二轮）。
+// 字段来源 = 真机探针实值（docs/evidence/match_info双平台字段实探_时间窗第一轮_20261110.md）：
+// start_time/end_time 为 RFC3339 带时区字符串；status 已实见 "ended"，running 字面量
+// 待下次真赛补采——**未知 status 值一律按"未结束"处理（宁多跑不误停）**。
+type MatchWindowInfo struct {
+	Status   string
+	Start    time.Time
+	HasStart bool
+	End      time.Time
+	HasEnd   bool
+}
+
+// IsEnded 只有实见 "ended" 才为 true；空值/未知值一律 false（fail-safe：绝不误停）。
+func (w MatchWindowInfo) IsEnded() bool {
+	return strings.EqualFold(strings.TrimSpace(w.Status), "ended")
+}
+
+// MatchWindow 实现 poller 侧可选接口 MatchWindowProvider。
+// DASCTF 适配器**故意不实现**：其 match_info 实探为 40403 且返回裸信封，字段名未证实，
+// 照 CTF² 字段写通用解析就是猜——poller 探测不到该接口时特性自动 inert（零行为变化）。
+func (p *CTF2Platform) MatchWindow(ctx context.Context) (MatchWindowInfo, error) {
+	mi, err := p.GetMatchInfo(ctx)
+	if err != nil {
+		return MatchWindowInfo{}, err
+	}
+	var w MatchWindowInfo
+	if s, ok := mi["status"].(string); ok {
+		w.Status = s
+	}
+	if s, ok := mi["start_time"].(string); ok && s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			w.Start, w.HasStart = t, true
+		}
+	}
+	if s, ok := mi["end_time"].(string); ok && s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			w.End, w.HasEnd = t, true
+		}
+	}
+	return w, nil
+}
+
 // GetOverview 读取 Agent 排行榜与本 Agent 排名。
 func (p *CTF2Platform) GetOverview(ctx context.Context) (map[string]interface{}, error) {
 	if err := p.ensureContext(ctx); err != nil {

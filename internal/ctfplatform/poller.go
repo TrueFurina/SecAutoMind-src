@@ -28,6 +28,13 @@ type BackoffAdvisor interface {
 	LastListOK() bool
 }
 
+// MatchWindowProvider 平台时间窗可选接口（2026-11-10 时间窗驱动）。
+// 实现方（目前仅 CTF²，DASCTF 字段未证实故故意不实现）提供类型化的
+// status/start/end；Poller 探测不到就走既有手工配置路径，特性自动 inert。
+type MatchWindowProvider interface {
+	MatchWindow(ctx context.Context) (MatchWindowInfo, error)
+}
+
 // PollerConfig 轮询器配置。
 type PollerConfig struct {
 	PollInterval     time.Duration `json:"poll_interval"`      // 拉题间隔，默认 30s
@@ -70,6 +77,17 @@ type PollerConfig struct {
 	// 🔴 默认 false（第八条纪律：新接线配置开关默认关；开启走 CTF_SCOREBOARD_SNAPSHOT=true）。
 	ScoreboardSnapshot bool          `json:"scoreboard_snapshot"`
 	ScoreboardInterval time.Duration `json:"scoreboard_interval"`
+	// DeriveWindowFromMatchInfo / StopOnPlatformEnd 时间窗驱动（2026-11-10 第二轮，
+	// 字段取证见 docs/evidence/match_info双平台字段实探_时间窗第一轮_20261110.md）：
+	// 平台适配器实现 MatchWindowProvider 时——
+	//   DeriveWindowFromMatchInfo=true：首血窗口改由平台 start/end 推导
+	//     （窗口长 = min(15min, 赛程的 1/5)，起点 = 平台 start_time；显式配置的
+	//     FirstBloodWindow 优先，本开关只在未显式配置时接管）；
+	//   StopOnPlatformEnd=true：每轮后用平台 status 判停（只认 "ended"，
+	//     未知值/取不到一律继续——宁多跑不误停；落地调度纪律"比赛状态只信平台"）。
+	// 🔴 均默认 false；平台未实现该接口（如 DASCTF 字段未证实）时自动 inert 并告警。
+	DeriveWindowFromMatchInfo bool `json:"derive_window_from_match_info"`
+	StopOnPlatformEnd         bool `json:"stop_on_platform_end"`
 }
 
 func DefaultPollerConfig() PollerConfig {
@@ -96,6 +114,44 @@ func pollWait(cfg PollerConfig, elapsed time.Duration) time.Duration {
 func firstBloodActive(cfg PollerConfig) bool {
 	return cfg.FirstBloodWindow > 0 && cfg.FirstBloodInterval > 0 &&
 		cfg.FirstBloodInterval < cfg.PollInterval
+}
+
+// deriveFirstBloodUntil 首血窗口截止点 = 平台 start_time + min(15min, 赛程/5)。
+// 纯函数便于确定性单测；无 start_time 返回 ok=false（inert，保持人工配置）。
+// 注意：短间隔本身仍需显式配置 FirstBloodInterval(<PollInterval) 才会启用
+// ——与 firstBloodActive 同判据，防"窗口有了但没有短间隔"的空转。
+func deriveFirstBloodUntil(w MatchWindowInfo) (time.Time, bool) {
+	if !w.HasStart {
+		return time.Time{}, false
+	}
+	fbLen := 15 * time.Minute
+	if w.HasEnd && w.End.After(w.Start) {
+		if q := w.End.Sub(w.Start) / 5; q < fbLen {
+			fbLen = q
+		}
+	}
+	return w.Start.Add(fbLen), true
+}
+
+// pollWaitDerived 时间窗推导模式下的轮询间隔：首血（按平台 start_time 推出的绝对
+// 截止点）内用 FirstBloodInterval，之后回落 PollInterval。判据与 pollWait 同族，
+// 纯函数便于确定性单测。interval 未配或不小于轮询间隔时视为不启用短间隔抢新题。
+func pollWaitDerived(cfg PollerConfig, inFirstBlood bool) time.Duration {
+	if inFirstBlood && cfg.FirstBloodInterval > 0 && cfg.FirstBloodInterval < cfg.PollInterval {
+		return cfg.FirstBloodInterval
+	}
+	return cfg.PollInterval
+}
+
+// fetchMatchWindow 带 10s 超时地取平台时间窗（调用方负责只在 provider 存在时用）。
+func (p *Poller) fetchMatchWindow(ctx context.Context) (MatchWindowInfo, error) {
+	mp, ok := p.platform.(MatchWindowProvider)
+	if !ok {
+		return MatchWindowInfo{}, fmt.Errorf("平台未实现 MatchWindowProvider")
+	}
+	wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	return mp.MatchWindow(wctx)
 }
 
 // ValidatePollerConfig 集中校验 PollerConfig 各开关的语义倒挂 / 危险值。
@@ -277,7 +333,9 @@ func (p *Poller) RunForever(ctx context.Context) error {
 		zap.Bool("first_blood_scan", firstBloodActive(p.config)),
 		zap.Duration("first_blood_window", p.config.FirstBloodWindow),
 		zap.Bool("scoreboard_snapshot", p.config.ScoreboardSnapshot),
-		zap.Duration("scoreboard_interval", p.config.ScoreboardInterval))
+		zap.Duration("scoreboard_interval", p.config.ScoreboardInterval),
+		zap.Bool("derive_window_from_match_info", p.config.DeriveWindowFromMatchInfo),
+		zap.Bool("stop_on_platform_end", p.config.StopOnPlatformEnd))
 	startedAt := time.Now()
 
 	// 排行榜终报（P0-3 收尾一环）：停轮时打最后一次快照。defer 挂在所有退出路径
@@ -301,6 +359,41 @@ func (p *Poller) RunForever(ctx context.Context) error {
 			p.logger.Info("比赛信息快照", zap.Any("match_info", info))
 		}
 		miCancel()
+	}
+
+	// 时间窗驱动（2026-11-10 第二轮）：可选接口探测 + 首血窗口推导。
+	// 未开启或平台未实现 → 全走既有手工配置路径（零行为变化）；
+	// 取数失败 → 保持手工配置并告警（宁按人工值跑，不瞎推导）。
+	var mwProvider MatchWindowProvider
+	fbActiveUntil := time.Time{}
+	if p.config.DeriveWindowFromMatchInfo || p.config.StopOnPlatformEnd {
+		mp, isProvider := p.platform.(MatchWindowProvider)
+		if !isProvider {
+			p.logger.Warn("平台适配器未实现 MatchWindowProvider，时间窗驱动 inert（保持手工配置）")
+		} else {
+			mwProvider = mp
+			if p.config.DeriveWindowFromMatchInfo {
+				w, werr := p.fetchMatchWindow(ctx)
+				switch {
+				case werr != nil:
+					p.logger.Warn("时间窗推导取数失败，保持手工配置", zap.Error(werr))
+				case p.config.FirstBloodWindow > 0:
+					p.logger.Info("已显式配置 first_blood_window，推导让位于人工值")
+				case !w.HasStart:
+					p.logger.Warn("平台未给出 start_time，时间窗推导 inert")
+				default:
+					until, ok := deriveFirstBloodUntil(w)
+					if !ok {
+						p.logger.Warn("平台未给出 start_time，时间窗推导 inert")
+					} else {
+						fbActiveUntil = until
+						p.logger.Info("首血窗口按平台时间窗推导",
+							zap.Time("match_start", w.Start),
+							zap.Time("first_blood_until", fbActiveUntil))
+					}
+				}
+			}
+		}
 	}
 
 	for {
@@ -338,9 +431,25 @@ func (p *Poller) RunForever(ctx context.Context) error {
 		// ④ 连续 429 阶梯退避：建议间隔 > 基础间隔时拉长本轮等待
 		// 基础间隔含首血窗口判定：开赛初期用短间隔抢新题，窗口后回落。
 		wait := pollWait(p.config, time.Since(startedAt))
+		if !fbActiveUntil.IsZero() {
+			// 时间窗推导生效时，首血判定改用平台 start_time 推出的绝对截止点
+			// （不再按"本进程启动时刻"相对计算——poller 提前/延后启动都不失真）。
+			wait = pollWaitDerived(p.config, time.Now().Before(fbActiveUntil))
+		}
 		if p.advisor != nil {
 			if s := p.advisor.BackoffSuggestion(p.config.PollInterval.Seconds()); s > wait.Seconds() {
 				wait = time.Duration(s) * time.Second
+			}
+		}
+
+		// 判停（StopOnPlatformEnd）：每轮后问一次平台 status。只认实见的 "ended"；
+		// 取数失败/未知值一律继续 —— 宁多跑不误停（误停=丢分，多跑=可回退）。
+		if p.config.StopOnPlatformEnd && mwProvider != nil {
+			if w, werr := p.fetchMatchWindow(ctx); werr != nil {
+				p.logger.Warn("status 判停取数失败，继续轮询（宁多跑不误停）", zap.Error(werr))
+			} else if w.IsEnded() {
+				p.logger.Info("平台 status=ended，按判据停轮（调度纪律：比赛状态只信平台）")
+				return nil
 			}
 		}
 

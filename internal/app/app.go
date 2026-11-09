@@ -500,6 +500,11 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 				pc.ScoreboardInterval = time.Duration(n) * time.Second
 			}
 		}
+		// 时间窗驱动（2026-11-10 第二轮，与 cmd/runner 同族 env 口径）：首血窗口按平台
+		// start/end 推导 + status=ended 判停。默认双关；平台未实现 MatchWindowProvider
+		// 时 poller 侧 inert 并告警（取证见 docs/evidence/match_info双平台字段实探_时间窗第一轮_20261110.md）。
+		pc.DeriveWindowFromMatchInfo = strings.EqualFold(os.Getenv("CTF_DERIVE_MATCH_WINDOW"), "true")
+		pc.StopOnPlatformEnd = strings.EqualFold(os.Getenv("CTF_STOP_ON_PLATFORM_END"), "true")
 		// 排行榜快照落盘（2026-10-31）：只打 zap 日志的话**赛后查不到分数走势**，
 		// 下次复盘又只能靠回忆。开关跟随 ScoreboardSnapshot（不开快照就没有可落的数据）；
 		// 路径可用 CTF_SCOREBOARD_LOG 覆盖，默认 logs/scoreboard.jsonl（已 gitignore）。
