@@ -508,7 +508,11 @@ def scan_staged_added(root: Path, known: dict) -> list[tuple[str, str, tuple]]:
     DENOMINATOR 文档、证据 raw.jsonl），全部门禁都看不见它们（门禁只扫 git 已跟踪文件），
     一条 `git add -A` 就会把它们变成永久历史。本函数供 pre-commit 钩子调用。
     """
-    out = _git_out(root, "diff", "--cached", "-U0", "--no-color", "--no-ext-diff")
+    # 中文路径在 git 默认输出里是 "a/\350\236..." 这种八进制转义：钩子拦下来时
+    # 人看到的就是这串乱码，等于「拦住了但说不清拦的是哪个文件」。quotepath=false
+    # 只影响显示，不改变比对内容。
+    out = _git_out(root, "-c", "core.quotepath=false", "diff", "--cached", "-U0",
+                   "--no-color", "--no-ext-diff")
     if not out:
         return []
     hits: list[tuple[str, str, tuple]] = []
@@ -828,8 +832,8 @@ def check(root: Path) -> tuple[int, list[str]]:
                 fails.append("R10 待扫提交过多：%s..HEAD 有 %d 个（上限 %d）——"
                              "请把 HISTORY_SINCE 前移到已确认干净的提交，再继续累计"
                              % (HISTORY_SINCE, len(rev_list), MAX_HISTORY_COMMITS))
-            patch = _git_out(root, "log", "-p", "-U0", "--no-color", "--no-merges",
-                             "%s..HEAD" % HISTORY_SINCE) or ""
+            patch = _git_out(root, "-c", "core.quotepath=false", "log", "-p", "-U0",
+                             "--no-color", "--no-merges", "%s..HEAD" % HISTORY_SINCE) or ""
             hist_hits = scan_patch_added(patch, known)
             lines.append("  历史新增行扫描：%s..HEAD 共 %d 个提交 ｜ 新增行里命中 %d 处"
                          % (HISTORY_SINCE, len(rev_list), len(hist_hits)))
@@ -1296,7 +1300,8 @@ def update_exposure(root: Path, owner: str) -> int:
     if _git_out(root, "rev-parse", "--git-dir") is None:
         print("非 git 环境：无法扫描历史，拒绝生成（fail-closed）")
         return 2
-    proc = subprocess.Popen(["git", "log", "-p", "-U0", "--no-color", "--no-merges",
+    proc = subprocess.Popen(["git", "-c", "core.quotepath=false",
+                             "log", "-p", "-U0", "--no-color", "--no-merges",
                              "--reverse", "HEAD"],
                             cwd=str(root), stdout=subprocess.PIPE,
                             text=True, encoding="utf-8", errors="ignore")
