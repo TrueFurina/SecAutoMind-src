@@ -85,12 +85,16 @@ class TestRegression(unittest.TestCase):
             len(problems),
             "分层之和必须等于总数（覆盖度）",
         )
-        # 人工核查值（2026-11-04 重锁）：题面即答案 0 / 有输入 12 / 无输入 43。
-        # 原值为 4 / 12 / 39（2026-10-15）；差别就是那 4 道 description 里写着答案的真题
-        # 已按台账脱敏，从 A 层合法迁到 C 层——A 归零是这次处置的目的，不是数据变差。
+        # 人工核查值（**2026-11-09 重锁**）：题面即答案 0 / 有输入 16 / 无输入 39。
+        # 变动史：① 2026-10-15 是 4 / 12 / 39；② 2026-11-04 那 4 道 description 写着答案的真题
+        # 按台账脱敏后从 A 迁到 C，成为 0 / 12 / 43；③ 2026-11-09 发现其中 4 道**密文题**
+        # （caesar_shift19_real / vigenere_known_key / rail_fence_basic / ehaxctf2025_morse）
+        # 本来就有输入——密文就写在题面里，只是 has_payload() 认不出短题面里的密文 token，
+        # 于是它们被错算成"无输入"却又被真求解器解出。修 has_payload 后 C 43→39、B 12→16。
+        # 这 4 道**不是**「无输入也能解」的能力神话，而是「判据没认出输入」；两者不能混讲。
         self.assertEqual(len(layers["A"]), 0)
-        self.assertEqual(len(layers["B"]), 12)
-        self.assertEqual(len(layers["C"]), 43)
+        self.assertEqual(len(layers["B"]), 16)
+        self.assertEqual(len(layers["C"]), 39)
 
     def test_real_data_check_passes_within_baseline(self):
         """当前数据在登记基线内 → PASS。
@@ -201,6 +205,29 @@ class TestMutation(unittest.TestCase):
             self.assertNotIn("crc", layers["A"], "输入型 flag 不得判为 A 层")
             rc, out = run_with(b, r, a, ["--check", "--max-a", "0"])
             self.assertEqual(rc, 0, out)
+
+    def test_cipher_token_in_statement_counts_as_input(self):
+        """2026-11-09 回归：密文写在短题面里 → 必须算「有输入」（B 层），不许算无输入。
+
+        这 4 道真实题曾被判成 C 层，而它们实际被真求解器解出 —— 判据认不出输入时，
+        C 层口径（"多少题物理不可解"）本身就是错的。正例/反例成对，防止改宽后恒为真。
+        """
+        want = hashlib.sha256("flag{the_plain_answer}".encode()).hexdigest()
+        # 正例：凯撒密文（前缀不常见、题面短、非 base64/hex）
+        self.assertTrue(abv.has_payload(
+            "wpjvJAM{jhlzhy_k3jy9wa3k_m0212758} 凯撒移位19", "caesar", set(), want))
+        # 正例：维吉尼亚密文
+        self.assertTrue(abv.has_payload(
+            "维吉尼亚加密，密钥为 CRYPTO：hcyv{owivltks_eznwxf}", "vig", set(), want))
+        # 反例：题面只剩脱敏占位 → 仍无输入（题目已没有答案可解）
+        self.assertFalse(abv.has_payload(
+            "flag{REDACTED_flag_in_html}", "p_html", set(), want))
+        # 反例：这个 token 本身就是答案（A 层该拦的）→ 不得被当成"输入"洗成 B 层
+        token = "flag{the_plain_answer}"
+        self.assertFalse(abv.has_payload(token, "p_ans", set(),
+                                         hashlib.sha256(token.encode()).hexdigest()))
+        # 反例：只有一句摘要 → 仍无输入
+        self.assertFalse(abv.has_payload("浏览器 Cookie 中的 Base64 编码 flag", "p_prose", set(), want))
 
     def test_report_mode_never_fails(self):
         """仅报数模式恒 0：报数不得因数据差而中断流水线。"""

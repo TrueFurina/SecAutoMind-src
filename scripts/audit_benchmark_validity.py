@@ -73,15 +73,27 @@ FLAG_PLAIN_RE = re.compile(r"(?:flag|FLAG|picoCTF|picoctf|d0g3|DASCTF|ctf)\{[^{}
 # （data/ctf_benchmark/redaction_ledger.json，state=synced），这 4 道随之从 A 层迁到 C 层
 # ——不是题变难了，而是不再泄密。上限同时收紧到 0：以后题面再出现答案一律红。
 BASELINE_A = 0
-# C 层占比上限：39（原实测）+ 4（上述台账处置）= 43/55 = 78.2%。
-# 分母仍是全部 55 道真题（不靠扩分母凑数，反注水语义不变），只是分子多了 4 道
-# 「按设计不可解」的题——它们从 A 层合法迁来，不是新注水。
-BASELINE_C_PCT = 78.2
+# C 层占比上限：**71.0%**（2026-11-09 由 78.2 收回；实测 39/55 = 70.9%）。
+# 收回到 71.0 而不是写成 70.9，是因为判据用「> 基线」比较，写完小数会因四舍五入自己判红；
+# 但闸门语义没有被放松：任何一道新出现的无输入题都会把占比推到 40/55 = 72.7% > 71.0 立刻红。
+# 变化来自一处判据修正，不是数据变好：4 道「密文就写在题面里」的题
+# （`caesar_shift19_real` / `vigenere_known_key` / `rail_fence_basic` / `ehaxctf2025_morse`）
+# 被 has_payload() 误判为「无输入」，实测它们都能被真求解器解出。修好后 C 43→39，B 12→16。
+# 注意：C 上限必须同步下调，**不许把 78.2 留着** —— 留着等于给这 4 道旧误判永久豁免，
+# 以后真出现 43 道无输入题也不会红，那就是「改判据时顺手把闸门放松」。
+# 分母仍是全部 55 道真题（不靠扩分母凑数，反注水语义不变）。
+BASELINE_C_PCT = 71.0
 # 真实数据载荷特征
 B64ISH_RE = re.compile(r"[A-Za-z0-9+/=]{20,}")
 HEX_RE = re.compile(r"0x[0-9a-fA-F]{8,}")
 LONGNUM_RE = re.compile(r"[0-9]{12,}")
 MIN_PROSE_LEN = 100  # 正文长度阈值：超过即认为题面携带了实质内容
+# `name{body}` 形态 token：前缀不常见、body 是密文样式（`wpjvJAM{...}` / `hcyv{...}` / `f{...}`）。
+# 2026-11-09 补这条判据的原因：上面前三条（长度 / base64 / hex + 附件目录）都认不出
+# 「密文直接写在题面里、题面又很短」这一类，4 道密文题因此被算成"无输入不可解"，
+# 而它们实测被真求解器解出 —— 那会让 C 层口径（"多少题真正缺输入"）本身失真。
+CIPHER_TOKEN_RE = re.compile(r"[A-Za-z0-9_]{1,20}\{[^}\n]{4,80}\}")
+REDACTED_MARK = "REDACTED"  # 脱敏占位 `flag{REDACTED_xxx}` 不是输入：题已经没答案可解了
 
 
 def load():
@@ -97,14 +109,29 @@ def load():
     return problems, results, attach
 
 
-def has_payload(desc: str, pid: str, attach: set) -> bool:
-    """题面是否携带可求解的真实输入。"""
+def has_payload(desc: str, pid: str, attach: set, want: str | None = None) -> bool:
+    """题面是否携带可求解的真实输入。
+
+    判据只看**题面内容与答案指纹**，不看"这题后来有没有被解出来" ——
+    用解出结果反推分母是循环论证，会把 C 层永远清零。
+    """
     d = desc or ""
     if len(d) > MIN_PROSE_LEN:
         return True
     if B64ISH_RE.search(d) or HEX_RE.search(d) or LONGNUM_RE.search(d):
         return True
-    return pid in attach
+    if pid in attach:
+        return True
+    for m in CIPHER_TOKEN_RE.finditer(d):
+        tok = m.group(0)
+        if REDACTED_MARK in tok:
+            continue  # 脱敏占位：题面只剩占位符，题目已无答案可解，不算输入
+        if want:
+            for v in candidate_variants(tok):
+                if hashlib.sha256(v.encode("utf-8")).hexdigest() == want:
+                    return False  # 这个 token 就是答案明文（A 层该拦的），不能当成"输入"
+        return True
+    return False
 
 
 def answer_in_statement(meta: dict) -> bool:
@@ -131,7 +158,7 @@ def classify(problems: dict, attach: set) -> dict:
         desc = meta.get("description") or ""
         if answer_in_statement(meta):
             layers["A"].append(pid)
-        elif has_payload(desc, pid, attach):
+        elif has_payload(desc, pid, attach, meta.get("flag_sha256")):
             layers["B"].append(pid)
         else:
             layers["C"].append(pid)
