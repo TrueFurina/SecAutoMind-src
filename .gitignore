@@ -203,3 +203,10 @@ data/flag_truth.local.json
 data/answers/
 # 会话记忆日志：并行会话会往里贴真题 flag / 靶机凭证，绝不能入 PUBLIC 仓
 .workbuddy-ai/memory/
+
+# 11-09 外部复核线 S1/S2：运行时副产物不再淹没工作树（audit 件根层落点缺陷的止血面，
+# 根治在 ctf_stepfun_orchestrator audit 路径锚定——留 owner）
+*.audit.json
+data/ctf_benchmark/ssrf_runtime_*.json
+data/ctf_benchmark/purellm_full*.json
+scripts/purellm_full*.result.json

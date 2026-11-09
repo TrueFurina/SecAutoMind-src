@@ -31,3 +31,9 @@
 ## 五、边界声明
 
 未跑任何命令级测试（工作树含他人 WIP，py_compile 全量可能撞上未完工改动产生误导性红）；S3 实机项曾阻塞、11-09 链路恢复后仍待本仓会话按第零条上机验证；S5 的 126 条来自门禁自身输出（本次提交时实跑所见），处置排期属本仓 owner。S2 定位、S1/S3 实况为磁盘/网络实测。按本仓铁律如实标注。
+
+
+## 六、执行追记（11-09，用户"都继续"全队列授权后）
+
+- **S1/S2 止血落地**：.gitignore 增补 `*.audit.json`、`data/ctf_benchmark/ssrf_runtime_*.json`、`data/ctf_benchmark/purellm_full*.json` 等四模式；根层 bind1-3 三件审计残留移入 `backup/root_scratch_20261109/`（未删除）。未跟踪清单由 30+ 收敛至 20（其余为他人 WIP 正常项）。**S2 根治（audit 路径锚定 dirname(out)）仍留 orchestrator owner**——止血只消噪音，不改行为。
+- **S5 升级——PUBLIC 分支携带实证**：对远端跟踪引用直接清点（只读，不打印内容）：`ghssh/main` 含 `flag{…}` 形态字面量 **807 处/208 文件**、`ghssh/delivery/secautomind-v1.7.17` 含 115 处（多为 internal Go 测试与平台代码内的夹具形态）。真品牌 vs 自产合成的占比需用 `scripts/audit_flag_provenance.py` 的溯源分类对远端引用跑一遍（该工具现面向工作树，扩展 ref 扫描留 owner）——在此之前**"PUBLIC 是否已外发真题 flag"按"存在携带、占比待分类"如实挂账**。ls-remote 本次被重置（网络面），远端最新态以本地缓存 refs 为准。
