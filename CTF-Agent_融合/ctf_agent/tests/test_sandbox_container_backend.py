@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """解题沙盒容器后端的不变量（无需 docker 也能跑）。
 
-这三条锁的是「防自己」的核心：
+这些锁的是「防自己」的核心：
 1. 挂载白名单里**永远不能**出现 data/questions_real/solutions 这类答案目录
    —— 挂错一层，刚堵的洞原样回来，而外表看起来“我们上容器了”；
 2. 默认后端仍是 subprocess（旧行为不变），容器必须显式开启；
-3. docker 不可用时**fail-closed**（返回 -4 且带标记），绝不回退到宿主机执行。
+3. docker 不可用时**fail-closed**（返回 -4 且带标记），绝不回退到宿主机执行；
+4. `docker run -e` 注入的环境必须过白名单 + deny，绝不能透传宿主 env。
 """
 
 import asyncio
@@ -78,3 +79,46 @@ def test_path_map_only_touches_workdir():
     assert "/work/q/a/ciphertext" in mapped
     # 沙盒之外的宿主机路径**故意不映射**：读不到才是对的
     assert "/tmp/ctf_benchmark/ans.json" in mapped
+
+
+# ── 容器环境变量白名单（2026-11-10）──────────────────────────────────
+# 背景：docker_executor 旧注释写「sanitized_env 已剔除 key」，但后端根本没调用
+# sanitized_env()；env 是公开构造参数。若有人照注释以为「已脱敏」而传
+# os.environ，API Key 会经 `docker run -e` 进容器（还会出现在 inspect/ps）。
+# 下面四条把「白名单 + deny + fail-closed」钉成可执行判据。
+
+
+def test_container_env_allowlist_passes():
+    from sandbox.docker_executor import validate_container_env
+    assert validate_container_env({"PYTHONPATH": "/app",
+                                   "PYTHONIOENCODING": "utf-8",
+                                   "LANG": "C.UTF-8"}) is None
+
+
+def test_container_env_rejects_credential_keys():
+    from sandbox.docker_executor import validate_container_env, UNAVAILABLE_TAG
+    for k in ("OPENROUTER_API_KEY", "MODELSCOPE_TOKEN", "DB_PASSWORD",
+              "AUTH_HEADER", "PRIVATE_KEY"):
+        reason = validate_container_env({k: "x"})
+        assert reason and UNAVAILABLE_TAG in reason, k
+
+
+def test_container_env_rejects_unregistered_and_full_environ():
+    from sandbox.docker_executor import validate_container_env, UNAVAILABLE_TAG
+    reason = validate_container_env({"CTF_SANDBOX_BACKEND": "docker"})
+    assert reason and UNAVAILABLE_TAG in reason
+    # 模拟「以为已脱敏」而传全量宿主 env：必被拒
+    fake_full = {"PATH": "/usr/bin", "LANG": "C.UTF-8",
+                 "USERPROFILE": "C:/Users/x", "APPDATA": "C:/x"}
+    assert validate_container_env(fake_full)
+
+
+def test_container_env_fail_closed_no_host_execution():
+    from sandbox.docker_executor import (CONTAINER_UNAVAILABLE_RC,
+                                         UNAVAILABLE_TAG, DockerExecutor)
+    env = {"PATH": "/usr/bin", "PYTHONPATH": "/app", "SOME_APP_TOKEN": "x"}
+    ex = DockerExecutor(workdir=os.getcwd(), default_timeout=5, env=env)
+    r = asyncio.run(ex.run("python: print('should-not-run-on-host')", timeout=5))
+    assert r.exit_code == CONTAINER_UNAVAILABLE_RC
+    assert UNAVAILABLE_TAG in r.stderr
+    assert "should-not-run-on-host" not in (r.stdout or "")

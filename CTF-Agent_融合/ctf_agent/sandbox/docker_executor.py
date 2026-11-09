@@ -52,6 +52,39 @@ UNAVAILABLE_TAG = "[CONTAINER_UNAVAILABLE]"
 #: 源码超过这个长度就走文件而不是命令行（与宿主后端同口径）
 _CMD_LINE_SRC_LIMIT = 24000
 
+# `docker run -e` 是**新的子进程边界**：注入值会出现在容器环境、
+# `docker inspect` / `ps` 里。与 Go 侧 internal/procenv 同款，用
+# 「白名单 + deny」双锁，绝不透传宿主 os.environ。
+#: 允许注入的键；新增必须显式登记，且不得命中 deny
+CONTAINER_ENV_ALLOWLIST = frozenset({
+    "PYTHONPATH", "PYTHONIOENCODING", "LANG", "LC_ALL", "PATH", "HOME", "TMPDIR",
+})
+#: 即便被误登记进白名单，命中这些片段也一律拒绝（双保险）
+CONTAINER_ENV_DENY_PARTS = (
+    "KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH", "PRIVATE",
+)
+
+
+def validate_container_env(env: dict) -> Optional[str]:
+    """校验将经 `docker run -e` 注入的环境，返回拒绝原因（None = 放行）。
+
+    🔴 为什么需要运行时锁：factory.make_executor 今天只传 3 项固定白名单，
+    但 `DockerExecutor(env=...)` 是公开构造参数；而本文件旧注释曾写
+    「sanitized_env 已剔除 key」——实际代码用的是 self.extra_env，**根本没调用**
+    sanitized_env()。若有人照注释以为「env 已脱敏」而传 `os.environ`，
+    API Key 就会经 `-e` 进容器。故改为白名单 + deny 双锁、fail-closed：
+    任何未登记键或疑似凭据键一律拒绝启动容器（返回 -4 + 标记）。
+    """
+    for k in (env or {}):
+        up = str(k).upper()
+        if any(p in up for p in CONTAINER_ENV_DENY_PARTS):
+            return ("%s 拒绝把疑似凭据键 %r 注入容器（白名单+deny）"
+                    % (UNAVAILABLE_TAG, k))
+        if up not in CONTAINER_ENV_ALLOWLIST:
+            return ("%s 环境变量 %r 未登记在容器白名单里，请显式登记后再用"
+                    % (UNAVAILABLE_TAG, k))
+    return None
+
 
 class DockerExecutor:
     """与 `SubprocessExecutor` 同接口（`run()` → `ExecResult`），后端换成容器。
@@ -78,6 +111,8 @@ class DockerExecutor:
         self.app_mounts: List[Tuple[str, str]] = list(app_mounts or [])
         self.network = network
         self.extra_env = dict(env or {})
+        # 构造时就锁死：env 不合规 ⇒ fail-closed，绝不带病起容器
+        self._env_block = validate_container_env(self.extra_env) or ""
         self._container: Optional[str] = None
         self._start_reason: str = ""
         self._lock = asyncio.Lock()
@@ -119,7 +154,10 @@ class DockerExecutor:
                 *self._mount_args(),
                 "-w", "/work",
             ]
-            # 代码树可见 + 环境（PYTHONPATH 由 factory 传；sanitized_env 已剔除 key）
+            # 环境：extra_env 已在构造器经 validate_container_env 白名单+deny 校验
+            # （不合规则 _env_block 在 run() 里先返回 -4，走不到这里）。
+            # **绝不**透传宿主 os.environ；旧注释称「sanitized_env 已剔除 key」与
+            # 代码不符（本后端没调用它），已更正。
             for k, v in self.extra_env.items():
                 argv += ["-e", f"{k}={v}"]
             argv += [self.image, "sleep", "infinity"]
@@ -188,6 +226,11 @@ class DockerExecutor:
                   task_id: str = "") -> ExecResult:
         if not code or not code.strip():
             return ExecResult(stderr="空代码", exit_code=-1)
+        # env 构造错误优先于平台限制：即使 Windows 本来就跑不了，也要把
+        # 「有人试图往容器里塞凭据」如实报出来，不能被平台提示盖住。
+        if self._env_block:
+            return ExecResult(stderr=self._env_block,
+                              exit_code=CONTAINER_UNAVAILABLE_RC)
         if self._platform_block:
             return ExecResult(stderr=self._platform_block,
                               exit_code=CONTAINER_UNAVAILABLE_RC)
