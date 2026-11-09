@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 # 全局人工干预协调器（Web 面板与所有 solver 共享；初赛现场人工可实时介入卡壳题）
 from core.intervention import InterventionCoordinator  # noqa: E402
+# 解题沙盒工作目录：solver 只看得见本题真实输入，答案库不在射程内（2026-11-09）
+from core.solver_sandbox import sandbox_workdir, stage_attachments, cleanup as sandbox_cleanup  # noqa: E402
 
 _intervention = InterventionCoordinator()
 
@@ -155,7 +157,8 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
     from tools.adapters.pcap_probe import PcapProbeAdapter
     from tools.skill_manager import SkillManager
 
-    sandbox = SubprocessExecutor(default_timeout=_cfg.sandbox_timeout)
+    sandbox = SubprocessExecutor(default_timeout=_cfg.sandbox_timeout,
+                                 workdir=sandbox_workdir())  # 沙盒 cwd=一次性目录，不落在仓库里
     registry = ToolRegistry()
     registry.register(FileAnalysisAdapter())
     registry.register(StegoAdapter())
@@ -972,7 +975,7 @@ def build_platform_solver(platform, use_mock: bool = False, cache_dir: str = "da
                 p = await _download(str(u))
                 if p:
                     local_paths.append(p)
-            question.attachments = local_paths
+            question.attachments = stage_attachments(local_paths)
             if local_paths:
                 logger.info("[%s] 附件就绪: %s", ch.id, local_paths)
         # 靶机访问信息注入描述（web/pwn 需要真实地址）

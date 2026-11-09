@@ -157,14 +157,33 @@ class SubprocessExecutor(Executor):
         default_timeout: int = 30,
         max_bash_repeats: int = 3,
         idle_timeout: int = 120,
+        workdir: Optional[str] = None,
     ) -> None:
         self.default_timeout = default_timeout
+        # 解题沙盒工作目录（None = 继承父进程 cwd，保持旧行为）。
+        # 设值后子进程 cwd 落到一次性临时目录，答案库不在相对路径射程内；
+        # 见 core/solver_sandbox.py（ITEM4-A 的运行层补充）。
+        self.workdir = workdir
         self.max_bash_repeats = max_bash_repeats
         self.idle_timeout = idle_timeout
         # {task_id: 最近命令列表}（用于重复检测）
         self._cmd_history: dict[str, list[str]] = {}
         # {task_id: 最后活动时间戳}
         self._last_active: dict[str, float] = {}
+
+    def _exec_env(self) -> dict:
+        """子进程环境变量：剥离密钥；设了 workdir 时补 PYTHONPATH。
+
+        cwd 一旦离开 ctf_agent/，`python -c` 的 sys.path[0] 不再指向它，
+        `from skills.<x> import run` 会 ImportError（实测 0/10 类型的回归）。
+        用 PYTHONPATH 显式兜住，保证只换工作目录、不动可用工具。
+        """
+        env = sanitized_env()
+        if self.workdir:
+            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # ctf_agent/
+            old = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = root if not old else (root + os.pathsep + old)
+        return env
 
     # ── watchdog 接口 ───────────────────────────────────
 
@@ -280,7 +299,8 @@ class SubprocessExecutor(Executor):
         try:
             proc = await asyncio.create_subprocess_exec(
                 *argv,
-                env=sanitized_env(),  # A3：剥离 API key/token，防 AI 代码/附件读敏感环境变量
+                env=self._exec_env(),  # A3：剥离 API key/token；workdir 时补 PYTHONPATH
+                cwd=self.workdir,      # 解题沙盒工作目录（None=继承，旧行为不变）
                 stdin=asyncio.subprocess.DEVNULL if stdin_data is None else asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
