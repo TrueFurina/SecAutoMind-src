@@ -230,7 +230,7 @@ def main():
     if args.out:
         p = os.path.join(ROOT, args.out)
         os.makedirs(os.path.dirname(p), exist_ok=True)
-        open(p, "w", encoding="utf-8").write(text)
+        open(p, "w", encoding="utf-8", newline="\n").write(text)
         print("写出 %s" % args.out)
     else:
         print(text)

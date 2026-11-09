@@ -4,8 +4,9 @@
 
 项目约定：CI job 的自测入口用 `*_test.py`（门禁地图据此标注「有变异/自测」）。
 前两段是合成数据（不产出可引用分数）；第三段校验真实 verdict 与生产判据
-重算一致；第四段把 11 条「写了没锁」的断言入口统一接进 CI，并交叉校验全部
-证据文件；第五段守「调用失败不许并进空答」这条口径。不新增判据，只做转发。
+重算一致；第四段把 13 条「写了没锁」的断言入口统一接进 CI，并交叉校验全部
+证据文件（第 13 条是「真实 orchestrator → 本地桩模型 → 判分」端到端契约，
+零额度零外网）；第五段守「调用失败不许并进空答」这条口径。不新增判据，只做转发。
 
   python scripts/capability_caliber_test.py
 退出码：五段全绿 = 0；任一失败 = 1。
@@ -32,7 +33,7 @@ def main() -> int:
     print("=== 3/5 已入库 verdict 一致性（含事后篡改变异）===")
     rc3 = verify_verdict_chain.selftest()
     rc4 = verify_verdict_chain.check()
-    print("=== 4/5 证据面统一接线（11 条断言入口 + 交叉一致性）===")
+    print("=== 4/5 证据面统一接线（13 条断言入口 + 交叉一致性）===")
     rc5 = verify_capability_evidence.selftest()
     rc6 = verify_capability_evidence.check()
     print("=== 5/5 空答恢复率：调用失败不得并进空答（含变异）===")

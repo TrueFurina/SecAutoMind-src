@@ -18,7 +18,7 @@
 
 本脚本**不新增判据、不改任何现有断言脚本**，只做三件事：
 
-1. 统一转发 12 条现成断言入口（subprocess，任一非 0 ⇒ 红）；
+1. 统一转发 13 条现成断言入口（subprocess，任一非 0 ⇒ 红）；
 2. 交叉一致性：verdict ↔ gap 证据、verdict ↔ 题源证据池指纹、gap 证据内部自洽、
    IP 直连证据字段、入库结果的 sha256 命中必须被 verdict 归因；
 3. 必需证据文件完整性（缺一即红，防「删件让门禁恒绿」）。
@@ -92,6 +92,11 @@ EXTERNAL_GATES = [
     ("私有性外部锚点证据", ["scripts/audit_private_proof.py", "--verify"]),
     ("断网闸 IP 直连证据（原始输出重算）",
      ["scripts/prove_airgap_ip_direct.py", "--check"]),
+    # 2026-11-09 第 13 条：真实 orchestrator 打本地桩模型，验「生产者实际落盘的
+    # 字节 → judge_run 分类」这条契约。零额度零外网，额度耗尽时也能跑。
+    # 用 --selftest（含 3 组变异），不用 --skip-mutations：只跑断言不算验证。
+    ("生产者→判分端到端契约（桩模型）",
+     ["scripts/e2e_llm_contract_test.py", "--selftest"]),
 ]
 
 
@@ -193,6 +198,13 @@ def writers_missing_newline(scripts_dir=None):
 
     判据用 AST 不用正则：正则会把注释里的 `open(args.out, "w")` 当成真实调用
     （同族前科：`_registry_threaded_proven` 被注释骗成假阳性）。
+
+    🔴 2026-11-09 补：只认 `open(args.out, ...)` 会漏掉**派生路径**。实测
+    `ctf_stepfun_orchestrator.py` 主结果写了 `newline="\\n"`，但
+    `audit_path = args.out + ".audit.json"; open(audit_path, "w", ...)` 没写 ——
+    同一批产出里一个 LF、一个 CRLF。故先把「右侧表达式含 X.out 的变量名」
+    收进派生集，再一起判。不扩大成「所有 open(..., 'w')」：临时文件/config
+    不是证据，全扫只会制造噪声，门禁会因此被关掉。
     """
     import ast
 
@@ -206,6 +218,22 @@ def writers_missing_newline(scripts_dir=None):
                 tree = ast.parse(f.read(), filename=name)
         except (SyntaxError, OSError):
             continue
+        # 派生名：赋值右侧出现了 X.out ⇒ 左侧变量是「证据产出的派生路径」。
+        derived = set()
+        for assign in ast.walk(tree):
+            if isinstance(assign, ast.Assign):
+                value, targets = assign.value, assign.targets
+            elif isinstance(assign, ast.AnnAssign):
+                value, targets = assign.value, [assign.target]
+            else:
+                continue
+            if value is None or not any(
+                    isinstance(x, ast.Attribute) and x.attr == "out"
+                    for x in ast.walk(value)):
+                continue
+            for t in targets:
+                if isinstance(t, ast.Name):
+                    derived.add(t.id)
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
@@ -213,7 +241,9 @@ def writers_missing_newline(scripts_dir=None):
             if not (isinstance(fn, ast.Name) and fn.id == "open") or not node.args:
                 continue
             first = node.args[0]
-            if not (isinstance(first, ast.Attribute) and first.attr == "out"):
+            direct = isinstance(first, ast.Attribute) and first.attr == "out"
+            via_var = isinstance(first, ast.Name) and first.id in derived
+            if not (direct or via_var):
                 continue
             mode = None
             if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
@@ -237,10 +267,10 @@ def check():
     print("  %s（%d 条异常）" % ("FAIL" if errs else "PASS", len(errs)))
     if errs:
         bad += 1
-    print("=== 1b/2 证据写入可复现性（--out 必须指定 newline）===")
+    print("=== 1b/2 证据写入可复现性（--out 及其派生路径必须指定 newline）===")
     off = writers_missing_newline()
     for name, line in off:
-        print("  · %s:%d 写 --out 未指定 newline=\"\\n\"（Windows 会写 CRLF，"
+        print("  · %s:%d 写证据产物未指定 newline=\"\\n\"（Windows 会写 CRLF，"
               "证据跨机器不可复现）" % (name, line))
     print("  %s（%d 处）" % ("FAIL" if off else "PASS", len(off)))
     if off:
@@ -332,12 +362,40 @@ def selftest():
                     '        f.write("x")\n'
                     '    with open(args.out, "rb") as f:\n'
                     '        f.read()\n')
+        # 派生路径（`p = args.out + ".audit.json"; open(p, "w")`）——
+        # 2026-11-09 实锤漏掉的形状，必须被抓到。
+        with open(os.path.join(sd, "derived_bad.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('import os\n'
+                    'def main(args):\n'
+                    '    ap = args.out + ".audit.json"\n'
+                    '    with open(ap, "w", encoding="utf-8") as f:\n'
+                    '        f.write("{}")\n')
+        with open(os.path.join(sd, "derived_good.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('import os\n'
+                    'def main(args):\n'
+                    '    ap = args.out + ".audit.json"\n'
+                    '    with open(ap, "w", encoding="utf-8", newline="\\n") as f:\n'
+                    '        f.write("{}")\n'
+                    '    q = os.path.join("tmp", "scratch.txt")   # 非证据路径\n'
+                    '    with open(q, "w", encoding="utf-8") as f:\n'
+                    '        f.write("x")\n')
         bad_hits = writers_missing_newline(sd)
-        cases.append(("写 --out 缺 newline 被抓到（含注释诱饵）",
+        cases.append(("写 --out / 派生路径缺 newline 均被抓到",
                       [(os.path.basename(f), ln) for f, ln in bad_hits],
-                      [("bad.py", 3)], []))
-        cases.append(("带 newline / 只读打开不误判",
-                      [f for f, _ in bad_hits if f == "good.py"], [], []))
+                      [("bad.py", 3), ("derived_bad.py", 4)], []))
+        cases.append(("带 newline / 只读打开 / 非派生路径不误判",
+                      [f for f, _ in bad_hits
+                       if f in ("good.py", "derived_good.py")], [], []))
+        # 反向：把派生赋值改成不含 .out ⇒ 同一个 open() 不该再被算成证据写入。
+        with open(os.path.join(sd, "derived_bad.py"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('import os\n'
+                    'def main(args):\n'
+                    '    ap = os.path.join("tmp", "scratch.txt")\n'
+                    '    with open(ap, "w", encoding="utf-8") as f:\n'
+                    '        f.write("{}")\n')
+        cases.append(("派生名判据可证伪（去掉 .out 即不再命中）",
+                      [f for f, _ in writers_missing_newline(sd)
+                       if os.path.basename(f) == "derived_bad.py"], [], []))
 
     passed = 0
     for label, blocked, want, errs in cases:

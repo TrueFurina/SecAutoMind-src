@@ -1128,7 +1128,8 @@ def main():
         json.dump(out, f, ensure_ascii=False, indent=2)
     # 单独落盘审计（可逐题复现"有没有抄答案"）
     audit_path = args.out + ".audit.json"
-    with open(audit_path, "w", encoding="utf-8") as f:
+    # newline="\n"：与主结果同批产出，不能一个 LF 一个 CRLF（Windows 文本模式）。
+    with open(audit_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump({"summary": {"tool_calls_total": len(audit_all), "blocked": blocked_total},
                    "calls": audit_all}, f, ensure_ascii=False, indent=2)
     print(json.dumps(out, ensure_ascii=False, indent=2))
