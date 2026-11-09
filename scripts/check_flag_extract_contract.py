@@ -217,6 +217,15 @@ ACCEPTED_VARIANTS = {
         "⇒ 不改。代价（记录在案的盲区）：看不见**含空格**与**内文 2~3 字符**的 flag 明文；"
         "而本仓库语料里确实存在含空格的真 flag，故此盲区是**已知风险**，不是该改的漂移。"
     ),
+    "scripts/secret_guard_flag_test.py": (
+        "该文件是 secret_guard 盲区量化的**测试夹具**，不是现役拷贝：wide 正则只在测试内"
+        "把「可能是答案」的候选捞全，判「是不是真答案」仍走题库哈希（见该文件 :535 注释），"
+        "完全不参与运行时脱敏/遮蔽 ⇒ 本门禁「清除侧必须至少认得判分认得的全部形态」的"
+        "断言作用域不适用于它。与同族 scripts/secret_guard.py 的窄口径豁免同源，均为 "
+        "8a36311「外形判据的盲区先量后写：不放开也不收紧」有意保留的口径。"
+        "代价（记录在案）：豁免按路径后缀生效 ⇒ 该文件内**新增**的正则不再受本门禁覆盖；"
+        "若将来要在此文件里放现役实现，须换落点或取消本豁免（不得默认套用）。"
+    ),
 }
 
 
@@ -408,6 +417,26 @@ def do_selftest() -> int:
                         and not any(items[0][0].endswith(k) for k in ACCEPTED_VARIANTS))
     ok &= still_blocks
     print(f"[11] 同一窄正则换名后仍阻断（豁免不是放水） -> {still_blocks} (应 True)")
+
+    # 12) 测试夹具豁免的边界：登记文件被放行，但同目录另一个非登记文件里的
+    #     同形态真漂移仍必须阻断（证明新增豁免没有把门禁拆成恒绿）
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td) / "scripts"
+        d.mkdir()
+        (d / "secret_guard_flag_test.py").write_text(narrow + "\n", encoding="utf-8")
+        (d / "build_bench_copy.py").write_text(narrow + "\n", encoding="utf-8")
+        items = scan_regex_copies(d)
+        test_exempted = any(
+            x[0].endswith("scripts/secret_guard_flag_test.py")
+            and any(x[0].endswith(k) for k in ACCEPTED_VARIANTS)
+            for x in items)
+        other_blocked = any(
+            x[0].endswith("build_bench_copy.py")
+            and not any(x[0].endswith(k) for k in ACCEPTED_VARIANTS)
+            for x in items)
+        bounded = len(items) == 2 and test_exempted and other_blocked
+    ok &= bounded
+    print(f"[12] 测试夹具豁免 + 同目录真漂移仍阻断 -> {bounded} (应 True)")
 
     print("\nSELFTEST:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
