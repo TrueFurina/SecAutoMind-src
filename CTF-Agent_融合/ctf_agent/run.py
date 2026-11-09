@@ -140,7 +140,7 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
         pass
 
     # ── 工具层（真实模式必须接入！否则主 Agent 无手无脚只能纯推理）──
-    from sandbox.subprocess_executor import SubprocessExecutor
+    from sandbox.factory import make_executor
     from tools.registry import ToolRegistry
     from tools.adapters.file_analysis_adapter import FileAnalysisAdapter
     from tools.adapters.stego_adapter import StegoAdapter
@@ -160,8 +160,10 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
     from tools.adapters.pcap_probe import PcapProbeAdapter
     from tools.skill_manager import SkillManager
 
-    sandbox = SubprocessExecutor(default_timeout=_cfg.sandbox_timeout,
-                                 workdir=sandbox_workdir())  # 沙盒 cwd=一次性目录，不落在仓库里
+    # 沙盒 cwd=一次性目录，不落在仓库里；后端由 CTF_SANDBOX_BACKEND 决定
+    # （默认 subprocess；=docker 时换成只挂 /work 的容器，绝对路径才真不可达）
+    sandbox = make_executor(default_timeout=_cfg.sandbox_timeout,
+                            workdir=sandbox_workdir())
     registry = ToolRegistry()
     registry.register(FileAnalysisAdapter())
     registry.register(StegoAdapter())

@@ -1,0 +1,270 @@
+"""容器后端：把解题子进程关进只挂 /work 的容器里。
+
+为什么要这个后端
+────────────────
+`subprocess_executor.py` 换 cwd 只能挡住**相对路径**。子进程仍是宿主机上的普通
+进程，写死绝对路径（`E:\\Program\\SecAutoMind\\...\\data\\ctf_benchmark`）照样能读
+——实测 `abs_bench_reachable=True`。要真闭合，必须让那个进程**看不到**那个目录，
+唯一可靠的办法是容器只挂载它该看的那一个目录。
+
+挂载设计（这是本模块最要紧的一条）
+──────────────────────────────────
+- `/work` ← 宿主机的一次性沙盒工作目录（只放本题真实输入），**可写**；
+- `/app/<core|skills|tools|agents|llm|eval|sandbox|ctfplatform>` ← 代码树，**只读**；
+- **绝不挂 `ctf_agent/data`、`questions_real`、`solutions`、仓库根**。
+  挂错一层，刚堵的洞原样回来，而且外表看起来「我们上容器了」。
+  `factory.py` 里的白名单是唯一入口，新增挂载必须先问「这目录里有答案吗」。
+
+路径映射
+────────
+沙盒附件暂存在宿主机 workdir 里，解题脚本拿到的却是宿主机绝对路径
+（`C:\\Users\\...\\Temp\\ctf_sbx_xxx\\q\\<qid>\\ciphertext`），在容器内不存在。
+因此 `run()` 执行前把 **workdir 前缀**替换成 `/work`，其余宿主机路径一律不动
+——不动的那部分正是要被隔离掉的东西，它读不到才是对的。
+
+失败语义（与 docker_session.py 一致）
+─────────────────────────────────────
+任何 docker 侧问题都返回 `exit_code=-4` + `[CONTAINER_UNAVAILABLE]`，
+**绝不回退到宿主机执行**。回退会让「在错误的机器上完成了任务」伪装成成功，
+那比直接报错难查一个量级。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import os
+import time
+import uuid
+from typing import List, Optional, Sequence, Tuple
+
+from .subprocess_executor import (
+    ExecResult,
+    _check_bash_command,
+    _check_cmd_command,
+    _looks_like_python,
+    validate_python_code,
+    _SecurityError,
+)
+
+CONTAINER_UNAVAILABLE_RC = -4
+UNAVAILABLE_TAG = "[CONTAINER_UNAVAILABLE]"
+#: 源码超过这个长度就走文件而不是命令行（与宿主后端同口径）
+_CMD_LINE_SRC_LIMIT = 24000
+
+
+class DockerExecutor:
+    """与 `SubprocessExecutor` 同接口（`run()` → `ExecResult`），后端换成容器。
+
+    Args:
+        workdir: 宿主机沙盒工作目录，会被挂到容器 `/work`。
+        image: 工具镜像（由 `docker/Dockerfile` 构建，见该文件头注释）。
+        app_mounts: `[(宿主机目录, 容器内路径)]` 列表，一律按只读挂载。
+        network: 默认 `none`。需要联网取题面资源时才显式放开。
+    """
+
+    def __init__(
+        self,
+        workdir: str,
+        image: str = "ctf-tools:1",
+        default_timeout: int = 30,
+        app_mounts: Optional[Sequence[Tuple[str, str]]] = None,
+        network: str = "none",
+        env: Optional[dict] = None,
+    ) -> None:
+        self.workdir = os.path.abspath(workdir) if workdir else os.getcwd()
+        self.image = image
+        self.default_timeout = default_timeout
+        self.app_mounts: List[Tuple[str, str]] = list(app_mounts or [])
+        self.network = network
+        self.extra_env = dict(env or {})
+        self._container: Optional[str] = None
+        self._start_reason: str = ""
+        self._lock = asyncio.Lock()
+        # 平台限制：Windows 宿主的路径映射（`C:\x` → `/work/x`，剩余分隔符还要转正斜杠）
+        # 与"代码里的 \n 等转义"冲突，本轮**不做**。求解本来就在 Linux 服务器上跑
+        # （AGENTS 第零条），所以这里 fail-closed，绝不假装支持。
+        import platform as _pf
+        self._platform_block: str = ""
+        if _pf.system() == "Windows":
+            self._platform_block = (
+                f"{UNAVAILABLE_TAG} 容器后端暂不支持 Windows 宿主（C:\\ → /work 路径映射未实现）；"
+                "请在 Linux 服务器（172.16.222.99）上运行"
+            )
+
+    # ── 生命周期 ─────────────────────────────────────────
+
+    def _container_name(self) -> str:
+        h = hashlib.sha1(self.workdir.encode("utf-8", "ignore")).hexdigest()[:8]
+        return f"ctf-sbx-{h}-{os.getpid()}"
+
+    def _mount_args(self) -> List[str]:
+        args = ["-v", f"{self.workdir}:/work"]
+        for host, dest in self.app_mounts:
+            args += ["-v", f"{host}:{dest}:ro"]
+        return args
+
+    async def _ensure_container(self) -> Optional[str]:
+        """惰性起容器。返回 None 表示可用，否则返回不可用原因。"""
+        if self._container:
+            return None
+        async with self._lock:
+            if self._container:
+                return None
+            name = self._container_name()
+            argv = [
+                "docker", "run", "-d", "--rm",
+                "--name", name,
+                "--network", self.network,
+                *self._mount_args(),
+                "-w", "/work",
+            ]
+            # 代码树可见 + 环境（PYTHONPATH 由 factory 传；sanitized_env 已剔除 key）
+            for k, v in self.extra_env.items():
+                argv += ["-e", f"{k}={v}"]
+            argv += [self.image, "sleep", "infinity"]
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *argv,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                out, err = await asyncio.wait_for(proc.communicate(), timeout=120)
+            except Exception as exc:  # noqa: BLE001 - 启动层不向上抛
+                self._start_reason = f"{UNAVAILABLE_TAG} docker run 启动失败: {exc!r}"
+                return self._start_reason
+            if proc.returncode != 0:
+                self._start_reason = (
+                    f"{UNAVAILABLE_TAG} docker run rc={proc.returncode}: "
+                    f"{err.decode('utf-8', 'replace').strip()[:300]}"
+                )
+                return self._start_reason
+            self._container = name
+            return None
+
+    async def stop(self) -> None:
+        if not self._container:
+            return
+        name, self._container = self._container, None
+        proc = await asyncio.create_subprocess_exec(
+            "docker", "rm", "-f", name,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=60)
+        except Exception:  # noqa: BLE001 - 清理失败不上抛
+            pass
+
+    # ── 路径映射 ─────────────────────────────────────────
+
+    def _map_text(self, text: str) -> str:
+        """把宿主机 workdir 前缀替换成 /work（正/反斜杠、大小写都覆盖）。"""
+        variants = [
+            self.workdir,
+            self.workdir.replace("\\", "/"),
+            self.workdir.replace("/", "\\"),
+            self.workdir.lower(),
+            self.workdir.replace("\\", "/").lower(),
+        ]
+        out = text
+        for v in variants:
+            out = out.replace(v, "/work")
+        return out
+
+    # ── 执行 ────────────────────────────────────────────
+
+    def _build_python_cmd(self, src: str) -> Tuple[List[str], Optional[str], bool]:
+        """返回 (容器内 argv, 需清理的宿主机临时文件, 是否写了文件)。"""
+        if len(src) <= _CMD_LINE_SRC_LIMIT:
+            return ["python3", "-c", src], None, False
+        os.makedirs(self.workdir, exist_ok=True)
+        tmp_host = os.path.join(self.workdir, f"_src_{uuid.uuid4().hex[:10]}.py")
+        with open(tmp_host, "w", encoding="utf-8") as fh:
+            fh.write(src)
+        return ["python3", f"/work/{os.path.basename(tmp_host)}"], tmp_host, True
+
+    async def run(self, code: str, timeout: Optional[int] = None,
+                  task_id: str = "") -> ExecResult:
+        if not code or not code.strip():
+            return ExecResult(stderr="空代码", exit_code=-1)
+        if self._platform_block:
+            return ExecResult(stderr=self._platform_block,
+                              exit_code=CONTAINER_UNAVAILABLE_RC)
+
+        timeout = timeout or self.default_timeout
+        stripped = code.strip()
+
+        # ── 与宿主后端同一套前置校验（容器是第二层，不是唯一一层）──
+        if stripped.startswith(("python: ", "python3: ")):
+            python_src = stripped.split(":", 1)[1].strip()
+        elif _looks_like_python(stripped):
+            python_src = stripped
+        else:
+            python_src = None
+
+        _tmp_host: Optional[str] = None
+        if python_src is not None:
+            try:
+                validate_python_code(python_src)
+            except _SecurityError as exc:
+                return ExecResult(stderr=f"[安全拦截] {exc}", exit_code=-2)
+            argv, _tmp_host, _ = self._build_python_cmd(python_src)
+            inner = argv
+        else:
+            err = _check_bash_command(code)
+            if err:
+                return ExecResult(stderr=f"[安全拦截] {err}", exit_code=-2)
+            inner = ["sh", "-c", code]
+
+        reason = await self._ensure_container()
+        if reason:
+            return ExecResult(stderr=reason, exit_code=CONTAINER_UNAVAILABLE_RC)
+
+        # 路径映射：只换 workdir 前缀；其余宿主机路径保持原样（读不到才是对的）
+        inner = [self._map_text(a) if os.sep in str(a) or "/" in str(a) else a
+                 for a in inner]
+
+        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        exec_argv = ["docker", "exec", "-w", "/work", self._container, *inner]
+        timed_out = False
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *exec_argv,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                out_b, err_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                rc = proc.returncode if proc.returncode is not None else -1
+            except asyncio.TimeoutError:
+                timed_out = True
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+                out_b, err_b = b"", "[超时]".encode("utf-8")
+                rc = -1
+        except FileNotFoundError:
+            return ExecResult(stderr=f"{UNAVAILABLE_TAG} docker CLI 不在 PATH",
+                              exit_code=CONTAINER_UNAVAILABLE_RC)
+        except Exception as exc:  # noqa: BLE001
+            return ExecResult(stderr=f"{UNAVAILABLE_TAG} 执行失败: {exc!r}",
+                              exit_code=CONTAINER_UNAVAILABLE_RC)
+        finally:
+            if _tmp_host and os.path.exists(_tmp_host):
+                try:
+                    os.remove(_tmp_host)
+                except OSError:
+                    pass
+
+        stdout = self._map_text(out_b.decode("utf-8", "replace"))
+        stderr = self._map_text(err_b.decode("utf-8", "replace"))
+        return ExecResult(stdout=stdout, stderr=stderr, exit_code=rc, timed_out=timed_out)
+
+    # 与 SubprocessExecutor 对齐的 no-op 接口（run.py 侧统一调用）
+    def watch_run(self, task_id: str, command: str) -> Optional[str]:
+        return None
+
+    def watch_reset(self, task_id: str) -> None:
+        return None

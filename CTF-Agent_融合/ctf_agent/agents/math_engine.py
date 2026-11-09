@@ -275,7 +275,7 @@ def _engine_rsa(question):
         return None
     try:
         from agents.crypto_toolkit import CryptoToolkit
-        from sandbox.subprocess_executor import SubprocessExecutor
+        from sandbox.factory import make_executor
         from core.solver_sandbox import sandbox_workdir as _sbx_workdir  # 沙盒 cwd=一次性目录
 
         atts = list(getattr(question, "attachments", None) or [])
@@ -293,7 +293,7 @@ def _engine_rsa(question):
         script = CryptoToolkit.build_fallback_script(str(_text_atts[0]), extra_paths=_text_atts[1:])
         if not script:
             return None
-        sb = SubprocessExecutor(default_timeout=30, workdir=_sbx_workdir())
+        sb = make_executor(default_timeout=30, workdir=_sbx_workdir())
         result = _run_async(sb.run(f"python: {script}"))
         out = str(result.stdout)
         import re
@@ -311,7 +311,7 @@ def _engine_legendre(question):
         return None
     try:
         from agents.crypto_toolkit import CryptoToolkit
-        from sandbox.subprocess_executor import SubprocessExecutor
+        from sandbox.factory import make_executor
         from core.solver_sandbox import sandbox_workdir as _sbx_workdir  # 沙盒 cwd=一次性目录
 
         atts = list(getattr(question, "attachments", None) or [])
@@ -329,7 +329,7 @@ def _engine_legendre(question):
         script = CryptoToolkit.build_fallback_script(str(_text_atts[0]), extra_paths=_text_atts[1:])
         if not script:
             return None
-        sb = SubprocessExecutor(default_timeout=30, workdir=_sbx_workdir())
+        sb = make_executor(default_timeout=30, workdir=_sbx_workdir())
         result = _run_async(sb.run(f"python: {script}"))
         out = str(result.stdout)
         import re
@@ -367,7 +367,7 @@ def _engine_reverse(question):
         return None
     try:
         from core.fallbacks import build_reverse_fallback_script
-        from sandbox.subprocess_executor import SubprocessExecutor
+        from sandbox.factory import make_executor
         from core.solver_sandbox import sandbox_workdir as _sbx_workdir  # 沙盒 cwd=一次性目录
 
         atts = list(getattr(question, "attachments", None) or [])
@@ -384,7 +384,7 @@ def _engine_reverse(question):
         script = build_reverse_fallback_script(ctx)
         if not script:
             return None
-        sb = SubprocessExecutor(default_timeout=60, workdir=_sbx_workdir())
+        sb = make_executor(default_timeout=60, workdir=_sbx_workdir())
         result = _run_async(sb.run(f"python: {script}"))
         out = str(result.stdout)
         import re
