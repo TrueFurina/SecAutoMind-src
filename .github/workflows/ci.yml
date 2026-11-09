@@ -1237,7 +1237,12 @@ jobs:
                       "pycryptodome>=3.20" "cryptography>=42" "pillow>=10.0" \
                       "numpy>=2.0" "sympy>=1.13" "gmpy2>=2.1" "httpx>=0.27" \
                       "fastapi>=0.110" "uvicorn>=0.29" "pydantic>=2.0" "pyyaml>=6.0" \
-                      "scapy>=2.5" "brotli>=1.1" "zstandard>=0.22"
+                      "scapy>=2.5" "brotli>=1.1" "zstandard>=0.22" \
+                      "python-flint>=0.9,<0.10"
+          # 🔴 2026-11-09：漏了 python-flint ⇒ tests/test_crypto_knapsack_mhk.py 在
+          # 模块级 pytest.importorskip("flint") 处整块静默消失，11 条格基 LLL
+          # 能力用例从未在 CI 跑过，而门禁一直绿。补齐后再由下面的
+          # check_ci_optional_deps.py 从 AST 自动守「可选依赖不许缩小收集集」。
       - name: Verify the installed set really satisfies collection
         # 装完立刻自检：任一 import 缺失就让本 job 在前面失败，而不是等到 2000 个用例
         # 里散落成一堆 ModuleNotFoundError（那样既慢又难读懂）。
@@ -1247,7 +1252,7 @@ jobs:
           import importlib.util, sys
           need = ['pytest','pytest_asyncio','Crypto','cryptography','PIL','numpy',
                   'sympy','gmpy2','httpx','fastapi','pydantic','yaml','scapy',
-                  'brotli','zstandard']
+                  'brotli','zstandard','flint']
           missing = [m for m in need if importlib.util.find_spec(m) is None]
           if missing:
               print('❌ 依赖不完整，缺失:', missing)
@@ -1265,6 +1270,10 @@ jobs:
       #   验不到任何一条断言是否成立；而全量实跑本轮在真实克隆上测得
       #   2037 passed / 0 failed，才是真正守着行为的门禁。
       #   如三件套再度丢失，本 job 会以「找不到 ledger」明确红，而不是静默退化成 collect-only。
+      - name: Optional deps gate self-test (missing pkg / decoys / nonliteral)
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_optional_deps.py" --selftest
+      - name: Optional deps must not silently shrink the collected set
+        run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_optional_deps.py"
       - name: Deselect ledger self-test (inflation / dangling / no-reason / marker drift)
         run: python "CTF-Agent_融合/ctf_agent/scripts/check_ci_pytest_deselect_test.py"
       - name: Deselect ledger is accounted for
