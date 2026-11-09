@@ -150,6 +150,20 @@ func TestPySessionCloseIsFinal(t *testing.T) {
 	}
 }
 
+// 响应 ID 错配必须报错（2026-11-09 加固回归）：
+// 当前 Solve 单线程不可达，但 exec 锁只盖 seq 自增——一旦未来并发调用导致
+// 响应串线，这里必须抓住，而不是把 A 的结果静默回给 B（伪造分数通道的温床）。
+func TestPySessionRenderRejectsMismatchedID(t *testing.T) {
+	s := &pySession{}
+	line := `{"id": 7, "ok": true, "cwd": "/x/y", "out": "hi", "err": "", "result": ""}`
+	if _, err := s.render(line, 3); err == nil {
+		t.Fatal("响应 ID 错配（want=3 got=7）必须报错")
+	}
+	if _, err := s.render(line, 7); err != nil {
+		t.Fatalf("ID 吻合不应报错：%v", err)
+	}
+}
+
 // 工具层：schema + 路由（空 code 拦截、reset 字符串解析）。
 func TestPythonSessionToolRouting(t *testing.T) {
 	ff := newTestFallback(&fakeModel{}, 2, 2)

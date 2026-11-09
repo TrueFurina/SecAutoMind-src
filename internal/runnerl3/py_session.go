@@ -275,7 +275,7 @@ func (s *pySession) exec(ctx context.Context, code string, reset bool) (string, 
 		if r.err != nil {
 			return "", fmt.Errorf("读取会话响应失败: %w", r.err)
 		}
-		return s.render(r.line)
+		return s.render(r.line, id)
 	case <-time.After(timeout):
 		return "", fmt.Errorf("会话命令超时（%v），会话已销毁、状态丢失", timeout)
 	case <-ctx.Done():
@@ -284,7 +284,11 @@ func (s *pySession) exec(ctx context.Context, code string, reset bool) (string, 
 }
 
 // render 把响应 JSON 渲染成给 LLM 看的文本（与既有工具的 bracket 约定对齐）。
-func (s *pySession) render(line string) (string, error) {
+// wantID：本次请求的序号——响应 id 必须严格吻合，错配即报错（会话不可信）。
+// 当前 Solve 轮次单线程调用、错配不可达；但 exec 的锁只盖了 seq 自增，一旦
+// 未来出现并发调用，响应串线会被这里抓住，而不是静默把 A 的结果回给 B
+// （静默串线正是"伪造分数"通道喜欢的形态）。
+func (s *pySession) render(line string, wantID int) (string, error) {
 	var r struct {
 		ID     int    `json:"id"`
 		OK     bool   `json:"ok"`
@@ -295,6 +299,10 @@ func (s *pySession) render(line string) (string, error) {
 	}
 	if err := json.Unmarshal([]byte(strings.TrimSpace(line)), &r); err != nil {
 		return "", fmt.Errorf("解析会话响应失败: %w（原文 %q）", err, truncate(line, 200))
+	}
+	if r.ID != wantID {
+		return "", fmt.Errorf("会话响应错配：期望 id=%d 实得 id=%d（响应串线，会话不可信）",
+			wantID, r.ID)
 	}
 	var b strings.Builder
 	if r.OK {
