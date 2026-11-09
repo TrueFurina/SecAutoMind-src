@@ -211,6 +211,22 @@ def main():
     check("网关合规失败定级为阻塞（非警告）",
           "终审网关合规校验未过" in pf_src, True)
 
+    # ── find_go 工具链定位（2026-11-10 修正）────────────────────────────
+    # 原实现候选只有早已不存在的 .workbuddy/toolchain + PATH go，
+    # 导致本机跑预检必须人工 export PATH，忘了就整排 go 依赖检查红且难辨真假。
+    _saved_go = os.environ.pop("GO_BIN", None)
+    try:
+        fg = pf.find_go()
+        check("find_go 返回非空", bool(fg.strip()), True)
+        check("find_go 候选含实测路径（不再强制人工 export PATH）",
+              ("DevCache" in fg) or (fg.strip() == "go"), True)
+        os.environ["GO_BIN"] = "D:/custom/go/bin/go.exe"
+        check("GO_BIN 显式覆盖最高优先", "custom" in pf.find_go(), True)
+    finally:
+        os.environ.pop("GO_BIN", None)
+        if _saved_go is not None:
+            os.environ["GO_BIN"] = _saved_go
+
     # ── 打印 ────────────────────────────────────────────────────────────
     for name, ok, got, want in CASES:
         print("  [%s] %-52s got=%r" % ("OK" if ok else "FAIL", name, got))

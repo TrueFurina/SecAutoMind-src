@@ -36,12 +36,26 @@ PY = sys.executable
 
 
 def find_go():
-    """定位项目自带 Go 工具链（AGENTS.md 第五条：PATH 上的 go 可能不存在或版本不对）。"""
-    base = os.path.join(ROOT, ".workbuddy", "toolchain", "go", "bin")
-    for name in ("go.exe", "go"):
-        p = os.path.join(base, name)
-        if os.path.isfile(p):
-            return '"%s"' % p
+    r"""定位 Go 工具链，优先级：
+    ① env `GO_BIN`（现场/CI 显式指定，最高优先）
+    ② 项目内 `.workbuddy/toolchain/go/bin`（历史自带工具链）
+    ③ AGENTS.md 第五条实测路径 `D:\DevCache\go\bin`
+    ④ PATH 上的 `go`（最后回落）
+
+    🔴 2026-11-10 修正：原实现只有 ②+④，而 ② **早已不存在**（AGENTS 第五条
+    2026-10-18 复核已标注"该路径不存在"）——本机跑预检全靠调用者记得临时
+    `export PATH=/d/DevCache/go/bin:$PATH`，忘了就整排 go 依赖检查红且难辨真假。
+    把实测路径写进候选，赛前少记一条人肉规矩 = 少一个失误面。
+    """
+    env = (os.environ.get("GO_BIN") or "").strip()
+    if env:
+        return '"%s"' % env if " " in env else env
+    for base in (os.path.join(ROOT, ".workbuddy", "toolchain", "go", "bin"),
+                 r"D:\DevCache\go\bin", "/d/DevCache/go/bin"):
+        for name in ("go.exe", "go"):
+            p = os.path.join(base, name)
+            if os.path.isfile(p):
+                return '"%s"' % p
     return "go"
 
 
