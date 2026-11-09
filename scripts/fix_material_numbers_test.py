@@ -245,6 +245,51 @@ def main():
     check("T13 CI 缺二进制：体积锚点跳过不崩 + 非体积缺失仍 fail-closed",
           t13_skip and t13_fc, "skip=%r fc=%r" % (t13_skip, t13_fc))
 
+    # T14~T18（2026-11-10）：修复器复用「已裁定明确不修」登记的变异验证。
+    # 背景：发布节点跑 `--apply --check` 曾把官网 5 行刷成真值，导致 3 条登记项
+    # 「已不再复现」→ 门禁反而继续红，且违反用户 2026-11-08「官网不用动」裁定。
+    # 锚点实际形态是「N 行 Go」；写「非测试代码行数: N」不命中任何锚点（会造出假绿/假红）
+    line_skip = "146,571 行 Go"
+    base_out, base_ch = fmn.fix_line(line_skip, truth)
+    skip_hit = frozenset({("非测试代码行数", 146571)})
+    out_hit, ch_hit = fmn.fix_line(line_skip, truth, skip=skip_hit)
+    check("T14 登记项命中：保持原文且不计 changes（不刷官网）",
+          bool(base_ch) and base_out != line_skip and out_hit == line_skip and not ch_hit,
+          "base_ch=%r out=%r ch=%r" % (base_ch, out_hit, ch_hit))
+
+    skip_miss = frozenset({("非测试代码行数", 999999)})
+    out_miss, ch_miss = fmn.fix_line(line_skip, truth, skip=skip_miss)
+    check("T15 数值不匹配：照常改写（跳过不是全局放水）",
+          out_miss != line_skip and bool(ch_miss),
+          "out=%r ch=%r" % (out_miss, ch_miss))
+
+    html_line = "<div>146,571</div><div>行 Go</div>"
+    _, h_base_ch = fmn.fix_line(html_line, truth, strip_html=True)
+    h_label = h_base_ch[0][0].split("（HTML 属性值）")[0] if h_base_ch else None
+    h_num = fmn._num(h_base_ch[0][1]) if h_base_ch else None
+    h_skip = frozenset({(h_label, h_num)}) if h_base_ch else frozenset()
+    h_out, h_ch = fmn.fix_line(html_line, truth, strip_html=True, skip=h_skip)
+    check("T16 HTML 分支同样遵守登记跳过（官网是 HTML）",
+          bool(h_base_ch) and h_out == html_line and not h_ch,
+          "base_ch=%r out=%r ch=%r" % (h_base_ch, h_out, h_ch))
+
+    _orig_load = cmn.load_known_drift
+    cmn.load_known_drift = lambda: ([{"file": "官网/index.html",
+                                      "label": "非测试代码行数", "got": 146571}],
+                                     ["模拟：台账已过期"])
+    try:
+        bad_keys = fmn._drift_skip_keys()
+    finally:
+        cmn.load_known_drift = _orig_load
+    check("T17 坏台账 fail-closed：不据此跳过任何数字",
+          bad_keys == {}, "keys=%r" % (bad_keys,))
+
+    real_keys = fmn._drift_skip_keys()
+    t18 = ("官网/index.html" in real_keys
+           and len(real_keys["官网/index.html"]) == 3)
+    check("T18 真实登记可解析：官网 3 条 / 路径已归一正斜杠",
+          t18, "keys=%r" % ({k: len(v) for k, v in real_keys.items()},))
+
     # T10 真实仓库当前状态
     #
     # 🔴 2026-11-09 修：旧写法断言「dry-run 无待修」，隐含假设「材料必须 100% 等于真值」。

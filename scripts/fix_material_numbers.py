@@ -55,6 +55,43 @@ def _has_local_binaries():
     return bool(cmn.find_local_installer_products())
 
 
+def _num(raw):
+    """登记数值归一：去千分位、整数/浮点分流（与 fix_material_numbers_test.py::T10 同口径）。"""
+    s = str(raw).replace(",", "")
+    return float(s) if "." in s else int(s)
+
+
+def _drift_skip_keys():
+    """读「已裁定明确不修」的登记，返回 {rpath: frozenset((label, 数值))}。
+
+    🔴 2026-11-10 补：此前修复器复用了门禁的 ANCHORS / FROZEN_MATERIALS /
+    EXEMPT_FILES / SNAPSHOT_MARK，却**漏了 material_known_drift.json**。于是用户
+    2026-11-08「官网不用动」的裁定在门禁里生效、在修复器里不生效：发布节点跑
+    `--apply --check` 会把官网 5 行一并刷成真值，导致 3 条登记项「已不再复现」
+    → 门禁反而继续红（台账过期），且违反裁定。这里让修复器认同一份登记，
+    消除「门禁认裁定、修复器不认」的两套判定。
+
+    台账自身有问题（过期 / 超限 / 字段缺）⇒ 返回空并告警，**不据此跳过**：
+    坏台账不能变成静默放水的来源（fail-closed）。
+    """
+    entries, issues = cmn.load_known_drift()
+    if issues:
+        print("[WARN] 已知漂移登记有问题 —— 本轮不据此跳过任何数字（fail-closed）：")
+        for x in issues:
+            print("   - %s" % x)
+        return {}
+    by_file = {}
+    for e in entries:
+        label = str(e["label"]).split("（HTML 属性值）")[0]
+        key = (label, _num(e["got"]))
+        rpath = str(e["file"]).replace("\\", "/")
+        by_file.setdefault(rpath, set()).add(key)
+    if by_file:
+        print("[已裁定不修] 依 %s 登记 %d 条 / %d 个文件，按 file+label+数值精确跳过"
+              "（其余数字照常同步）" % (cmn.KNOWN_DRIFT_REL, len(entries), len(by_file)))
+    return {k: frozenset(v) for k, v in by_file.items()}
+
+
 def format_like(orig, want):
     """跟随原写法保留千分位：'126,659' -> '126,675'；'724' -> '1234'（不带逗号）。
 
@@ -72,10 +109,12 @@ def _token_rx(got):
     return re.compile(r"(?<![\d,.])" + re.escape(got) + r"(?![\d,])")
 
 
-def fix_line(line, truth, anchors=None, strip_html=False):
+def fix_line(line, truth, anchors=None, strip_html=False, skip=frozenset()):
     """把 line 里"锚点命中且与真值不符"的数字改成真值。
 
     返回 (新行, [(label, got, new), ...])。
+    skip = frozenset((label, 归一数值))：命中者保持原文、不计入 changes。
+    由 collect() 从「已裁定不修」登记生成，默认空 ⇒ 直接调用方行为不变。
 
     strip_html=True 时先用门禁同款的"标签→空格"做检测，但**原文 span 无法映射**回
     未剥离的行（例如 `<div>126,659</div><div>行 Go</div>`，数字与"行"被标签隔断），
@@ -116,6 +155,8 @@ def fix_line(line, truth, anchors=None, strip_html=False):
                     new = format_like(got, want)
                     if new == got or got not in line:
                         continue
+                    if (label.split("（HTML 属性值）")[0], _num(got)) in skip:
+                        continue  # 已裁定明确不修：不改写、不计入 changes
                     # 两个探针命中同一处时只改一次（去重，保持 changes 与落盘改动一一对应）
                     if any(c[0] == label and c[1] == got for c in changes):
                         continue
@@ -133,6 +174,8 @@ def fix_line(line, truth, anchors=None, strip_html=False):
             new = format_like(got, _want)
             if new == got:
                 return m.group(0)
+            if (_label.split("（HTML 属性值）")[0], _num(got)) in skip:
+                return m.group(0)  # 已裁定明确不修：保持原文
             s = m.start("n") - m.start(0)
             e = m.end("n") - m.start(0)
             changes.append((_label, got, new))
@@ -151,6 +194,7 @@ def collect(truth):
     纯扫描，不写盘。
     """
     fixable, manual = [], []
+    drift_skip = _drift_skip_keys()
     for path in cmn.iter_files():
         rpath = cmn.rel(path)
         # 用户令冻结的文件一律不写盘（2026-10-31）：门禁那边已豁免判定，
@@ -191,7 +235,9 @@ def collect(truth):
                 # 若不跳过，后加的锚点会把已作废旧口径一起"顺手改掉"，令「只上报」性质失效
                 # （fix_material_numbers_test.py::T9 锁定此性质）。零当前影响：仓库现无 BANNED 命中。
                 continue
-            new_body, changes = fix_line(body, truth, strip_html=strip_html)
+            new_body, changes = fix_line(
+                body, truth, strip_html=strip_html,
+                skip=drift_skip.get(rpath, frozenset()))
             if changes:
                 edits.append((i, body, new_body, changes))
         if edits:
