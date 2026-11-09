@@ -73,11 +73,13 @@ def stage_attachments(attachments: Optional[Iterable[str]], subdir: str = "input
 
     taken: set = set()
     out: List[str] = []
+    kept: List[str] = []
     for src in items:
         try:
             if not os.path.exists(src) or os.path.isdir(src):
                 # 目录/缺失：不复制（复制整个目录既慢又会把同目录答案带进来）
-                logger.warning("附件未暂存（缺失或目录）：%s", src)
+                logger.debug("附件未暂存（缺失或目录）：%s", src)
+                kept.append(src)
                 out.append(src)
                 continue
             name = _safe_name(src, taken)
@@ -85,8 +87,13 @@ def stage_attachments(attachments: Optional[Iterable[str]], subdir: str = "input
             shutil.copy2(src, dst)
             out.append(dst)
         except Exception as exc:  # noqa: BLE001 - 暂存失败不许中断解题
-            logger.warning("附件暂存失败（保留原路径）：%s (%s)", src, exc)
+            logger.debug("附件暂存失败（保留原路径）：%s (%s)", src, exc)
+            kept.append(src)
             out.append(src)
+    if kept:
+        # 逐条只在 DEBUG；汇总一条 WARNING，避免整库加载时刷屏几百行
+        logger.warning("附件未暂存 %d/%d（缺失或目录，已保留原路径）：%s",
+                       len(kept), len(items), os.path.basename(kept[0]))
     return out
 
 
