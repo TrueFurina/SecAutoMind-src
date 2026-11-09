@@ -147,6 +147,7 @@ python scripts/verify_evidence.py        # 证据/口径门禁
 | 🔴 **禁止 `export TMP=TEMP=TMPDIR=x` 多重赋值**（2026-10-14 事故，2026-10-19 又中一次） | 本 shell 会把它变成一个字面量垃圾串赋给 TMP（TEMP/TMPDIR 根本没设），Go `t.TempDir()` 据此 mkdir 失败 → 一致场景假 FAIL；更糟的是它可能在**仓库根建出名为 `TEMP=TMPDIR=D://tmp_gotest` 的怪目录**。必须逐变量分开 export。 |
 | 🔴 **禁用 `git add -A` / `git add -A <dir>`**（09-24 事故） | 会把并行会话的**未跟踪在途文件**一并卷进提交，违反"不代提交他人 WIP"。一律显式列文件路径，或先 `git status --porcelain` 逐条确认。误加后纠正：`git reset --soft HEAD~1` → `git restore --staged <文件>` → 显式列路径重新提交，并用 `git show --stat HEAD` 复验零交集。 |
 | `官网/` 曾整目录被排除 | **2026-10-18 已入库**（`3c776a8`，`.gitignore` 注记同步更新）：数字纳入 `check_material_numbers.py` 机验、由 `pages.yml` 部署。历史上它既不受门禁约束也无法分发的状态才是坑 |
+| 🔴 **本地 `go test ./...` 两条必修纪律**（2026-11-10 实锤，同一会话踩两回） | ① **照抄 ci.yml test job 的调用形态**：重型基准（`TestCrossBench_*`/`TestExternalBench_AttachmentSubset`/`TestRealBenchmark_*`）在 CI 是**专 job `-timeout 1800s`** 跑的，本地直接 `./...` 会把 `internal/ctfplatform` 拖到超时——**假红**，极易误判成代码缺陷（正确姿势：`-timeout 1800s -skip '...'`）。② **live 平台测试须显式 `RUN_LIVE_TESTS=1`**：编排 shell 常带真凭证，默认跑 `./...` 会**真打比赛平台**并让靶机链**真建环境占掉账号级 5 格**（别人起不来）。闸门见 `internal/ctfplatform/live_gate_test.go`。 |
 
 ---
 
