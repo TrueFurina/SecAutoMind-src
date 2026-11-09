@@ -115,12 +115,51 @@ def make_repo(tmp: Path, *, declared: bool = True, residual: bool = False,
             exp_txt = json.dumps(exposure).replace("@LEAK@", prob["flag_sha256"])
             _write(tmp, C.EXPOSURE_REL, json.loads(exp_txt))
     if exempt is not None:
-        _write(tmp, C.EXEMPT_REL, {"schema": 1, "entries": exempt})
+        # 豁免是「按内容绑定」：夹具里用 __LEAKSHA__ 占位，落盘前替换成本夹具答案的哈希。
+        # 不占位就得在测试里手算哈希，容易出现「夹具写死哈希、答案改一个字就静默不匹配」。
+        import hashlib as _h
+        _sha = _h.sha256("flag{fixture_leak_0001}".encode("utf-8")).hexdigest()
+        ex_txt = json.dumps({"schema": 1, "entries": exempt}).replace("__LEAKSHA__", _sha)
+        _write(tmp, C.EXEMPT_REL, json.loads(ex_txt))
     if debt is not None:
         _write(tmp, C.DEBT_REL, debt)
     if ack is not None:
         _write(tmp, C.ANSWER_REUSE_REL, ack)
     return tmp
+
+
+def _update_exempt_case(title: str, *, reason: str, expect_rc: int, expect_bound: bool) -> None:
+    """夹具：豁免已绑定一个**别的**哈希，文件里实际躺着的是本夹具答案。
+
+    不带 --reason 时 update_exempt 必须 ABORT（rc=1）且**不落盘**；
+    带 --reason 才允许把这条例外显式绑定进去（rc=0 且哈希进表）。
+    这是「往豁免文件里加一条新答案不该是一条命令的事」这条纪律的机验。
+    """
+    import hashlib
+    tmp = Path(tempfile.mkdtemp(prefix="rl_ex_"))
+    try:
+        root = make_repo(tmp, consumer="synced", status="synced", answer_leak=True,
+                         exempt=[{"file": "scripts/leaky_fixture.py",
+                                  "reason": "生成器必须知道明文",
+                                  "owner": "agent", "expires": DEFAULT_EXPIRES,
+                                  "flag_sha256": ["0" * 64]}])
+        before = (root / C.EXEMPT_REL).read_bytes()
+        rc = C.update_exempt(root, "agent", DEFAULT_EXPIRES, reason=reason)
+        after = (root / C.EXEMPT_REL).read_bytes()
+        leak_sha = hashlib.sha256("flag{fixture_leak_0001}".encode("utf-8")).hexdigest()
+        doc = json.loads(after.decode("utf-8"))
+        bound = set((doc.get("entries") or [{}])[0].get("flag_sha256") or [])
+        if expect_rc == 1:
+            ok = rc == 1 and after == before and leak_sha not in bound
+            detail = "rc=%d ｜ 落盘=%s ｜ 绑定含新哈希=%s" % (
+                rc, "是" if after != before else "否", leak_sha in bound)
+        else:
+            ok = rc == 0 and leak_sha in bound
+            detail = "rc=%d ｜ 绑定含新哈希=%s ｜ 绑定条数=%d" % (
+                rc, leak_sha in bound, len(bound))
+        RESULTS.append((title, ok, detail))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def run_case(title: str, expect: int, **kw) -> None:
@@ -318,11 +357,12 @@ def main() -> int:
     # T19 变异：入仓文件里躺着可直接抄的答案明文
     run_case("T19 入仓文件含答案明文 → FAIL", 1, consumer="synced", status="synced",
              answer_leak=True)
-    # T20 正例：同一命中，但该文件在豁免表里且豁免本身合规
-    run_case("T20 明文中豁免且豁免合规 → PASS", 0, consumer="synced", status="synced",
+    # T20 正例：同一命中，但该文件在豁免表里、豁免本身合规、且这条明文被显式绑定
+    run_case("T20 明文中豁免且按内容绑定 → PASS", 0, consumer="synced", status="synced",
              answer_leak=True,
              exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
-                      "owner": "agent", "expires": DEFAULT_EXPIRES}])
+                      "owner": "agent", "expires": DEFAULT_EXPIRES,
+                      "flag_sha256": ["__LEAKSHA__"]}])
     # T21 变异：豁免表里挂着一条已无命中的条目（豁免变防腐堆）
     run_case("T21 豁免悬空 → FAIL", 1, consumer="synced", status="synced",
              exempt=[{"file": "scripts/leaky_fixture.py", "reason": "已无用",
@@ -331,7 +371,27 @@ def main() -> int:
     run_case("T22 豁免 owner=unassigned → FAIL", 1, consumer="synced", status="synced",
              answer_leak=True,
              exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
-                      "owner": "unassigned", "expires": DEFAULT_EXPIRES}])
+                      "owner": "unassigned", "expires": DEFAULT_EXPIRES,
+                      "flag_sha256": ["__LEAKSHA__"]}])
+    # T57 变异（2026-11-09 新增）：豁免只写了文件名、没有内容绑定 = 整文件放行 → FAIL。
+    # 旧行为：文件一进表，里面新写的任何明文都看不见（变异实验实证：同一答案放进
+    # 非豁免文件当场红，放进豁免文件 PASS）。这条钉住"整文件放行"这个形态本身。
+    run_case("T57 整文件豁免（无 flag_sha256 绑定）→ FAIL", 1,
+             consumer="synced", status="synced", answer_leak=True,
+             exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
+                      "owner": "agent", "expires": DEFAULT_EXPIRES}])
+    # T58 变异：豁免文件里出现**未绑定的新明文**（绑定的是别的哈希）→ FAIL
+    run_case("T58 豁免文件里写入未绑定的新明文 → FAIL", 1, consumer="synced",
+             status="synced", answer_leak=True,
+             exempt=[{"file": "scripts/leaky_fixture.py", "reason": "生成器必须知道明文",
+                      "owner": "agent", "expires": DEFAULT_EXPIRES,
+                      "flag_sha256": ["0" * 64]}])
+    # T59/T60 变异：绑定新答案必须是**显式**动作（--update-exempt 不带 --reason 一律 ABORT）
+    _update_exempt_case("T59 新明文未带理由就绑定 → ABORT 且不落盘",
+                        reason="", expect_rc=1, expect_bound=False)
+    _update_exempt_case("T60 带理由绑定新明文 → 落盘并写入哈希",
+                        reason="口径复核：这条明文是靶场生成器必须持有的真值",
+                        expect_rc=0, expect_bound=True)
 
     # ---- R10 历史防线（清干净只对 HEAD 有效；历史里的明文照样能 git log -p 抄走）----
     # T23 变异：新提交的新增行里带答案明文 → 命中（只看 + 行）

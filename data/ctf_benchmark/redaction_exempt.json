@@ -1,252 +1,452 @@
 {
   "schema": 1,
-  "note": "答案明文豁免表：登记「必须知道明文才能工作」的入仓文件（如题目生成器：艺术/题面里的答案由它写进去）。豁免不是免死金牌——每一条都要点名负责人与到期日（R9 复用 R8 口径），命中消失后豁免变悬空并判红。判分侧一律只用 flag_sha256，明文永不进入判分清单。",
+  "note": "豁免=按内容绑定，不是整文件放行：每条豁免列出该文件里**允许存在**的答案哈希，该文件新出现的明文一律判红（2026-11-09 起）。",
   "entries": [
     {
       "file": "CTF-Agent_融合/ctf_agent/scripts/_gen_ctf2022_20260827.py",
       "reason": "外网 writeup 真题生成器（6 题）：按约定 JSON.flag 只存 sha256、明文落 gitignored _attachments；生成器必须持有明文才能把答案写进附件（flag.txt / 题面源码），只拿哈希就生成不出带答案的附件。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "73c07e35e026f5c31a6ac90e9c38b3e57bc8b2407cd87a57e6505440ac438c54",
+        "7f9fa04fd358b5b669b3f1967e6da36feafd52b53e2620eabdcd447ccc06319b",
+        "b29a018aa481672de9367f4e293656f31e847f7cb59912ae312bbe6d19a0a11f",
+        "bb0e2397592f15c502441031d136805d580f77a33ba3f0a42da5cacd30b9d0ab",
+        "bf9462ee7b04f567d925e0e10c7dfd81b1c5f42ba20273083f7802f49f2c38dd",
+        "fc993d4940162b339b6ad8904cbc895ef1d1d2dccbc48b106c3b05036d9f5fac"
+      ]
     },
     {
       "file": "CTF-Agent_融合/ctf_agent/scripts/_gen_local_text_20260827.py",
       "reason": "本地文本类真题生成器（3 题）：明文写进 gitignored 附件，JSON 只存 sha256；生成器不持有明文就写不出附件里的答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "68fb5e5275a1c05d404c9a6922f400953aa8caf1b7f6db0c3fba75996e0e1ae3",
+        "81dd6bd94dde9d9c78c99c7489bffc718516ea4ac809ef45827d46a76c3bea41",
+        "92b80a26ebabb2d3d3fe9615891d65d5cdb7cf5535a0c93a12484bb81af2e3c7"
+      ]
     },
     {
       "file": "CTF-Agent_融合/ctf_agent/scripts/_gen_longjian_2024_2025.py",
       "reason": "陇剑杯真题生成器（5 题）：JSON 的 flag/flag_sha256 只存 sha256(明文)，明文 flag 写进 gitignored 的 data/questions_real/_attachments/{cat}/{pid}/flag.txt。生成器是唯一还持有明文的环节。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "2415582719bf1598005e6cd6cc844b75ff64193312f7dc27695a7533f13f5477",
+        "3038d6fe45d417582fabf6218644d30b8b1c4909e4361047e64a32b42629eed0",
+        "ced419973bb619c029e6eaa4967bb8037e5c01c5e8f056f3ac0209a3c153d219",
+        "d7e730c091c76a810dd18ea5f150b4f22fe5bd9df96d95c8d50fa5c5cdcd0c5a",
+        "e93f142a43a43511deec4a20e3865d975aa6f2d366e12fce18e1dd4d88da0070"
+      ]
     },
     {
       "file": "CTF-Agent_融合/ctf_agent/scripts/_gen_web_misc_20260827.py",
       "reason": "Web/Misc 真题生成器（7 题）：约定同前——JSON.flag 存明文 sha256，明文落 gitignored _attachments。生成器必须持有明文才能写出带答案的附件与题面片段。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "20e6092c61846e7187af7c18b382e78e8212ca898bc94f2af9e32cada936a52a",
+        "279351e645239166ebbfdda049b803ae57e6657da906573b3d78ba2e8512600b",
+        "50d32d18a93927b6d3283e15459aa5d8f5841aa1227b8fd41dc772a8a911c0ab",
+        "76add0f3b533b3e6d79998587353bb0e1379073584d541e17878b633e7cbc2fe",
+        "a47ad91fbba5480d80bdd8a72d6b2ea4365037093a581eb355efa0f5147762e6",
+        "c462cfa208b35e359c691de7c4e85eb391237c4c2e6e497e8098627aae4069f0",
+        "fe687acb1bd7285c1d132e771747f74ac1e6057d9a8fdabceb4264242b5f2c29"
+      ]
     },
     {
       "file": "data/ctf_benchmark/crypto_attack_params.json",
       "reason": "RSA 攻击题参数表，同时是生成器输入：extend_execution_v3.py 直接读 params[...][\"flag\"] 造工件。三个 flag 是三类攻击的目标明文，工件靠它生成；换成哈希就造不出题。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "5b22c6e114b58adaa55e6696f497add723e399bd8650852ed117fdd701280dff",
+        "5eab8e4d838a32dabe058a84e699abf55b92d100e0771691c21aec505599362b",
+        "aad6ccfcffd14ce679245ebce858d5b34ae0d30f963f0ebe76d29761cc243dc7"
+      ]
     },
     {
       "file": "data/ctf_benchmark/execution/disk_image.dd",
       "reason": "磁盘镜像工件：答案躺在 deleted file cluster 里，solver 要靠取证 / strings / carve 恢复。工件二进制里的明文就是题面。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "aa3483ce65fc2f3296f938defc9e5b8231007d73e61ed7a5211a0ceb24915333"
+      ]
     },
     {
       "file": "data/ctf_benchmark/execution/exec_capture.pcap",
       "reason": "pcap 工件：答案在 HTTP 表单参数里（username=admin&password=secret&flag=...），solver 靠抓包提取。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "b2870ebfcc31a2496abdaea0ab2629b8002e9cd7751658da995edf827dfe4f3f"
+      ]
     },
     {
       "file": "data/ctf_benchmark/execution/memory_dump.dmp",
       "reason": "内存 dump 工件：答案在 user note 字符串里，solver 靠 strings / 取证提取。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "f06d437866fac90d4e2f9b51d25c5be5046ea7789709fff72af4ca035bc35dad"
+      ]
     },
     {
       "file": "data/ctf_benchmark/execution/pcap_get.pcap",
       "reason": "pcap 工件：答案在 `GET /flag.php?token=...` 请求里，solver 靠抓包提取。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "f5ec3fc7cc167aa930edbf88507a4b62a628b28345acd76aa9a00f90d1934941"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_blind_oob.py",
       "reason": "盲注/OOB 题生成器：OOB_SECRET 是靶机吐出的外带目标，生成器同时用它算出 benchmark 的 flag_sha256。靶机内容与外带内容必须逐字一致，判分才认——生成器只拿哈希就造不出靶机。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "296f47ea854adbc65a6d008ddbef74256f11fdf0c0d87a9ebb173010bd320be3"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_crypto_attack_params.py",
       "reason": "RSA 攻击参数生成器：FLAG_CM / FLAG_HB / FLAG_WN 是 common modulus、Håstad 广播、Wiener 三类攻击要还原的明文，生成器把密文与参数写进 crypto_attack_params.json 与工件；solver 攻击成功必须得到这段明文。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "5b22c6e114b58adaa55e6696f497add723e399bd8650852ed117fdd701280dff",
+        "5eab8e4d838a32dabe058a84e699abf55b92d100e0771691c21aec505599362b",
+        "aad6ccfcffd14ce679245ebce858d5b34ae0d30f963f0ebe76d29761cc243dc7"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_ecb_image.py",
       "reason": "AES-ECB 图像题生成器：ecb_penguin 的答案是按 ECB 块拼图后从图像里读出的口令，必须明文加密进图片工件，否则图上没有可拼的答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "051a10bf567318164c940a72ed813a22ba3c707388984a77ad3f66f652dce3a3"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_exec_artifacts.py",
       "reason": "执行基准工件生成器（六类：strings / 源码 base64 / 免密 cookie / 端序 / git 历史 / pcap）：答案必须明文写进 dd/pcap/git 工件，solver 才有东西可 strings、读源码、抓包。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "2fe91f53d01ac8569c22d725fd11003f9ec059563f8690e7d976b2e344caf878",
+        "867508870baa43ce72ddc8f7543d4a29719310cff74bb8a78f843f46eb605d61",
+        "9563247d091166c37ae8051b75ca4e25402e730c49817522172f094a86424538",
+        "a5678709a4b3f1e3d5e41f050a7b96f98013f97c4225e38788a55874f4f832cb",
+        "b2870ebfcc31a2496abdaea0ab2629b8002e9cd7751658da995edf827dfe4f3f",
+        "b654076ccd97ff8e5cda53bfc351fe67dc950d0dfa038f8b11bbc4ee4406a489"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_exec_artifacts_v2.py",
       "reason": "执行基准工件生成器 v2：磁盘镜像 / 内存 dump / pcap 日志三类题的答案必须明文嵌进生成的二进制工件，solver 才有东西可 carve、strings、grep；生成器只拿哈希就出不了含答案的工件。2026-11-08 曾误把它当注释答案删掉，随即发现工件会变空、题目不成立，故改登记豁免。判分仍只走 execution_benchmark.json 的 flag_sha256。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "4033f5fbe7f88408ddccdcc0f3d9766ca463512716d0f911eb82cfee4d045beb",
+        "561094e6dfd50c2bf69463c67fa2748fb515c6419d645cf242ff968a30b544c0",
+        "aa3483ce65fc2f3296f938defc9e5b8231007d73e61ed7a5211a0ceb24915333",
+        "f06d437866fac90d4e2f9b51d25c5be5046ea7789709fff72af4ca035bc35dad",
+        "f5ec3fc7cc167aa930edbf88507a4b62a628b28345acd76aa9a00f90d1934941",
+        "ff5ebade0a2a18835d025a26aeeec7de03de4116aeaa324002f8f87cbd457dbb"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_gcm_nr.py",
       "reason": "GCM nonce 复用题生成器：两段 secret 就是被同一 key stream 加密的明文，密文由它派生；solver 的任务正是还原这段明文。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "8f02e405a60daf86b223bdfbef6304abb28c25cb193243e322af4b55cd7186c4",
+        "b9119f94f412f634e3e02be379fadf70f5037e51eb847bf71e155a9859e4b88a"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_morse_image.py",
       "reason": "摩斯图像题生成器：答案必须明文写进生成图像的像素/点划序列，否则出不了题。答案只存在于生成器与题面工件，判分走 benchmark.json 的 flag_sha256。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "00c271ba72bfcc33c48b7bb67e7c4c7c024efabb6345ddc0be07c7c86a056a1f"
+      ]
     },
     {
       "file": "data/ctf_benchmark/gen_padding_oracle.py",
       "reason": "CBC padding oracle 题生成器：flag 拼进 oracle 的明文再加密，solver 逐字节恢复明文才拿到答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "817b2b921415c3965fafa4a7cd68732eef13a976424b67993a26a3fe1f1c0119"
+      ]
     },
     {
       "file": "data/ctf_benchmark/judge_blind_oob.py",
       "reason": "盲注判分器：OOB_SECRET 用来确认外带回来的内容确实是靶机 secret——这里判分比的是外带明文，不是哈希，所以判分侧也必须有明文。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "296f47ea854adbc65a6d008ddbef74256f11fdf0c0d87a9ebb173010bd320be3"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/crc64_range.py",
       "reason": "live 靶机（CRC64 位翻转）：`crc64_bitflip` 的 flag 是靶机在 CRC 校验通过后才吐出的口令；solver 的解法就是拿靶机试 CRC，靶机不持有真值就没有可还原的目标。本靶机的 --dump-json 只输出 flag_sha256，不明文落答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "f249b88fda6733bc0e93a13b6d74c0a65acd3f54f71535fd89a91644a5140160"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/deser_range.py",
       "reason": "live 靶机（反序列化三场景）：FLAG_PICKLE / FLAG_PHP / FLAG_COOKIE 分别是 pickle gadget、PHP 对象注入、cookie 反序列化三条链读到的目标对象字段。删掉明文，三条链读出来就是空的。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "8759f22d876c6ceed7f1c471d59db26e0111121d5a6178b1761639f796f264be",
+        "a23aa70b30329d8c75707a2a33422dad3b315f140916dc5af30e888070727baf",
+        "f7e66ef13ca222c3c7351f814cf189b9ea79177c5303d009c9453c3a58c119be"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/gql_range.py",
       "reason": "live 靶机（GraphQL 三场景）：introspection / IDOR / mutation 三个 flag 存在 schema 与数据层，solver 靠查 `__schema`、越权读他人记录、跑 mutation 拿到；靶机无真值即无答案可拿。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "203903721a4aa883180fe1ffc0a72ce88dddfc0775217f75af2a98a9b6b220af",
+        "688eac4e47e55e92bbb1b94f74481499e658e85af4a71ac8bbcae7bc55ab2ca7",
+        "a9ba2fdaadfecbe19535cfa076571171947dba31a5fe7e846702283373f8ec34"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/jwt_range.py",
       "reason": "live 靶机（JWT 三场景）：weak（弱密钥爆破）/ none（算法置空）/ rs256（公钥当 HMAC 密钥）三个 flag 写在靶机签发的 token claim 里，必须由靶机真的签出来；换哈希则签发结果是空 token。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "2fef9bed5e5c2aeaf9de482f16f0ae1d933b77618a57f8b32ef4ebdc5fde5ee5",
+        "ad0f244983532e7778f8e5db127a55c98d30e683a756e0cd6862e6f191557d3d",
+        "d3c813cde6a9afb3cd59a9a2b85b4d6e2c49524bc06916479f7afd34884d82db"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/sqli_range.py",
       "reason": "live 靶机（SQL 注入三场景）：union / error / blind 三个 flag 存在数据库表行里，solver 用对应注入手法查出来；靶机 DB 里没有真值，三种手法都查不到东西。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "4796b35b4d544e1e379c6f729ffc70d072428bea5f8c91540f543ea076aa3ece",
+        "64b0a052045ab9d55508b8a9788b4b9fc62fb13ea2828ac252d59388716696de",
+        "d6c1f0e9c542a4652ac25e1dcf1cb8aef9055accf84f4955dafb798bfc95182b"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/ssrf_range.py",
       "reason": "live 靶机（SSRF 三场景）：redis（gopher 打内网 Redis）/ cloud（云元数据端点）/ internal（内网管理端点）三个 flag 由被访问的内网服务返回，靶机侧不持有就没有返回值。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "6b7eceef91e03b9d8a50bb40be3c359060f33fcf3ec7bbfd6effdc3d9c5f2294",
+        "aef6af23f83345d9d1f4ba161167d1b62b3908044de06fb5b3d561a6a6f29087",
+        "f44df6ac7f75e9b30bd5900b00132ce5a75382401f5546e1ba147b9801d7ec42"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/ssti_range.py",
       "reason": "live 靶机（SSTI 三场景）：表达式回显 / format 拼接 / 过滤器绕过三个 flag 在模板上下文里，靠注入模板语法渲染出来。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "53a91a7020a57b9986c003ecfdda0434f3ffd38aa9dde22d15749491d7eaeb53",
+        "ca32e44c9a2c5a42fc4a005ad0976d6e49f6e5d6ebde390c1c9b2388b81a5f91",
+        "d3409e33d4e4e44ae21397210b1ec797a7678c2175bca169e91dcc471e98f564"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/upload_range.py",
       "reason": "live 靶机（上传三场景）：正常上传 / 黑名单绕过 / 目录穿越三个 flag 是被写进服务器侧答案文件后再读回来的内容。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "496c4f0b6047b99fd1f8fb8c674068e372d55239c6648da00c2397da9da9a964",
+        "80c48e681ebbe82a72a0426fe3f45cc95ff60bdeab92be47d1f7222f5efcddbb",
+        "f4b705f3c389721d4548a6ff89599fdb531e89dae4180761c31a6dc08edbdc9d"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/vuln_app.py",
       "reason": "live 靶机（同机双漏洞 demo）：FLAG_SQLI 与 FLAG_SSTI 是 SQL 注入与模板注入两条路径读到的同一台靶机的答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "e60f857930208ccf3a10c21cc87f494c4d5426905af50eef0b1aa9079cb9c7e4",
+        "f1dcb29e1568362b195adf2d0144a8be39f8d66fd71aea3dfb460c549ded7bd2"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/web_range.py",
       "reason": "live 靶机（10 个 Web 场景，端点恰好落在引擎硬编码探测列表里）：每场景一个 flag，分布在源码注释、base64 资源、cookie、响应头等位置，solver 靠抓响应读出来。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "1056fb535f0702cef4fd0c6b0ec6f50e290edcffd062d5163195ccec70ad9e18",
+        "21d250d9fdb0c3647df7d6bc369c3f449f51bdeaa8ea9879994222445267c102",
+        "372ea09b90a6038db4b76c963c35f9767f007828cd0b1ed093efffafa71917d0",
+        "39e8f11628fa17def4ca3a04d6cf46a115795309b70b6c465165e07263497b6a",
+        "494df734ff17ebc3c028444926dfbc90b7da4d5a789dd427571d1156dc08b06b",
+        "5a2e34137f1f68580c2c26e419f1a42b4eab3e3a7c88171d39d4cbf17f3f07fe",
+        "bf3f0b16f7ef6de4444a02c7e582d6e634f54e7e0787f8fb5f671736f94b83b2",
+        "c950b1c6a0d8563d64e072c3b9b989a60a34b890f334a0fca6d17386b67c8b35",
+        "edcac73eff8bc44878b222305f90d8c7fc66233b2c84d049237cb26be095aad2",
+        "fb8b0afca5232ab3819319ddea2255f53f4c96c5238de6354593d101fd40fe3a"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/web_range_hints.py",
       "reason": "live 靶机（Hint Range，6 个场景，端点刻意不在硬编码列表里，只有「读题取线索→定向打」才命中）：flag 只在利用成功后返回，未利用成功绝不泄漏；FLAG_TXT 是 LFI 场景要读的 /flag 文件内容。靶机必须持有真值，否则「打中了却没答案」。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "21a5297a53e80ae6e23d847ae662b0f75ae5078003ce27935d96b1c57f5b8479",
+        "31eb045be97560914057ef4b43309dd864c4349703917997a296eae6b7474349",
+        "45dc9d211a8062b20a245922fece3b28c43e9583fd129d595081168ba2ab0bf4",
+        "481957bdcd5ecf9286ce714b15b0347f4c42bab1523781da568786cf41ddc8d4",
+        "6909c75b8f7983421ef34d612b720293a35cca006bf7ccd18014ca9af7d90181",
+        "d4cd1eb2abb76c031cb9384e5056bcbb478d6ee1a1b4097e2d8dcd0224249d11"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/xss_range.py",
       "reason": "live 靶机（XSS 三场景）：反射 / 存储 / 转 SQLi 三个 flag 分别由页面回显、库内容、二次注入链吐出。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "1343c6051a94ef3edd8030ba08f992a9ddd0389f61aaceac05f2e75376e97fe5",
+        "b26f122bedfa035138b30315ef1844fae0c3b5613363dd9f5dd97f2d39dc210b",
+        "d9ccc3f3b415a8625476e080e88c4afadebcf4f9882310284ed4b6cb68f6e8b1"
+      ]
     },
     {
       "file": "data/ctf_benchmark/live_target/xxe_range.py",
       "reason": "live 靶机（XXE 三场景）：实体回显 / XInclude / 盲 OOB 三个 flag 在服务器本地文件与解析结果里。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "0e29f81c31242c2c60d1342650c235b44298f7237475bdb03a4b60311aaeea80",
+        "19bc609c8b144ffd99665f72e4863ff304270eaa827c4e4ff90423a18dd21525",
+        "7fcc9a48cd49a0f329aba608cdbfecc92736aca2a67f0ae918f93b14cb89d409"
+      ]
     },
     {
       "file": "data/ctf_benchmark/xhlj_legacy/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt",
       "reason": "真题附件本身就是答案文件：这道取证题要求从附件里把 flag 找出来，删掉附件题就不成立（题库 JSON 只存 flag_sha256）。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "2415582719bf1598005e6cd6cc844b75ff64193312f7dc27695a7533f13f5477"
+      ]
     },
     {
       "file": "data/ctf_benchmark/xhlj_legacy/questions_real/_attachments/web/real_web_gongye_web2/index.php",
       "reason": "真题靶源码：`// echo \"...\"` 那一行就是原题源码的一部分，solver 要读源码才能找到答案；删掉明文等于改写原题，题目会变成不可解。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "6061e023561587c02d9f63e4e24df3626370623691871ed330506042e15de376"
+      ]
     },
     {
       "file": "internal/ctfplatform/blind_oob_test.go",
       "reason": "时间盲注靶机夹具：blindOOBSecret 是 mock 靶机持有的 secret，solver 逐字符爆破后必须与它逐字对上；靶机不持有真 secret，盲注场景就不成立。改成哈希等于把靶机换成空壳。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "296f47ea854adbc65a6d008ddbef74256f11fdf0c0d87a9ebb173010bd320be3"
+      ]
     },
     {
       "file": "internal/ctfplatform/crc64_parity_test.go",
       "reason": "CRC64 靶场夹具：crc64TargetFlag 是靶场路由返回/校验的口令，solver 只能从与靶机的交互里还原它；夹具只存哈希则靶机无答案可还原。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "f249b88fda6733bc0e93a13b6d74c0a65acd3f54f71535fd89a91644a5140160"
+      ]
     },
     {
       "file": "internal/ctfplatform/ecb_parity_test.go",
       "reason": "AES-ECB 靶场夹具：ecbTargetFlag 是被加密进工件的答案，solver 靠 ECB 块拼图还原；夹具换哈希则工件里没有答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "051a10bf567318164c940a72ed813a22ba3c707388984a77ad3f66f652dce3a3"
+      ]
     },
     {
       "file": "internal/ctfplatform/gcm_nonce_reuse_test.go",
       "reason": "GCM nonce 复用夹具：secret 就是被加密的明文，密文由它派生；solver 的验证方式正是还原这段明文，换成哈希就没有可还原的明文。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "8f02e405a60daf86b223bdfbef6304abb28c25cb193243e322af4b55cd7186c4"
+      ]
     },
     {
       "file": "internal/ctfplatform/padding_oracle_test.go",
       "reason": "CBC padding oracle 夹具：flag 拼进 oracle 的明文再加密，solver 逐字节恢复明文才拿到答案；夹具去掉明文等于题目无解。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "817b2b921415c3965fafa4a7cd68732eef13a976424b67993a26a3fe1f1c0119"
+      ]
     },
     {
       "file": "internal/ctfplatform/xss_parity_test.go",
       "reason": "XSS 三场景靶场夹具：反射/存储/转 SQLi 三个 flag 分别注入三个 mock 靶场（回显、落库、拼进查询），solver 从响应与库内容里读出；夹具只留哈希则三个靶场都没有答案。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "1343c6051a94ef3edd8030ba08f992a9ddd0389f61aaceac05f2e75376e97fe5",
+        "b26f122bedfa035138b30315ef1844fae0c3b5613363dd9f5dd97f2d39dc210b",
+        "d9ccc3f3b415a8625476e080e88c4afadebcf4f9882310284ed4b6cb68f6e8b1"
+      ]
     },
     {
       "file": "scripts/gen_forensics_artifacts.py",
       "reason": "取证工件生成器：LSB 题的真 flag 必须明文嵌入 PNG 像素，solver 才能从工件里抽出来。脱敏只能作用于题面与判分清单，作用不到生成器。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "0d617a6baaa244912cce6fa618076ae86e4926f3d1326b5d0b368565e667e0b9",
+        "1c6551d5de5a0e66605a626ece85ac41d071368fa6ed0731bc8ef38972235ec9",
+        "2c5d8c34860cc59dd2157736968a4083dae96134202731728faef3d884862a8d",
+        "3d3e9dfb4b88ae2d16ea79900cc991705145323d345fc87c345ce883878dc138",
+        "3f7e791e875350027586d2b84774b43123a7202c4c20fba492cbe23ee3fbaf97",
+        "8195c85c7771cd3ea60a237eea7c6b4256e50ab5c29ed9552da787027519f864",
+        "a0b813351aac142e1af273346c98db7261594029e3eaa306fabd4f5748d5f816",
+        "d450086af106f3373d6aff7cf1fec5fdce507902eb1b23795ab6327540109690",
+        "da8c8183dae59082bfe04f74f8466111167e092c28902e6e40e46ead866166e8",
+        "ef12d5d3ba32a40b1268dea1346765c85e3341f97185477f4d778a7409dfd9d7"
+      ]
     },
     {
       "file": "scripts/verify_flag_positive_control.py",
       "reason": "判分阳性对照：POSITIVE 里唯一一条必须是 Google CTF 2023 cursved 的官方真 flag，「sha256 与题库 flag_sha256 一致」正是它能当对照的全部理由。换成哈希就只剩自证（自己比自己的哈希），等于取消外部认知源；题库其余 39 题无公开 flag，本就无法逐题自证，这条是唯一的锚。",
       "owner": "agent",
-      "expires": "2027-11-04"
+      "expires": "2027-11-04",
+      "flag_sha256": [
+        "8185f0adaafb18b0f95d0ee11fd8e5cf3225cccfb117457bef7defa8b6482e7f"
+      ]
     }
-  ]
+  ],
+  "bound_by": "scripts/check_redaction_consistency.py --update-exempt"
 }

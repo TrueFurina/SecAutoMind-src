@@ -699,13 +699,29 @@ def check(root: Path) -> tuple[int, list[str]]:
     debt_keys = {(str(e.get("file") or "").replace("\\", "/"),
                   str(e.get("flag_sha256") or "").strip().lower()) for e in debt_entries}
     hit_keys: set[tuple[str, str]] = set()
+    unbound: list[tuple[str, str, list[str]]] = []
     for rel, cand, ids in hits:
         e = ex_by_file.get(rel)
-        if e:
-            used_exempt.add(rel)
-            lines.append("    [EXEMPT] %s ｜ %s ｜ %s" % (rel, cand, ",".join(ids)[:80]))
-            continue
         h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+        if e:
+            # 🔴 2026-11-09 修：豁免从「整文件放行」改成「按内容绑定」。
+            # 旧判据只看文件名：文件一进豁免表，里面新写入的任何明文（包括一条全新的
+            # 真题答案）都不再被看见 —— 变异实验已实证：同一条答案原文放进非豁免文件
+            # 当场红，放进另一个豁免文件则 PASS。豁免要的是「这几处已被裁定必须留着」，
+            # 不是「这个文件以后写什么都行」。
+            bound = {str(x).strip().lower() for x in (e.get("flag_sha256") or [])}
+            if h in bound:
+                used_exempt.add(rel)
+                lines.append("    [EXEMPT] %s ｜ %s ｜ %s" % (rel, cand, ",".join(ids)[:80]))
+                continue
+            if not bound:
+                unbound.append((rel, cand, ids))
+                continue
+            fails.append("R9 豁免文件里出现**未绑定的新明文**：%s ｜ %s ｜ 对应 %s"
+                         "（该文件已豁免，但只豁免登记在 %s 里的那几条内容；"
+                         "新出现的答案要么删掉，要么显式绑定并写明理由与到期日）"
+                         % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
+            continue
         key = (rel, h)
         hit_keys.add(key)
         if key in debt_keys:
@@ -715,6 +731,11 @@ def check(root: Path) -> tuple[int, list[str]]:
                      "确需保留的登记到 %s 并写明理由与到期日；"
                      "旧债请用 --update-debt 记账，不许在扫描面上动手脚）"
                      % (rel, cand, ",".join(sorted(set(ids))), EXEMPT_REL))
+    for rel, cand, ids in unbound:
+        fails.append("R9 豁免未绑定内容（fail-closed）：%s ｜ %s ｜ 对应 %s"
+                     "（该条豁免没有 flag_sha256 绑定，等于整文件放行；"
+                     "跑 `--update-exempt` 按当前内容生成绑定）"
+                     % (rel, cand, ",".join(sorted(set(ids)))))
     if debt_doc is None:
         if hit_keys:
             fails.append("R12 缺明文债基线 %s（`--update-debt` 生成：把已知旧债一次性记账，"
@@ -1133,18 +1154,99 @@ DEBT_KINDS = {
 }
 
 
+def update_exempt(root: Path, owner: str, expires: str, reason: str = "") -> int:
+    """把豁免表从「整文件放行」改成「按内容绑定」。
+
+    旧表只有 file + reason + owner + expires：文件一旦进表，里面**新写入的任何明文**
+    都不再被 R9 看见（2026-11-09 变异实验实证：同一条真题答案放进非豁免文件当场红，
+    放进另一个豁免文件 PASS）。这里给每条豁免补上 `flag_sha256` 绑定：
+      · 首次绑定（旧表没有该字段）：按当前命中整批写入，打印「首次绑定 N 条」；
+      · 之后若出现**新哈希**：必须带 --reason 才允许绑定，否则 ABORT 不落盘——
+        「往豁免文件里加一条新答案」不该是一条命令的事。
+    """
+    known = collect_answer_hashes(root)
+    hits, _ = scan_answer_plaintext(root, known)
+    doc = load_json(root / EXEMPT_REL, {"schema": 1, "entries": []})
+    ents = [e for e in (doc.get("entries") or []) if isinstance(e, dict)]
+    by_file: dict[str, set[str]] = {}
+    for rel, cand, _ids in hits:
+        by_file.setdefault(rel.replace("\\", "/"), set()).add(
+            hashlib.sha256(cand.encode("utf-8")).hexdigest())
+
+    changed = 0
+    bootstrapped = 0
+    blocked: list[tuple[str, list[str]]] = []
+    for e in ents:
+        rel = str(e.get("file") or "").replace("\\", "/")
+        old = {str(x).strip().lower() for x in (e.get("flag_sha256") or []) if str(x).strip()}
+        now = sorted(by_file.get(rel, set()))
+        if not old:
+            if not now:
+                continue                      # 悬空豁免交给 check 判红，这里不偷偷删
+            e["flag_sha256"] = now
+            changed += 1
+            bootstrapped += len(now)
+            print("  [绑定] %-70s %d 条（首次绑定）" % (rel, len(now)))
+            continue
+        gained = [h for h in now if h not in old]
+        if gained:
+            if not reason.strip():
+                blocked.append((rel, gained))
+                continue
+            e["flag_sha256"] = sorted(old | set(gained))
+            e.setdefault("bindings", []).append({
+                "by": owner, "expires": expires, "reason": reason.strip(),
+                "added": gained,
+            })
+            changed += 1
+            print("  [新增绑定] %-66s +%d 条（理由：%s）" % (rel, len(gained), reason.strip()[:40]))
+            continue
+        shrunk = sorted(old - set(now))
+        if shrunk:
+            e["flag_sha256"] = now
+            changed += 1
+            print("  [收缩] %-70s -%d 条（明文已删/已改，绑定随之收紧）" % (rel, len(shrunk)))
+
+    if blocked:
+        print("[ABORT] 以下豁免文件出现**未绑定的新明文**，未落盘（绑定新答案必须带 --reason）：")
+        for rel, hs in blocked:
+            print("  %s  +%d 条 ：%s" % (rel, len(hs), ",".join(h[:12] for h in hs[:6])))
+        print("  要么删掉这些明文，要么 `--update-exempt --reason \"<为什么必须留>\"` 显式绑定。")
+        return 1
+    if not changed:
+        print("[OK] 豁免绑定已是最新（%d 个文件）" % len(ents))
+        return 0
+    doc.setdefault("schema", 1)
+    doc["note"] = ("豁免=按内容绑定，不是整文件放行：每条豁免列出该文件里**允许存在**的答案哈希，"
+                   "该文件新出现的明文一律判红（2026-11-09 起）。")
+    doc["bound_by"] = "scripts/check_redaction_consistency.py --update-exempt"
+    out = root / EXEMPT_REL
+    out.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("[OK] 已写入 %s：%d 个文件｜首次绑定 %d 条哈希" % (EXEMPT_REL, changed, bootstrapped))
+    return 0
+
+
 def update_debt(root: Path, owner: str, expires: str) -> int:
     """按当前扫描结果重写明文债表（R12）。只许在**减少**后重写，增项要人工解释。"""
     known = collect_answer_hashes(root)
     hits, skipped = scan_answer_plaintext(root, known)
     exempt_doc = load_json(root / EXEMPT_REL, {"schema": 1, "entries": []})
-    ex_files = {str(e.get("file") or "").replace("\\", "/")
-                for e in (exempt_doc.get("entries") or []) if isinstance(e, dict)}
+    # 豁免是「按内容绑定」：只有被绑定的那几条才从债里扣掉。
+    # 旧写成整文件 `rel in ex_files` 会让「豁免文件里新出现的明文」也自动不进债表，
+    # 于是既不被 R9 判红、也不记账，彻底消失。
+    ex_bound: set[tuple[str, str]] = set()
+    for e in (exempt_doc.get("entries") or []):
+        if not isinstance(e, dict):
+            continue
+        rel = str(e.get("file") or "").replace("\\", "/")
+        for h in (e.get("flag_sha256") or []):
+            if str(h).strip():
+                ex_bound.add((rel, str(h).strip().lower()))
     rows: dict[tuple[str, str], dict] = {}
     for rel, cand, ids in hits:
-        if rel in ex_files:
-            continue
         h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+        if (rel, h) in ex_bound:
+            continue
         row = rows.setdefault((rel, h), {"file": rel, "kind": debt_kind(rel),
                                          "flag_sha256": h, "ids": sorted(set(ids)),
                                          "hits": 0})
@@ -1312,6 +1414,8 @@ def main(argv=None) -> int:
                     help="全历史扫描，重写历史暴露事实表（R11 生成物）")
     ap.add_argument("--update-debt", action="store_true",
                     help="按当前扫描重写明文债表（R12；只许减少）")
+    ap.add_argument("--update-exempt", action="store_true",
+                    help="把豁免表里的整文件放行改成按内容绑定（写入 flag_sha256 列表）")
     ap.add_argument("--staged", action="store_true",
                     help="只扫暂存区新增行（pre-commit 钩子用）：命中已知答案即拒绝提交")
     args = ap.parse_args(argv)
@@ -1337,6 +1441,10 @@ def main(argv=None) -> int:
     if args.update_debt:
         return update_debt(root, args.owner,
                            args.expires or (date.today() + timedelta(days=MAX_EXPIRY_DAYS)).isoformat())
+    if args.update_exempt:
+        return update_exempt(root, args.owner,
+                             args.expires or (date.today() + timedelta(days=MAX_EXPIRY_DAYS)).isoformat(),
+                             reason=args.reason.strip())
     if args.update_ledger:
         return update_ledger(root, args.owner, args.expires,
                              renew=args.renew, reason=args.reason.strip())
