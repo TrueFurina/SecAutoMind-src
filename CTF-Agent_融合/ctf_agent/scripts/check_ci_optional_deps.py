@@ -87,26 +87,53 @@ def _scan(tests_dir):
     return targets, nonliteral, unparsable
 
 
+def _resolvable(full):
+    """`find_spec` 对完整路径的判定。返回 (True/False/None, 异常说明)。
+
+    None = 判不了 ⇒ fail-closed。注意两种「找不到」形态不同：
+      · 顶层包在、子模块不在（PIL.DefinitelyMissing）→ find_spec 返回 None；
+      · 顶层包就不在（no_such_pkg.Sub）→ 抛 ModuleNotFoundError。
+    `importorskip` 对两者都会跳过整块用例，故都必须算缺失。
+    """
+    try:
+        return importlib.util.find_spec(full) is not None, ""
+    except (ImportError, ModuleNotFoundError):
+        return False, ""
+    except Exception as exc:  # 判不了不许报绿
+        return None, "%s: %s" % (type(exc).__name__, str(exc)[:120])
+
+
 def check(tests_dir=TESTS_DIR, quiet=False):
     """返回退出码。0 全过 / 1 有缺失 / 2 无法判定。"""
     targets, nonliteral, unparsable = _scan(tests_dir)
+    # 🔴 2026-11-09 二次修：第一版只验顶层模块，等于判据只做了一半 ——
+    # importorskip("PIL.Image") 真正要的是子模块，PIL 在但 PIL.Image 挂了
+    # 照样整块跳过。改为对**完整模块路径**逐个 find_spec。
+    fulls = sorted({t[2] for t in targets})
     tops = sorted({t[3] for t in targets})
-    missing = [m for m in tops if importlib.util.find_spec(m) is None]
+    missing, unknown = [], []
+    for full in fulls:
+        ok, why = _resolvable(full)
+        if ok is None:
+            unknown.append((full, why))
+        elif not ok:
+            missing.append(full)
 
     if not quiet:
         print("=== 可选依赖：importorskip 目标必须在当前环境可导入 ===")
-        print("  扫描 %d 处 importorskip，涉及 %d 个顶层模块：%s"
-              % (len(targets), len(tops), ", ".join(tops) or "（无）"))
+        print("  扫描 %d 处 importorskip，涉及 %d 个模块路径 / %d 个顶层包"
+              % (len(targets), len(fulls), len(tops)))
         for m in missing:
-            sites = ["%s:%d (%s)" % (r, ln, full)
-                     for r, ln, full, top in targets if top == m]
+            sites = ["%s:%d" % (r, ln) for r, ln, full, top in targets if full == m]
             print("  ❌ 缺 %s ⇒ 以下模块会在 collect 阶段静默消失：%s"
                   % (m, "; ".join(sites[:4])))
+        for full, why in unknown:
+            print("  ⚠️ 无法判定 %s：%s" % (full, why))
         for rel, ln, expr in nonliteral:
             print("  ⚠️ 非字面量 importorskip，静态无法判定：%s:%d %s" % (rel, ln, expr))
         for path, exc in unparsable:
             print("  ⚠️ 无法解析：%s %s" % (path, exc))
-    if nonliteral or unparsable:
+    if nonliteral or unparsable or unknown:
         if not quiet:
             print("结论：FAIL（无法判定，fail-closed）")
         return 2
@@ -115,7 +142,7 @@ def check(tests_dir=TESTS_DIR, quiet=False):
             print("结论：FAIL（%d 个模块缺失）" % len(missing))
         return 1
     if not quiet:
-        print("结论：PASS（%d 个模块齐全，收集集不会被可选依赖缩小）" % len(tops))
+        print("结论：PASS（%d 个模块路径齐全，收集集不会被可选依赖缩小）" % len(fulls))
     return 0
 
 
@@ -146,10 +173,18 @@ def selftest():
     # ④ 非字面量 ⇒ fail-closed RC=2
     rc, _ = run({"dyn.py": 'import pytest\nname = "pytest"\npytest.importorskip(name)\n'})
     cases.append(("非字面量 ⇒ fail-closed", rc, 2))
-    # ⑤ 点号模块名取顶层（PIL.Image / Crypto.Cipher.AES）
+    # ⑤ 完整路径都存在 ⇒ 绿（PIL.Image / Crypto.Cipher.AES）
     rc, _ = run({"dotted.py": 'import pytest\npytest.importorskip("PIL.Image")\n'
                               'pytest.importorskip("Crypto.Cipher.AES")\n'})
-    cases.append(("点号模块名只验顶层 ⇒ 绿", rc, 0))
+    cases.append(("完整模块路径齐全 ⇒ 绿", rc, 0))
+    # ⑤b 只验顶层会漏：父包在、子模块不在 ⇒ 必须红。
+    # 这是第一版判据的真实缺陷，注入它必须变红，否则「完整路径」是空话。
+    rc, _ = run({"sub.py": 'import pytest\npytest.importorskip("PIL.DefinitelyMissing")\n'})
+    cases.append(("变异：父包在但子模块缺 ⇒ 红", rc, 1))
+    # ⑤c 顶层包不存在且带子路径 ⇒ find_spec 抛 ModuleNotFoundError，也必须红
+    rc, _ = run({"sub2.py": 'import pytest\n'
+                            'pytest.importorskip("definitely_missing_pkg_xyz.Sub")\n'})
+    cases.append(("变异：顶层缺失的带点路径 ⇒ 红", rc, 1))
     # ⑥ 反向：把缺包那行改成已装模块 ⇒ 回绿（证明因果方向，不是恒红）
     rc, _ = run({"bad.py": 'import pytest\npytest.importorskip("pytest")\n'})
     cases.append(("反向：换回已装模块 ⇒ 回绿", rc, 0))
