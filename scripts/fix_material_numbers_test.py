@@ -246,9 +246,40 @@ def main():
           t13_skip and t13_fc, "skip=%r fc=%r" % (t13_skip, t13_fc))
 
     # T10 真实仓库当前状态
+    #
+    # 🔴 2026-11-09 修：旧写法断言「dry-run 无待修」，隐含假设「材料必须 100% 等于真值」。
+    # 但用户 2026-11-08 明确裁定「官网也就不用动了，因为其实也没人看」，官网那 5 处
+    # **本轮确定不修**，并登记在 material_known_drift.json 里。于是旧断言变成
+    # 「用户按裁定的不修 = 修复器失控」，把一条合规状态判成红——又是「判据没跟上裁定」。
+    # 现在改成：待修的每一处**必须**落在已知漂移登记里；只要有一处没登记就红。
+    # 这样既允许裁定过的例外，也能抓「悄悄多出一处没人批的漂移」。
     fixable_r, manual_r = fmn.collect(truth)
-    check("T10 真实仓库：dry-run 无待修（材料已与真值一致）",
-          not fixable_r, "仍有 %d 个文件待修" % len(fixable_r))
+    drift_entries, drift_issues = cmn.load_known_drift()
+
+    def _num(v):
+        s = str(v).replace(",", "")
+        return float(s) if "." in s else int(s)
+
+    def _key(f, label, got):
+        """与门禁同一口径：label 去掉 HTML 探针后缀，数字一律去掉千分位再比。
+        登记里 got 写的是 146571（无千分位），而待修项拿到的是原文 '146,571' ——
+        不归一就永远匹配不上，T10 会变成"永远红"，那等于没有判据。
+        （注意不能直接用 cmn.coerce_num：它的签名是 coerce_num(raw, want) → 返回一对数，
+        用途是「材料数字 vs 真值」的成对比对，不是单值归一。）"""
+        return (f, str(label).split("（HTML 属性值）")[0], _num(got))
+
+    allowed = {_key(e["file"], e["label"], e["got"]) for e in drift_entries}
+    unreg = []
+    for _abs, rpath, edits in fixable_r:
+        for lineno, _old, _new, changes in edits:
+            for ch in changes:
+                if _key(rpath, ch[0], ch[1]) not in allowed:
+                    unreg.append("%s:%d %s=%s" % (rpath, lineno, ch[0], ch[1]))
+    check("T10 真实仓库：dry-run 待修项全部落在已知漂移登记里",
+          not unreg and not drift_issues,
+          "未登记待修 %d 处%s%s" % (len(unreg),
+                                  (" ｜ " + "; ".join(unreg[:4])) if unreg else "",
+                                  (" ｜ 登记自身有问题：" + "; ".join(drift_issues)) if drift_issues else ""))
 
     bad = [n for n, ok in _results if not ok]
     print("-" * 64)
