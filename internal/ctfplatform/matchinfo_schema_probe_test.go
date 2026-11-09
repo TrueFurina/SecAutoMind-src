@@ -9,7 +9,8 @@ package ctfplatform
 // 与 JSON 原文，无凭证 CI 永绿（与既有 live smoke 同纪律：不伪造）。
 //
 // 用法（服务器 172.16.222.99，runner 环境已配凭证时）：
-//   go test -count=1 -run "LiveMatchInfoSchemaProbe" -v ./internal/ctfplatform/ 2>&1 | grep -A40 "排序 key"
+//   RUN_LIVE_TESTS=1 go test -count=1 -run "LiveMatchInfoSchemaProbe" -v ./internal/ctfplatform/ 2>&1 | grep -A40 "排序 key"
+//   （2026-11-10 起需显式 RUN_LIVE_TESTS=1，见 live_gate_test.go：默认不真打平台）
 //
 // 第二轮（推导逻辑实施）的输入 = 本探针在两个平台上的真实输出，勿凭记忆实现。
 
@@ -41,6 +42,7 @@ func dumpMapKeys(t *testing.T, label string, m map[string]interface{}) {
 // TestCTF2LiveMatchInfoSchemaProbe CTF² 竞技场 match_info + scoreboard 全字段导出。
 // 门控：CTF2_BASE_URL 与 CTF2_AGENT_TOKEN 同时存在才跑，否则 Skip（不伪造）。
 func TestCTF2LiveMatchInfoSchemaProbe(t *testing.T) {
+	requireLiveOptIn(t, "CTF² match_info 探针")
 	baseURL := os.Getenv("CTF2_BASE_URL")
 	token := os.Getenv("CTF2_AGENT_TOKEN")
 	if baseURL == "" || token == "" {
@@ -74,6 +76,7 @@ func TestCTF2LiveMatchInfoSchemaProbe(t *testing.T) {
 // TestDASCTFLiveMatchInfoSchemaProbe DASCTF match_info + overview 全字段导出。
 // 门控：DASCTF_BASE_URL 与 DASCTF_TOKEN 同时存在才跑，否则 Skip。
 func TestDASCTFLiveMatchInfoSchemaProbe(t *testing.T) {
+	requireLiveOptIn(t, "DASCTF match_info 探针")
 	baseURL := os.Getenv("DASCTF_BASE_URL")
 	token := os.Getenv("DASCTF_TOKEN")
 	if baseURL == "" || token == "" {

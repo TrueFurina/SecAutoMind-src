@@ -21,6 +21,7 @@ import (
 )
 
 func TestCTF2LiveSmoke(t *testing.T) {
+	requireLiveOptIn(t, "CTF² 真机冒烟")
 	baseURL := os.Getenv("CTF2_BASE_URL")
 	token := os.Getenv("CTF2_AGENT_TOKEN")
 	if baseURL == "" || token == "" {
@@ -124,6 +125,7 @@ func TestCTF2LiveSmoke(t *testing.T) {
 // TestCTF2LiveTargetChain CTF² 靶机链专项：对 has_container 的题完整跑
 // CreateInstance → GetAccess → DestroyInstance（调试赛允许；正式赛勿在赛前乱开）。
 func TestCTF2LiveTargetChain(t *testing.T) {
+	requireLiveOptIn(t, "CTF² 靶机链（会真建环境）")
 	baseURL := os.Getenv("CTF2_BASE_URL")
 	token := os.Getenv("CTF2_AGENT_TOKEN")
 	if baseURL == "" || token == "" {

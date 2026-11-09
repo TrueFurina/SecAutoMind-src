@@ -24,6 +24,7 @@ import (
 //
 //	DASCTF_BASE_URL=https://<平台> DASCTF_TOKEN=<token> go test ./internal/ctfplatform/ -run TestDasCTFLiveSmoke -v
 func TestDasCTFLiveSmoke(t *testing.T) {
+	requireLiveOptIn(t, "DASCTF 真机冒烟")
 	baseURL := os.Getenv("DASCTF_BASE_URL")
 	token := os.Getenv("DASCTF_TOKEN")
 	if baseURL == "" || token == "" {
