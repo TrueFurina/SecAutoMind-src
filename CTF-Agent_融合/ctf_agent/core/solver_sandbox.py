@@ -58,7 +58,7 @@ def _safe_name(path: str, taken: set) -> str:
     return name
 
 
-def stage_attachments(attachments: Optional[Iterable[str]]) -> List[str]:
+def stage_attachments(attachments: Optional[Iterable[str]], subdir: str = "input") -> List[str]:
     """把真实输入附件复制进沙盒工作目录，返回新路径（解题代码只看得见这些）。
 
     fail-open：不存在的路径 / 目录型附件原样保留（宁可少隔离，不许把可解输入弄丢）。
@@ -68,7 +68,7 @@ def stage_attachments(attachments: Optional[Iterable[str]]) -> List[str]:
         return []
 
     wd = sandbox_workdir()
-    dest_dir = os.path.join(wd, "input")
+    dest_dir = os.path.join(wd, subdir)
     os.makedirs(dest_dir, exist_ok=True)
 
     taken: set = set()
@@ -96,3 +96,67 @@ def cleanup() -> None:
     if _workdir:
         shutil.rmtree(_workdir, ignore_errors=True)
         _workdir = None
+
+
+def _resolve_existing(p: str) -> Optional[str]:
+    """把题库里的相对附件路径解析成真实存在的绝对路径（口径对齐 eval.corpus）。"""
+    if os.path.isabs(p):
+        return p if os.path.exists(p) else None
+    for cand in (os.path.join(_CTF_ROOT, p), p, os.path.join(os.path.dirname(_CTF_ROOT), p)):
+        if os.path.exists(cand):
+            return os.path.abspath(cand)
+    return None
+
+
+def _question_subdir(question) -> str:
+    """每道题一个独立暂存子目录：防不同题同名附件互相覆盖，也防跨题串看。"""
+    qid = str(getattr(question, "id", "") or "q")
+    safe = "".join(c if (c.isalnum() or c in "._-") else "_" for c in qid)[:80]
+    return os.path.join("q", safe or "q")
+
+
+def stage_question_attachments(question) -> List[str]:
+    """把一道题的附件暂存进沙盒工作目录，返回**绝对**路径列表。
+
+    为什么需要它：本地题库 988 条附件**全是相对 ctf_agent/ 的写法**
+    （`data/questions_ext/_attachments/crypto/xxx/ciphertext`）。沙盒 cwd 换到临时
+    目录后，这类相对写法一律失效（脚本 open 不到），所以必须在加载层就把真实输入
+    复制进来并改成绝对路径。
+
+    两条硬规则：
+    - 答案类附件（内容哈希命中题面真值）**不暂存**，保留原路径交 answer_key_filter
+      剔除——否则等于把答案复制进沙盒；
+    - 复制失败/来源是目录时保留原路径（fail-open，宁可少隔离也不许弄丢可解输入）。
+    """
+    try:
+        from core.answer_key_filter import is_answer_key_attachment
+    except Exception:  # noqa: BLE001 - 纯函数缺失不应挡住加载
+        is_answer_key_attachment = lambda q, p: False  # type: ignore
+
+    srcs = [str(a) for a in (getattr(question, "attachments", None) or []) if str(a).strip()]
+    if not srcs:
+        return []
+
+    resolved: List[str] = []
+    for s in srcs:
+        r = _resolve_existing(s)
+        if r is None:
+            resolved.append(s)      # 找不到就原样留着，让既有「缺附件」统计照旧暴露
+        else:
+            resolved.append(r)
+
+    stageable: List[str] = []
+    kept: List[str] = []
+    for r in resolved:
+        try:
+            if is_answer_key_attachment(question, r):
+                kept.append(r)      # 答案文件不进沙盒
+            else:
+                stageable.append(r)
+        except Exception:  # noqa: BLE001
+            kept.append(r)
+
+    staged = stage_attachments(stageable, subdir=_question_subdir(question))
+    out: List[str] = staged + kept
+    return out
+

@@ -94,7 +94,7 @@ class Question:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Question":
-        return cls(
+        obj = cls(
             id=str(data.get("id", "")),
             title=str(data.get("title", "")),
             category=normalize_category(data.get("category", "misc")),
@@ -108,6 +108,16 @@ class Question:
             extra=dict(data.get("extra", {}) or {}),
             answer_disclosed=bool(data.get("answer_disclosed", False)),
         )
+        # 解题沙盒（2026-11-09）：题库附件全是相对 ctf_agent/ 的写法，沙盒 cwd 换到
+        # 一次性目录后相对写法会失效 → 加载时就把真实输入暂存成绝对路径。
+        # 答案类附件不暂存（保留原路径，交给 answer_key_filter 在各消费点剔除）。
+        try:
+            from core.solver_sandbox import stage_question_attachments
+
+            obj.attachments = stage_question_attachments(obj)
+        except Exception:  # noqa: BLE001 - 暂存失败不许挡住题库加载
+            pass
+        return obj
 
     def __post_init__(self) -> None:
         """类别归一化对齐 from_dict（2026-10-21 接线审计续）。

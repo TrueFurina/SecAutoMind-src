@@ -31,7 +31,10 @@ logger = logging.getLogger(__name__)
 # 全局人工干预协调器（Web 面板与所有 solver 共享；初赛现场人工可实时介入卡壳题）
 from core.intervention import InterventionCoordinator  # noqa: E402
 # 解题沙盒工作目录：solver 只看得见本题真实输入，答案库不在射程内（2026-11-09）
-from core.solver_sandbox import sandbox_workdir, stage_attachments, cleanup as sandbox_cleanup  # noqa: E402
+from core.solver_sandbox import (  # noqa: E402
+    sandbox_workdir,
+    stage_question_attachments,
+)
 
 _intervention = InterventionCoordinator()
 
@@ -975,7 +978,7 @@ def build_platform_solver(platform, use_mock: bool = False, cache_dir: str = "da
                 p = await _download(str(u))
                 if p:
                     local_paths.append(p)
-            question.attachments = stage_attachments(local_paths)
+            question.attachments = stage_question_attachments(question)
             if local_paths:
                 logger.info("[%s] 附件就绪: %s", ch.id, local_paths)
         # 靶机访问信息注入描述（web/pwn 需要真实地址）
