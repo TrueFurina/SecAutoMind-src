@@ -1,0 +1,134 @@
+{
+  "_readme": "12 道附件齐全真题的判分状态旁路清单。本文件只记录「题号 → 层 → 理由 → 证据」，不改动任何题目 JSON 的 flag/flag_sha256。统计时按本清单分层：A 层计入可判分分子；B 层不计入判分分母（题库自身未提供可判答案）；C 层单列待核，不进任何分母。所有 flag 一律只存 sha256，不存明文。",
+  "generated_at": "2026-11-10",
+  "scope": "data/questions_real 中附件齐全的 12 道真题",
+  "reference_code": "573d49e",
+  "run_env": {
+    "sandbox_backend": "docker (ctf-tools:1, id 9cf98f5d63a5)",
+    "llm": "deepseek-chat (real network)",
+    "preload_attachments": true,
+    "note": "A 层 6/8 由确定性引擎 math_engine 命中，filterrandom 与 smallsword3 由 LLM 多轮解出，anxun2020_aes 开附件预读后由 LLM 解出"
+  },
+  "totals": {
+    "total": 12,
+    "solved": 8,
+    "unsolved": 4,
+    "judgeable_denominator": 10,
+    "rate_all": "8/12",
+    "rate_judgeable": "8/10",
+    "rate_judgeable_note": "分母 10 = 12 减去 B 层 2 道（题库自述不可解/无标准答案）；C 层 2 道另行单列，不计入任何分母"
+  },
+  "tiers": {
+    "A_solved": [
+      {
+        "id": "real_reverse_sheng",
+        "solver": "math_engine",
+        "elapsed_s": 0.3,
+        "evidence": "12 题同批次跑批（该题未单独留存日志文件，耗时/引擎命中见批次汇总）"
+      },
+      {
+        "id": "real_reverse_upx",
+        "solver": "math_engine",
+        "elapsed_s": 0.4,
+        "evidence": "12 题同批次跑批（该题未单独留存日志文件）"
+      },
+      {
+        "id": "real_crypto_ezrsa",
+        "solver": "math_engine",
+        "elapsed_s": 0.4,
+        "evidence": "/tmp/ds_ezrsa.txt"
+      },
+      {
+        "id": "real_crypto_exciting_inverse",
+        "solver": "math_engine",
+        "elapsed_s": 0.6,
+        "evidence": "12 题同批次跑批（该题未单独留存日志文件）"
+      },
+      {
+        "id": "real_crypto_simplelegendre",
+        "solver": "math_engine",
+        "elapsed_s": 2.0,
+        "evidence": "12 题同批次跑批（该题未单独留存日志文件）"
+      },
+      {
+        "id": "real_crypto_filterrandom",
+        "solver": "llm",
+        "elapsed_s": 16.2,
+        "llm_calls": 15,
+        "act_steps": 13,
+        "evidence": "/tmp/x_real_crypto_filterrandom.txt"
+      },
+      {
+        "id": "real_misc_longjian2024_smallsword3",
+        "solver": "llm",
+        "elapsed_s": 34.6,
+        "llm_calls": 30,
+        "act_steps": 20,
+        "evidence": "/tmp/x_real_misc_longjian2024_smallsword3.txt"
+      },
+      {
+        "id": "real_crypto_anxun2020_aes",
+        "solver": "llm",
+        "elapsed_s": 49.0,
+        "evidence": "开 CTF_AGENT_PRELOAD_ATTACHMENTS=1 后的跑批（该次日志未单独另存，仅存于批次汇总；未开预读时同题 167.5s 失败）",
+        "note": "未开附件预读时 167.5s 失败；开预读后 49.0s 解出且 MATCH True。附件 flag.txt 内容即明文答案，模型此前从未读到附件 —— 失败原因是'没读到附件'，不是 crypto 能力。"
+      }
+    ],
+    "B_unsolvable_by_source": [
+      {
+        "id": "real_crypto_specialcurve2",
+        "tier": "B",
+        "reason": "附件 SpecialCurve2.py 头部 Provenance 注释自述：原始附件在脚本注释中给出的本实例 n/HINT/C 具体值每次运行随机生成、未留存于任何仓库或文档，此处仅恢复【挑战脚本模板】，无法复现本实例真值。没有实例参数即数学上无从解起。",
+        "evidence_paths": [
+          "data/questions_real/_attachments/crypto/real_crypto_specialcurve2/SpecialCurve2.py",
+          "data/questions_real/crypto/real_crypto_specialcurve2.json"
+        ],
+        "bank_flag_sha256": "cd7e815f4a5a378b8a856ee518a1d7277f306221ce6d68d56dd6f27da2571c4f",
+        "verdict": "题库数据缺陷（不可解），非能力未及"
+      },
+      {
+        "id": "real_taishan2021_crypto_cgroup",
+        "tier": "B",
+        "reason": "题目 JSON 的 flag 字段不是 sha256，而是中文明说明，且缺失 flag_sha256 字段，因此 MATCH 永远不可能为 True。",
+        "evidence_paths": [
+          "data/questions_real/crypto/real_taishan2021_crypto_cgroup.json"
+        ],
+        "verdict": "题库数据缺陷（无标准答案，不可判分），非能力未及"
+      }
+    ],
+    "C_hash_conflict_pending": [
+      {
+        "id": "real_reverse_js",
+        "tier": "C",
+        "reason": "附件 coso.js 含三个同名 var wincode（JS 后者覆盖前者），delog 为 ROT13。逐个人工 ROT13 后做回编自洽校验，仅一个候选回编自洽；该候选的 sha256 与题库 flag 字段不符；另试大小写/前缀/去前缀共 7 种变体均不符。coso.js 字节级扫描确认三个 synt{} 全为纯 ASCII、无隐藏字符、无非 ASCII 字节；index.html 仅 31B 无信息。",
+        "evidence_paths": [
+          "data/questions_real/_attachments/reverse/real_reverse_js/coso.js",
+          "data/questions_real/reverse/real_reverse_js.json"
+        ],
+        "our_candidate_sha256": "74e01e0e...(仅存前 8 位，完整值本次未落盘)",
+        "bank_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
+        "status": "未裁定：无法证明我们算错还是题库录错。外部检索未找到该题官方 writeup。",
+        "verdict": "疑似题库哈希录错，不得计入能力分母"
+      },
+      {
+        "id": "10733",
+        "tier": "C",
+        "reason": "确定性引擎 math_engine:crypto_high_exponent 秒级命中并给出 DASCTF{...} 候选，但被 presolve 以 sha256 不符丢弃。已按候选的三种长度（core / core+n / core+n+n）及各自 ROT13 变体共 8 种形态重算 sha256，全部不等于题库 flag 字段。",
+        "evidence_paths": [
+          "data/race_attachments/10733_How_many_rot_are_there的附件/tempdir/CRYPTO附件/task.py",
+          "data/questions_real/crypto/10733_How_many_rot_are_there.json"
+        ],
+        "our_candidate_prefix": "DASCTF{...  前缀 4 位脱敏；日志按格式截断，完整值需从引擎复算",
+        "bank_sha256": "ac232bd941738e22cfcdd6585ae478c19cffbea15d713c00a70ac157485ca6a4",
+        "status": "未裁定：引擎候选与题库哈希冲突。外部检索（2025 西湖论剑初赛 wp、星盟 wp）均未收录该题。",
+        "verdict": "疑似题库哈希录错或引擎 ROT13 处理偏差，不得计入能力分母"
+      }
+    ]
+  },
+  "notes": [
+    "本清单不修改任何题目 JSON。题库数据缺陷本身是有信息量的，不应被刷成绿数。",
+    "B 层剔除依据是题目自身文件声明（Provenance 注释 / flag 字段为中文明说明），属硬证据。",
+    "C 层无外部权威答案可裁定，因此永远单列，不并入任何命中率口径。",
+    "若日后补到官方 writeup 或修好题库，删除对应条目即可恢复该题进入分母。"
+  ]
+}
