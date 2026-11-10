@@ -66,6 +66,14 @@ jobs:
         run: |
           python scripts/check_ci_files_tracked_test.py
           python scripts/check_ci_files_tracked.py
+      # 依赖守卫可达性 + 导入失败告警通道（2026-11-10）：全 AST 判据，先跑变异
+      # 自测证明「判据能变红」，再跑仓库现状。堵两处把能力缺失记成模型不行的
+      # 假阴性：① 守卫写在代码里却因模块级硬导入而永远走不到；② skill 导入
+      # 失败只留一条 debug 日志（甚至无日志）就直接 return None。
+      - name: Dependency guard reachability and import-failure alerting
+        run: |
+          python scripts/check_dep_guard_test.py
+          python scripts/check_dep_guard.py
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
       # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
       # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。

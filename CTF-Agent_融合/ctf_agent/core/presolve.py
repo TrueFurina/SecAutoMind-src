@@ -1510,7 +1510,7 @@ async def _try_web_source_audit(question) -> Optional[str]:
     try:
         from skills.web_source_audit import run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:web_source_audit] 导入失败: %s", exc)
+        _warn_import_once("skills.web_source_audit", exc)
         return None
     for a in attach:
         p = str(a)
@@ -1572,7 +1572,7 @@ async def _try_complex_mult_group(question) -> Optional[str]:
     try:
         from skills.crypto_complex_mult_group import run as scm_run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:complex_mult_group] 导入失败: %s", exc)
+        _warn_import_once("skills.crypto_complex_mult_group", exc)
         return None
     # 从附件 .py 注释块提取 n/HINT/C（SpecialCurve2.py 把真值硬编码在 ''' 注释里）
     n = hint = c = None
@@ -1634,7 +1634,7 @@ async def _try_grid_resample(question) -> Optional[str]:
     try:
         from skills.misc_grid_resample import run as gr_run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:grid_resample] 导入失败: %s", exc)
+        _warn_import_once("skills.misc_grid_resample", exc)
         return None
     for a in img_attach:
         p = str(a)
@@ -1675,7 +1675,7 @@ async def _try_zip_fake_encryption(question) -> Optional[str]:
     try:
         from skills.misc_zip_fake_encryption import run as zip_run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:zip_fake] 导入失败: %s", exc)
+        _warn_import_once("skills.misc_zip_fake_encryption", exc)
         return None
     for a in zip_attach:
         p = str(a)
@@ -1775,7 +1775,7 @@ async def _try_zip_crypto_bruteforce(question) -> Optional[str]:
     try:
         from skills.zip_crypto_bruteforce import run as zc_run  # noqa: F401  仅探测技能可导入
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:zip_crypto] 导入失败: %s", exc)
+        _warn_import_once("skills.zip_crypto_bruteforce", exc)
         return None
 
     for a in zip_attach:
@@ -1848,7 +1848,8 @@ def _zc_run_with_common(params: dict, common: tuple):
 
     try:
         from skills.zip_crypto_bruteforce import run as run_fn
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        _warn_import_once("skills.zip_crypto_bruteforce", exc)
         return None
 
     d = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
@@ -1912,7 +1913,7 @@ async def _try_web_target(question) -> Optional[str]:
     try:
         from skills.web_target_interact import probe as wt_probe
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:web_target] 导入 web_target_interact 失败: %s", exc)
+        _warn_import_once("skills.web_target_interact", exc)
         return None
     try:
         diag = wt_probe({"url": url, "schemes": ["http", "https"], "timeout": 6})
@@ -1930,7 +1931,7 @@ async def _try_web_target(question) -> Optional[str]:
     try:
         from skills.web_sqli import run as sqli_run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:web_target] 导入 web_sqli 失败: %s", exc)
+        _warn_import_once("skills.web_sqli", exc)
         return None
     for method, param in (("POST", "username"), ("GET", "id"), ("GET", "name")):
         try:
@@ -4118,7 +4119,7 @@ async def _try_thoroughlystripped(question) -> Optional[str]:
     try:
         from skills.thoroughlystripped import run as ts_run
     except Exception as exc:  # noqa: BLE001
-        logger.debug("[presolve:thoroughlystripped] 导入失败: %s", exc)
+        _warn_import_once("skills.thoroughlystripped", exc)
         return None
     for a in attach:
         p = str(a)

@@ -13,20 +13,31 @@ tesseract 失败时回退到视觉 LLM（qwen-vl）读取揭示图。
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import shutil
 import subprocess
 
-import numpy as np
-from PIL import Image
+_log = logging.getLogger(__name__)
 
+# 依赖守卫必须「可达」（2026-11-10）。原实现把 numpy/PIL 放在模块级硬导入，
+# 又在 try 里重复 import 一次只为设 HAS_DEPS：缺依赖时模块在导入阶段就抛
+# ImportError，根本走不到 HAS_DEPS = False；依赖齐全时该标志又恒为 True，
+# 于是 run() 里的 `if not HAS_DEPS` 是**永不可达的死分支**。调用方
+# （core/presolve.py 的网格重采样通道）只能拿到一条 debug 日志 + None，
+# 与「试过了没解出」完全同形 ⇒ 又是「能力不存在被记成模型不行」。
 try:
-    import numpy as _np  # noqa: F401
-    import PIL as _pil  # noqa: F401
+    import numpy as np
+    from PIL import Image
     HAS_DEPS = True
-except Exception:  # noqa: BLE001
+    _DEP_ERR = ""
+except ImportError as _exc:  # noqa: BLE001
     HAS_DEPS = False
+    _DEP_ERR = str(_exc)
+
+# 缺依赖告警只发一次（每进程），措辞必须点明「不是解不出，是能力不存在」。
+_DEPS_WARNED = False
 
 
 def _flag_regex(flag_pattern: str) -> re.Pattern:
@@ -199,7 +210,18 @@ def _vision_ocr(reveal_path: str, flag_sha256: str, flag_pat: re.Pattern) -> str
 
 def run(params: dict) -> dict:
     if not HAS_DEPS:
-        return {"ok": False, "error": "缺少 numpy/PIL 依赖"}
+        global _DEPS_WARNED
+        if not _DEPS_WARNED:
+            _DEPS_WARNED = True
+            _log.warning(
+                "[misc_grid_resample] 依赖缺失（%s）→ 网格重采样能力不存在。"
+                "这不是「解不出」，是能力不存在：装 numpy / Pillow 后恢复。",
+                _DEP_ERR or "numpy/Pillow")
+        # 保留原有 ok=False / error 契约；新增 reason 让调用方能在机器层面
+        # 把「能力不存在」与「试过没解出」分开（现有调用方只读 ok / flag，
+        # 不影响任何判分口径）。
+        return {"ok": False, "error": "缺少 numpy/PIL 依赖",
+                "reason": "dependency_missing"}
     path = params.get("file") or params.get("path")
     if not path or not os.path.isfile(path):
         return {"ok": False, "error": f"文件不存在: {path}"}
