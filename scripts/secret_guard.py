@@ -92,13 +92,17 @@ SUSPECT_PATH = re.compile(
 #    scripts/change_pw.py，而 PATTERNS 只认带前缀的密钥形态（sk-/ghp_/xox-/
 #    app_secret…）；短明文密码没有任何可识别特征 ⇒ 门禁全程 RC=0、零告警。
 #    立尺方式：不按「值长什么样」（会误伤教学语料/测试断言），而按
-#    「连接调用同一行里出现 username/password 字面量赋值」这一上下文。
-#    全仓提交态实测：带此上下文的命中仅 1 处（即该 P0 文件），
+#    「连接调用窗口内出现 username/password 字面量赋值」这一上下文。
+#    🔴 2026-11-10 二次修正：初版要求 connect( 与 password= **同一行**，
+#       实测多行函数调用（connect( 换行后写 password=）直接绕过、门禁 RC=0。
+#       故窗口改为可跨行的 [\s\S]{0,300}?，值本身仍不跨行（[^'"{}$\n]）。
+#       全仓提交态 4134 文件实测：放宽后新旧规则均 0 命中 ⇒ 误报面为零。
+#    全仓提交态实测（脚本重写前）：带此上下文的命中仅 1 处（即该 P0 文件），
 #    测试夹具常量赋值与断言字符串内容（`=` 后非引号字面量）均不匹配。
 #    值不会被捕获进 finding（见 scan_dir ③），只登记 文件:行。
 NETWORK_PASSWORD_RE = re.compile(
     r'''\b(?:connect|sshclient|sftp|psycopg2|pymysql|create_engine)\b'''
-    r'''[^\n]{0,160}?\b(?:password|passwd|pwd)\s*=\s*['"][^'"{}$\n]{4,80}['"]''',
+    r'''[\s\S]{0,300}?\b(?:password|passwd|pwd)\s*=\s*['"][^'"{}$\n]{4,80}['"]''',
     re.I,
 )
 
@@ -934,6 +938,25 @@ def scan_dir(root, fps=None):
             except Exception:
                 continue
             scanned += 1
+            # ③ 连接调用窗口里的明文密码（2026-11-10 P0，见 NETWORK_PASSWORD_RE 注释）。
+            #    按**文件全文**匹配而非逐行：多行函数调用（connect( 与 password=
+            #    分处不同行）曾实测绕过同行规则、门禁恒绿。窗口限 300 字符，
+            #    行号取 m.end() 所在的 password= 行（白名单哈希钉住真正含值那行）。
+            #    🔴 值绝不进 masked：mask() 对 <=12 字符只留前 3 位 ⇒ 二次泄露；
+            #       只登记 文件:行，由人去本地核对并轮换（删文件/清历史都撤不回）。
+            #    与 ② 同口径：测试夹具目录降级为 suspect，不阻塞但留痕。
+            text = "\n".join(lines)
+            for m in NETWORK_PASSWORD_RE.finditer(text):
+                hit_line = text.count("\n", 0, m.end()) + 1
+                findings.append({
+                    "file": rel,
+                    "line": hit_line,
+                    "kind": "连接调用中的明文密码",
+                    "masked": "<值不输出：短密码打码仍可辨，按 P0 轮换处理>",
+                    "placeholder": False,
+                    "suspect": bool(SUSPECT_PATH.search(rel)),
+                    "forced": False,
+                })
             for lineno, line in enumerate(lines, 1):
                 # ① 真 key 指纹反查（最高优先级）：只要出现本项目在用的凭证片段就报警，
                 #    与正则形态无关，**不受** placeholder / SELF_EXEMPT / SUSPECT_PATH 影响。
@@ -968,21 +991,6 @@ def scan_dir(root, fps=None):
                             "suspect": suspect,
                             "forced": False,
                         })
-                # ③ 连接调用里的明文密码（2026-11-10 P0，见 NETWORK_PASSWORD_RE 注释）。
-                #    🔴 值绝不进 masked：mask() 对 <=12 字符只保留前 3 位，
-                #       短密码打码后仍可辨，等于二次泄露。这里只报 文件:行，
-                #       由人去本地核对并**轮换**（删文件/清历史都撤不回已公开凭据）。
-                #    与 ② 同口径：测试夹具目录降级为 suspect，不阻塞但留痕。
-                if NETWORK_PASSWORD_RE.search(line):
-                    findings.append({
-                        "file": rel,
-                        "line": lineno,
-                        "kind": "连接调用中的明文密码",
-                        "masked": "<值不输出：短密码打码仍可辨，按 P0 轮换处理>",
-                        "placeholder": False,
-                        "suspect": bool(SUSPECT_PATH.search(rel)),
-                        "forced": False,
-                    })
     return scanned, findings
 
 
