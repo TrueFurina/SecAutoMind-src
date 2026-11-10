@@ -92,6 +92,11 @@ PROBE_SELFTEST_TIMEOUT = 120.0
 # ── 静态扫描 ──────────────────────────────────────────────
 
 
+# 扫描集覆盖下限（2026-11-11）：目录为空/被移走时 B/C/D 三层全跳过，
+# 「清单/依赖/协议三层一致」退化成空真。实测 3 个服务，下限取 2。
+MIN_SERVICES = 2
+
+
 def list_services(base):
     """mcp-servers/ 下的服务目录（按名排序，跳过缓存/隐藏目录）。"""
     out = []
@@ -461,6 +466,8 @@ def main():
     ap.add_argument("--dir", default=None, help="mcp-servers 目录（默认仓内）")
     ap.add_argument("--no-probe", action="store_true", help="跳过子进程协议自证")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--no-coverage-check", action="store_true",
+                    help="仅回归夹具用：显式跳过服务数下限（CI 默认入口不得带）")
     args = ap.parse_args()
 
     base = os.path.abspath(args.dir) if args.dir else MCP_DIR
@@ -479,6 +486,7 @@ def main():
     indexes = {fn: index_entries(path) for fn, path in index_paths.items()}
     services = list_services(base)
     disk_names = [name for name, _ in services]
+    coverage_fail = (not args.no_coverage_check) and len(services) < MIN_SERVICES
 
     findings = []
     report = []
@@ -558,10 +566,10 @@ def main():
                            "detail": v["detail"]} for k, v in sorted(probe.items())},
         })
 
-    ok = not findings
+    ok = not findings and not coverage_fail
     if args.json:
         print(json.dumps({
-            "root": base, "ok": ok,
+            "root": base, "ok": ok, "coverage_ok": not coverage_fail,
             "indexed": {fn: sorted(t) for fn, t in indexes.items()},
             "services": report, "findings": findings,
         }, ensure_ascii=False, indent=2))
@@ -569,6 +577,10 @@ def main():
 
     print("MCP 服务清单与契约一致性 · 目录 %s" % base)
     print("  目录内服务 %d 个：%s" % (len(disk_names), ", ".join(disk_names) or "（无）"))
+    if coverage_fail:
+        print("  [FAIL] 扫描集覆盖不足：目录内仅 %d 个服务 < 下限 %d（实测 3）。"
+              "服务目录被移走会让三层校验变成空真，fail-closed 判红。"
+              % (len(services), MIN_SERVICES))
     for fn, table in indexes.items():
         print("  %s 收录 %d 个：%s" % (fn, len(table), ", ".join(sorted(table)) or "（无）"))
     for item in report:
@@ -593,7 +605,9 @@ def main():
                     for d in item["third_party"]))
     for f in findings:
         print("  [FAIL] (%s) %s：%s" % (f["check"], f["target"], f["detail"]))
-    if ok:
+    if coverage_fail:
+        print("  [BLOCK] 扫描集覆盖不足，本门禁无法判定（详见上）")
+    elif ok:
         print("  [PASS] 清单/依赖/协议三层一致（目录 ↔ 索引 ↔ tools/list）")
     else:
         print("  [BLOCK] %d 处不一致（使用者会照着一份错的清单或文档配置）" % len(findings))

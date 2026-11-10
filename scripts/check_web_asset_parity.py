@@ -65,6 +65,10 @@ EXIT_OK = 0
 EXIT_DRIFT = 1
 EXIT_ENV = 2
 
+# 扫描集覆盖下限（2026-11-11）：两侧目录被移走/为空时 source_count=target_count=0，
+# 比对结果自然「一致无漂移」⇒ 永久绿。实测正常态两侧各 72 个文件，下限取 50。
+MIN_SCANNED_ASSETS = 50
+
 
 # ---------------------------------------------------------------- 工具
 
@@ -250,6 +254,8 @@ def main():
     parser.add_argument("--target", default=None, help="嵌入副本目录（默认 <root>/internal/app/web）")
     parser.add_argument("--json", action="store_true", help="输出 JSON（CI 用）")
     parser.add_argument("--sync", action="store_true", help="把源副本同步到嵌入副本（会写文件）")
+    parser.add_argument("--no-coverage-check", action="store_true",
+                        help="仅回归夹具用：显式跳过扫描集下限（CI 默认入口不得带）")
     args = parser.parse_args()
 
     if args.root:
@@ -263,6 +269,25 @@ def main():
     result = compare(source_dir, target_dir)
 
     env_error = bool(result["hard_issues"]) and not result["missing_in_target"] and not result["content_mismatch"]
+
+    coverage_fail = False
+    if not args.no_coverage_check and not env_error:
+        low = [label for label, key in (("源", "source_count"), ("目标", "target_count"))
+               if result[key] < MIN_SCANNED_ASSETS]
+        if low:
+            coverage_fail = True
+            result["coverage_error"] = (
+                "扫描集覆盖不足：%s 文件数 < 下限 %d（实测 72）⇒ 空集/缩小会让"
+                "「一致无漂移」变成空真" % ("/".join(low), MIN_SCANNED_ASSETS))
+            result["ok"] = False
+
+    if coverage_fail:
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(render_human(result))
+            print("[FAIL] " + result["coverage_error"])
+        return EXIT_DRIFT
 
     if args.sync and not env_error:
         if result["ok"]:

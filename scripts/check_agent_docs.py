@@ -151,6 +151,10 @@ def check_closing_list(root):
 # 从不退役。加这个上限，是让"新增一份顶层文档"变成一次显式决策（要么退役旧的，
 # 要么把新文档放进子目录），而不是顺手写一个。
 TOP_LEVEL_CAP = 44
+
+# 扫描集覆盖下限（2026-11-11）：docs/ 顶层被移走/为空时 C3「0 份全部登记」与
+# C5「0 ≤ 44」都是 vacuous truth ⇒ 永久 PASS。实测顶层 32 份 .md，下限取 15。
+MIN_TOP_LEVEL_DOCS = 15
 # ── C5 顶层白名单（2026-10-31 收紧）────────────────────────────────────
 # 旧判据是「顶层 ≤ 44 份」——只在**撞线时**才红。实测后果：并行会话往顶层丢文件，
 # 一次性把顶层推到 45 份触发红，然后要有人中途停下来清理（2026-10-31 实况）。
@@ -229,6 +233,20 @@ def check_gates_map(root):
     if _read(gm).rstrip("\n") != expected.rstrip("\n"):
         return ["C6 docs/GATES.md 与 ci.yml 不一致（门禁地图过期）："
                 "跑 python scripts/gen_gates_map.py --write"]
+    return []
+
+
+def check_scan_coverage(root):
+    """C7 扫描集下限：只在门禁入口用，self_test 的最小树不参与。"""
+    docs_dir = os.path.join(root, "docs")
+    if not os.path.isdir(docs_dir):
+        return []  # C5 已单独报「docs/ 不存在」
+    n = len([f for f in os.listdir(docs_dir)
+             if f.endswith(".md") and os.path.isfile(os.path.join(docs_dir, f))])
+    if n < MIN_TOP_LEVEL_DOCS:
+        return ["C7 扫描集覆盖不足：docs/ 顶层仅 %d 份 .md < 下限 %d（实测 32）。"
+                "扫描范围被缩小会让 C3/C5 退化成空真，fail-closed 判红。"
+                % (n, MIN_TOP_LEVEL_DOCS)]
     return []
 
 
@@ -360,12 +378,16 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--root", default=ROOT)
+    ap.add_argument("--no-coverage-check", action="store_true",
+                    help="仅局部/夹具用：显式跳过扫描集下限（CI 默认入口不得带）")
     args = ap.parse_args()
 
     if args.self_test:
         return self_test()
 
     errs = run_all(args.root)
+    if not args.no_coverage_check:
+        errs.extend(check_scan_coverage(args.root))
     if args.json:
         print(json.dumps({"ok": not errs, "errors": errs}, ensure_ascii=False, indent=2))
     else:
@@ -384,6 +406,7 @@ def main():
             print("  [PASS] C4 收尾清单八项齐备")
             print("  [PASS] C5 docs 顶层文档数 ≤ %d（只许减不许增）" % TOP_LEVEL_CAP)
             print("  [PASS] C6 门禁地图与 ci.yml 一致")
+            print("  [PASS] C7 docs 顶层扫描集 ≥ %d 份（实测 32）" % MIN_TOP_LEVEL_DOCS)
             print("-" * 62)
             print("结论：PASS")
     return 0 if not errs else 1

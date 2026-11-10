@@ -25,6 +25,7 @@
     T16 真实 mcp-servers/ 当前状态                  -> exit 0
 """
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -117,6 +118,16 @@ def run(args, mode=None):
     env["PYTHONIOENCODING"] = "utf-8"
     if mode:
         env["FIXTURE_MODE"] = mode
+    p = subprocess.run([sys.executable, CHECKER, "--no-coverage-check"] + args,
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", env=env, timeout=600)
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+def run_full(args):
+    """不带跳过开关：服务数下限必须生效（T15/T16 用）。"""
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
     p = subprocess.run([sys.executable, CHECKER] + args, capture_output=True,
                        text=True, encoding="utf-8", errors="replace", env=env,
                        timeout=600)
@@ -268,6 +279,27 @@ def main():
     # T16 真实 mcp-servers/
     rc, out = run([])
     check("T16 真实 mcp-servers/ 当前状态 -> exit 0", rc == 0, "rc=%d\n%s" % (rc, out))
+
+    # T17/T18 扫描集防缩水（2026-11-11）：空服务目录会让三层校验变成空真
+    rc, out = run_full([])
+    check("T17 真实仓库默认入口服务数下限生效 -> exit 0", rc == 0,
+          "rc=%d %s" % (rc, out[:200]))
+    repo = os.path.dirname(HERE)
+    d = tempfile.mkdtemp(prefix="mcp_empty_")
+    try:
+        for fn in ("README.md", "README_CN.md"):
+            src = os.path.join(repo, "mcp-servers", fn)
+            dst = os.path.join(d, fn)
+            if os.path.isfile(src):
+                shutil.copy(src, dst)
+            else:
+                with open(dst, "w", encoding="utf-8") as fh:
+                    fh.write("# empty")
+        rc, out = run_full(["--dir", d])
+        check("T18 变异：空服务目录必须 fail-closed 判红",
+              rc == 1 and "扫描集覆盖不足" in out, "rc=%d %s" % (rc, out[:200]))
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
     failed = [n for n, ok in _results if not ok]
     print("-" * 64)

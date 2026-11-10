@@ -71,6 +71,10 @@ CITE_TAG = "[非本服务端口]"
 CITE_PREFIX = "docs/evidence/"
 MAX_CITES = 40
 
+# 扫描集覆盖下限（2026-11-11）：docs/ 被移走或 os.walk 为空时 scanned=0，
+# findings 恒空 => 永久 PASS。实测正常态 247 个文件，下限取 100 留足余量。
+MIN_SCANNED = 100
+
 
 def is_cited(rel_to_root, line):
     return rel_to_root.startswith(CITE_PREFIX) and CITE_TAG in line
@@ -142,6 +146,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=None, help="检查目录（默认 docs/）")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--no-coverage-check", action="store_true",
+                    help="仅回归夹具用：显式跳过扫描集下限（CI 默认入口不得带）")
     args = ap.parse_args()
 
     server, mcp = read_ports()
@@ -153,6 +159,7 @@ def main():
         return 2
 
     findings, scanned, skipped = scan_dir(base, allowed)
+    coverage_fail = (not args.no_coverage_check) and scanned < MIN_SCANNED
 
     # 豁免过滤（透明：被豁免的照样打印，只是不算失败）
     exempted, cited, real = [], [], []
@@ -166,7 +173,7 @@ def main():
         else:
             real.append(f)
     findings = real
-    ok = not findings
+    ok = not findings and not coverage_fail
 
     if len(cited) > MAX_CITES:
         print("  [FAIL] 行内标注 %d 处 > 上限 %d：标注已泛滥，收敛后再谈放行"
@@ -177,6 +184,7 @@ def main():
         print(json.dumps({
             "truth_source": "config.share.yaml: server.port=%s, mcp.port=%s" % (server, mcp),
             "root": base, "scanned": scanned, "skipped_dirs": skipped,
+            "coverage_ok": not coverage_fail,
             "ok": ok, "findings": findings, "exempted": exempted, "cited": cited,
         }, ensure_ascii=False, indent=2))
         return 0 if ok else 1
@@ -200,11 +208,17 @@ def main():
         print("  [FAIL] %s:%d [%s] 端口 %s（应为 %s）"
               % (f["file"], f["line"], f["kind"], f["port"], server))
         print("         %s" % f["text"])
+    if coverage_fail:
+        print("  [FAIL] 扫描集覆盖不足：仅 %d 个文件 < 下限 %d（实测 247）。"
+              % (scanned, MIN_SCANNED))
+        print("         扫描范围被缩小 / os.walk 为空会让本门禁恒真，fail-closed 判红。")
     if ok:
         print("  [PASS] docs 内服务端点端口与交付配置一致"
               "（另有 %d 处行内标注为非本服务端口，未计入失败）" % len(cited))
-    else:
+    elif not coverage_fail:
         print("  [BLOCK] %d 处端口偏离（照文档操作会连不上服务）" % len(findings))
+    else:
+        print("  [BLOCK] 扫描集覆盖不足，本门禁无法判定（详见上）")
     return 0 if ok else 1
 
 

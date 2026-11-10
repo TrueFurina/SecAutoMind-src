@@ -60,7 +60,7 @@ MIN_CANDIDATES = 15        # 遍历型候选数（实测 21）
 MIN_TARGETS = 8            # 实际探测目标数（实测 16，其中 7 条为挂账）
 MIN_RED = 8                # 空集判红数（实测 9）
 MAX_EXEMPTIONS = 12        # 豁免上限，防止「全部豁免 = 判据空转」
-MAX_KNOWN_FALSE_GREEN = 7  # 已确认但未修的假绿挂账上限（实测 7，只减不增）
+MAX_KNOWN_FALSE_GREEN = 0  # 已确认但未修的假绿挂账上限（2026-11-11 清零，只减不增）
 
 # 具名豁免：不适用本判据的遍历型门禁，必须写清具体理由。
 NOT_PROBED: dict[str, str] = {
@@ -72,30 +72,23 @@ NOT_PROBED: dict[str, str] = {
         "官网 26 处用户裁定不动的既有挂账，正常态本身 RC=1，不得由本判据吞掉",
     "check_quant_effect.py":
         "CI 用 --full 跑量化效果重算，耗时长且依赖实验产物，不做空集子进程探测",
+    "audit_benchmark_validity.py":
+        "数据源是两个固定 JSON（open 读取，不受目录遍历影响）；实测把 listdir 置空后"
+        "--check 输出 16/55 与 16/16 与正常态逐字相同、PASS 结论不变 ⇒ 空集语义不适用",
+    "check_final_artifacts_freeze.py":
+        "got 为空走 SKIP 是 2026-10-14 审计后的有意设计（CI 检出无 PPT/包/视频，"
+        "否则恒红）；且清单 artifacts 为空已有独立 BLOCK 防线 ⇒ 空集语义不适用",
     "check_line_endings.py":
         "本机 CRLF 工作树两个 .sh 是已知假红（git blob 纯 LF）；纯 LF 提交态实测 RC=0，"
         "空集态本身也已判红，由提交态门禁集合覆盖",
 }
 
-# 已确认「空集仍报绿」但本轮未修的门禁 —— 挂账不是通过。
-# 冻结基线：数量只减不增；任何一条修复后 empty_rc 会变红，届时本表必须删除该键
-# （R8 会判「挂账过期」），否则判据变红，杜绝挂账退化成永久遮羞布。
-KNOWN_FALSE_GREEN: dict[str, str] = {
-    "audit_benchmark_validity.py":
-        "空集下真求解器 0 题 / 命中率 0.0% 仍 PASS（3 项断言全过）；需加题数下限",
-    "check_agent_docs.py":
-        "空集下 C3/C5 等数量型判据 vacuous truth 全过；需加 docs 顶层文档数下限",
-    "check_doc_port_consistency.py":
-        "空集下自报『扫描 docs（0 个文件）』仍 PASS；需加扫描文件数下限",
-    "check_final_artifacts_freeze.py":
-        "空集下没有冻结产物可比，仍 PASS；需加产物数下限",
-    "check_flag_extract_contract.py":
-        "空集下『仓库内各拷贝逐份相符』退化为 0 份空真；需加拷贝数下限",
-    "check_mcp_servers.py":
-        "空集下仍按固定清单报 3 个 server 并 PASS，目录侧遍历未进结论；需修或定性不适用",
-    "check_web_asset_parity.py":
-        "空集下源/目标各 0 文件仍判『一致无漂移』；需加两侧文件数下限",
-}
+# 已确认「空集仍报绿」的门禁 —— 2026-11-11 已全部清零。
+# 冻结基线：数量只减不增，现为 0（不允许再新增假绿）。历史上每修好一条就从本表删键：
+#   check_doc_port_consistency / check_web_asset_parity / check_flag_extract_contract /
+#   check_agent_docs / check_mcp_servers 已补下限；audit_benchmark_validity 与
+#   check_final_artifacts_freeze 经实测定性为「空集语义不适用」并移入 NOT_PROBED。
+KNOWN_FALSE_GREEN: dict[str, str] = {}
 
 # 空集 patch 在「模块已加载后」生效：加载阶段不受影响，只模拟运行期扫描集塌陷。
 PROBE = r'''
@@ -223,7 +216,8 @@ def run_probe(name: str, argv: list[str], mode: str) -> dict:
 
 def check(results: dict[str, dict], candidates: list[str],
           targets: list[str], exemptions: dict[str, str],
-          n_ci_gates: int, known: dict[str, str]) -> list[str]:
+          n_ci_gates: int, known: dict[str, str],
+          max_known: int | None = None) -> list[str]:
     """纯函数判据，便于变异自测注入合成数据。"""
     errors: list[str] = []
     cand = set(candidates)
@@ -252,9 +246,10 @@ def check(results: dict[str, dict], candidates: list[str],
             errors.append("R8 挂账键不在候选集内（悬空）: %s" % key)
         if len(reason.strip()) < 12:
             errors.append("R8 挂账理由不具体: %s" % key)
-    if len(known) > MAX_KNOWN_FALSE_GREEN:
+    cap = MAX_KNOWN_FALSE_GREEN if max_known is None else max_known
+    if len(known) > cap:
         errors.append("R8 挂账 %d > 冻结基线 %d（只减不增，不许新增假绿）"
-                      % (len(known), MAX_KNOWN_FALSE_GREEN))
+                      % (len(known), cap))
 
     # R5 未探测且未豁免
     missing = sorted(cand - set(targets) - set(exemptions))
@@ -359,8 +354,8 @@ def selftest() -> int:
     n_ci = [34]
 
     def with_known(r, c, t, ex, k, n):
-        """把 7 个候选改成「已确认假绿但登记挂账」的形态。"""
-        for name in c[12:19]:
+        """把 MAX_KNOWN_FALSE_GREEN 个候选改成「已确认假绿但登记挂账」的形态。"""
+        for name in c[12:17]:  # 自测固定 5 条，独立于生产上限（现为 0）
             t.append(name)
             r[name] = rec(empty=0)
             k[name] = "已确认空集假绿的具体理由文字足够长"
@@ -377,7 +372,7 @@ def selftest() -> int:
         r = {x: {kk: dict(vv) for kk, vv in d.items()} for x, d in results.items()}
         c, t, ex, k = list(candidates), list(targets), dict(exemptions), {}
         mutate(r, c, t, ex, k, n_ci[0])
-        errs = check(r, c, t, ex, n_ci[0], k)
+        errs = check(r, c, t, ex, n_ci[0], k, max_known=5)
         ok = bool(errs) if expect_red else not errs
         print("  [%s] %-52s -> %s" % ("PASS" if ok else "FAIL", name,
                                       "RED" if errs else "GREEN"))

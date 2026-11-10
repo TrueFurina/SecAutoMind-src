@@ -157,7 +157,7 @@ def do_generate() -> int:
     return 0
 
 
-def do_check() -> int:
+def do_check(require_coverage: bool = True) -> int:
     golden = _read_golden()
     # 锁正则字面量本身：连 pattern 字符串都不许单独漂移
     if golden.get("source_regex") != FLAG_RE.pattern:
@@ -176,7 +176,7 @@ def do_check() -> int:
         return 1
     print(f"[OK] flag 提取契约一致：{len(golden['cases'])} 条用例，正则 {FLAG_RE.pattern!r}")
     # 跨语言 golden 过了还不够：仓库内另外 20+ 份拷贝也要锁住（CI 的 --check 因此覆盖两处）
-    return do_check_copies()
+    return do_check_copies(require_coverage)
 
 
 # ── 拷贝一致性（2026-10-31 加）：跨语言契约只锁住了 flag_util ↔ Go 两侧 ──
@@ -200,6 +200,10 @@ ALT_PREFIX = "([A-Za-z0-9_]{2,})\\{"
 SPAN_RE = re.compile(r"\{(\d+),(\d+)\}")
 SCAN_SKIP_DIRS = {".git", "__pycache__", "node_modules", ".workbuddy",
                   "CTF-Agent_融合", "dist", "miniconda3", "venv"}
+
+# 扫描集覆盖下限（2026-11-11）：rglob 为空时 bad 恒空 =>「各拷贝逐份相符」
+# 退化成 0 份空真。实测 scripts 216 + data 202 = 418 个 .py，下限取 200。
+MIN_SCANNED_PY = 200
 
 # 已备案的「有意不同」：路径后缀 → 理由（**必须非空**，否则本豁免变成静默放水）。
 #
@@ -229,18 +233,23 @@ ACCEPTED_VARIANTS = {
 }
 
 
-def scan_regex_copies(root: Path):
+def scan_regex_copies(root: Path, stats: dict | None = None):
     r"""扫描 root 下 .py，返回与判分口径不符的拷贝 [(file, line, kind, reason)]。
 
     只锁「带长度约束的候选抽取正则」；形如 `^(...)\{(.*)\}$` 的分裂正则
     （无 {n,m}）不在此列，故跳过——避免把正常代码判成漂移。
+    stats 传入时累加 scanned，供门禁入口做扫描集下限；selftest 的临时目录不传。
     """
     bad = []
+    scanned = 0
     if not root.is_dir():
+        if stats is not None:
+            stats["scanned"] = stats.get("scanned", 0)
         return bad
     for p in sorted(root.rglob("*.py")):
         if SCAN_SKIP_DIRS & set(p.parts):
             continue
+        scanned += 1
         try:
             lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
@@ -278,14 +287,17 @@ def scan_regex_copies(root: Path):
                 except ValueError:
                     rel = p.as_posix()
                 bad.append((rel, i, "grep" if grep_form else "python", "；".join(why)))
+    if stats is not None:
+        stats["scanned"] = stats.get("scanned", 0) + scanned
     return bad
 
 
-def do_check_copies() -> int:
+def do_check_copies(require_coverage: bool = True) -> int:
     roots = [REPO / "scripts", REPO / "data"]
     bad, accepted = [], []
+    stats: dict = {}
     for r in roots:
-        for item in scan_regex_copies(r):
+        for item in scan_regex_copies(r, stats):
             if any(item[0].endswith(k) for k in ACCEPTED_VARIANTS):
                 accepted.append(item)
             else:
@@ -301,7 +313,13 @@ def do_check_copies() -> int:
             print("  %s:%d [%s] %s" % (f, i, kind, why))
         print("  ⇒ 清除侧比判分侧窄 = 「0 命中」只证明没有长 flag。一律改成 {1,200}。")
         return 1
-    print("[OK] flag 正则拷贝一致：仓库内各拷贝与判分口径逐份相符")
+    if require_coverage and stats.get("scanned", 0) < MIN_SCANNED_PY:
+        print("[FAIL] 扫描集覆盖不足：仅扫到 %d 个 .py < 下限 %d（实测 418）。"
+              % (stats.get("scanned", 0), MIN_SCANNED_PY))
+        print("       扫描范围被缩小 / rglob 为空会让「各拷贝逐份相符」变成 0 份空真。")
+        return 1
+    print("[OK] flag 正则拷贝一致：%d 个 .py 内各拷贝与判分口径逐份相符"
+          % stats.get("scanned", 0))
     return 0
 
 
@@ -448,13 +466,15 @@ def main() -> int:
     g.add_argument("--generate", action="store_true", help="依据真值源刷新 golden")
     g.add_argument("--check", action="store_true", help="只比对不写入（CI），漂移 rc=1")
     g.add_argument("--selftest", action="store_true", help="变异验证契约有效性")
+    ap.add_argument("--no-coverage-check", action="store_true",
+                    help="仅回归/局部用：显式跳过扫描集下限（CI 默认入口不得带）")
     args = ap.parse_args()
 
     if args.generate:
         return do_generate()
     if args.selftest:
         return do_selftest()
-    return do_check()  # 默认 == --check
+    return do_check(not args.no_coverage_check)  # 默认 == --check
 
 
 if __name__ == "__main__":

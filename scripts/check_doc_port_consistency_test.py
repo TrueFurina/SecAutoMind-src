@@ -41,6 +41,13 @@ def truth_port():
 
 
 def run(args):
+    p = subprocess.run([sys.executable, CHECKER, "--no-coverage-check"] + args,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+def run_full(args):
+    """不带跳过开关：扫描集覆盖检查必须生效（T8/T9 用）。"""
     p = subprocess.run([sys.executable, CHECKER] + args,
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return p.returncode, (p.stdout or "") + (p.stderr or "")
@@ -106,6 +113,18 @@ def main():
     # T7 真实 docs
     rc, out = run([])
     check("T7 真实 docs/ 当前状态 -> exit 0", rc == 0, "rc=%d\n%s" % (rc, out))
+
+    # T8/T9 扫描集防缩水（2026-11-11）：空集恒绿是最常见的假绿形态
+    rc, out = run_full([])
+    check("T8 真实仓库默认入口覆盖检查生效 -> exit 0", rc == 0,
+          "rc=%d %s" % (rc, out))
+    d = tempfile.mkdtemp(prefix="docport_empty_")
+    try:
+        rc, out = run_full(["--dir", d])
+        check("T9 变异：空扫描集必须 fail-closed 判红",
+              rc == 1 and "扫描集覆盖不足" in out, "rc=%d %s" % (rc, out))
+    finally:
+        os.rmdir(d)
 
     failed = [n for n, ok in _results if not ok]
     print("-" * 64)

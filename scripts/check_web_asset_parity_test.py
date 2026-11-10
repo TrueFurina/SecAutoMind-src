@@ -34,9 +34,10 @@ _results = []
 
 
 def run_checker(source, target):
-    """跑门禁，返回 (exit_code, stdout)。"""
+    """跑门禁，返回 (exit_code, stdout)。夹具都是小目录，显式跳过覆盖下限。"""
     proc = subprocess.run(
-        [sys.executable, CHECKER, "--source", source, "--target", target, "--json"],
+        [sys.executable, CHECKER, "--no-coverage-check",
+         "--source", source, "--target", target, "--json"],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -174,7 +175,8 @@ def t5_unexpected_extra(base):
          "static/js/orphan.js" in (data.get("extra_in_target") or []),
          json.dumps(data.get("extra_in_target"), ensure_ascii=False))
     # 人类可读输出里必须标为"非预期"
-    proc = subprocess.run([sys.executable, CHECKER, "--source", src, "--target", tgt],
+    proc = subprocess.run([sys.executable, CHECKER, "--no-coverage-check",
+                           "--source", src, "--target", tgt],
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     case("T5 人类输出标记为非预期",
          "非预期" in (proc.stdout or "") and "orphan.js" in (proc.stdout or ""),
@@ -195,7 +197,8 @@ def t7_sync_repairs(base):
     with open(os.path.join(tgt, "templates", "index.html"), "w",
               encoding="utf-8", newline="\n") as f:
         f.write("<html>STALE</html>\n")                              # 内容旧
-    proc = subprocess.run([sys.executable, CHECKER, "--source", src, "--target", tgt, "--sync"],
+    proc = subprocess.run([sys.executable, CHECKER, "--no-coverage-check",
+                           "--source", src, "--target", tgt, "--sync"],
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     case("T7 --sync 执行成功", proc.returncode == 0, "got exit %d" % proc.returncode)
     code2, _ = run_checker(src, tgt)
@@ -217,6 +220,30 @@ def t8_ci_scenario(base):
     case("T8 CI 场景(根无 vendor) → exit 0", code == 0, "got exit %d" % code)
 
 
+def run_checker_full(source, target):
+    """不带跳过开关：扫描集覆盖检查必须生效（T11 用）。"""
+    proc = subprocess.run(
+        [sys.executable, CHECKER, "--source", source, "--target", target, "--json"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def t11_scan_coverage(base):
+    """扫描集防缩水（2026-11-11）：空集会让「一致无漂移」变成空真。"""
+    code, _out = run_checker_full(os.path.join(ROOT, "web"),
+                                  os.path.join(ROOT, "internal", "app", "web"))
+    case("T11 真实仓库默认入口覆盖检查生效 → exit 0", code == 0, "got exit %d" % code)
+    src = os.path.join(base, "empty_src")
+    tgt = os.path.join(base, "empty_tgt")
+    os.makedirs(src, exist_ok=True)
+    os.makedirs(tgt, exist_ok=True)
+    code2, out2 = run_checker_full(src, tgt)
+    case("T11 变异：空扫描集必须 fail-closed 判红",
+         code2 == 1 and "扫描集覆盖不足" in out2,
+         "got exit %d %s" % (code2, out2[:200]))
+
+
 def main():
     print("== check_web_asset_parity 回归 + 变异验证 ==")
     print("(每个 T2/T3 都是**故意注入的变异**，门禁不变红即为失效)\n")
@@ -226,7 +253,8 @@ def main():
         for i, fn in enumerate([t1_identical, t2_missing_in_target, t3_content_drift,
                                 t4_expected_vendor_extra, t5_unexpected_extra,
                                 t6_missing_source, t7_sync_repairs, t8_ci_scenario,
-                                t9_line_ending_only, t10_binary_bytes_matter], 1):
+                                t9_line_ending_only, t10_binary_bytes_matter,
+                                t11_scan_coverage], 1):
             sub = os.path.join(tmp, "case%d" % i)
             os.makedirs(sub, exist_ok=True)
             fn(sub)
