@@ -15,7 +15,8 @@
 
 同一份审计还发现 `core/presolve.py` 有 9 处「导入失败即 return None」的分支只留
 debug 日志（其中 1 处连日志都没有），而项目早就有 `_warn_import_once` 统一通道。
-缺依赖 / 缺 skill 时表现同样是「模型没解出」——错误归因到模型能力上。
+继续扩到全仓后又发现 `agents/math_engine.py` 2 处、`core/fallbacks.py` 3 处同类
+静默放弃，一并收口并抽出共享告警模块 `core/import_alert.py`。
 
 ## 判据（全部 AST，不看文字、不受注释或字符串骗）
 
@@ -24,8 +25,16 @@ C1  这类模块的所有第三方 import 必须在 try 内（模块级裸导入
     且 try 内必须至少有一个第三方 import（守卫不能架空）。
 C2  presolve.py 里「try 体只有 skills.* import」且「handler 以 return None 放弃
     整条通道」的分支，handler 必须调用 `_warn_import_once`，第一参数点名该模块。
+C3  全仓其余活跃代码（除 presolve.py / tests）里的同类「纯导入探测 + 静默放弃」
+    分支，必须有 warning 级告警且点名模块。handler 里有实质回退实现
+    （例如 `agents/crypto_toolkit.py` 的内联完整摩斯码表）属「能力替代」，
+    自动豁免、不计入 C3 分母。
 C2-COVERAGE  这类分支数不得低于 MIN_PURE_IMPORT_GUARDS（防判据缩水）。
+C3-COVERAGE  C3 分支数不得低于 MIN_C3_GUARDS（防判据缩水）。
 C1-COVERAGE  扫描集里至少要有一个声明守卫的 skill（防扫描集被清空）。
+
+**作用域外**：try 体含实际求解调用（超时/求解异常分支）、handler 用 continue
+跳过当前附件、以及本来就没放弃整条通道的分支——都不强制告警，避免误报。
 
 ## 用法
 
@@ -53,12 +62,18 @@ LOCAL_PACKAGES = frozenset({
 STDLIB = frozenset(getattr(sys, "stdlib_module_names", ()))
 
 # 防缩水下限：比实测值留一档余量，避免正常重构误红；低于它说明扫描集或
-# presolve 的导入结构被大改，判据本身已经失效。
+# 对应文件的导入结构被大改，判据本身已经失效。
 MIN_PURE_IMPORT_GUARDS = 18
 MIN_GUARDED_SKILLS = 2
+MIN_C3_GUARDS = 4
 
 GUARD_FLAG = "HAS_DEPS"
 WARN_FN = "_warn_import_once"
+
+# C3 扫描集：活跃副本下全部 .py，排除 tests 与 presolve.py（后者由更严格的 C2 覆盖）。
+CALLER_ROOT = REPO_ROOT / "CTF-Agent_融合" / "ctf_agent"
+C2_EXCLUDED_CALLERS = frozenset({"core/presolve.py"})
+CALLER_SKIP_PARTS = frozenset({"tests", "__pycache__", ".pytest_cache"})
 
 
 def read_lf(path: Path) -> str:
@@ -212,6 +227,108 @@ def check_presolve_source(src: str, label: str = "<presolve>") -> tuple[list[str
     return errors, checked
 
 
+def _is_warning_call(call: ast.Call) -> bool:
+    """warning 级调用：函数名含 warn（`_warn_import_once` / `warn_import_once`），
+    或属性为 warning/warn（logger.warning / warnings.warn）。"""
+    f = call.func
+    if isinstance(f, ast.Name):
+        return "warn" in f.id.lower()
+    if isinstance(f, ast.Attribute):
+        return f.attr.lower() in ("warning", "warn")
+    return False
+
+
+def _is_lowlevel_log(call: ast.Call) -> bool:
+    f = call.func
+    return isinstance(f, ast.Attribute) and f.attr in ("debug", "info")
+
+
+def _first_str_arg(call: ast.Call) -> str | None:
+    for arg in call.args:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            return arg.value
+    return None
+
+
+def _classify_handler(handler: ast.ExceptHandler):
+    """判定 handler 形态。
+
+    返回 (has_warning, named_module) 表示「静默放弃」，纳入 C3；
+    返回 None 表示判据不适用：要么没放弃整条通道（如 continue），
+    要么有实质回退实现（能力替代，应豁免，不计入分母）。
+    """
+    if not _returns_none(handler):
+        return None
+    has_warning = False
+    named = None
+    for stmt in handler.body:
+        if isinstance(stmt, (ast.Return, ast.Pass)):
+            continue
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+            call = stmt.value
+            if _is_warning_call(call):
+                has_warning = True
+                named = _first_str_arg(call) or named
+                continue
+            if _is_lowlevel_log(call):
+                continue
+            return None
+        return None
+    return has_warning, named
+
+
+def check_caller_source(src: str, label: str = "<caller>") -> tuple[list[str], int, int]:
+    """C3：返回 (errors, checked, skipped_fallbacks)。"""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as exc:
+        return ["PARSE_FAIL %s: %s" % (label, exc)], 0, 0
+
+    errors: list[str] = []
+    checked = 0
+    skipped = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Try) or not node.body:
+            continue
+        mods: list[str] = []
+        pure_import = True
+        for stmt in node.body:
+            if (isinstance(stmt, ast.ImportFrom) and stmt.module
+                    and stmt.module.startswith(("skills.", "agents."))):
+                mods.extend(m for m in _full_modules(stmt) if m)
+            elif (isinstance(stmt, ast.Import)
+                  and all(a.name.startswith(("skills.", "agents.")) for a in stmt.names)):
+                mods.extend(a.name for a in stmt.names)
+            else:
+                pure_import = False
+                break
+        if not pure_import or not mods:
+            continue
+        for handler in node.handlers:
+            classified = _classify_handler(handler)
+            if classified is None:
+                skipped += 1
+                continue
+            checked += 1
+            has_warning, named = classified
+            if not has_warning:
+                errors.append(
+                    "C3 %s:%d: 纯导入探测分支 [%s] 失败即 return None，却无 warning 级告警（静默降级）"
+                    % (label, handler.lineno, ",".join(mods)))
+            elif named not in mods:
+                errors.append(
+                    "C3 %s:%d: 告警第一参数 %r 未点名模块 %s"
+                    % (label, handler.lineno, named, mods))
+    return errors, checked, skipped
+
+
+def _c3_coverage_errors(checked: int, label: str) -> list[str]:
+    if checked < MIN_C3_GUARDS:
+        return ["C3-COVERAGE %s: 静默放弃类分支仅 %d 条 < %d（判据缩水或导入结构被大改）"
+                % (label, checked, MIN_C3_GUARDS)]
+    return []
+
+
 def check_repo(skills_dir: Path = SKILLS_DIR,
                presolve: Path = PRESOLVE) -> tuple[list[str], dict]:
     errors: list[str] = []
@@ -220,6 +337,8 @@ def check_repo(skills_dir: Path = SKILLS_DIR,
         return ["STRUCT 扫描目录不存在: %s" % skills_dir], stats
     if not presolve.is_file():
         return ["STRUCT presolve.py 不存在: %s" % presolve], stats
+    if not CALLER_ROOT.is_dir():
+        return ["STRUCT C3 扫描目录不存在: %s" % CALLER_ROOT], stats
 
     files = sorted(skills_dir.glob("*.py"))
     guarded = 0
@@ -239,6 +358,31 @@ def check_repo(skills_dir: Path = SKILLS_DIR,
     errors.extend(perrs)
     stats["pure_import_guards"] = checked
     stats["min_pure_import_guards"] = MIN_PURE_IMPORT_GUARDS
+
+    c3_checked = 0
+    c3_skipped = 0
+    c3_candidates = 0
+    for caller in sorted(CALLER_ROOT.rglob("*.py")):
+        rel = caller.relative_to(CALLER_ROOT)
+        if any(part in CALLER_SKIP_PARTS for part in rel.parts[:-1]):
+            continue
+        if rel.as_posix() in C2_EXCLUDED_CALLERS:
+            continue
+        # 字节预筛只为加速（900+ 文件不必全 parse）；判据本身仍全部走 AST。
+        raw = caller.read_bytes()
+        if not any(tok in raw for tok in (b"from skills.", b"from agents.",
+                                          b"import skills.", b"import agents.")):
+            continue
+        c3_candidates += 1
+        cerrs, cch, csk = check_caller_source(read_lf(caller), rel.as_posix())
+        errors.extend(cerrs)
+        c3_checked += cch
+        c3_skipped += csk
+    errors.extend(_c3_coverage_errors(c3_checked, "全仓"))
+    stats["c3_candidates"] = c3_candidates
+    stats["c3_guards"] = c3_checked
+    stats["c3_fallbacks_skipped"] = c3_skipped
+    stats["min_c3_guards"] = MIN_C3_GUARDS
     return errors, stats
 
 
@@ -299,6 +443,45 @@ def selftest() -> int:
     case("M7 覆盖数塌陷必须判红", e7, True)
     cases.append(("M8 塌陷后覆盖数确实归零", checked7 == 0, checked7))
 
+    # ---- C3：全仓判据 ----
+    me = read_lf(CALLER_ROOT / "agents" / "math_engine.py")
+    ct = read_lf(CALLER_ROOT / "agents" / "crypto_toolkit.py")
+    e_b3, ch_b3, _ = check_caller_source(me, "baseline math_engine")
+    case("B3 基线 math_engine 全绿", e_b3, False)
+    cases.append(("B4 math_engine 两条分支均纳入 C3", ch_b3 == 2, ch_b3))
+    _, _, sk_ct = check_caller_source(ct, "baseline crypto_toolkit")
+    cases.append(("B5 内联码表回退被识别为能力替代而豁免", sk_ct >= 1, sk_ct))
+
+    anchor9 = 'warn_import_once("skills.misc_bigfile_analysis", exc)'
+    assert anchor9 in me, "M9 锚点失效，变异自测必须 fail-closed"
+    m9 = me.replace(anchor9, 'logger.debug("import failed: %s", exc)', 1)
+    e9, _, _ = check_caller_source(m9, "M9")
+    case("M9 C3 仅 debug 日志必须判红", e9, True)
+    m10 = me.replace(anchor9,
+                     'logger.debug("x")  # warn_import_once("skills.misc_bigfile_analysis", exc)', 1)
+    e10, _, _ = check_caller_source(m10, "M10")
+    case("M10 C3 注释伪造告警必须判红", e10, True)
+    m12 = me.replace(anchor9, 'warn_import_once("misc_bigfile_analysis", exc)', 1)
+    e12, _, _ = check_caller_source(m12, "M12")
+    case("M12 C3 告警不点名模块必须判红", e12, True)
+
+    # M11：能力替代的豁免不是无条件——把内联回退换成 return None 就必须判红。
+    syn_alt = '''def f():
+    try:
+        from skills.morse_decoder import MORSE_TABLE
+    except Exception as e:
+        MORSE_TABLE = {".-": "a"}
+'''
+    syn_abandon = syn_alt.replace('        MORSE_TABLE = {".-": "a"}\n', "        return None\n")
+    e_alt, ch_alt, sk_alt = check_caller_source(syn_alt, "M11-alt")
+    e_ab, _, _ = check_caller_source(syn_abandon, "M11-abandon")
+    cases.append(("M11 能力替代形态豁免（不判红、不入分母）",
+                  (not e_alt) and ch_alt == 0 and sk_alt == 1, ch_alt))
+    case("M11 同一分支改成静默放弃必须判红", e_ab, True)
+    cases.append(("M13 C3 覆盖数塌陷必须判红", bool(_c3_coverage_errors(0, "M13")), 0))
+    cases.append(("M14 C3 覆盖数达标时不误报",
+                  not _c3_coverage_errors(5, "M14"), 5))
+
     passed = 0
     for name, ok, n in cases:
         print("[%s] %s (n=%s)" % ("PASS" if ok else "FAIL", name, n))
@@ -326,7 +509,7 @@ def main() -> int:
         if any(e.startswith(("PARSE_FAIL", "STRUCT")) for e in errors):
             return 2
         return 1
-    print("OK: 依赖守卫可达性 / 导入失败告警通道全绿 %s" % stats)
+    print("OK: 守卫可达性 / presolve + 全仓导入失败告警通道全绿 %s" % stats)
     return 0
 
 

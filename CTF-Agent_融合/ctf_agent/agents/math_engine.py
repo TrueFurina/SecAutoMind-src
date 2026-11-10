@@ -27,6 +27,8 @@ import os
 import time
 from typing import Optional
 
+from core.import_alert import warn_import_once
+
 logger = logging.getLogger(__name__)
 
 
@@ -793,7 +795,8 @@ def _engine_misc_bigfile_lime(question):
         return None
     try:
         from skills.misc_bigfile_analysis import misc_bigfile_analysis
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        warn_import_once("skills.misc_bigfile_analysis", exc)
         return None
     for path in big[:1]:  # 只跑第一个大附件，预算 5s
         try:
@@ -869,7 +872,8 @@ def _engine_web_source_audit_cms(question):
         return None
     try:
         from skills.web_source_audit import run as audit_run
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        warn_import_once("skills.web_source_audit", exc)
         return None
     import re as _re
     for path in cms_atts[:1]:  # 只跑第一个，预算 30s（CMS 包通常 5-30MB）

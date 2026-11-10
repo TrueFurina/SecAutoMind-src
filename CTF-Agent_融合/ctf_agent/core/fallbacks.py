@@ -12,6 +12,7 @@ build_web_fallback_script / build_reverse_fallback_script。
 from typing import Optional
 
 from core.answer_key_filter import filter_answer_key_attachments  # ITEM4-A：隔离答案密钥附件
+from core.import_alert import warn_import_once
 
 
 def build_crypto_fallback_script(ctx) -> Optional[str]:
@@ -26,7 +27,8 @@ def build_crypto_fallback_script(ctx) -> Optional[str]:
         return None
     try:
         from agents.crypto_toolkit import CryptoToolkit
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        warn_import_once("agents.crypto_toolkit", exc)
         return None
     # 多附件完整性：首附件 path + 其余 extra_paths（ezrsa 参数在 output 附件）
     paths = [str(a) for a in attach]
@@ -45,7 +47,8 @@ def build_misc_fallback_script(ctx) -> Optional[str]:
         return None
     try:
         from agents.misc_toolkit import MiscToolkit
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        warn_import_once("agents.misc_toolkit", exc)
         return None
     return MiscToolkit.build_fallback_script(str(attach[0]))
 
@@ -73,7 +76,8 @@ def build_web_fallback_script(ctx) -> Optional[str]:
         return None
     try:
         from agents.web_toolkit import WebToolkit
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        warn_import_once("agents.web_toolkit", exc)
         return None
     return WebToolkit.build_fallback_script(url, desc)
 
