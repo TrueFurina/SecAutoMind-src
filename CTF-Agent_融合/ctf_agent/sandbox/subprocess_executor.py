@@ -257,8 +257,17 @@ class SubprocessExecutor(Executor):
         code_stripped = code.strip()
         # P0修复（2026-08-21）：自动识别Python代码（无python:前缀时），
         # Windows无bash环境，避免LLM忘写前缀导致FileNotFoundError
-        if code_stripped.startswith(("python: ", "python3: ")):
-            python_src = code_stripped.split(":", 1)[1].strip()
+        # 2026-11-10：前缀判据放宽到「冒号后可直接换行」。旧判据要求 `"python: "`
+        # 带空格，而模型实际常写 `"python:\nfrom math import gcd\n..."` ——
+        # 于是落到 bash 分支，sh 跑 Python 源码报 invalid syntax (<unknown>, line 1)
+        # （实测 10733 连续 5 步、reverse_js 同样死在这里）。
+        _py_pfx = None
+        for _pfx in ("python3:", "python:"):
+            if code_stripped.startswith(_pfx):
+                _py_pfx = _pfx
+                break
+        if _py_pfx:
+            python_src = code_stripped[len(_py_pfx):].strip()
         elif _looks_like_python(code_stripped):
             python_src = code_stripped
         else:

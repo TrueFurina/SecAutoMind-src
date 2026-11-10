@@ -374,8 +374,18 @@ class DockerExecutor:
         stripped = code.strip()
 
         # ── 与宿主后端同一套前置校验（容器是第二层，不是唯一一层）──
-        if stripped.startswith(("python: ", "python3: ")):
-            python_src = stripped.split(":", 1)[1].strip()
+        # 前缀判据必须容忍「冒号后直接换行」：prompt 要求 code 以 `python:` 开头，
+        # 而模型实际常写成 `"python:\nfrom math import gcd\n..."`。
+        # 旧判据是 startswith(("python: ", "python3: "))（**要求冒号后有空格**），
+        # 于是 `python:\n...` 落到 bash 分支，sh 去跑 Python 源码 → 报
+        # `invalid syntax (<unknown>, line 1)`。实测 10733 连续 5 步死在这里。
+        _py_pfx = None
+        for _pfx in ("python3:", "python:"):
+            if stripped.startswith(_pfx):
+                _py_pfx = _pfx
+                break
+        if _py_pfx:
+            python_src = stripped[len(_py_pfx):].strip()
         elif _looks_like_python(stripped):
             python_src = stripped
         else:

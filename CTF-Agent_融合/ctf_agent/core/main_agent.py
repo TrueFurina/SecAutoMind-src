@@ -921,8 +921,9 @@ class MainAgent:
                     ctx.record(StepRecord(stage=STAGE_STUCK, action=plan.get("action", "reason"),
                                           observation=f"act 异常: {_aexc}",
                                           error_category=ERR_TOOL_FAILURE))
-                    logger.warning("[%s] act 步异常(记失败继续循环，不终止整题): %s",
-                                   getattr(question, "id", "?"), _aexc)
+                    logger.warning("[%s] act 步异常(记失败继续循环，不终止整题): %s | plan=%r",
+                                   getattr(question, "id", "?"), _aexc,
+                                   str(plan)[:600])
                     continue
 
                 # ── Observe：解析结果，更新上下文 ──
