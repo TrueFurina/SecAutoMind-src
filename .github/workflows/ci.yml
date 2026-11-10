@@ -82,6 +82,14 @@ jobs:
         run: |
           python scripts/check_ci_gate_reachability.py --selftest
           python scripts/check_ci_gate_reachability.py
+      # 扫描型门禁的空集防线（2026-11-10）：扫 0 个文件 = 0 条违规 = 全绿，
+      # 是门禁最隐蔽的瞎法。本步在独立子进程里真的把 os.walk / glob.glob 置空，
+      # 要求每个遍历型门禁 fail-closed 判红；不适用者具名豁免，已确认但本轮
+      # 未修的假绿必须登记为可见挂账（挂账不是通过，修复后必须移除登记）。
+      - name: Empty scan set must fail closed for every collecting gate
+        run: |
+          python scripts/check_gate_scan_coverage.py --selftest
+          python scripts/check_gate_scan_coverage.py
       # 执行基准集两道 git 历史题（exec_git_repo / git_cred_repo）含嵌套 .git，
       # 依设计不入库（gen_exec_artifacts*.py 注释「嵌套 .git 不入库，由本脚本再生成」），
       # 必须先在本地重新生成，否则 TestExecSolversAgainstBenchmark 因缺 git 历史退化到 13/15。

@@ -47,6 +47,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "scripts")
 ALLOWLIST = os.path.join(SCRIPTS, "flag_eval_allowlist.json")
 
+# 扫描集覆盖下限（2026-11-10）：os.walk(SCRIPTS) 若返回空（路径常量写错、目录被
+# 移走、glob 口径收窄），violations 恒为 0 => 本门禁永久绿。实测扫描面 215 个 .py，
+# 下限取 100（约 47%）留足增删余量。只作用于 main() 门禁入口；self_test() 的
+# 临时小目录直接调 scan_all()，不受影响，避免把 10 条变异用例全判红。
+MIN_SCANNED_PY = 100
+
 # 自身与统一口径模块不参与检查
 SELF_EXEMPT = {
     os.path.join(SCRIPTS, "experiments", "flag_util.py"),
@@ -172,13 +178,15 @@ def scan_file(path: str) -> list[dict]:
     return v
 
 
-def scan_all() -> tuple[list[dict], list[dict]]:
+def scan_all(stats: dict | None = None) -> tuple[list[dict], list[dict]]:
     allow = load_allowlist()
     violations, allowlisted = [], []
+    scanned = 0
     for dirpath, _dirs, files in os.walk(SCRIPTS):
         for fn in files:
             if not fn.endswith(".py"):
                 continue
+            scanned += 1
             p = os.path.join(dirpath, fn)
             if p in SELF_EXEMPT:
                 continue
@@ -205,7 +213,17 @@ def scan_all() -> tuple[list[dict], list[dict]]:
                         allowlisted.append(item)
                 else:
                     violations.append(item)
+    if stats is not None:
+        stats["py_files"] = scanned
     return violations, allowlisted
+
+
+def coverage_errors(scanned: int) -> list[str]:
+    """扫描集防缩水：扫 0 个文件 = 0 违规 = 全绿，是判据最常见的假绿形态。"""
+    if scanned < MIN_SCANNED_PY:
+        return ["扫描集覆盖不足：扫到 %d 个 .py < 下限 %d（实测 215）。" % (scanned, MIN_SCANNED_PY)
+                + "扫描范围被缩小 / os.walk 为空会让本门禁恒真，fail-closed 判红。"]
+    return []
 
 
 def main() -> int:
@@ -226,16 +244,23 @@ def main() -> int:
     if a.self_test:
         return self_test()
 
-    violations, allowlisted = scan_all()
+    stats: dict = {}
+    violations, allowlisted = scan_all(stats)
+    coverage = coverage_errors(stats["py_files"])
 
     if a.json:
         print(json.dumps({"violations": violations, "allowlisted": allowlisted,
-                          "allowlist_size": len(allowlisted)},
+                          "allowlist_size": len(allowlisted),
+                          "scanned_py_files": stats["py_files"],
+                          "coverage_errors": coverage},
                          ensure_ascii=False, indent=2))
     else:
         print("=== flag 评测口径门禁 ===")
         print(f"统一口径: scripts/experiments/flag_util.py::flag_sha256_hit")
+        print(f"扫描集: {stats['py_files']} 个 .py（下限 {MIN_SCANNED_PY}）")
         print()
+        for c in coverage:
+            print(f"🔴 {c}")
         if violations:
             print(f"🔴 违规 {len(violations)} 处（必须修）:")
             for v in violations:
@@ -252,10 +277,10 @@ def main() -> int:
             for (rel, owner), kinds in sorted(seen.items()):
                 print(f"   {rel}  owner={owner}  {sorted(set(kinds))}")
         print()
-        print(f"结论: {'BLOCK' if violations else 'PASS'}"
+        print(f"结论: {'BLOCK' if (violations or coverage) else 'PASS'}"
               + (f"（另有 {len(allowlisted)} 处挂账）" if allowlisted else ""))
 
-    return 1 if violations else 0
+    return 1 if (violations or coverage) else 0
 
 
 # ── 变异验证：证明门禁真的能抓到问题，而不是常绿 ──
@@ -395,6 +420,11 @@ def self_test() -> int:
                     for x in v)
         ok &= hit10
         print(f"[10] 变异(缺 expires)应 fail-closed 变红 -> {hit10}")
+
+        # 11) 扫描集防缩水：空集必须判红，达标不得误报
+        hit11 = bool(coverage_errors(0)) and not coverage_errors(MIN_SCANNED_PY)
+        ok &= hit11
+        print(f"[11] 空扫描集必须 fail-closed 判红 -> {hit11}")
     finally:
         SCRIPTS, ROOT, ALLOWLIST, TODAY = old
 

@@ -400,10 +400,24 @@ def run(root):
     return findings
 
 
+# 扫描集覆盖下限（2026-11-10）：iter_docs() 若返回空（docs/ 被移走、路径常量写错、
+# 目录遍历口径收窄），findings 恒为空 => 门禁永久绿。实测扫描面 300 个 Markdown
+# （docs/ 递归 295 + 仓库根 5），下限取 150（50%）留足增删余量。
+MIN_SCANNED_DOCS = 150
+
+def coverage_errors(n_docs: int) -> list[str]:
+    """扫描集防缩水：扫 0 个文档 = 0 条问题 = 全绿，是判据最常见的假绿形态。"""
+    if n_docs < MIN_SCANNED_DOCS:
+        return ["扫描集覆盖不足：扫到 %d 个 Markdown < 下限 %d（实测 300）。" % (n_docs, MIN_SCANNED_DOCS)
+                + "扫描范围被缩小 / os.walk 为空会让本门禁恒真，fail-closed 判红。"]
+    return []
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=ROOT, help="扫描根（默认仓库根）")
     ap.add_argument("--json", action="store_true", help="以 JSON 输出")
+    ap.add_argument("--no-coverage-check", action="store_true",
+                    help="仅局部/回归测试用：显式跳过全仓扫描集下限（CI 默认入口不得带）")
     args = ap.parse_args()
 
     root = os.path.abspath(args.root)
@@ -411,16 +425,23 @@ def main():
         print(f"FATAL: root 不存在：{root}", file=sys.stderr)
         return 2
 
+    n_docs = sum(1 for _ in iter_docs(root))
     findings = run(root)
+    if not args.no_coverage_check:
+        for msg in coverage_errors(n_docs):
+            findings.append({"file": "<扫描集>", "line": 1, "message": msg})
+        findings.sort(key=lambda x: (x["file"], x["line"]))
 
     if args.json:
         print(json.dumps({"ok": not findings, "count": len(findings),
+                          "scanned_docs": n_docs,
                           "findings": findings, "debt": DEBT_NOTES},
                          ensure_ascii=False, indent=2))
     else:
         print("=" * 70)
         print("文档静态检查（代码块闭合 / 本地链接 / scripts 引用 / 双语对应）")
         print("=" * 70)
+        print(f"扫描集: {n_docs} 个 Markdown（下限 {MIN_SCANNED_DOCS}）")
         for n in DEBT_NOTES:
             print(n)
         if not findings:

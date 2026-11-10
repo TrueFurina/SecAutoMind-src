@@ -54,11 +54,19 @@ def _run(root, extra=None):
     if extra:
         env["DOCSLINT_DEBT_OVERRIDE"] = "%s|%s" % extra
     proc = subprocess.run(
-        [sys.executable, CHECKER, "--root", root],
+        [sys.executable, CHECKER, "--root", root, "--no-coverage-check"],
         capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
+
+def _run_full(root):
+    """不带跳过开关：扫描集覆盖检查必须生效（T20/T21 用）。"""
+    proc = subprocess.run(
+        [sys.executable, CHECKER, "--root", root],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 def _mkroot():
     return tempfile.mkdtemp(prefix="docslint_")
@@ -260,6 +268,18 @@ def main():
         rc, out = _run(r, extra=("scripts/untracked_tool.py", "2020-01-01"))
         check("T19 变异：未入仓引用债已过期 → exit 1",
               rc == 1 and "已过期" in out, f"rc={rc} {out[-200:]}")
+    finally:
+        shutil.rmtree(r, ignore_errors=True)
+
+    # T20/T21 扫描集防缩水（2026-11-10）：空集恒绿是最常见的假绿形态
+    rc, out = _run_full(ROOT)
+    check("T20 真实仓库全量扫描覆盖检查生效 → exit 0",
+          rc == 0 and "扫描集:" in out, f"rc={rc} {out[-200:]}")
+    r = _mkroot()
+    try:
+        rc, out = _run_full(r)
+        check("T21 变异：空扫描集必须 fail-closed 判红",
+              rc == 1 and "扫描集覆盖不足" in out, f"rc={rc} {out[-200:]}")
     finally:
         shutil.rmtree(r, ignore_errors=True)
 
