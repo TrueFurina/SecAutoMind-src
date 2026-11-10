@@ -262,6 +262,9 @@ def build_solver(use_mock: bool, is_correct=None, provider: Optional[str] = None
         skill_manager=skill_manager,  # ← /goal 动态 Skill 加载
         provider=provider,   # ← 报告与流量吻合（真实 provider 标签）
         token_usage_fn=_token_usage_fn,  # ← 预算反思 token 口径（2026-10-03）
+        max_retries=int(getattr(_cfg, "max_retries", 3)),  # 2026-11-10 修复：此前未传，MainAgent 恒用自带默认 3，
+        #   导致 core/main_agent.py:828 的 _max_steps=max_retries*4 对 MEDIUM 恒为 12，
+        #   CTF_AGENT_MAX_RETRIES 被 AppConfig 读到却进不了链路（实测设 6 仍停在 11 步）。
         per_question_wallclock=_agent_per_q_wc,  # P1 墙钟对齐：≤ 评测墙钟
         hard_wallclock=_agent_hard_wc,           # P1 墙钟对齐：HARD 分支同样收敛
         easy_wallclock=_agent_easy_wc,           # 2026-10-26 补：EASY 分支同样收敛
