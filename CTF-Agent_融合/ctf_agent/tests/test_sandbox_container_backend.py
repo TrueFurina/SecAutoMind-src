@@ -167,3 +167,29 @@ def test_pid_alive_is_conservative_on_windows():
     else:
         assert _pid_alive(os.getpid()) is True
         assert _pid_alive(1 << 30) is False
+
+
+def test_orphan_reap_global_prefix_catches_cross_workdir():
+    """全局回收：跨 workdir 的孤儿也要能清到（工程实测 12 道题漏 12 个容器）。
+
+    `_sweep_orphans` 曾按 `<sha1(workdir)[:8]>` 收窄，上一道题的容器
+    （另一个 workdir hash）永远不在扫描范围里 —— 每跑一题漏一个。
+    """
+    from sandbox.docker_executor import orphan_containers_to_reap
+    names = ["ctf-sbx-deadbeef-111",   # 自己
+             "ctf-sbx-cafebabe-222",   # pid 活着
+             "ctf-sbx-01234567-333"]   # pid 已死 → 该删
+    targets = orphan_containers_to_reap(
+        names, "ctf-sbx-", self_pid=111, alive=lambda pid: pid == 222,
+        tail_sep="-")
+    assert targets == ["ctf-sbx-01234567-333"], targets
+
+
+def test_atexit_rm_is_registered(monkeypatch):
+    """进程退出时必须尝试删掉自己的容器：正常批量路径没人调 stop()。"""
+    import atexit
+    from sandbox.docker_executor import _register_atexit_rm
+    calls = []
+    monkeypatch.setattr(atexit, "register", lambda f: calls.append(f))
+    _register_atexit_rm("ctf-sbx-deadbeef-1")
+    assert len(calls) == 1, "atexit 回调没注册上"

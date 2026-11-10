@@ -114,7 +114,7 @@ def _pid_alive(pid: int) -> bool:
 
 
 def orphan_containers_to_reap(names, prefix: str, self_pid: int,
-                              alive=_pid_alive) -> List[str]:
+                              alive=_pid_alive, tail_sep: str = "") -> List[str]:
     """从 `docker ps -a` 给出的容器名里挑出**可回收的孤儿**（纯函数，便于单测）。
 
     判定四连：名字以 `prefix` 开头 → 尾部 pid 可解析 → pid 不是自己 →
@@ -124,17 +124,25 @@ def orphan_containers_to_reap(names, prefix: str, self_pid: int,
     Args:
         names: `docker ps -a --format "{{.Names}}"` 的每行（`--filter name=` 是
             子串匹配，可能带进别的名字，故这里再做一次前缀校验）。
-        prefix: `ctf-sbx-<sha1(workdir)[:8]>-`，按 workdir 隔离。
-        self_pid: 当前进程 pid，自身容器交给 `stop()` 管。
+        prefix: 全局回收传 `"ctf-sbx-"`（覆盖所有 workdir 的孤儿）；
+            按 workdir 精确回收传 `"ctf-sbx-<sha1(workdir)[:8]>-"`。
+        self_pid: 当前进程 pid，自身容器交给 `stop()` / atexit 管。
         alive: 判活函数，测试可注入。
+        tail_sep: 非空表示 pid 在**最后一个** `tail_sep` 之后
+            （全局前缀 `ctf-sbx-` 下的名字形如 `<8hex>-<pid>`）。
     """
     out: List[str] = []
     for raw in names or []:
         nm = (raw or "").strip()
         if not nm.startswith(prefix):
             continue
+        tail = nm[len(prefix):]
+        if tail_sep:
+            if tail_sep not in tail:
+                continue
+            tail = tail.rsplit(tail_sep, 1)[-1]
         try:
-            pid = int(nm[len(prefix):])
+            pid = int(tail)
         except (TypeError, ValueError):
             continue
         if pid <= 0 or pid == self_pid:
@@ -143,6 +151,28 @@ def orphan_containers_to_reap(names, prefix: str, self_pid: int,
             continue
         out.append(nm)
     return out
+
+
+def _register_atexit_rm(name: str) -> None:
+    """进程退出时兜底删掉自己的容器。
+
+    为什么需要：`docker run -d --rm` 的 `--rm` 只在**容器主进程**退出时触发，
+    而容器主进程是 `sleep infinity` —— 它永远不会自己退出。正常批量路径里
+    也没有任何地方调用 `DockerExecutor.stop()`（实测 12 道题跑完泄漏 12 个容器）。
+    atexit 覆盖「正常退出 / 异常退出 / Ctrl-C」这几种能跑到解释器收尾的场景；
+    SIGKILL / OOM 这类跑不到 atexit 的，交给下次 `_sweep_orphans` 按 pid 判活回收。
+    """
+    import atexit
+    import subprocess as _sp
+
+    def _cleanup() -> None:
+        try:
+            _sp.run(["docker", "rm", "-f", name],
+                    stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, timeout=30)
+        except Exception:  # noqa: BLE001 - 退出清理不上抛
+            pass
+
+    atexit.register(_cleanup)
 
 
 class DockerExecutor:
@@ -200,21 +230,24 @@ class DockerExecutor:
         return args
 
     async def _sweep_orphans(self) -> None:
-        """回收同 workdir 前缀、**进程已死**的孤儿容器（每个实例只做一次）。
+        """回收**所有 workdir** 下、**进程已死**的孤儿容器（每个实例只做一次）。
 
         为什么需要：容器是 `sleep infinity` 常驻 + `--rm`，靠 `stop()` 里的
-        `docker rm -f` 收尾。进程一旦被 SIGKILL / OOM / 外部 `timeout` 杀掉，
-        `stop()` 不会执行，`sleep infinity` 也不会自己退出 ⇒ 容器永久驻留。
-        实测：服务器上一次跑题被 `timeout 600` 杀掉，5 个 `ctf-sbx-*`
-        容器 `Up` 了 10~44 分钟还在，只有手动 `docker rm -f` 才清掉。
+        `docker rm -f` 收尾。而 `stop()` 在正常批量路径里**没人调用**
+        （`run.py` / `task_pool` 里没有 stop 钩子，`core/docker_session.py`
+        那个 stop 是另一个模块的），进程退出也只会走 `--rm` 的容器主进程
+        退出路径 —— 但 `sleep infinity` 不会自己退出 ⇒ 每跑一道题泄漏一个容器。
+        实测：服务器上 12 道题跑完，`docker ps -a` 里躺了 12 个 `ctf-sbx-*`。
 
-        回收范围严控：只碰**同一 workdir hash 前缀**、且尾部 pid 已不存在的容器；
-        pid 还活着的一律不动（并行会话正在用的容器绝不能误删）。
+        所以回收范围是**全局** `ctf-sbx-` 前缀（不再按 workdir hash 收窄，
+        否则跨题的孤儿永远清不到），安全边界靠 pid：
+        只删尾部 pid 已不存在的容器，pid 还活着的一律不动
+        （并行会话正在用的容器绝不能误删 —— 同名脚本误杀是本项目真实事故）。
         """
         if self._sweep_done:
             return
         self._sweep_done = True
-        prefix = self._container_name().rsplit("-", 1)[0] + "-"
+        prefix = "ctf-sbx-"
         try:
             proc = await asyncio.create_subprocess_exec(
                 "docker", "ps", "-a", "--filter", "name=" + prefix,
@@ -226,7 +259,8 @@ class DockerExecutor:
         except Exception:  # noqa: BLE001 - 清理是尽力而为，不上抛
             return
         targets = orphan_containers_to_reap(
-            out.decode("utf-8", "replace").splitlines(), prefix, os.getpid())
+            out.decode("utf-8", "replace").splitlines(), prefix, os.getpid(),
+            tail_sep="-")
         for nm in targets:
             try:
                 p = await asyncio.create_subprocess_exec(
@@ -278,6 +312,7 @@ class DockerExecutor:
                 )
                 return self._start_reason
             self._container = name
+            _register_atexit_rm(name)
             return None
 
     async def stop(self) -> None:
