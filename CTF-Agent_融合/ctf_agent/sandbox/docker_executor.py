@@ -86,6 +86,65 @@ def validate_container_env(env: dict) -> Optional[str]:
     return None
 
 
+def _pid_alive(pid: int) -> bool:
+    """该 pid 现在是否还活着（只用于判断容器是否成了孤儿）。
+
+    POSIX 走 `/proc`（本后端的可用宿主就是 Linux，见 `_platform_block`）。
+    **不用** `os.kill(pid, 0)`：Windows 上 `os.kill` 走 TerminateProcess，
+    signal=0 会直接**终止**目标进程 —— 一个"检查是否存活"的动作变成杀手，
+    实测事故同源（见 AGENTS 第十一条：判活别信 `HasExited`）。
+    """
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        # 容器后端在 Windows 宿主 fail-closed，永远不该走到这里；保守判"活着"
+        # ⇒ 一个容器都不删。
+        return True
+    if os.path.isdir("/proc"):
+        return os.path.isdir("/proc/%d" % pid)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def orphan_containers_to_reap(names, prefix: str, self_pid: int,
+                              alive=_pid_alive) -> List[str]:
+    """从 `docker ps -a` 给出的容器名里挑出**可回收的孤儿**（纯函数，便于单测）。
+
+    判定四连：名字以 `prefix` 开头 → 尾部 pid 可解析 → pid 不是自己 →
+    该 pid 已不存在。**pid 还活着的一律不动**：宁可留一个残留容器，
+    也不误删并行会话正在用的那一个（同名脚本误杀是本项目真实事故）。
+
+    Args:
+        names: `docker ps -a --format "{{.Names}}"` 的每行（`--filter name=` 是
+            子串匹配，可能带进别的名字，故这里再做一次前缀校验）。
+        prefix: `ctf-sbx-<sha1(workdir)[:8]>-`，按 workdir 隔离。
+        self_pid: 当前进程 pid，自身容器交给 `stop()` 管。
+        alive: 判活函数，测试可注入。
+    """
+    out: List[str] = []
+    for raw in names or []:
+        nm = (raw or "").strip()
+        if not nm.startswith(prefix):
+            continue
+        try:
+            pid = int(nm[len(prefix):])
+        except (TypeError, ValueError):
+            continue
+        if pid <= 0 or pid == self_pid:
+            continue
+        if alive(pid):
+            continue
+        out.append(nm)
+    return out
+
+
 class DockerExecutor:
     """与 `SubprocessExecutor` 同接口（`run()` → `ExecResult`），后端换成容器。
 
@@ -115,6 +174,7 @@ class DockerExecutor:
         self._env_block = validate_container_env(self.extra_env) or ""
         self._container: Optional[str] = None
         self._start_reason: str = ""
+        self._sweep_done: bool = False
         self._lock = asyncio.Lock()
         # 平台限制：Windows 宿主的路径映射（`C:\x` → `/work/x`，剩余分隔符还要转正斜杠）
         # 与"代码里的 \n 等转义"冲突，本轮**不做**。求解本来就在 Linux 服务器上跑
@@ -139,6 +199,45 @@ class DockerExecutor:
             args += ["-v", f"{host}:{dest}:ro"]
         return args
 
+    async def _sweep_orphans(self) -> None:
+        """回收同 workdir 前缀、**进程已死**的孤儿容器（每个实例只做一次）。
+
+        为什么需要：容器是 `sleep infinity` 常驻 + `--rm`，靠 `stop()` 里的
+        `docker rm -f` 收尾。进程一旦被 SIGKILL / OOM / 外部 `timeout` 杀掉，
+        `stop()` 不会执行，`sleep infinity` 也不会自己退出 ⇒ 容器永久驻留。
+        实测：服务器上一次跑题被 `timeout 600` 杀掉，5 个 `ctf-sbx-*`
+        容器 `Up` 了 10~44 分钟还在，只有手动 `docker rm -f` 才清掉。
+
+        回收范围严控：只碰**同一 workdir hash 前缀**、且尾部 pid 已不存在的容器；
+        pid 还活着的一律不动（并行会话正在用的容器绝不能误删）。
+        """
+        if self._sweep_done:
+            return
+        self._sweep_done = True
+        prefix = self._container_name().rsplit("-", 1)[0] + "-"
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "docker", "ps", "-a", "--filter", "name=" + prefix,
+                "--format", "{{.Names}}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+        except Exception:  # noqa: BLE001 - 清理是尽力而为，不上抛
+            return
+        targets = orphan_containers_to_reap(
+            out.decode("utf-8", "replace").splitlines(), prefix, os.getpid())
+        for nm in targets:
+            try:
+                p = await asyncio.create_subprocess_exec(
+                    "docker", "rm", "-f", nm,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await asyncio.wait_for(p.wait(), timeout=60)
+            except Exception:  # noqa: BLE001
+                pass
+
     async def _ensure_container(self) -> Optional[str]:
         """惰性起容器。返回 None 表示可用，否则返回不可用原因。"""
         if self._container:
@@ -146,6 +245,7 @@ class DockerExecutor:
         async with self._lock:
             if self._container:
                 return None
+            await self._sweep_orphans()
             name = self._container_name()
             argv = [
                 "docker", "run", "-d", "--rm",

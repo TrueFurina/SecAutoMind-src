@@ -122,3 +122,48 @@ def test_container_env_fail_closed_no_host_execution():
     assert r.exit_code == CONTAINER_UNAVAILABLE_RC
     assert UNAVAILABLE_TAG in r.stderr
     assert "should-not-run-on-host" not in (r.stdout or "")
+
+
+# ── 孤儿容器回收（2026-11-10）────────────────────────────────────────
+# 背景：容器是 `sleep infinity` 常驻 + `--rm`，收尾靠 stop() 里的 docker rm -f。
+# 进程被 SIGKILL / OOM / 外部 timeout 杀掉时 stop() 不执行，容器永久驻留。
+# 服务器实测：一次 `timeout 600` 杀进程，5 个 ctf-sbx-* 容器 Up 了 10~44 分钟。
+# 下面三条锁「只回收同 workdir 前缀且进程已死的」，防误删并行会话的活容器。
+
+PREFIX = "ctf-sbx-deadbeef-"
+
+
+def test_orphan_reap_takes_only_dead_same_prefix():
+    from sandbox.docker_executor import orphan_containers_to_reap
+    names = [PREFIX + "111", PREFIX + "222", PREFIX + "333",
+             "ctf-sbx-cafebabe-" + "444", "other-container"]
+    targets = orphan_containers_to_reap(
+        names, PREFIX, self_pid=111, alive=lambda pid: pid == 222)
+    # 111 = 自己（交给 stop()）；222 = 还活着（并行会话在用）；444 = 别的工作目录
+    assert targets == [PREFIX + "333"], targets
+
+
+def test_orphan_reap_ignores_prefix_substring_and_garbage():
+    """`docker ps --filter name=` 是子串匹配，会把别的名字带进来，必须二次校验。"""
+    from sandbox.docker_executor import orphan_containers_to_reap
+    names = [PREFIX + "12",           # 短 pid，合法
+             "ctf-sbx-deadbeef-12-x",  # 尾部不是纯数字
+             "xctf-sbx-deadbeef-12",   # 前缀不对（只差开头）
+             "", None]
+    targets = orphan_containers_to_reap(names, PREFIX, self_pid=1,
+                                        alive=lambda pid: False)
+    assert targets == [PREFIX + "12"], targets
+
+
+def test_pid_alive_is_conservative_on_windows():
+    """Windows 上必须判「活着」（⇒ 不删任何容器）。
+
+    理由：`os.kill(pid, 0)` 在 Windows 走 TerminateProcess，signal=0 会真的
+    终止目标进程；容器后端在 Windows 本来就 fail-closed，这里再保守一层。
+    """
+    from sandbox.docker_executor import _pid_alive
+    if os.name == "nt":
+        assert _pid_alive(999999) is True
+    else:
+        assert _pid_alive(os.getpid()) is True
+        assert _pid_alive(1 << 30) is False
