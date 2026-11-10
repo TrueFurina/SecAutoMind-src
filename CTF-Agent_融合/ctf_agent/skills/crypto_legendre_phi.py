@@ -34,10 +34,13 @@
 from __future__ import annotations
 
 import ast
+import logging
 import math
 import os
 import re
 from typing import List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # 默认 flag 模式（与项目其他 skill 保持一致）
 _DEFAULT_FLAG_RE = re.compile(
@@ -169,12 +172,38 @@ def run(params: dict) -> Optional[str]:
     if isinstance(plist, (list, tuple)):
         paths.extend(str(x) for x in plist)
     for p in paths:
+        # 2026-11-11 修复（静默失败）：原先直接 open(p)，传入附件**目录**时
+        # 抛 IsADirectoryError（OSError 子类）被 continue 静默吞掉，text 为空
+        # → 返回 None、耗时 0.00s、日志无任何报错。Agent 因此判定"工具失败"，
+        # 而实际工具本身完全正常（传具体文件 output 时 1.15s 即解出
+        # flag{GO0D_J0b_of_TH1s_encrYption}，与 flag_sha256 逐字匹配）。
         try:
-            with open(p, "r", encoding="utf-8", errors="ignore") as fh:
-                text += fh.read()
+            if os.path.isdir(p):
+                for _fn in sorted(os.listdir(p)):
+                    _fp = os.path.join(p, _fn)
+                    if os.path.isfile(_fp):
+                        try:
+                            with open(_fp, "r", encoding="utf-8",
+                                      errors="ignore") as fh:
+                                text += fh.read() + "\n"
+                        except OSError:
+                            continue
+            else:
+                with open(p, "r", encoding="utf-8", errors="ignore") as fh:
+                    text += fh.read()
         except OSError:
             continue
     if not text.strip():
+        # 2026-11-11 诊断（可观测性）：原先进来路径为空就静默 return None，
+        # 上层只能看到"工具返回空"，完全不知道 Agent 传了什么键、什么值。
+        # 监督日志已实证"crypto_legendre_phi 工具连续两次返回空结果"却查不到原因。
+        logger.warning(
+            "[crypto_legendre_phi] 输入为空 → 返回 None。"
+            " params_keys=%s path=%r paths=%r text_len=%d",
+            sorted(list(params.keys())),
+            params.get("path"), params.get("paths"),
+            len(str(params.get("text", "") or "")),
+        )
         return None
 
     enc = _extract_enc_list(text)

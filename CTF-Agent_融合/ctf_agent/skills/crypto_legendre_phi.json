@@ -1,0 +1,8 @@
+{
+  "name": "crypto_legendre_phi",
+  "purpose": "phi(N) 已知时的 RSA 确定性分解 + Legendre 符号逐位解密（西湖论剑真题 real_crypto_simplelegendre，2026-09-03 实证通过）。触发场景：附件给出 N 与 phi（两行大整数）+ 密文列表，或题面明确说『已知 phi』『phi 泄露』。攻击：p+q = N-phi+1，判别式完全平方 → 解二次方程得 p,q；再对每个密文求 Legendre 符号 (c|p)=(-1)^bi 逐位还原明文。纯数论，离线纯 Python，无需 sage/格/随机性，实测 ~1s 出 flag，与 flag_sha256 逐字匹配。",
+  "input_spec": "params = {'path': <附件目录或单个文本文件>} 或 {'paths': [<多个路径>]} 或 {'text': <含 N、phi、密文列表的原始文本>}；可选 {'patterns': [<额外 flag 正则>]}。传目录会自动遍历其下所有普通文件。",
+  "output_spec": "crypto_legendre_phi(params) → flag 明文字符串（如 flag{...}）；输入不可解析或未命中时返回 None。",
+  "categories": ["crypto", "rsa", "legendre", "phi-leak", "factorization"],
+  "version": "1.0"
+}
