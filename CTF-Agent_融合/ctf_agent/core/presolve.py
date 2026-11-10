@@ -420,7 +420,9 @@ def _is_plausible_flag(flag: str) -> bool:
     if any(ord(c) < 0x20 or ord(c) > 0x7e for c in flag):
         return False
     # 占位符特征：引号对、双连字符、TODO/example/sample/placeholder
-    if re.search(r"\"\"|['\"].*['\"]|\b--\b|TODO|placeholder|example|sample", flag, re.IGNORECASE):
+    # 注意：`--` 两侧常为花括号等非单词字符，不可用 `\\b--\\b`（词边界失效会漏检
+    # flag{--xyz} / CTF{--REDACTED--} 这类占位），故用 `--+` 匹配连续双连字符。
+    if re.search(r"\"\"|['\"].*['\"]|--+|TODO|placeholder|example|sample", flag, re.IGNORECASE):
         return False
     inner = flag.split("{", 1)[-1].rstrip("}")
     # 纯「字母-数字」题号式（如 C-02）

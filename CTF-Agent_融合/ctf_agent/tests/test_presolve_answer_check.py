@@ -212,6 +212,12 @@ class TestPlausibleFlagPlaceholder:
     def test_no_alnum_inner_rejected(self):
         assert _is_plausible_flag("flag{!!!???}") is False
 
+    def test_double_dash_placeholder_rejected(self):
+        """回归（2026-11-11）：`\\b--\\b` 词边界会漏检被花括号包住的 `--` 占位。
+        如 flag{--xyz} / CTF{--REDACTED--} 应判为占位拒绝，而非疑似真 flag。"""
+        assert _is_plausible_flag("flag{--xyz}") is False
+        assert _is_plausible_flag("CTF{--REDACTED--}") is False
+
     def test_normal_flags_still_plausible(self):
         """回归锁：正常 flag（含短 inner）不受影响。"""
         assert _is_plausible_flag("flag{a1b2c3}") is True
