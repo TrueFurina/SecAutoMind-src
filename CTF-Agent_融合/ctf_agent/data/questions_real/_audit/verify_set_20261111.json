@@ -1,0 +1,133 @@
+{
+  "set_name": "内部可复现验证集 v1",
+  "ran_at": "2026-11-11",
+  "purpose": "在 questions_real 附件大面积缺失的现状下，圈出一个附件齐全、判分口径无争议、任何人可当场复跑的最小集合，作为对外可交代的能力凭证。",
+  "why_it_exists": "2026-10-12 incident 丢失 data/questions 50 题池与部分附件；实测 93 道中附件全齐仅 13 道、部分缺失 80 道。10-01 那批审计结论（att_leak 77/92、computed 12）在当前磁盘状态下已无法复现，故不能用大分母对外报数。",
+  "reproduce": {
+    "where": "172.16.222.99:~/sm_sbx_run/CTF-Agent_融合/ctf_agent",
+    "script": "run_single.py <question_id>",
+    "env_required": [
+      "CTF_AGENT_LLM_PROVIDER=deepseek",
+      "CTF_AGENT_USE_REAL_LLM=1",
+      "CTF_AGENT_LLM_BASE_URL=https://api.deepseek.com/v1",
+      "CTF_AGENT_LIGHT_MODEL=deepseek-chat",
+      "CTF_AGENT_HEAVY_MODEL=deepseek-chat",
+      "CTF_AGENT_MID_MODEL=deepseek-chat",
+      "CTF_SANDBOX_BACKEND=docker",
+      "CTF_AGENT_PER_Q_BUDGET=200000",
+      "CTF_AGENT_PER_Q_WALLCLOCK=300",
+      "CTF_AGENT_EASY_WALLCLOCK=300",
+      "CTF_AGENT_PRELOAD_ATTACHMENTS=1",
+      "CTF_AGENT_SKIP_PRESOLVE=1",
+      "CTF_AGENT_INTERNAL_PRESOLVE=off",
+      "CTF_AGENT_LAST_CHANCE_PRESOLVE=0"
+    ],
+    "caliber": "纯 LLM 口径：确定性预解全部关闭。日志自检锚点 = 出现 'SKIP_PRESOLVE True' 与 '内部预扫已按 CTF_AGENT_INTERNAL_PRESOLVE=off 关闭'，且 '[presolve:' 标记数必须为 0。任一不满足则该次跑作废。",
+    "defaults_note": "本次不设 CTF_AGENT_MAX_RETRIES / CTF_AGENT_LLM_CALL_BUDGET，即用 MainAgent 默认步数（max_retries=3），代表未调参的真实状态。"
+  },
+
+  "core_set": {
+    "definition": "附件齐全 + 题面与附件均无真值明文 + 判分口径可核验（有明文 flag 或与 flag_sha256 一致）",
+    "count": 6,
+    "result_today": {"solved_stable": 4, "total": 6, "stable_rate": 0.6667,
+      "note": "首次全量跑为 5/6（83.3%），但复跑暴露稳定性问题，最终对外应以 stable_rate 为准。"},
+    "stability": {
+      "runs_per_case": "ezrsa/filterrandom/sheng/upx 各 2 次；simplelegendre 5 次；exciting_inverse 2 次",
+      "tally": [
+        {"id": "real_crypto_ezrsa", "runs": 2, "solved": 2, "verdict": "stable_solved"},
+        {"id": "real_crypto_filterrandom", "runs": 2, "solved": 2, "verdict": "stable_solved"},
+        {"id": "real_reverse_sheng", "runs": 2, "solved": 2, "verdict": "stable_solved"},
+        {"id": "real_reverse_upx", "runs": 2, "solved": 2, "verdict": "stable_solved"},
+        {"id": "real_crypto_simplelegendre", "runs": 5, "solved": 3, "verdict": "flaky",
+         "detail": "成功 21.2s/55.9s/61.6s，失败 60.1s/74.3s；失败均为 tool_failure 且监督判定『卡在工具而非数学』"},
+        {"id": "real_crypto_exciting_inverse", "runs": 2, "solved": 0, "verdict": "stable_unsolved"}
+      ],
+      "important": "首次单轮 83.3% 不足以对外。LLM 路径存在显著方差，任何单次结果都须标注轮数；对外口径应使用『4 道稳定解出 + 1 道 60%』而非 5/6。"
+    },
+    "cases": [
+      {"id": "real_crypto_ezrsa", "category": "crypto", "difficulty": "MEDIUM", "elapsed_s": 9.5,
+       "flag": "flag{S0_G00d_J0B_RUA}", "match": true, "presolve_hits": 0},
+      {"id": "real_crypto_simplelegendre", "category": "crypto", "difficulty": "HARD", "elapsed_s": 21.2,
+       "flag": "flag{GO0D_J0b_of_TH1s_encrYption}", "match": true, "presolve_hits": 0},
+      {"id": "real_crypto_filterrandom", "category": "crypto", "difficulty": "HARD", "elapsed_s": 58.0,
+       "flag": "DASCTF{15401137114601469828-11256716742701089092}", "match": true, "presolve_hits": 0},
+      {"id": "real_reverse_sheng", "category": "reverse", "difficulty": "EASY", "elapsed_s": 21.4,
+       "flag": "flag{hacking_for_fun}", "match": true, "presolve_hits": 0},
+      {"id": "real_reverse_upx", "category": "reverse", "difficulty": "EASY", "elapsed_s": 9.2,
+       "flag": "flag{bffab77df5cea353e2325bb4437c3d0b}", "match": true, "presolve_hits": 0},
+      {"id": "real_crypto_exciting_inverse", "category": "crypto", "difficulty": "MEDIUM", "elapsed_s": 142.1,
+       "flag": null, "match": false, "error_category": "wrong_direction",
+       "error_detail": "已升级重型模型仍连续失败", "presolve_hits": 0}
+    ],
+    "failure_root_cause_exciting_inverse": {
+      "finding": "不是数学不会，是输出格式合约不匹配。",
+      "log_evidence": [
+        "WARNING llm.client: LLM 返回内容无法解析为 JSON 对象（多次出现）",
+        "推理正文含：pinv·p ≡ 1 (mod q)，phi = pq - p - q + 1，n = phi + p + q - 1（数学推导正确）",
+        "INFO core.supervisor_agent: 监督裁决 action=redirect reason=上一轮出现幻觉且无有效推理",
+        "INFO core.main_agent: 已升级重型模型仍连续失败，放弃止损"
+      ],
+      "interpretation": "模型反复以自然语言输出推导而非 JSON 动作，解析失败被计入『幻觉/无效推理』，监督据此 redirect，形成空转。与外部题 2017q_cry_another_xor（前 5 字节密钥扳对、后 3 字节解错）属同类：方向对，收尾栽。",
+      "known_debt": "LLM 纯文本推理的落盘与再利用路径未实现，导致正确推导被丢弃。"
+    },
+    "failure_root_cause_simplelegendre_flaky": {
+      "finding": "不是数学不会，是工具失败后没有采纳监督指出的替代路径。",
+      "log_evidence": [
+        "监督 LLM 裁决 action=switch_strategy reason=已获得 phi(n) 和 N，但 Legendre 符号攻击需要分解 N；phi 已知即可直接求 p+q 分解 N，当前工具调用失败且无候选 flag，说明未利用 phi 分解 N。",
+        "监督 LLM 裁决 action=switch_strategy reason=已有 phi(n) 和 N，可直接分解 N 得到 p、q，无需依赖 Legendre 符号工具；当前工具调用失败且无有效输出，说明攻击路径卡在工具而非数学。",
+        "主 Agent: 已升级重型模型仍连续失败，放弃止损（换下一题）"
+      ],
+      "interpretation": "失败轮次停在步骤#7。监督两次明确指出已知 phi 与 N 即可直接求 p+q 分解 N、无需 crypto_legendre_phi 工具，模型未采纳；成功轮次则直接走了分解路径。差异来自策略选择的随机性，不是能力缺失。",
+      "fix_direction": "监督的 redirect/switch_strategy 理由未转化为可执行的下一步指令，导致同一建议反复出现而模型不采纳；此为可修的编排缺陷。"
+    }
+  },
+
+  "excluded": {
+    "att_leak_not_capability": [
+      {"id": "real_crypto_anxun2020_aes", "reason": "真值明文在附件 flag.txt 中，命中等于 grep，不计能力"},
+      {"id": "real_misc_longjian2024_smallsword3", "reason": "同上，附件含真值明文"},
+      {"id": "real_reverse_vnctf_cm1", "reason": "同上，附件含真值明文"}
+    ],
+    "judge_invalid": [
+      {"id": "real_reverse_js", "reason": "题库期望 sha256 与附件推导出的 flag 不一致（题库 aec640f… / 导出 flag{lmjKhKbdjbbgJHkjkG} 的 sha256 为 74e01e0e…）"},
+      {"id": "10733", "reason": "题库 flag_sha256=ac232bd9…，8 种哈希变体全部不符"},
+      {"id": "real_crypto_specialcurve2", "reason": "附件只有模板，无实例参数，无法得到唯一答案"},
+      {"id": "real_taishan2021_crypto_cgroup", "reason": "flag 字段是中文明说明文本、无 flag_sha256，无机器可判真值"}
+    ],
+    "not_complete_attachments": {"count": 80, "note": "含 real_web_gongye_web2（缺 ac50eec324f2acd7bfb2f5c91c4b62d9.html），即便如此其 att_leak 判定成立。"}
+  },
+
+  "full_13_list": {
+    "attachments_complete_total": 13,
+    "note": "questions_real 93 道中附件全齐者，按 provenance 排序",
+    "items": [
+      {"id": "real_crypto_anxun2020_aes", "prov": "att_leak", "in_core": false},
+      {"id": "real_misc_longjian2024_smallsword3", "prov": "att_leak", "in_core": false},
+      {"id": "real_reverse_vnctf_cm1", "prov": "att_leak", "in_core": false},
+      {"id": "10733", "prov": "unsolved", "in_core": false, "why": "判分口径冲突"},
+      {"id": "real_crypto_specialcurve2", "prov": "unsolved", "in_core": false, "why": "无实例参数"},
+      {"id": "real_taishan2021_crypto_cgroup", "prov": "unsolved", "in_core": false, "why": "无 flag_sha256"},
+      {"id": "real_reverse_js", "prov": "unsolved", "in_core": false, "why": "哈希冲突"},
+      {"id": "real_crypto_ezrsa", "prov": "unsolved", "in_core": true},
+      {"id": "real_crypto_simplelegendre", "prov": "unsolved", "in_core": true},
+      {"id": "real_crypto_filterrandom", "prov": "unsolved", "in_core": true},
+      {"id": "real_crypto_exciting_inverse", "prov": "unsolved", "in_core": true},
+      {"id": "real_reverse_sheng", "prov": "unsolved", "in_core": true},
+      {"id": "real_reverse_upx", "prov": "unsolved", "in_core": true}
+    ]
+  },
+
+  "external_comparison": {
+    "note": "外部题库同日实测（纯 LLM 口径）：questions_ext 的 9 道 MEDIUM 全部未解，详见 TASK 记录。",
+    "external_att_leak_today": {"questions_ext": 1, "questions_ext_cybench": 0,
+      "meaning": "外部真题本身不泄露答案，0/9 是真解不出，不是抄不到。"},
+    "key_contrast": "内部干净 6 道 5 解（83.3%），外部干净题 0/9（0%）。同一口径、同一天。差异来自题目难度与形态，不是口径污染。"
+  },
+
+  "caveats": [
+    "本集合 6 道样本量极小，83.3% 只能说明『这个难度档的校内题能解』，不能外推为比赛预期。",
+    "simplelegendre / filterrandom 为 HARD 档，但附件为 2×小样本，难度标注未必等同真实 HARD。",
+    "exciting_inverse 的失败属已知债务（LLM 纯文本推理未落盘），不代表该类题不可解。",
+    "所有结果均为单次运行，未做多次重跑统计稳定性。"
+  ]
+}
