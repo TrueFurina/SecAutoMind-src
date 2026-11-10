@@ -29,20 +29,29 @@
   "core_set": {
     "definition": "附件齐全 + 题面与附件均无真值明文 + 判分口径可核验（有明文 flag 或与 flag_sha256 一致）",
     "count": 6,
-    "result_today": {"solved_stable": 4, "total": 6, "stable_rate": 0.6667,
-      "note": "首次全量跑为 5/6（83.3%），但复跑暴露稳定性问题，最终对外应以 stable_rate 为准。"},
+    "result_today": {
+      "solved_strictly_stable": 3,
+      "solved_basically_stable": 4,
+      "total": 6,
+      "stable_rate_strict": 0.5,
+      "stable_rate_inclusive": 0.6667,
+      "note": "严格口径只计 100% 解出（ezrsa/filterrandom/upx 各 4/4）；sheng 7 跑 6 成（1 次 extract_fail）计入'基本稳定'；simplelegendre 15 跑 10 成；exciting_inverse 6 跑 0 成。对外应报 strict 0.5 并附明细，或报 inclusive 0.6667 但必须注明 sheng 有波动。"
+    },
     "stability": {
-      "runs_per_case": "ezrsa/filterrandom/sheng/upx 各 2 次；simplelegendre 5 次；exciting_inverse 2 次",
+      "runs_per_case": "累计截至 2026-11-11 晚：ezrsa/filterrandom/upx 各 4；sheng 7；simplelegendre 15；exciting_inverse 6",
       "tally": [
-        {"id": "real_crypto_ezrsa", "runs": 2, "solved": 2, "verdict": "stable_solved"},
-        {"id": "real_crypto_filterrandom", "runs": 2, "solved": 2, "verdict": "stable_solved"},
-        {"id": "real_reverse_sheng", "runs": 2, "solved": 2, "verdict": "stable_solved"},
-        {"id": "real_reverse_upx", "runs": 2, "solved": 2, "verdict": "stable_solved"},
-        {"id": "real_crypto_simplelegendre", "runs": 5, "solved": 3, "verdict": "flaky",
-         "detail": "成功 21.2s/55.9s/61.6s，失败 60.1s/74.3s；失败均为 tool_failure 且监督判定『卡在工具而非数学』"},
-        {"id": "real_crypto_exciting_inverse", "runs": 2, "solved": 0, "verdict": "stable_unsolved"}
+        {"id": "real_crypto_ezrsa", "runs": 4, "solved": 4, "rate": 1.0, "verdict": "stable_solved"},
+        {"id": "real_crypto_filterrandom", "runs": 4, "solved": 4, "rate": 1.0, "verdict": "stable_solved"},
+        {"id": "real_reverse_upx", "runs": 4, "solved": 4, "rate": 1.0, "verdict": "stable_solved"},
+        {"id": "real_reverse_sheng", "runs": 7, "solved": 6, "rate": 0.857, "verdict": "basically_stable",
+         "detail": "唯一失败为 34.9s extract_fail；其余 11.7/12.4/13.5/14.2/21.4/29.4s 均解出"},
+        {"id": "real_crypto_simplelegendre", "runs": 15, "solved": 10, "rate": 0.667, "verdict": "flaky",
+         "detail": "成功 21.2/55.9/61.6/10.5/39.4/48.4/47.0/43.7/72.1/39.2s；失败 60.1/74.3/40.0/72.6/97.6s，多为 tool_failure"},
+        {"id": "real_crypto_exciting_inverse", "runs": 6, "solved": 0, "rate": 0.0, "verdict": "stable_unsolved",
+         "detail": "142.1/264.6/257.1/277.4/207.0/272.1s，尾三次均贴近或撞 300s 墙钟"}
       ],
-      "important": "首次单轮 83.3% 不足以对外。LLM 路径存在显著方差，任何单次结果都须标注轮数；对外口径应使用『4 道稳定解出 + 1 道 60%』而非 5/6。"
+      "important": "任何单次结果都不能当结论。首次单轮 5/6=83.3% 已被复跑推翻；对外须给分母与轮数，并区分 strict / inclusive 两种口径。",
+      "implication": "6 道里没有一道是 100% 稳定解出且高成功率的'高价值'题；真正稳定的只有 3 道。"
     },
     "cases": [
       {"id": "real_crypto_ezrsa", "category": "crypto", "difficulty": "MEDIUM", "elapsed_s": 9.5,
@@ -68,7 +77,15 @@
         "INFO core.main_agent: 已升级重型模型仍连续失败，放弃止损"
       ],
       "interpretation": "模型反复以自然语言输出推导而非 JSON 动作，解析失败被计入『幻觉/无效推理』，监督据此 redirect，形成空转。与外部题 2017q_cry_another_xor（前 5 字节密钥扳对、后 3 字节解错）属同类：方向对，收尾栽。",
-      "known_debt": "LLM 纯文本推理的落盘与再利用路径未实现，导致正确推导被丢弃。"
+      "known_debt": "LLM 纯文本推理的落盘与再利用路径未实现，导致正确推导被丢弃。",
+      "attempted_fix_20261111": {
+        "diagnosis": "不是格式不合规，是输出被 max_tokens 截断。parse-sample 显示模型确实吐了 {\"action\": \"script\", \"code\": \"python: ...\"} 结构，但 code 字段过长导致 JSON 未闭合；_balanced_brace_end 返回 -1（无匹配 }），_repair_json 的 rfind('}') 也返回 -1，两条修复路径均失效。",
+        "evidence": {"parse_fail_before": 18, "recover_script_success_before": 0},
+        "change": "llm/client.py 四个 JSON 函数的默认 max_tokens 2000 → 4000（ai_chat_json_with_usage / ai_chat_json_async / ai_chat_json_async_with_usage / ai_chat_json）。三个纯文本函数保持 2000。",
+        "verification": {"parse_fail_after": 2, "recover_script_success_after": 0},
+        "outcome": "解析层显著改善（18 次失败降至 2 次），但 exciting_inverse 仍 0/2（277.4s race_abandon / 207.0s tool_failure），撞 300s 墙钟。",
+        "conclusion": "JSON 解析失败不是该题根因；修好解析后暴露的真实瓶颈是时间不够与工具链失败。"
+      }
     },
     "failure_root_cause_simplelegendre_flaky": {
       "finding": "不是数学不会，是工具失败后没有采纳监督指出的替代路径。",
