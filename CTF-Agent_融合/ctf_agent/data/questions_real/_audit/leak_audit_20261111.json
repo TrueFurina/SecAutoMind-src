@@ -1,0 +1,58 @@
+{
+  "audit": "leak_provenance 复测（附件齐备度交叉验证）",
+  "ran_at": "2026-11-11",
+  "where": "172.16.222.99:~/sm_sbx_run/CTF-Agent_融合/ctf_agent",
+  "command": "python scripts/_leak_provenance.py --dir <库> --json /tmp/lk/lk_<tag>.json",
+  "cost": "纯本地确定性扫描，零 LLM 调用",
+
+  "today_result": {
+    "questions_real": {"n": 93, "att_leak": 4, "desc_leak": 1, "computed": 0, "unsolved": 88},
+    "questions_ext": {"n": 34, "att_leak": 1, "desc_leak": 0, "computed": 0, "unsolved": 33},
+    "questions_ext_cybench": {"n": 11, "att_leak": 0, "desc_leak": 0, "computed": 0, "unsolved": 11}
+  },
+
+  "prior_snapshot_20261001": {
+    "questions_real": {"n": 92, "att_leak": 77, "desc_leak": 1, "computed": 12, "unsolved": 2},
+    "questions_ext": {"n": 34, "att_leak": 1, "computed": 1, "unsolved": 32},
+    "questions_ext_cybench": {"n": 13, "att_leak": 2, "unsolved": 11},
+    "source_files": [
+      "heldout_evidence/leak_provenance_real92_v3_20261001.json",
+      "heldout_evidence/leak_provenance_nyu34_v3_20261001.json",
+      "heldout_evidence/leak_provenance_cybench13_v3_20261001.json"
+    ]
+  },
+
+  "attachment_integrity_measured_today": {
+    "questions_real_total": 93,
+    "attachments_complete": 13,
+    "attachments_partial": 80,
+    "attachments_none": 0,
+    "note": "80 道部分缺失；load_questions 逐条打印『附件未暂存（缺失或目录，已保留原路径）』。缺失文件含 anxun2020_official.txt / vnctf2022.txt 等被大量题共享的官方 writeup。"
+  },
+
+  "verdict": "今天的 leak 审计不可直接引用。att_leak 77→4、computed 12→0 不是答案泄露减少或引擎变弱，而是 80/93 道题附件已不存在，扫描面本身塌陷：判 att_leak 需要读到附件内容，读不到即落 unsolved。",
+
+  "cross_check": {
+    "logic": "若附件齐备度是原因，则今天被判 att_leak 的题必须全部落在附件齐备的 13 道内。",
+    "att_leak_ids_today": [
+      "real_crypto_anxun2020_aes",
+      "real_misc_longjian2024_smallsword3",
+      "real_reverse_vnctf_cm1",
+      "real_web_gongye_web2"
+    ],
+    "all_within_complete_subset": true,
+    "result": "成立。4 道全部附件可读。"
+  },
+
+  "implications": [
+    "10-01 那份 68/92（源码注释口径）与 77/92（v3 审计口径）在当前磁盘状态下均无法复现，只能作为历史快照引用，且必须标注 ran_at。",
+    "10-01 判出的 12 道 computed（引擎真算出来）今天一条也无法复测，因为其附件已丢。",
+    "外部两库（questions_ext 34 道 / questions_ext_cybench 11 道）今天 att_leak 合计 1，说明外部题库本身答案不泄露——这与外部 MEDIUM 实测 0/9 互为印证：不是抄不到，是真解不出。",
+    "任何基于 leak 口径的对外比率（如『干净 22.4%』）在引用前必须先解决附件缺失，否则分母不成立。"
+  ],
+
+  "known_caveats": [
+    "unsolved 档不代表题目不可解，只陈述本次 presolve 参照解未命中；部分题由专用 verifier 脚本核验（源码 scripts/_leak_provenance.py 头部已警告）。",
+    "cybench 今日 n=11 而 10-01 为 13，差 2 道须查是否题目文件本身减少（本次未核实）。"
+  ]
+}
