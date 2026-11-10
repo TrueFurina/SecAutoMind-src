@@ -1,0 +1,13 @@
+{
+  "name": "morse_ab_decode",
+  "purpose": "A/B 字符串 → 摩斯电码解码：A=划/B=点（或反之）映射摩斯后还原字母/数字/标点，可配合单表替换（quipqiup/hill-climbing）或 UUID 结构识别。classicCrypto 类题。",
+  "input_spec": "params={'text':<A/B串>} 或 {'path':<文件>}",
+  "output_spec": "解码后的明文文本",
+  "categories": [
+    "crypto",
+    "morse",
+    "classic",
+    "substitution"
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "ctf_sage_t6_hastad_broadcast",
+  "purpose": "同明文低指数广播攻击模板适配层：Håstad + CRT + 开 e 次方。数学实现在 scripts/ctf_sage/t6_hastad_broadcast.py。",
+  "input_spec": "params={e, pairs:[[n_i,c_i],...]}（组数 >= e）",
+  "output_spec": "恢复的明文 m",
+  "categories": [
+    "crypto",
+    "rsa",
+    "broadcast",
+    "hastad",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

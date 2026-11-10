@@ -1,0 +1,14 @@
+{
+  "name": "jpeg_png_embedded",
+  "purpose": "JPEG 尾部嵌入 PNG 检测与提取：JPEG（FFD8+FFD9）尾部直接接 PNG（89504E47 魔数）时，提取 PNG 并用 tesseract OCR 按 flag_pattern 提取 flag 明文。适用玄盾杯 SignIN 等。",
+  "input_spec": "params={'path'|'text'|'attachments'}",
+  "output_spec": "flag 明文 / 提取的 PNG 路径",
+  "categories": [
+    "misc",
+    "steganography",
+    "image",
+    "forensics",
+    "ocr"
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "misc_grid_resample",
+  "purpose": "图像杂色点网格采样隐写揭示：图片散布间隔相近的杂色点，flag 编码在网格坐标里；按固定网格间距重采样重绘使隐藏文字显现。优先 tesseract + flag_sha256 校验，失败回退视觉 LLM。与 LSB 隐写不同（标准 LSB 提取为空）。",
+  "input_spec": "params={'path'|'text'|'attachments'}",
+  "output_spec": "flag 明文 / 揭示图路径（校验失败仍存盘供人工复核）",
+  "categories": [
+    "misc",
+    "steganography",
+    "image",
+    "grid",
+    "forensics"
+  ],
+  "version": "1.0"
+}

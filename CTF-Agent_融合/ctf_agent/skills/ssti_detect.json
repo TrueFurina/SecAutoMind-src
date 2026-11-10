@@ -4,6 +4,18 @@
   "input_spec": "target_url: 目标URL, param_name: 注入参数名(默认input), method: GET/POST(默认GET)",
   "output_spec": "flag: 提取的 flag, evidence: 探测证据, template_engine: 模板引擎类型",
   "safety_risk": "low",
-  "category": "web",
-  "keywords": ["ssti", "template", "jinja2", "twig", "freemarker", "rce"]
+  "keywords": [
+    "ssti",
+    "template",
+    "jinja2",
+    "twig",
+    "freemarker",
+    "rce"
+  ],
+  "categories": [
+    "web",
+    "ssti",
+    "template-injection",
+    "rce"
+  ]
 }

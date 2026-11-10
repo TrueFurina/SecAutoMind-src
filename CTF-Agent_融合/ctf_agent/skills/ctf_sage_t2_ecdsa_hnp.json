@@ -1,0 +1,14 @@
+{
+  "name": "ctf_sage_t2_ecdsa_hnp",
+  "purpose": "ECDSA nonce 复用 / HNP（Hidden Number Problem）格恢复私钥模板适配层：nonce_reuse 用相同 r 的两条签名，hnp 用 LLL/Kannan 嵌入。数学实现在 scripts/ctf_sage/t2_ecdsa_hnp.py。",
+  "input_spec": "params={mode='nonce_reuse'|'hnp', n,r,s,z,...}",
+  "output_spec": "恢复的私钥 d / 签名参数",
+  "categories": [
+    "crypto",
+    "ecdsa",
+    "lattice",
+    "hnp",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "crypto_modinv_factor",
+  "purpose": "phi + 双模逆二次分解 RSA：已知 e、phi(n)、密文 c、pinv=p^{-1} mod q、qinv=q^{-1} mod p（无 N），在无需分解大整数前提下还原明文。适用玄盾杯 ExcitingInverse / real_crypto_exciting_inverse。",
+  "input_spec": "params={'text'|'path'|'paths', 'patterns'?}",
+  "output_spec": "flag 明文，或 None（未命中/不可解析）",
+  "categories": [
+    "crypto",
+    "rsa",
+    "factorization",
+    "phi-leak"
+  ],
+  "version": "1.0"
+}

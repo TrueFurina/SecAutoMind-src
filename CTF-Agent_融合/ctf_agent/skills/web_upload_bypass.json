@@ -4,6 +4,18 @@
   "input_spec": "target_url: 上传URL, field_name: 文件字段名(默认file)",
   "output_spec": "flag: 提取的flag, evidence: 绕过证据, webshell_url: webshell访问地址",
   "safety_risk": "low",
-  "category": "web",
-  "keywords": ["upload", "bypass", "webshell", "rce", "file", "mime", "extension"]
+  "keywords": [
+    "upload",
+    "bypass",
+    "webshell",
+    "rce",
+    "file",
+    "mime",
+    "extension"
+  ],
+  "categories": [
+    "web",
+    "upload",
+    "bypass"
+  ]
 }

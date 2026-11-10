@@ -1,0 +1,13 @@
+{
+  "name": "zip_fake_encryption",
+  "purpose": "zip 伪加密破解：检测 flag_bits bit0=1（标记加密但无密码）并清除加密位，zipfile 正常读取提取 flag；同时覆盖普通无密码 zip 内容 flag 提取。fast_solve('zip',...) 优先走本 skill。",
+  "input_spec": "params={'path':<zip路径>}",
+  "output_spec": "flag 明文 / 提取的文件列表",
+  "categories": [
+    "misc",
+    "zip",
+    "forensics",
+    "archive"
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ctf_sage_t5_dlp_bsgs_ph",
+  "purpose": "离散对数 BSGS + Pohlig-Hellman 求解模板适配层：纯 Python 大步小步法 + 阶分解。数学实现在 scripts/ctf_sage/t5_dlp_bsgs_ph.py。",
+  "input_spec": "params={g,h,p,order?}",
+  "output_spec": "离散对数 x 使 g^x = h (mod p)",
+  "categories": [
+    "crypto",
+    "dlp",
+    "discrete-logarithm",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

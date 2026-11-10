@@ -1,0 +1,14 @@
+{
+  "name": "ctf_sage_t1_coppersmith",
+  "purpose": "Coppersmith 小根攻击模板适配层：将 params 映射到 scripts/ctf_sage/t1_coppersmith.py 的 solve_small_roots（纯 Python，与 Sage small_roots 同构）。数学实现在模板库，本文件只做映射与结果整形。",
+  "input_spec": "params={mode, poly/flags/...}（详见模块 docstring 各 mode 入参）",
+  "output_spec": "小根列表 / 恢复的明文片段",
+  "categories": [
+    "crypto",
+    "coppersmith",
+    "lattice",
+    "rsa",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

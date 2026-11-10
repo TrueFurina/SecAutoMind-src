@@ -1,0 +1,14 @@
+{
+  "name": "crypto_hastad_broadcast",
+  "purpose": "Håstad 广播攻击：同一明文 m 用 k 组不同模数 n_i 与同一小指数 e 加密，当 m^e < N=∏n_i 时，由中国剩余定理合并得 C=m^e (mod N)，整数范围即 m^e，直接开 e 次整数根恢复明文。适用西湖论剑 real_crypto_ezrsa 等低指数广播题。",
+  "input_spec": "params={'text'|'path'|'pairs', 'e_max'?, 'patterns'?}；pairs 为 [[n_i,c_i],...] 同明文广播组",
+  "output_spec": "flag 明文，或 None（未命中/不可解析）",
+  "categories": [
+    "crypto",
+    "rsa",
+    "broadcast",
+    "crt",
+    "hastad"
+  ],
+  "version": "1.0"
+}

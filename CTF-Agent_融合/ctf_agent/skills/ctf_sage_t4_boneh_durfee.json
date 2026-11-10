@@ -1,0 +1,14 @@
+{
+  "name": "ctf_sage_t4_boneh_durfee",
+  "purpose": "RSA 私指数 d < N^0.292 的 Boneh-Durfee 攻击模板适配层：Herrmann-May unravelled linearization。数学实现在 scripts/ctf_sage/t4_boneh_durfee.py。",
+  "input_spec": "params={n,e,...}（须满尺寸 e^2 >= N）",
+  "output_spec": "恢复的私钥 d",
+  "categories": [
+    "crypto",
+    "rsa",
+    "boneh-durfee",
+    "lattice",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

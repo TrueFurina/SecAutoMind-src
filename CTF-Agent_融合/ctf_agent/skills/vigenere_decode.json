@@ -1,0 +1,13 @@
+{
+  "name": "vigenere_decode",
+  "purpose": "Vigenère 解码：key 字符当移位、仅字母位推进（数字/连字符保留）。输入可能经 base64/八进制/hex 编码，先提取 key 与 data 再解密。适用 2022 安网杯 crypto1 等。",
+  "input_spec": "params={'text'|'key'|'path'}",
+  "output_spec": "解密后的明文",
+  "categories": [
+    "crypto",
+    "vigenere",
+    "classic",
+    "substitution"
+  ],
+  "version": "1.0"
+}

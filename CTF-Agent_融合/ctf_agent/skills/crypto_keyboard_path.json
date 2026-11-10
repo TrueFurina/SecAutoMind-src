@@ -1,0 +1,13 @@
+{
+  "name": "crypto_keyboard_path",
+  "purpose": "QWERTY 键盘路径密码解码：每组字母视为在键盘上连线所得轮廓，连出对应大写字母（如 UYTGBNM→C）。适用暗泉杯 DNUICTF「键盘侠」等视觉键盘密码题。",
+  "input_spec": "payload={'text': 'UYTGBNM ...'} 或 {'path':<附件>} 或 {'attachments':[...]}",
+  "output_spec": "{'decoded','flag','ascii','source'} 字典",
+  "categories": [
+    "misc",
+    "keyboard",
+    "cipher",
+    "visual"
+  ],
+  "version": "1.0"
+}

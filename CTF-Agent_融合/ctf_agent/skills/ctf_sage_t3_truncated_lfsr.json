@@ -1,0 +1,14 @@
+{
+  "name": "ctf_sage_t3_truncated_lfsr",
+  "purpose": "LFSR 全输出 / 截断恢复模板适配层：Berlekamp-Massey 还原特征多项式 + 格恢复内部状态。数学实现在 scripts/ctf_sage/t3_truncated_lfsr.py。",
+  "input_spec": "params={mode='full'|'truncated', outputs, width, ...}",
+  "output_spec": "恢复的 LFSR 状态 / 预测输出序列",
+  "categories": [
+    "crypto",
+    "lfsr",
+    "stream-cipher",
+    "lattice",
+    "sage-template"
+  ],
+  "version": "1.0"
+}

@@ -4,6 +4,21 @@
   "input_spec": "target_url: 目标URL, param_name: 注入参数名(默认username), method: GET/POST(默认POST)",
   "output_spec": "flag: 提取的 flag, evidence: 探测证据(含布尔盲注提取记录), injectable: 是否存在注入点",
   "safety_risk": "low",
-  "category": "web",
-  "keywords": ["sqli", "union", "injection", "waf", "bypass", "login", "布尔盲注", "盲注", "boolean", "blind"]
+  "keywords": [
+    "sqli",
+    "union",
+    "injection",
+    "waf",
+    "bypass",
+    "login",
+    "布尔盲注",
+    "盲注",
+    "boolean",
+    "blind"
+  ],
+  "categories": [
+    "web",
+    "sqli",
+    "sql-injection"
+  ]
 }
