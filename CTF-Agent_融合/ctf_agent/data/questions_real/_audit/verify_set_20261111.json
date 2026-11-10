@@ -78,7 +78,19 @@
         "主 Agent: 已升级重型模型仍连续失败，放弃止损（换下一题）"
       ],
       "interpretation": "失败轮次停在步骤#7。监督两次明确指出已知 phi 与 N 即可直接求 p+q 分解 N、无需 crypto_legendre_phi 工具，模型未采纳；成功轮次则直接走了分解路径。差异来自策略选择的随机性，不是能力缺失。",
-      "fix_direction": "监督的 redirect/switch_strategy 理由未转化为可执行的下一步指令，导致同一建议反复出现而模型不采纳；此为可修的编排缺陷。"
+      "fix_direction": "监督的 redirect/switch_strategy 理由未转化为可执行的下一步指令，导致同一建议反复出现而模型不采纳；此为可修的编排缺陷。",
+      "attempted_fix_20261111": {
+        "change": "core/main_agent.py apply_verdict 原仅注入 verdict.suggestion（:442），而 supervisor_agent.py:134 的 prompt 要求同时输出 reason 与 suggestion，实测监督常只填 reason → 建议从未进 plan prompt。现 reason 与 suggestion 均注入（建议与依据拼接，相同则去重）。",
+        "unit_verification": {
+          "A_only_reason": "advisor_hint='已有 phi(n) 和 N，可直接分解 N 得到 p、q'，build_plan_prompt 输出含 '⚠️ 监督建议:' → True",
+          "B_both": "advisor_hint='用 phi 直接分解 N（监督依据：当前工具调用失败）'",
+          "C_same": "advisor_hint='换思路'（去重生效）",
+          "D_continue": "advisor_hint=None（不注入）"
+        },
+        "outcome": "结构修复成立（reason 不再 100% 丢失），但成功率无可观测改善：修复前 5 轮 3/5=60.0%，修复后 8 轮 5/8=62.5%，差异在噪声范围内。",
+        "conclusion": "『监督建议未进 prompt』不是根因，只是其中一层。真正的瓶颈是模型拿到建议后仍不执行。",
+        "regression": "全 6 道回归 5/6=83.3%，caliber_ok 全 True，无回归。"
+      }
     }
   },
 

@@ -433,13 +433,28 @@ class AgentContext:
             self.model_upgrades += 1
             self.stuck_count = 0
             self.no_progress_streak = 0
-        # 定向提示注入：非 continue 且带 suggestion 时累积（避免重复覆盖）
+        # 定向提示注入：非 continue 时累积（避免重复覆盖）。
+        # 2026-11-11 修复（实测为断链）：原仅注入 verdict.suggestion，
+        # 而 supervisor_agent.py:134 的 prompt 要求同时输出 reason 与 suggestion，
+        # 实际运行时监督常只填 reason（如 simplelegendre 连续两轮给出
+        # "已有 phi(n) 和 N，可直接分解 N 得到 p、q，无需依赖 Legendre 符号工具"），
+        # suggestion 为空 → 该建议从未进入 plan prompt → 模型反复不采纳、
+        # 同一裁决反复出现直到 give_up。现 reason 与 suggestion 都注入，信息不丢。
+        # 实测效果（8 轮，2026-11-11）：成功率 60%→62.5%，在噪声范围内，
+        # 即"建议进 prompt"不是瓶颈，瓶颈在模型拿到建议后仍不执行。
+        _reason = (verdict.reason or "").strip()
+        _sugg = (verdict.suggestion or "").strip()
+        _hint = ""
+        if _reason and _sugg and _reason != _sugg:
+            _hint = f"{_sugg}（监督依据：{_reason}）"
+        else:
+            _hint = _sugg or _reason
         if (
             verdict.action != VERDICT_CONTINUE
-            and verdict.suggestion
-            and verdict.suggestion != self.advisor_hint
+            and _hint
+            and _hint != self.advisor_hint
         ):
-            self.advisor_hint = verdict.suggestion
+            self.advisor_hint = _hint
 
     def last_step(self) -> Optional[StepRecord]:
         return self.steps[-1] if self.steps else None
