@@ -102,13 +102,15 @@ def test_high_exponent_auto_10733_recovers_rot_encoded_flag():
         "max_flag_len": 128,
     })
     assert res["ok"], res
-    # 明文本身是 ROT 编码 flag
-    assert res["flag"].startswith("QNFPGS{") and res["flag"].endswith("}")
-    # skill 应自动给出 rot13 / rot18 候选
+    # flag 直接是最终可提交值：skill 已把 ROT13 编码态归一进 flag，未归一原样留在 plaintext。
+    # 此前 flag 给 QNFPGS{...} 而提交链只读 flag 做 sha256，导致解得出来必然判不过。
+    assert res["flag"].startswith("DASCTF{") and res["flag"].endswith("}")
+    assert res["plaintext"].startswith("QNFPGS{") and res["plaintext"].endswith("}")
+    # skill 应自动给出 rot13 / rot18 候选（交叉核对用）
     assert "rot13" in res, "明文是 ROT 编码时 skill 应附 rot13 候选"
     assert "rot18" in res, "明文是 ROT 编码时 skill 应附 rot18 候选"
-    # rot13 后必须以 DASCTF{ 开头（题面要求）—— 不比对明文，只验前缀
-    assert res["rot13"].startswith("DASCTF{")
+    assert res["rot13"] == res["flag"], "rot13 字段应与归一后的 flag 一致"
+    # rot18 后同样以 DASCTF{ 开头（题面要求）—— 不比对明文，只验前缀
     assert res["rot18"].startswith("DASCTF{")
 
 

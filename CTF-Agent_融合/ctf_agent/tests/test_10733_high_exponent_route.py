@@ -107,23 +107,29 @@ class Test10733HighExponentRoute(unittest.TestCase):
 
     @pytest.mark.local
     def test_crypto_high_exponent_solves_10733_real(self):
-        """端到端解出 10733 真实实例（纯本地数学，无网络）：run() 成功且 ROT13 编码态
-        经 rot13 归一后命中题面真值 sha256（真题坑点）。"""
+        """端到端解出 10733 真实实例（纯本地数学，无网络）：run() 成功且返回的 flag
+        直接命中题面真值 sha256（ROT13 编码态已由 skill 内部归一，见 recover_via_odd_subgroup）。"""
         che = _load_che()
         n, e, c, hint = _real_n_e_c_hint()
         res = che.run({"n": n, "e": e, "c": c, "hint": hint, "kind": "auto"})
         self.assertTrue(res.get("ok"), "crypto_high_exponent 未能解出 10733: %r" % res)
         raw = res.get("flag") or ""
-        self.assertTrue(raw, "解出为空")
-        # 真题坑点：明文为 ROT13 编码（QNFPGS{...}），需 rot13 归一
-        canonical = che.codecs_rot(raw, 13)
+        raw13 = res.get("rot13") or ""
+        self.assertTrue(raw or raw13, "解出为空")
         with open(Q10733_JSON, encoding="utf-8") as _qf:
             qj = __import__("json").load(_qf)
         truth = qj["flag_sha256"]
+        # 提交链只读 flag 做 sha256 比对；skill 现把 ROT 编码态（QNFPGS{...}）归一进 flag 本身，
+        # 未归一原样留在 plaintext。故 flag 必须直接命中，rot13 字段作交叉核对。
+        matched = [v for v in (raw, raw13)
+                   if v and hashlib.sha256(v.encode()).hexdigest() == truth]
+        self.assertTrue(
+            matched,
+            "10733 解出的 flag 未命中题面真值 sha256；flag=%r rot13=%r"
+            % (raw, raw13))
         self.assertEqual(
-            hashlib.sha256(canonical.encode()).hexdigest(), truth,
-            "10733 解出经 rot13 归一后未命中真值 sha256；raw=%r canonical=%r"
-            % (raw, canonical))
+            raw, raw13,
+            "flag 与 rot13 字段应一致（均已归一为真 flag）；flag=%r rot13=%r" % (raw, raw13))
 
 
 if __name__ == "__main__":

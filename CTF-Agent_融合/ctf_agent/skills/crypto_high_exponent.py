@@ -176,14 +176,20 @@ def recover_via_odd_subgroup(c: int, e: int, p: int, q: int, prefixes: list) -> 
         b = _int_to_bytes(m)
         if _match_prefix(m, prefixes):
             flag = b.decode("utf-8", "replace")
-            res = {"ok": True, "m": m, "flag": flag,
-                   "via": "odd-subgroup+rabin", "method": "odd-subgroup-rabin"}
-            # 明文本身是 rot 编码 flag（真题 10733：QNFPGS{...} = rot13(DASCTF{...})）
+            # 明文本身是 rot 编码 flag（真题 10733：QNFPGS{...} = rot13(DASCTF{...})）。
+            # 这一类前缀本身就说明「它还没解码」——prefixes 里登记 QNFPGS{/SYNT{ 是为了
+            # 认得出它，不是为了把它当最终答案交出去。故 flag 直接给解码后的真 flag，
+            # 原样留在 plaintext。改动前 flag 给原始态，而提交链只读 flag 做 sha256 比对，
+            # 于是解得出来却必然判不过（10733 被误记成 C 层「sha256 冲突」即源于此）。
             if flag.startswith("QNFPGS{") or flag.startswith("SYNT{"):
-                res["rot13"] = codecs_rot(flag, 13)
-                res["rot18"] = codecs_rot(flag, 13, True)
-                res["note"] = "明文为 ROT 编码 flag，提交前用 rot13/rot18 版本（题名含 rot 即提示）"
-            return res
+                dec = codecs_rot(flag, 13)
+                return {"ok": True, "m": m, "flag": dec, "plaintext": flag,
+                        "rot13": dec, "rot18": codecs_rot(flag, 13, True),
+                        "via": "odd-subgroup+rabin+rot13", "method": "odd-subgroup-rabin",
+                        "note": "明文为 ROT 编码 flag（QNFPGS/SYNT 前缀），flag 已解码为真 flag；"
+                                "plaintext 保留未解码原样"}
+            return {"ok": True, "m": m, "flag": flag,
+                    "via": "odd-subgroup+rabin", "method": "odd-subgroup-rabin"}
         if _is_printable(m):
             for name, dec in (("rot13", lambda s: codecs_rot(s, 13)),
                               ("rot18", lambda s: codecs_rot(s, 13, True))):
