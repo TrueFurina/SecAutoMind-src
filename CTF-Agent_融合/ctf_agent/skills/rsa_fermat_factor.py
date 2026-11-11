@@ -99,7 +99,16 @@ def run(params):
         elif params.get("d") and n and c:
             attack = "d_known"
         elif params.get("phi") and e and c:
-            attack = "phi_known"
+            # 2026-11-11 修复（ExcitingInverse 恒 0 成的根因）：
+            # 本题 output 只给 e/phi/c/pinv/qinv，**没有 n**。
+            # phi_known 分支末尾是 pow(c, d, n)，n=0 时必然返回 None；
+            # 而真正为该场景实现的 _phi_known_inv_attack 永远走不到。
+            # 实测同一份输入：自动分派返回 None，强制 attack=phi_known_inv 直接解出 flag。
+            # 判据：有 phi、无 n、且给了 pinv/qinv → 走模逆恢复分支。
+            if not n and params.get("pinv") and params.get("qinv"):
+                attack = "phi_known_inv"
+            else:
+                attack = "phi_known"
         elif len(ns) >= 2:
             # 多组 (n,c)：先试共享素数 GCD，失败再试 Hastad 广播
             attack = "multi_n"

@@ -114,7 +114,8 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/venv/bin/pip install --no-cache-dir \
            py7zr rarfile capstone httpx scapy \
-    && /opt/venv/bin/python -c "import py7zr, rarfile, capstone, httpx, scapy; print('py-deps OK')"
+           gmpy2 pycryptodome \
+    && /opt/venv/bin/python -c "import py7zr, rarfile, capstone, httpx, scapy, gmpy2, Crypto; print('py-deps OK')"
 ENV PATH=/opt/venv/bin:${PATH}
 
 # ── rea.mjs（JS 反编译引擎）──────────────────────────────────────────────────
@@ -179,6 +180,9 @@ RUN printf '%s\n' \
     'for t in bkcrack crackcrc unzip zip 7z objdump readelf gdb strings python3 gawk dd awk cmake g++ node npm upx; do check "$t"; done' \
     'echo "--- python 依赖（解题脚本会直接 import）---"' \
     'python3 -c "import py7zr, rarfile, capstone, httpx, scapy" && echo "OK   py-deps" || { echo "MISS py-deps"; fail=1; }' \
+    'echo "--- crypto 依赖：所有 RSA 脚本第一行就是 import gmpy2 / from Crypto.Util.number ---"' \
+    'python3 -c "import gmpy2" && echo "OK   gmpy2" || { echo "MISS gmpy2"; fail=1; }' \
+    'python3 -c "from Crypto.Util.number import long_to_bytes" && echo "OK   Crypto" || { echo "MISS Crypto"; fail=1; }' \
     'echo "--- rea.mjs 必须在探测路径上（否则 rea_probe 整条 lane 不可用）---"' \
     'test -f /usr/local/lib/node_modules/rea-agents/scripts/rea.mjs && echo "OK   rea.mjs" || { echo "MISS rea.mjs"; fail=1; }' \
     'echo "--- bkcrack 必须带 cross-filter（否则 ziphard 跑不出）---"' \

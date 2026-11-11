@@ -160,6 +160,44 @@
         "why_faster": "工具一次就返回 flag，模型不再反复试错，所以耗时从\"反复重试到 45s\"降到\"一次调用到 5s\"。",
         "sample_caveat": "15 次均为同一题，样本有限；跨题泛化未验证。",
         "verdict": "真缺陷，且真实提升成功率 —— 四条修复中唯一一条既修了缺陷又提升了成功率。"
+      },
+      "exciting_inverse_chain_20261111": {
+        "summary": "从 0/6 到 5/5。不是一个 bug，是四层断点叠加；前几层修好后仍为 0，因为最底层（沙盒镜像缺依赖）让一切脚本在容器里当场失败。",
+        "layer_1_dispatch": {
+          "where": "skills/rsa_fermat_factor.py:101 自动分派",
+          "defect": "看到 phi 就选 phi_known，但该分支末尾是 pow(c,d,n)，本题无 n → 必然 None；而专为本题实现的 _phi_known_inv_attack（:237）永远走不到。",
+          "evidence": "同一份输入：自动分派 None / 强制 attack=phi_known_inv 解出 flag{QUITE_S1mpLe_TAsk}",
+          "fix": "有 phi、无 n、且给了 pinv/qinv → 走 phi_known_inv",
+          "verified": "本地 py_compile RC=0；自动分派解出；带 n 时仍走 phi_known（回归未坏）"
+        },
+        "layer_2_extract": {
+          "where": "core/presolve.py:2022-2029 _try_rsa_factor",
+          "defect": "只认 n=123... / c=123... 带前缀格式，本题 output 是五行裸数字 → m_n 匹配不到 → return None",
+          "impact": "rsa_fermat_factor 连被调用的机会都没有",
+          "status": "本条未修（属 SLIP_PRESOLVE=1 纯 LLM 口径下不生效的路径，真正起作用的是第 3、4 层）"
+        },
+        "layer_3_fallback": {
+          "where": "core/fallbacks.py:18 build_crypto_fallback_script → CryptoToolkit.build_fallback_script",
+          "finding": "兜底脚本本身是好的，内含 _solve_phi_inv，单独在宿主机跑直接输出 [rsa_phi_known_inv] flag{QUITE_S1mpLe_TAsk}",
+          "status": "无需修改"
+        },
+        "layer_4_image": {
+          "where": "docker/Dockerfile python 依赖段",
+          "defect": "只装了 py7zr rarfile capstone httpx scapy；缺 gmpy2，且只有 pycryptodomex（导入名 Cryptodome），没有 pycryptodome（Crypto）。而所有 RSA 脚本首行就是 import gmpy2 / from Crypto.Util.number import long_to_bytes。",
+          "evidence": "docker run ctf-tools:1 python3 -c \"import gmpy2\" → ModuleNotFoundError; 同 ctf-tools:1 import Crypto → ModuleNotFoundError",
+          "fix": "Dockerfile pip 段加 gmpy2 pycryptodome，并在 ctf-selftest 里加两条硬检查",
+          "rebuild": "ctf-tools:2，1.89GB，构建成功，GMPY2_OK / CRYPTO_OK",
+          "scope_note": "这是全局问题：所有 crypto 题的理论能力在旧镜像里都跑不起来，失败表现为\"攻击链未命中\"，被记在模型能力账上。"
+        },
+        "production_verified": {
+          "runs": 5,
+          "success": 5,
+          "rate": "5/5 = 100%",
+          "wallclock": "53.1s / 111.6s / 122.6s / 152.4s / 235.8s",
+          "before": "修复前 6 跑 0 成，尾三次贴或撞 300s 墙钟",
+          "remaining_issue": "仍偏慢：模型先反复试错，最后才走到兜底。simplelegendre 修好后只要 5s，本题 53-236s，说明\"何时该用确定性攻击链\"的时机判断仍有优化空间。"
+        },
+        "verdict": "真缺陷（四层叠加），且真实提升成功率 —— 第二条既修缺陷又涨分的修复。"
       }
     },
     "cases": [
