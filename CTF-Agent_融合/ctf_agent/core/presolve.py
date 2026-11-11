@@ -2022,15 +2022,30 @@ async def _try_rsa_factor(question) -> Optional[str]:
     # 保守提取 n/e/c（十进制大整数；词边界 + =/: 分隔，规避误命中）
     m_n = _re.search(r"(?:\bn\b|\bN\b)\s*[=:]\s*(\d{8,})", text)
     m_c = _re.search(r"(?:\bc\b|\bct\b|ciphertext)\s*[=:]\s*(\d{8,})", text, _re.I)
-    if not (m_n and m_c):
+    params = {}
+    if m_n and m_c:
+        params = {"n": int(m_n.group(1)), "c": int(m_c.group(1))}
+        m_e = _re.search(r"\be\b\s*[=:]\s*(\d{1,12})", text)
+        if m_e:
+            params["e"] = int(m_e.group(1))
+        m_phi = _re.search(r"\bphi\b\s*[=:]\s*(\d{8,})", text, _re.I)
+        if m_phi:
+            params["phi"] = int(m_phi.group(1))
+    else:
+        # 2026-11-12 补：无标签的「每行一个大整数」形态。题目常直接按 n / e / c
+        # 各占一行给十进制数（pycryptodome 打印、sagemath 输出都是这个形态）。
+        # 原实现只认 `n = ...` 标签形式，这类题整条 RSA 确定性链被静默跳过——
+        # 表现上是「presolve 没解出」，实质是「能力不存在」，必须堵。
+        # 保守收口：非空行恰好 3 行、全为纯数字、第 1/3 行 >= 8 位、第 2 行 <= 12 位
+        # （e 只可能是 3 / 17 / 65537 这类小值）。任一条不满足就不采用——
+        # 宁可漏掉（回落到 LLM 路径）也不误命中说明文本。
+        _lines = [x.strip() for x in text.splitlines() if x.strip()]
+        if len(_lines) == 3 and all(x.isdigit() for x in _lines):
+            if len(_lines[0]) >= 8 and len(_lines[2]) >= 8 and len(_lines[1]) <= 12:
+                params = {"n": int(_lines[0]), "e": int(_lines[1]),
+                          "c": int(_lines[2])}
+    if not params:
         return None
-    params = {"n": int(m_n.group(1)), "c": int(m_c.group(1))}
-    m_e = _re.search(r"\be\b\s*[=:]\s*(\d{1,12})", text)
-    if m_e:
-        params["e"] = int(m_e.group(1))
-    m_phi = _re.search(r"\bphi\b\s*[=:]\s*(\d{8,})", text, _re.I)
-    if m_phi:
-        params["phi"] = int(m_phi.group(1))
     try:
         from skills.rsa_fermat_factor import run as rsa_run
     except Exception as exc:  # noqa: BLE001
