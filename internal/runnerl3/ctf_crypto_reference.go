@@ -30,4 +30,11 @@ const ctfCryptoAPIRef = `ctf_crypto 即用原语（import ctf_crypto as C 后直
 - aes_cbc_decrypt(ct, key, iv) -> bytes  # AES-CBC 解密
 - des_decrypt(ct, key) -> bytes          # DES 解密
 - ECPoint(x, y, a, b, p)                 # 椭圆曲线点；支持 +、-、k*P (k 为 int)
-- bsgs(base, target, p, order=None) -> int|None  # 大步小步离散对数`
+- bsgs(base, target, p, order=None) -> int|None  # 大步小步离散对数
+- idea_encrypt_block(key, block) -> bytes  # IDEA 加密单块(64-bit 块/128-bit 密钥)，key/block 各 16 字节
+- idea_decrypt_block(key, block) -> bytes  # IDEA 解密单块
+- lcg_recover_modulus(outputs) -> int|None      # 由 LCG 输出序列恢复模数 m(相邻差 GCD)
+- lcg_recover_params(outputs) -> (a,c,m,state0)|None  # 恢复 LCG 全参数 a,c,m 与初态
+- lcg_next(state, a, c, m) -> int                 # 推进一步 LCG: state=(a*state+c)%m
+- mhk_decrypt(ciphertext, w, r, m) -> int         # Merkle-Hellman 背包私有钥解密(w 超递增,r=m^{-1} mod m)
+- merkle_root(leaves, hashfn='sha256') -> str     # 计算 Merkle 根(奇数层复制末节点)，返回 hex`

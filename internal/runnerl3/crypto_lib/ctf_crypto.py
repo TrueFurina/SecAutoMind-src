@@ -403,7 +403,204 @@ def prime_factors(n):
     return out
 
 
+# ---- IDEA 分组密码（64-bit 块 / 128-bit 密钥 / 8.5 轮）----
+# 用法：ctf_crypto.idea_decrypt_block(key, ct) / idea_encrypt_block(key, pt)
+# 用途：ext_gctf2024_idea 等「实现/逆向 IDEA  cipher」题。
+_IDEA_MOD = 0x10001  # 乘法模数 65537
+
+
+def _idea_mul(a, b):
+    a &= 0xFFFF
+    b &= 0xFFFF
+    if a == 0:
+        a = 0x10000
+    if b == 0:
+        b = 0x10000
+    r = (a * b) % _IDEA_MOD
+    return 0 if r == 0x10000 else r
+
+
+def _idea_add(a, b):
+    return (a + b) & 0xFFFF
+
+
+def _idea_neg(a):
+    return (-(a & 0xFFFF)) & 0xFFFF
+
+
+def _idea_inv_mul(a):
+    # 乘法逆元 mod 65537；0 表示 0x10000，其逆元为自身（0x10000 ≡ -1）。
+    a &= 0xFFFF
+    if a == 0:
+        return 0
+    inv = pow(a, -1, _IDEA_MOD)
+    return 0 if inv == 0x10000 else inv
+
+
+def _idea_key_schedule(key):
+    """从 16 字节 key 生成 52 个 16-bit 子密钥。
+    标准调度：每 8 个子密钥为一组从 128-bit key 取（大端 16-bit 组），
+    每组取完后把 key 循环左移 25 位；前 6 组各 8 个（共 48），末组取 4 个，合计 52。
+    K1–K8 全来自原始 key（故 K7/K8 = 第 7/8 个 16-bit 组，旋转不波及）。"""
+    if isinstance(key, (bytes, bytearray)):
+        k = int.from_bytes(key, "big")
+    else:
+        k = int(key) & ((1 << 128) - 1)
+    sub = []
+    for cnt in (8, 8, 8, 8, 8, 8, 4):
+        for j in range(cnt):
+            sub.append((k >> (112 - j * 16)) & 0xFFFF)
+        k = ((k << 25) | (k >> (128 - 25))) & ((1 << 128) - 1)
+    return sub
+
+
+def _idea_decrypt_subkeys(sub):
+    """由加密子密钥生成解密子密钥（标准倒序逆元映射）。"""
+    s = sub
+    inv = _idea_inv_mul
+    neg = _idea_neg
+    # 1-indexed K1..K52 = s[0..51]
+    DK = [0] * 52
+    DK[0] = inv(s[48]); DK[1] = neg(s[49]); DK[2] = neg(s[50]); DK[3] = inv(s[51])
+    DK[4] = s[46]; DK[5] = s[47]
+    DK[6] = inv(s[42]); DK[7] = neg(s[44]); DK[8] = neg(s[43]); DK[9] = inv(s[45])
+    DK[10] = s[40]; DK[11] = s[41]
+    DK[12] = inv(s[36]); DK[13] = neg(s[38]); DK[14] = neg(s[37]); DK[15] = inv(s[39])
+    DK[16] = s[34]; DK[17] = s[35]
+    DK[18] = inv(s[30]); DK[19] = neg(s[32]); DK[20] = neg(s[31]); DK[21] = inv(s[33])
+    DK[22] = s[28]; DK[23] = s[29]
+    DK[24] = inv(s[24]); DK[25] = neg(s[26]); DK[26] = neg(s[25]); DK[27] = inv(s[27])
+    DK[28] = s[22]; DK[29] = s[23]
+    DK[30] = inv(s[18]); DK[31] = neg(s[20]); DK[32] = neg(s[19]); DK[33] = inv(s[21])
+    DK[34] = s[16]; DK[35] = s[17]
+    DK[36] = inv(s[12]); DK[37] = neg(s[14]); DK[38] = neg(s[13]); DK[39] = inv(s[15])
+    DK[40] = s[10]; DK[41] = s[11]
+    DK[42] = inv(s[6]); DK[43] = neg(s[8]); DK[44] = neg(s[7]); DK[45] = inv(s[9])
+    DK[46] = s[4]; DK[47] = s[5]
+    DK[48] = inv(s[0]); DK[49] = neg(s[1]); DK[50] = neg(s[2]); DK[51] = inv(s[3])
+    return DK
+
+
+def _idea_crypt(block, sub):
+    x = [int.from_bytes(block[i:i + 2], "big") for i in (0, 2, 4, 6)]
+    for r in range(8):
+        k1, k2, k3, k4, k5, k6 = sub[r * 6:r * 6 + 6]
+        x[0] = _idea_mul(x[0], k1)
+        x[1] = _idea_add(x[1], k2)
+        x[2] = _idea_add(x[2], k3)
+        x[3] = _idea_mul(x[3], k4)
+        t0 = _idea_mul(x[0] ^ x[2], k5)
+        t1 = _idea_add(x[1] ^ x[3], t0)
+        t1 = _idea_mul(t1, k6)
+        t0 = _idea_add(t0, t1)
+        x[0] ^= t1
+        x[2] ^= t1
+        x[1] ^= t0
+        x[3] ^= t0
+        x[1], x[2] = x[2], x[1]  # 交换
+    k49, k50, k51, k52 = sub[48:52]  # 半轮（不交换）
+    # 半轮按权威定义：C1=P1*K49, C2=P3+K50, C3=P2+K51, C4=P4*K52。
+    # 注意 P2/P3 在 8 轮交换后回到自然位（x[1]=P2, x[2]=P3），K50 必须加在 P3(x[2])、
+    # K51 加在 P2(x[1])——二者极易写反。
+    x[0] = _idea_mul(x[0], k49)
+    x[2] = _idea_add(x[2], k50)
+    x[1] = _idea_add(x[1], k51)
+    x[3] = _idea_mul(x[3], k52)
+    # 输出顺序：X1 || X3 || X2 || X4（即 C1 || C2 || C3 || C4）
+    return b"".join((v & 0xFFFF).to_bytes(2, "big") for v in (x[0], x[2], x[1], x[3]))
+
+
+def idea_encrypt_block(key, block):
+    """IDEA-ECB 加密单个 8 字节块。key=16 字节，block=8 字节。返回 8 字节。"""
+    if len(block) != 8:
+        raise ValueError("IDEA 块必须为 8 字节")
+    return _idea_crypt(block, _idea_key_schedule(key))
+
+
+def idea_decrypt_block(key, block):
+    """IDEA-ECB 解密单个 8 字节块。"""
+    if len(block) != 8:
+        raise ValueError("IDEA 块必须为 8 字节")
+    return _idea_crypt(block, _idea_decrypt_subkeys(_idea_key_schedule(key)))
+
+
+# ---- 线性同余发生器（LCG）恢复 ----
+# 用途：ext_gctf2023_least-common-genominator 等「基于 LCG 的流/伪随机」题。
+def lcg_recover_modulus(outputs):
+    """由若干连续（完整）LCG 输出恢复模数 m。
+    利用 d_i=o_{i+1}-o_i 满足 d_{i+1}=a·d_i (mod m)，故 u_i=d_{i+1}·d_{i-1}-d_i^2 ≡0 (mod m)。"""
+    from math import gcd
+    d = [outputs[i + 1] - outputs[i] for i in range(len(outputs) - 1)]
+    m = 0
+    for i in range(1, len(d) - 1):
+        u = d[i + 1] * d[i - 1] - d[i] * d[i]
+        m = gcd(m, abs(u))
+    return m
+
+
+def lcg_recover_params(outputs):
+    """恢复 (m, a, c)。要求 outputs 为完整连续输出（>=5 个）。"""
+    m = lcg_recover_modulus(outputs)
+    if m == 0:
+        return None
+    d0 = (outputs[1] - outputs[0]) % m
+    d1 = (outputs[2] - outputs[1]) % m
+    if d0 == 0:
+        return None
+    a = (d1 * modinv(d0, m)) % m
+    c = (outputs[1] - a * outputs[0]) % m
+    return (m, a, c)
+
+
+def lcg_next(state, a, c, m):
+    return (a * state + c) % m
+
+
+# ---- Merkle-Hellman 背包（LLL 低密攻击 + 私有钥解密）----
+# 用途：ext_gctf2023_mhk2（「Murakami's knapsacks」）。
+def mhk_decrypt(ciphertext, w, r, m):
+    """已知私有钥（超递增序列 w、乘子 r、模数 m）时解密单个密文。
+    ciphertext = Σ a_i·x_i (mod m)，a_i = w_i·r (mod m)。返回比特列表 x。
+    用途：ext_gctf2023_mhk2。若已通过其它手段（如 LLL 恢复私有钥）拿到 w/r/m，
+    本函数完成最后一步贪心超递增还原。注意：仅公钥 a_i + 密文 c 的「低密 LLL 攻击」
+    尚未内置（Lagarias-Odlyzko 格构造需谨慎校准，避免误报），后续按需补。"""
+    s = (ciphertext * modinv(r, m)) % m  # 还原为超递增序列上的和
+    x = []
+    for wi in reversed(w):
+        if s >= wi:
+            x.append(1)
+            s -= wi
+        else:
+            x.append(0)
+    x.reverse()
+    return x
+
+
+# ---- Merkle 树（承诺/根为吃）----
+# 用途：ext_gctf2025_merkurated 等 Merkle 承诺题。
+def merkle_root(leaves, hashfn="sha256"):
+    """计算 Merkle 根。leaves 为字节列表（叶子取 hashfn(leaf)）。奇数层自动复制末节点。"""
+    import hashlib
+    h = lambda x: hashlib.new(hashfn, x).digest()
+    if not leaves:
+        return b""
+    if len(leaves) == 1:
+        return h(leaves[0])
+    level = [h(l) for l in leaves]
+    while len(level) > 1:
+        if len(level) % 2 == 1:
+            level.append(level[-1])
+        level = [h(level[i] + level[i + 1]) for i in range(0, len(level), 2)]
+    return level[0]
+
+
 if __name__ == "__main__":
     # 自检（不依赖网络）
     assert rsa_fermat(15 * 17) == (15, 17) or rsa_fermat(15 * 17) is not None
+    # IDEA 权威测试向量（ETH 参考实现 / Go dgryski / Lua 三方一致）
+    _k = bytes.fromhex("00010002000300040005000600070008")
+    _p = bytes.fromhex("0000000100020003")
+    _c = idea_encrypt_block(_k, _p)
+    assert _c == bytes.fromhex("11fbed2b01986de5"), _c.hex()
+    assert idea_decrypt_block(_k, _c) == _p
     print("ctf_crypto self-check OK")

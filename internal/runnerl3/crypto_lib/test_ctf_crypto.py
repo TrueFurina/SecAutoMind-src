@@ -253,5 +253,82 @@ class TestFactor(unittest.TestCase):
         self.assertEqual(prod, 360)
 
 
+class TestIDEA(unittest.TestCase):
+    # 权威测试向量（ETH 参考实现 / Go dgryski / Lua 三方一致）
+    VEC_KEY = bytes.fromhex("00010002000300040005000600070008")
+    VEC_PT = bytes.fromhex("0000000100020003")
+    VEC_CT = bytes.fromhex("11fbed2b01986de5")
+
+    def test_known_vector(self):
+        self.assertEqual(C.idea_encrypt_block(self.VEC_KEY, self.VEC_PT), self.VEC_CT)
+        self.assertEqual(C.idea_decrypt_block(self.VEC_KEY, self.VEC_CT), self.VEC_PT)
+
+    def test_roundtrip(self):
+        import os
+        key = os.urandom(16)
+        for _ in range(20):
+            pt = os.urandom(8)
+            ct = C.idea_encrypt_block(key, pt)
+            self.assertEqual(len(ct), 8)
+            self.assertEqual(C.idea_decrypt_block(key, ct), pt)
+
+
+class TestLCG(unittest.TestCase):
+    def test_recover(self):
+        m, a, c = 0x7FFFFFFF, 48271, 12345
+        s = 123456789
+        outs = []
+        for _ in range(8):
+            s = (a * s + c) % m
+            outs.append(s)
+        rec = C.lcg_recover_params(outs)
+        self.assertIsNotNone(rec)
+        rm, ra, rc = rec
+        self.assertEqual((rm, ra, rc), (m, a, c))
+        # 用恢复的参数为预测下一项
+        nxt = C.lcg_next(outs[-1], ra, rc, rm)
+        exp = (a * outs[-1] + c) % m
+        self.assertEqual(nxt, exp)
+
+
+class TestMHK(unittest.TestCase):
+    def _make_instance(self, n=12):
+        # 构造低密 Merkle-Hellman 实例（超递增私有钥 + 乘子 r）
+        w = [1]
+        for _ in range(n - 1):
+            w.append(w[-1] * 2 + 1 + (w[-1] // 3))
+        m = sum(w) + 1 + 12345
+        r = 5  # 与 m 互素
+        while math.gcd(r, m) != 1:
+            r += 2
+        a = [(wi * r) % m for wi in w]
+        x = [1 if (i * 7 + 3) % 5 < 2 else 0 for i in range(n)]
+        c = sum(ai * xi for ai, xi in zip(a, x)) % m
+        return w, r, m, a, c, x
+
+    def test_mhk_decrypt_private(self):
+        w, r, m, a, c, x = self._make_instance()
+        self.assertEqual(C.mhk_decrypt(c, w, r, m), x)
+
+
+class TestMerkle(unittest.TestCase):
+    def test_root_determinism_and_structure(self):
+        import hashlib
+        leaves = [b"a", b"b", b"c", b"d"]
+        r1 = C.merkle_root(leaves)
+        r2 = C.merkle_root(leaves)
+        self.assertEqual(r1, r2)
+        self.assertEqual(len(r1), 32)
+        # 与手工 2 层结构一致
+        h = lambda x: hashlib.sha256(x).digest()
+        L0 = [h(l) for l in leaves]
+        L1 = [h(L0[0] + L0[1]), h(L0[2] + L0[3])]
+        expect = h(L1[0] + L1[1])
+        self.assertEqual(r1, expect)
+        # 奇数叶子自动复制末节点
+        self.assertEqual(C.merkle_root([b"a", b"b", b"c"]),
+                         C.merkle_root([b"a", b"b", b"c", b"c"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
