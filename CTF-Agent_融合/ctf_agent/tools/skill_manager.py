@@ -116,8 +116,9 @@ _SUBPROCESS_ALLOWED_EXECUTABLES = {
     "tesseract", "tesseract.exe",
     "bkcrack", "bkcrack.exe",
     "objdump", "objdump.exe",
-    "readelf", "readelf.exe",
 }
+# 注：readelf 曾一并加入，但全仓 85 个 skill 里**没有任何调用点**
+# （rev_const_compare 只用 objdump），按最小权限原则撤回。
 
 # ── 删除类调用的**受限豁免**（2026-10-06 收窄）────────────────────
 # 背景：`os.remove/rmdir/unlink` 原与 `os.system/exec/spawn` 同列禁止，
