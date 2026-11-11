@@ -50,8 +50,15 @@ python scripts/check_web_asset_parity.py                # rc=0
 python scripts/css_shadow_audit.py --check              # 应 PASS（2026-10-19 新增：无可证明安全的 CSS 影子块）
 python scripts/css_shadow_audit_test.py                 # 应 PASS（24 例：importance 反向变异/级联/端到端 --apply）
 go build ./...                                          # rc=0
-go test -p 1 ./internal/...                             # rc=0（必须 -p 1！本机并行链大测试二进制会 OOM：
-                                                         #  errno=1455 VirtualAlloc 失败 → 8 个包假红 [build failed]）
+go test -p 2 ./internal/ctfplatform/ -skip 'TestCrossBench_.*|TestExternalBench_.*|TestRealBenchmark.*'     -timeout 900s                                       # rc=0，实测 385s（6m34s）——这是**日常自检**
+                                                         # 重型基准（Cross/External/RealBench）在 CI 是专 job
+                                                         # `-timeout 1800s` 跑的，本地整包跑会 30m 超时假红
+go test -p 1 ./internal/...                              # 全量：更慢（重型基准在内），必须 -p 1！
+                                                         #  本机并行链大测试二进制会 OOM：errno=1455
+                                                         #  VirtualAlloc 失败 → 8 个包假红 [build failed]
+                                                         # 注：live 平台/LLM 测试自 2026-11-10 起须显式
+                                                         #  RUN_LIVE_TESTS=1 才跑（否则带凭证就真打外部服务，
+                                                         #  TestLLMAutoSolve 单跑曾占 28m44s 拖崩整包）
 node --test internal/app/web/static/js/*.test.cjs       # 17 文件 / 131 例全过（已接 CI：web-js-tests）
 ```
 
