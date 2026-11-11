@@ -266,6 +266,22 @@ def _collect_tempfile_vars(fn: ast.AST) -> set:
     for node in ast.walk(fn):
         if isinstance(node, ast.Assign):
             val = node.value
+            # 形态 c 必须排在 a/b 之前：`fd, tmp = tempfile.mkstemp()` 的 val
+            # 本身就是 mkstemp 调用，若先判形态 a 会命中但只认 Name 目标、
+            # 对 Tuple 静默跳过，后面 elif 再也轮不到（2026-11-11 实测踩过）。
+            if isinstance(node.targets[0], ast.Tuple) and (
+                    _is_tempfile_call(val) or (
+                        isinstance(val, ast.Subscript)
+                        and _is_tempfile_call(val.value))):
+                # 元组解包 `fd, tmp = tempfile.mkstemp(...)`：每个 Name 都源自
+                # 同一次 tempfile 调用，全部计入。rev_xor_verify 的
+                # `fd, tmp = tempfile.mkstemp(suffix=".bin")` 此前未被识别成
+                # 自建临时产物，其 finally 里的 os.remove(tmp) 被判成删任意
+                # 文件，整份 skill AST 校验失败、未注册（ext47 批跑实证）。
+                for el in node.targets[0].elts:
+                    if isinstance(el, ast.Name):
+                        out.add(el.id)
+                continue
             # 形态 a: p = tempfile.mkstemp()（直接调用）
             if _is_tempfile_call(val):
                 for tgt in node.targets:
@@ -276,6 +292,13 @@ def _collect_tempfile_vars(fn: ast.AST) -> set:
                 for tgt in node.targets:
                     if isinstance(tgt, ast.Name):
                         out.add(tgt.id)
+            elif isinstance(node.targets[0], ast.Tuple) and (
+                    _is_tempfile_call(val) or (
+                        isinstance(val, ast.Subscript)
+                        and _is_tempfile_call(val.value))):
+                for el in node.targets[0].elts:
+                    if isinstance(el, ast.Name):
+                        out.add(el.id)
 
     # ③ with ... as f（f 为临时文件对象，可后续 f.name 取路径）
     #    必须**先于** ② 执行：`p = f.name` 通常写在 with 块内部，

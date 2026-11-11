@@ -105,7 +105,9 @@ try:
 except ImportError:  # 平台侧 urllib 不稳（404/超时），有 httpx 优先，无则回退
     _httpx = None
 
-_FLAG_RE = __import__("re").compile(r"(flag|dasctf|ctf)\{[^}]{4,}\}", __import__("re").I)
+import re as _re
+
+_FLAG_RE = _re.compile(r"(flag|dasctf|ctf)\{[^}]{4,}\}", _re.I)
 
 
 def _resolve(obj, slots: dict):
