@@ -34,10 +34,10 @@
       "total": 6,
       "stable_rate_strict": 0.5,
       "stable_rate_inclusive": 0.6667,
-      "note": "严格口径只计 100% 解出（ezrsa/filterrandom/upx 各 4/4）；sheng 7 跑 6 成（1 次 extract_fail）计入'基本稳定'；simplelegendre 15 跑 10 成；exciting_inverse 6 跑 0 成。对外应报 strict 0.5 并附明细，或报 inclusive 0.6667 但必须注明 sheng 有波动。"
+      "note": "严格口径只计 100% 解出（ezrsa/filterrandom/upx 各 4/4）；sheng 6/7=85.7% 计入'基本稳定'；simplelegendre 23/29=79.3%（修复后 15/15）；exciting_inverse 13/20=65%（修复前 0/7，修复后 13/13，末 3 跑均值 20.0s）。对外应报 strict 0.5 并附明细，或报 inclusive 0.6667 但须注明 sheng/simplelegendre 有波动。"
     },
     "stability": {
-      "runs_per_case": "累计截至 2026-11-11 晚：ezrsa/filterrandom/upx 各 4；sheng 7；simplelegendre 15；exciting_inverse 6",
+      "runs_per_case": "累计截至 2026-11-11 晚：ezrsa/filterrandom/upx 各 4；sheng 7；simplelegendre 29（23 成）；exciting_inverse 20（13 成，分三段）",
       "tally": [
         {
           "id": "real_crypto_ezrsa",
@@ -71,23 +71,24 @@
         {
           "id": "real_crypto_simplelegendre",
           "runs": 29,
-          "solved": 17,
-          "rate": 0.586,
-          "verdict": "flaky",
-          "detail": "累计 29 跑 17 成(58.6%)。分两段：修复前 15 跑 10 成(66.7%)；修复后 14 跑 7 成(50.0%)。真实改善只有一个：成功耗时从修复前均值约 45s 降到修复后均值约 28s。两处修复都是真 bug 但都没提升成功率——① skills/crypto_legendre_phi.py:171-176 传目录时 IsADirectoryError 被 except OSError: continue 静默吞掉，返回 None、耗时 0.00s、日志零报错；② 缺 skills/crypto_legendre_phi.json 元数据，purpose 加载为空，模型在工具清单里只看到一个光名字，不知道用途，于是自己写脚本反复失败。"
+          "solved": 23,
+          "rate": 0.793,
+          "verdict": "improved_after_fix",
+          "detail": "累计 29 跑 23 成(79.3%)，按 /tmp/ld_*.json 逐条实测统计。分两段：修复前 ld_1..14（03:32-04:02）14 跑 8 成(57.1%)，成功耗时 10.0-54.2s；修复后 ld_15..29（10:10-10:20）15 跑 15 成(100%)，成功耗时 4.5-8.9s 均值约 5.4s。两处修复(目录静默失败 + json 元数据)都是真 bug，且真实提升成功率。"
         },
         {
           "id": "real_crypto_exciting_inverse",
-          "runs": 6,
-          "solved": 0,
-          "rate": 0.0,
-          "verdict": "stable_unsolved",
-          "detail": "142.1/264.6/257.1/277.4/207.0/272.1s，尾三次均贴近或撞 300s 墙钟"
+          "runs": 20,
+          "solved": 13,
+          "rate": 0.65,
+          "verdict": "fixed_then_fast",
+          "detail": "累计 20 跑 13 成(65%)，按 /tmp/ei*.json 逐条实测统计。分三段：① 未修 phi_known_inv 分派前（ei_1..2 + ei2_1..5）7 跑 0 成，177.8-290.0s；② 修分派后、修路径映射前（ei3_1..5 + ei4_1 + ei5_1..3 + ei6_1）10 跑 10 成，耗时 37.9/41.0/53.1/91.5/111.6/121.9/122.6/150.5/152.4/235.8s，均值约 111.9s；③ 修路径映射后（ei7_1..3，提交 6ea32f6）3 跑 3 成，13.6/21.8/24.7s，均值 20.0s。②→③ 同口径对比：10 跑 10 成均值 111.9s ⇒ 3 跑 3 成均值 20.0s，成功率不变、耗时降到 1/5.6。"
         }
       ],
       "important": "任何单次结果都不能当结论。首次单轮 5/6=83.3% 已被复跑推翻；对外须给分母与轮数，并区分 strict / inclusive 两种口径。",
       "implication": "6 道里没有一道是 100% 稳定解出且高成功率的'高价值'题；真正稳定的只有 3 道。",
       "verdict_20261111_fixes": {
+        "_superseded_note": "本段是 2026-11-11 早间快照，其结论已被同日晚间的后续修复（30d8fd9 / 6ea32f6）覆盖，原文保留仅作审计痕迹。引用数字一律以 core_set.stability.tally、production_verified_20261111、exciting_inverse_chain_20261111 为准——本段写 'legendre 修复后 14 跑 7 成' 与 'exciting_inverse 0/2' 均已过时。",
         "summary": "当晚三处修复（监督 reason 注入 / JSON max_tokens 4000 / legendre 目录+元数据）全部是真实缺陷，但全部未提升成功率。",
         "simplelegendre": {
           "before": "15 跑 10 成 = 66.7%",
@@ -145,7 +146,13 @@
         "what_was_wrong": "此前提交值写\"修复后 14 跑 7 成(50.0%)、累计 29 跑 17 成(58.6%)\"，系计算错误。",
         "corrected_from_raw_logs": "原始逐轮日志 /tmp/ld_1..14.json 显示修复后为 8/14 = 57.1%，累计应为 18/29 = 62.1%。",
         "why_it_happened": "跑批 C/D 中有两轮 OK 被重复计数/漏计，提交时未回查原始 json。",
-        "action": "已按原始日志订正，不再启用旧数字。"
+        "action": "已按原始日志订正，不再启用旧数字。",
+        "correction_of_correction_20261111_late": {
+          "what": "本段原文写 '修复后 8/14 = 57.1%，累计 18/29 = 62.1%'。按 /tmp/ld_*.json 逐条重算：修复前 14 跑 8 成(57.1%) 正确；修复后实为 15 跑 15 成(100%)（原文漏计 ld_15..29 中的 7 成）；累计实为 23/29 = 79.3%。",
+          "why": "10:10-10:20 那批 15 连成（ld_15..29）在订正时被漏计，只统计到了 14 跑。",
+          "action": "以本条为准：simplelegendre 累计 23/29 = 79.3%（修复前 8/14=57.1%，修复后 15/15=100%）。",
+          "evidence": "服务器 /tmp/ld_1..29.json，逐条 mtime + rows[0].match 可复算。"
+        }
       },
       "production_verified_20261111": {
         "skill": "crypto_legendre_phi",
@@ -194,10 +201,142 @@
           "success": 5,
           "rate": "5/5 = 100%",
           "wallclock": "53.1s / 111.6s / 122.6s / 152.4s / 235.8s",
-          "before": "修复前 6 跑 0 成，尾三次贴或撞 300s 墙钟",
-          "remaining_issue": "仍偏慢：模型先反复试错，最后才走到兜底。simplelegendre 修好后只要 5s，本题 53-236s，说明\"何时该用确定性攻击链\"的时机判断仍有优化空间。"
+          "before": "修复前 7 跑 0 成（ei_1..2 + ei2_1..5），耗时 177.8-290.0s，尾三次贴或撞 300s 墙钟。原文写'6 跑 0 成'，按 /tmp/ei*.json 实为 7 跑。",
+          "remaining_issue": "仍偏慢：模型先反复试错，最后才走到兜底。simplelegendre 修好后只要 5s，本题 53-236s，说明\"何时该用确定性攻击链\"的时机判断仍有优化空间。",
+          "later_after_path_fix_20261111": "提交 6ea32f6（长脚本路径映射 + 回退 _safe_import）之后，ei7_1..3 三跑全成，13.6 / 21.8 / 24.7s，均值 20.0s。修分派后共 13 跑 13 成：前 10 跑均值约 111.9s，末 3 跑均值 20.0s——成功率不变、耗时降到 1/5.6。见 core_set.stability.tally 中 real_crypto_exciting_inverse 的分段明细。"
         },
         "verdict": "真缺陷（四层叠加），且真实提升成功率 —— 第二条既修缺陷又涨分的修复。"
+      },
+      "crypto_full_sweep_20261111": {
+        "ran_at": "2026-11-11",
+        "why": "验证提交 6ea32f6（长脚本路径映射 + importlib 白名单）之后，确定性兜底链在 crypto 类别上的真实覆盖。用户要求'扩'，先跑全量再判。",
+        "scope": {
+          "total_runs": 23,
+          "composition": "首批 4 道验证集成员（exciting_inverse/ezrsa/filterrandom/simplelegendre，附件已知齐全） + 本次 data/questions_real/crypto/ 下 19 道（/tmp/call2/ 逐题日志）",
+          "raw_success": 6,
+          "raw_rate": 0.261,
+          "note": "原始 6/23 但该分母脏，不可对外引用——见 clean_caliber。"
+        },
+        "dirty_denominator": {
+          "attachment_missing": {
+            "count": 15,
+            "cases": [
+              "real_crypto_anwang_crypto1 (flag.txt)",
+              "real_crypto_anxun2020_coolboy (anxun2020_official.txt)",
+              "real_crypto_changan2021_checkin (flag.txt)",
+              "real_crypto_changan2021_easyrsa (flag.txt)",
+              "real_crypto_dnui_keyboard ([签到]键盘侠.txt)",
+              "real_crypto_ezmult (s1.txt)",
+              "real_crypto_gaoxiao2024_z3 (flag.txt)",
+              "real_crypto_gkctf2020_che11y (flag.txt)",
+              "real_crypto_gkctf2020_rsa (flag.txt)",
+              "real_crypto_isctf2024_decrypt (flag.txt)",
+              "real_crypto_longjian2023_hd1 (flag.txt)",
+              "real_crypto_qiangwang_classic (classicCrypto.txt)",
+              "real_crypto_udomctf2022_aes (flag.txt)",
+              "real_crypto_umdctf2022_vigenere (flag.txt)",
+              "real_crypto_changan2021_ezpy (flag.txt)"
+            ],
+            "evidence": "每道日志含 'ATT_EXISTS <file> False'；另有 'WARNING core.solver_sandbox: 附件未暂存 1/1（缺失或目录，已保留原路径）'；gkctf2020_rsa 单条日志 66 条此类警告。",
+            "exception": "changan2021_ezpy 附件 False 但题面自带数据，仍解出 flag（164s），属特例。"
+          },
+          "data_incomplete": {
+            "count": 2,
+            "cases": [
+              {
+                "id": "real_crypto_specialcurve2",
+                "attachment": "SpecialCurve2.py (1366 B)",
+                "why": "仅为挑战脚本模板。文件头注释自述：原实例 n/HINT/C 具体值'每次运行随机生成、未留存于任何仓库/文档，故此处仅恢复挑战脚本模板，无法复现本实例真值'。真值仅以 sha256 形式存于题面 JSON。",
+                "probe": "独立探针：脚本 34278 字符、RC=0、STDOUT 空、STDERR 空 —— 正确行为（无数据可算）。"
+              },
+              {
+                "id": "real_taishan2021_crypto_cgroup",
+                "attachment": "crypto_c_group.py (6218 B)",
+                "why": "n1/c1/hint/n2/c2 齐全，但第三个数 c3 被截断为 79 位加省略号'...（实例同上，详见原始 writeup）'，第二段无 c3 不可解。",
+                "probe": "独立探针：脚本 RC=0、STDOUT 空、STDERR 空。"
+              }
+            ]
+          },
+          "design_boundary": {
+            "count": 1,
+            "cases": [
+              "10733 (How_many_rot_are_there)：rot 类题，非 RSA。"
+            ],
+            "note": "CryptoToolkit 嗅探体只覆盖 RSA 系（phi_known / phi_known_inv / hastad / common_factor / Fermat / wiener / small_e）以及 ECB / lattice / vigenere / zip / morse / pcap。非 RSA 题不触发攻击链属设计边界，不是缺陷。"
+          },
+          "non_rsa_not_in_scope": {
+            "note": "specialcurve2（自定义椭圆曲线）与 taishan cgroup（群 DL）本身也在设计边界外，但已叠加 data_incomplete，无法单独归因为'嗅探覆盖面不足'。⇒ 当前题库中'非 RSA 且数据完整'的题 = 0 道，扩非 RSA 嗅探在本批数据上无题可验。"
+          }
+        },
+        "clean_caliber": {
+          "layer_1_attachments_present": {
+            "count": 8,
+            "cases": [
+              "10733 (task.py 1285 B)",
+              "real_crypto_anxun2020_aes (flag.txt)",
+              "real_crypto_specialcurve2 (SpecialCurve2.py 1366 B)",
+              "real_taishan2021_crypto_cgroup (crypto_c_group.py 6218 B)",
+              "real_crypto_exciting_inverse",
+              "real_crypto_ezrsa",
+              "real_crypto_filterrandom",
+              "real_crypto_simplelegendre"
+            ],
+            "success": 5,
+            "rate": 0.625,
+            "fails": [
+              "10733：rot 题，非 RSA（设计边界）",
+              "specialcurve2：附件无实例值（数据残缺）",
+              "taishan2021_cgroup：c3 被截断（数据残缺）"
+            ]
+          },
+          "layer_2_rsa_family_data_complete": {
+            "count": 4,
+            "cases": [
+              "real_crypto_exciting_inverse",
+              "real_crypto_ezrsa",
+              "real_crypto_filterrandom",
+              "real_crypto_simplelegendre"
+            ],
+            "success": 4,
+            "rate": 1.0,
+            "deterministic_chain_hits": 3,
+            "chain_hit_cases": [
+              "exciting_inverse（phi_known_inv）",
+              "ezrsa（common_factor/small_e）",
+              "filterrandom（LCG/RSA 嗅探）"
+            ],
+            "elapsed_range_s": "4.5–24.7",
+            "note": "simplelegendre 走自己的 skill（crypto_legendre_phi），不经兜底链，但同为 RSA 系且数据完整。"
+          },
+          "layer_3_attachment_missing": {
+            "count": 15,
+            "note": "不进能力分母；失败归题库缺件，与兜底链无关。"
+          },
+          "external_claim_boundary": "crypto 中「附件完整 + RSA 系 + 数据完整」4 道，4/4 成功，其中 3 道由确定性兜底链直接命中，耗时 4.5–24.7 秒。23 道整体 6/23 = 26.1% 不可对外引用（15 道缺附件、2 道数据残缺、1 道非 RSA）。"
+        },
+        "falsified_hypotheses": [
+          {
+            "hypothesis": "10733 / specialcurve2 / taishan cgroup 三道未命中是真线索（兜底链缺陷）",
+            "falsified_by": "附件原文核对：10733 是 rot 题（非 RSA）；specialcurve2 仅模板无实例值；cgroup 的 c3 被截断",
+            "conclusion": "设计边界 + 数据残缺，非缺陷。日志里的 16/23/27 次'未命中'是同一原因的重复记录。"
+          },
+          {
+            "hypothesis": "修好 import（_safe_import）就能让兜底脚本命中",
+            "falsified_by": "sandbox/subprocess_executor.py AST 白名单不含 importlib 且禁 getattr，整段脚本被判 [安全拦截] 未在白名单的导入: importlib，RC=-2",
+            "conclusion": "已回退 _safe_import，改显式嵌套 try + from skills.rsa_fermat_factor import run。"
+          },
+          {
+            "hypothesis": "容器只挂 /work，import skills 必失败",
+            "falsified_by": "sandbox/factory.py APP_SUBDIRS 含 skills，app_mounts() 只读挂到 /app/skills 且 PYTHONPATH=/app",
+            "conclusion": "生成脚本里的 from skills.xxx 一直合法，不是缺陷。"
+          },
+          {
+            "hypothesis": "扩非 RSA 嗅探（椭圆曲线/群 DL）能提升 crypto 覆盖",
+            "falsified_by": "当前题库非 RSA 且数据完整的题 = 0 道；唯二非 RSA 题一道仅模板、一道 c3 截断",
+            "conclusion": "扩了无题可验，属无法验证的功能，不予实施。"
+          }
+        ],
+        "reproduce": "本批 19 道：服务器 run_single.py <QID>，环境照抄 scripts/_verify_set.py 的 ENV_BASE(12 项)+ENV_UNSET；日志 /tmp/call2/<qid>.log，汇总 /tmp/call2/sum.txt。首批 4 道：/tmp/ei*.json（exciting_inverse）、/tmp/ld_*.json（legendre）、/tmp/reg_real_crypto_ezrsa_*.json。"
       }
     },
     "cases": [
@@ -279,7 +418,8 @@
           "parse_fail_after": 2,
           "recover_script_success_after": 0
         },
-        "outcome": "解析层显著改善（18 次失败降至 2 次），但 exciting_inverse 仍 0/2（277.4s race_abandon / 207.0s tool_failure），撞 300s 墙钟。",
+        "outcome": "解析层显著改善（18 次失败降至 2 次），但当期 exciting_inverse 仍 0/2（277.4s race_abandon / 207.0s tool_failure），撞 300s 墙钟。",
+        "outcome_superseded_20261111_late": "此处的 0/2 是 max_tokens 单项修复后的即时快照。同日晚间修完 phi_known_inv 分派（30d8fd9）与长脚本路径映射（6ea32f6）后，该题累计 20 跑 13 成（修复前 7 跑 0 成，修分派后 13 跑 13 成，末 3 跑均值 20.0s）。以 core_set.stability.tally 为准。",
         "conclusion": "JSON 解析失败不是该题根因；修好解析后暴露的真实瓶颈是时间不够与工具链失败。"
       }
     },
