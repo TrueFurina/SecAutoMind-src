@@ -13,8 +13,8 @@
   "concurrency": 5,
   "note": "⚠️ 已更正：原 note 写『我 export 的 deepseek-chat 未被采纳』，该结论来自对快照读数的误读，快照本身印错了栏位（见 commit 5cbecef）。此项不再作为『模型被覆盖』的证据。",
   "model_light_raw_snapshot": "deepseek-flash",
-  "model_light": null,
-  "model_light_note": "不可采信：原值 deepseek-flash 取自 print_effective_config_snapshot，而该快照在 commit 5cbecef 之前把 light 栏印成 provider 默认值、heavy 栏印生效值，两栏口径不一致。跑批当时设置的是 CTF_AGENT_LIGHT_MODEL=deepseek-chat，但是否被白名单允许覆盖取决于当时 _PROVIDER_MODEL_ALLOWLIST['deepseek'] 的内容，未复算前不得断言实际生效值。"
+  "model_light": "deepseek-chat",
+  "model_light_note": "已复算（2026-11-12 机器复算，非人眼判读）：生效值 = deepseek-chat。判据链：① 跑批窗口 2026-11-11T15:23:38 时在生效的 config.py 为 commit 3016145（2026-11-04 10:17 提交）；下一版 5cbecef 于 11-11 19:04 才落盘，晚于跑批窗口，故不适用。② 该版 _PROVIDER_MODEL_ALLOWLIST['deepseek'] = {deepseek-chat, deepseek-reasoner, deepseek-v4.1-flash-free}，含 deepseek-chat。③ 该版 from_env 净化条件为 `if _env_light and _env_light != light_model and _env_light not in _allowed_models:`，deepseek-chat 在白名单内故不回退。④ 随后 `light_model=_env_light or light_model` 取到 deepseek-chat。因此 model_light_raw_snapshot 的 deepseek-flash 只是 5cbecef 之前快照印 provider 默认值的口径假象，不是生效值。局限：本复算只证「若当时确实 export 了 CTF_AGENT_LIGHT_MODEL=deepseek-chat 则会生效」，该 export 事实本身来自台账 note 的原始记录，未从环境快照独立取证。"
  },
  "pool": {
   "definition": "questions_ext(34) + questions_ext_cybench(11) + questions_ext_L2_pure_reasoning(2) = 58 条，按 id 去重后 47 条（原口径）；但 L2 池那 2 条实为 questions_real 的副本（real_crypto_exciting_inverse / real_crypto_simplelegendre，同 id 同 flag_sha256），去重只在 ext 三池内做、未与 questions_real 比对，故 47 条里含 2 条重复。唯一干净分母见 result.clean_denominator=34。",
@@ -83,7 +83,9 @@
   }
  },
  "failure_attribution": {
-  "extract_fail": 9,
+  "extract_fail": 2,
+  "no_candidate": 6,
+  "prefix_format_mismatch_recoverable": 1,
   "tool_failure": 13,
   "stuck_loop": 5,
   "unresolved": 5,
@@ -92,7 +94,7 @@
   "timeout_330": 1
  },
  "findings": {
-  "extract_fail_is_guard_not_loss": "9 道 extract_fail 的 detail 全是'候选 flag 被提取校验拒绝（模板占位/疑似幻觉/无工具证据）'，证据行显示兜底候选是 o{àEÀ}、N{\\x06w\\xb0\\xfd} 这类二进制垃圾。防线正确挡住，不是'解出被拒'，无可回收分。",
+  "extract_fail_is_guard_not_loss": "（2026-11-12 订正，按 per_question 逐条复核）原表述『9 道 extract_fail 的 detail 全是候选被提取校验拒绝』不成立：其中 6 道（flecksofgold / packedaway / 1nsayne / a_walk_through_x86_part_2 / kvm / steady_counting）行为上根本没有产出任何候选，是跑到步数或预算上限后收摊，已改记 no_candidate；1 道 baby_s_third 是内容正确、前缀格式（ctf vs csawctf）不符，已在 commit ef52198 修复并可回收，改记 prefix_format_mismatch_recoverable；剩余 2 道（ext_nyu_ctf_bench_2017f_cry_ecxor、ext_nyu_ctf_bench_2017q_cry_almost_xor）才是真正的『候选被提取校验拒绝』，且这两道本身在 answer_in_repo 污染名单内、不计入 34 道干净分母。类目已按事实拆分，extract_fail 组合计仍为 9，38 道失败总数不变。",
   "ast_rejected_skills": [
    {
     "skill": "crypto_zip_bkcrack",
@@ -204,7 +206,7 @@
    "diff": "HARD",
    "solved": false,
    "elapsed": 77.1,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -213,7 +215,7 @@
    "diff": "EASY",
    "solved": false,
    "elapsed": 52.4,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -321,7 +323,7 @@
    "diff": "MEDIUM",
    "solved": false,
    "elapsed": 53.6,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -402,7 +404,7 @@
    "diff": "MEDIUM",
    "solved": false,
    "elapsed": 55.8,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -411,7 +413,7 @@
    "diff": "MEDIUM",
    "solved": false,
    "elapsed": 54.0,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -420,7 +422,7 @@
    "diff": "MEDIUM",
    "solved": false,
    "elapsed": 51.9,
-   "err": "extract_fail",
+   "err": "no_candidate",
    "state": null
   },
   {
@@ -446,8 +448,8 @@
    "cat": "rev",
    "diff": "MEDIUM",
    "solved": false,
-   "elapsed": null,
-   "err": null,
+   "elapsed": 330,
+   "err": "timeout_330",
    "state": "TIMEOUT"
   },
   {
@@ -519,7 +521,7 @@
    "diff": "MEDIUM",
    "solved": false,
    "elapsed": 68.1,
-   "err": "extract_fail",
+   "err": "prefix_format_mismatch_recoverable",
    "state": null
   },
   {
@@ -729,7 +731,7 @@
    "plan_fp_injection": "core/phases.py:401/411/422/433/440/442 各分支均已注入 plan_fp（2026-10-05 修复有效，不是假修复）",
    "recover_script": "llm/client.py:539 恢复出的 script 动作带 code 正文，plan 指纹因此有区分度"
   },
-  "consequence_for_caliber": "这 14 道全部落在干净分母 34 内（已机验不在 polluted_ids、不在 duplicate_real_ids），均归为模型行为或预算约束，不改 4/34 = 11.8% 的口径；累计已归因 tool_failure 13 + rest14 14 = 27/38 失败题，剩余 extract_fail 9 / race_abandon 1 / timeout_330 1 中，extract_fail 已在此前验证无可回收分"
+  "consequence_for_caliber": "这 14 道全部落在干净分母 34 内（已机验不在 polluted_ids、不在 duplicate_real_ids），均归为模型行为或预算约束，不改 4/34 = 11.8% 的口径；累计已归因 tool_failure 13 + rest14 14 = 27/38 失败题，剩余 extract_fail 9 / race_abandon 1 / timeout_330 1 中，extract_fail 当时记『无可回收分』（2026-11-12 订正：该结论已被 baby_s_third 推翻，见 failure_attribution_remain11_20261112.critical_finding；原文保留以备追溯）"
  },
  "failure_attribution_remain11_20261112": {
   "scope": "剩余三类：extract_fail 9 / race_abandon 1 / timeout_330 1",
@@ -797,7 +799,7 @@
     "ids": [
      "ext_nyu_ctf_bench_2019q_rev_halfpike"
     ],
-    "detail": "state=TIMEOUT，RC=124，330s 墙钟硬顶；per_question 里该条 err 字段为 null、靠 state 表达，属台账字段留白，本段不改原字段只做说明；候选为 C++ 模板字符串误识别（std::nullopt 写法），非真值"
+    "detail": "state=TIMEOUT，RC=124，330s 墙钟硬顶；per_question 里该条原为 err=null / elapsed=null、只靠 state 表达，属台账字段留白；已于 2026-11-12 按本条 detail 补齐 err=timeout_330、elapsed=330；候选为 C++ 模板字符串误识别（std::nullopt 写法），非真值"
    }
   },
   "consequence_for_caliber": {
