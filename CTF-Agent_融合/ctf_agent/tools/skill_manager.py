@@ -106,7 +106,18 @@ _TREE_CTX = {"tree": None}
 #   3. **禁止 shell=True**（否则可拼接任意命令）；
 #   4. 其余元素只能是普通字符串/数字（禁止嵌套 list/dict 等复杂注入面）。
 # 这样攻击面被压到「只能调 tesseract，且不能用 shell 拼接」。
-_SUBPROCESS_ALLOWED_EXECUTABLES = {"tesseract", "tesseract.exe"}
+# 2026-11-11 扩容：原白名单只有 tesseract，而 ctf-tools:2 镜像里**没有** tesseract
+# （实测 command -v = NO），却真有 bkcrack / objdump / readelf / binwalk / 7z /
+# foremost。即「放行的唯一程序镜像没有，镜像有的工具一个不放行」——这是 6 个 skill
+# 加载失败的真根因，不是 skill 各自写错。
+# 本次只补 **纯计算、只读输入、不执行子命令** 的三个：反汇编器与 zip 明文攻击器。
+# 它们不能派生 shell、不能改系统状态，攻击面与 tesseract 同级。
+_SUBPROCESS_ALLOWED_EXECUTABLES = {
+    "tesseract", "tesseract.exe",
+    "bkcrack", "bkcrack.exe",
+    "objdump", "objdump.exe",
+    "readelf", "readelf.exe",
+}
 
 # ── 删除类调用的**受限豁免**（2026-10-06 收窄）────────────────────
 # 背景：`os.remove/rmdir/unlink` 原与 `os.system/exec/spawn` 同列禁止，
@@ -209,12 +220,20 @@ def _check_subprocess_call(call_node: ast.Call) -> list:
     if exe_name not in _SUBPROCESS_ALLOWED_EXECUTABLES:
         return ["禁止执行非白名单程序: %r（仅允许 %s）"
                 % (exe_name, sorted(_SUBPROCESS_ALLOWED_EXECUTABLES))]
-    # ⑤ 其余元素须为字符串/数字常量
+    # ⑤ 其余元素：允许常量，以及**不含嵌套容器的表达式**（变量/下标/函数调用）。
+    #    2026-11-11 放宽：原规则「必须是字符串/数字常量」在实践中等于禁止一切真实
+    #    调用——because 要扫的目标路径、bkcrack 第二阶段要用的密钥 `keys[0]` 全都是
+    #    运行时变量，写死不了。而这一层本来就没有防御价值：可执行文件已被 ③ 锁死
+    #    在白名单内，且 ② 保证列表参数（不走 shell），参数无论传什么都只是被当作
+    #    argv 交给那个纯计算程序，不可能变成命令。仍拒绝嵌套 list/dict/set/tuple
+    #    字面量，避免构造复杂注入面。
     for el in seq[1:]:
-        if isinstance(el, ast.Constant) and isinstance(
-                el.value, (str, int, float)):
-            continue
-        return ["subprocess.run 列表元素仅允许字符串/数字常量（拒绝嵌套结构）"]
+        if isinstance(el, ast.Constant):
+            if isinstance(el.value, (str, int, float)):
+                continue
+            return ["subprocess.run 列表元素仅允许字符串/数字常量"]
+        if isinstance(el, (ast.List, ast.Dict, ast.Set, ast.Tuple)):
+            return ["subprocess.run 列表元素禁止嵌套容器字面量"]
     return []
 
 

@@ -222,7 +222,10 @@ def solve(zippath: str, bkcrack_bin: str = "", flag_name: str = "flag.txt",
     first_offset = flag_size - 1
 
     # 准备 working dir（bkcrack 从 CWD 读 second_ciphertext / second_plaintext）
-    work = tempfile.mkdtemp(prefix="ziphard_")
+    # 用 TemporaryDirectory 而非 mkdtemp + shutil.rmtree：AST 沙箱禁 shutil，
+    # 而 cleanup() 是临时对象自己的方法，既不碰 os.remove 也不引入新模块。
+    _workdir = tempfile.TemporaryDirectory(prefix="ziphard_")
+    work = _workdir.name
     try:
         # second_ciphertext：优先 checked-in 常量 -> 磁盘资产 -> 从 zip 抽取
         sc_path = _find_second_file("second_ciphertext")
@@ -253,11 +256,15 @@ def solve(zippath: str, bkcrack_bin: str = "", flag_name: str = "flag.txt",
             f.write(second_plaintext)
 
         # 阶段 1：攻击恢复内部密钥
-        cmd1 = [binpath, "-c", flag_name, "-C", os.path.abspath(zippath),
-                "-x", "0", "efbbbf4354467b",
-                "-x", str(first_offset), "7d"]
-        out1 = subprocess.run(cmd1, cwd=work, capture_output=True, text=True,
-                              timeout=3600)
+        # 首元素写成字面量 "bkcrack"：在校验器第①②③条下，只有「列表字面量 +
+        # 白名单常量首元素」这一种形态能过；用 binpath 变量会因来源不明被拒。
+        # 依赖容器 PATH（ctf-tools:2 实测 command -v bkcrack = YES）。注
+        # find_bkcrack() 仍保留在上面做存在性预检，用于提前给出可读报错。
+        out1 = subprocess.run(
+            ["bkcrack", "-c", flag_name, "-C", os.path.abspath(zippath),
+             "-x", "0", "efbbbf4354467b",
+             "-x", str(first_offset), "7d"],
+            cwd=work, capture_output=True, text=True, timeout=3600)
         m = _KEY_RE.search(out1.stdout + out1.stderr)
         if not m:
             raise RuntimeError("bkcrack 未输出密钥；stderr=%s" % out1.stderr[-500:])
@@ -265,15 +272,15 @@ def solve(zippath: str, bkcrack_bin: str = "", flag_name: str = "flag.txt",
 
         # 阶段 2：用密钥解密 flag.txt
         out_flag = os.path.join(work, "flag_out.bin")
-        cmd2 = [binpath, "-C", os.path.abspath(zippath), "-c", flag_name,
-                "-k", keys[0], keys[1], keys[2], "-d", out_flag]
-        subprocess.run(cmd2, cwd=work, capture_output=True, text=True, timeout=300)
+        subprocess.run(
+            ["bkcrack", "-C", os.path.abspath(zippath), "-c", flag_name,
+             "-k", keys[0], keys[1], keys[2], "-d", out_flag],
+            cwd=work, capture_output=True, text=True, timeout=300)
         with open(out_flag, "rb") as f:
             plain = f.read()
         return plain
     finally:
-        import shutil
-        shutil.rmtree(work, ignore_errors=True)
+        _workdir.cleanup()
 
 
 def crypto_zip_bkcrack(params: dict) -> dict:

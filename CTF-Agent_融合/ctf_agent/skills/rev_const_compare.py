@@ -33,9 +33,11 @@ _SIZE = {"BYTE": 1, "WORD": 2, "DWORD": 4, "QWORD": 8}
 
 _OBJDUMP_CANDIDATES = (
     "objdump",
-    r"D:/miniconda3_new/Library/mingw-w64/bin/objdump.exe",
     "objdump.exe",
 )
+# 2026-11-11 删掉原第三个候选 r"D:/miniconda3_new/Library/mingw-w64/bin/objdump.exe"：
+# 那是开发机残留的绝对路径，容器里不存在；且它让 _collect_whitebin_vars 之外
+# 的「for exe in 候选」形态无法被校验器绑定，导致整个 skill 被判不可加载。
 
 _IMM_STORE = re.compile(r"mov\s+(BYTE|WORD|DWORD|QWORD) PTR \[rbp-(0x[0-9a-f]+)\],(0x[0-9a-f]+)")
 _MOVABS = re.compile(r"movabs\s+(\w+),(0x[0-9a-f]+)")
@@ -97,16 +99,18 @@ def _sec_span(secs: List[Tuple[str, int, int, int]], va: int) -> Optional[int]:
 
 
 def _disasm(path: str) -> Optional[str]:
-    for exe in _OBJDUMP_CANDIDATES:
-        try:
-            r = subprocess.run(
-                [exe, "-d", "-M", "intel", path],
-                capture_output=True, timeout=90,
-            )
-        except (OSError, subprocess.SubprocessError):
-            continue
-        if r.returncode == 0 and r.stdout:
-            return r.stdout.decode("utf-8", "replace")
+    # 首元素写死字面量 "objdump"：校验器只放行「列表字面量 + 白名单常量首元素」，
+    # 用 for 循环变量 exe 会因来源不明被拒（_collect_whitebin_vars 只认字面量赋值）。
+    # 依赖 PATH：容器 ctf-tools:2 实测 command -v objdump = YES，宿主机 Linux 亦然。
+    try:
+        r = subprocess.run(
+            ["objdump", "-d", "-M", "intel", str(path)],
+            capture_output=True, timeout=90,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode == 0 and r.stdout:
+        return r.stdout.decode("utf-8", "replace")
     return None
 
 
