@@ -224,13 +224,32 @@ class AppConfig:
         # 显式 provider（竞速池）不受此影响；仅影响无显式 provider 的单源模式。
         provider = os.getenv("CTF_AGENT_LLM_PROVIDER", "").strip().lower() or "baidu"
         base_url, light_model, mid_model_def, heavy_model_def = _resolve_provider_defaults(provider)
+        import logging as _logging
+        _logger = _logging.getLogger(__name__)
+        # 2026-11-12 provider/base_url 错配闸门：只设 BASE_URL、不设 PROVIDER 时，
+        # provider 回落 baidu（模型 ernie-*）却把请求打向别家官方端点。这种事不报错，
+        # 只会让整批结果静默不可信。按 AGENTS 第四条 fail-closed，启动即拦；
+        # 逃生阀须显式留痕（ALLOW_PROVIDER_BASE_MISMATCH=1 → 只 warning）。
+        _env_provider_raw = os.getenv("CTF_AGENT_LLM_PROVIDER", "").strip()
+        _env_base_raw = os.getenv("CTF_AGENT_LLM_BASE_URL", "").strip()
+        if _env_base_raw and not _env_provider_raw and not cls._provider_base_env(provider):
+            _owner = _provider_owning_endpoint(_env_base_raw)
+            if _owner and _owner != provider:
+                _mis_msg = (
+                    "CTF_AGENT_LLM_BASE_URL 指向 %s 的官方端点，但未设置 "
+                    "CTF_AGENT_LLM_PROVIDER，provider 将回落 %s、模型 %s 会打到"
+                    "错误端点。请同时设置 CTF_AGENT_LLM_PROVIDER=%s。"
+                    % (_owner, provider, light_model, _owner)
+                )
+                if os.getenv("CTF_AGENT_ALLOW_PROVIDER_BASE_MISMATCH", "0") == "1":
+                    _logger.warning("%s（已按 ALLOW_PROVIDER_BASE_MISMATCH=1 放过）", _mis_msg)
+                else:
+                    raise RuntimeError(_mis_msg)
         # P0 修复（2026-08-21 17:40 赛后）：模型/端点一致性净化——防父进程残留
         # CTF_AGENT_LIGHT_MODEL=deepseek-chat / HEAVY_MODEL=deepseek-reasoner 污染单源模式
         # （16:48 灾难同款根因：模型打错端点 → 404）。残留模型与 provider 默认模型不一致时
         # 自动回退默认；如需覆盖必须同时显式设置 provider（多 provider 竞速传显式 provider，
         # 走 _resolve_settings 的 provider 分支，不受此净化影响）。
-        import logging as _logging
-        _logger = _logging.getLogger(__name__)
         # 模型-端点匹配白名单（2026-09-17）：登记在册的合法模型（与其 provider 端点匹配）
         # 允许被 CTF_AGENT_LIGHT/HEAVY_MODEL 显式覆盖，不触发回退——否则无法在 qwen 端点
         # 上选用 deepseek/kimi/glm 等千问平台免费模型（它们本就在 dashscope 端点上）。
@@ -571,6 +590,52 @@ def _resolve_provider_defaults(provider: str) -> tuple[str, str, str, str]:
         return mapping[provider]
     # 兜底默认走千帆 baidu（P1-9 修复 2026-08-21：单一事实源，与 from_env/dataclass 一致）
     return ("https://qianfan.baidubce.com/v2/chat/completions", "ernie-3.5-8k-preview", "ernie-3.5-8k-preview", "ernie-3.5-8k-preview")
+
+
+# ── provider / base_url 错配闸门（2026-11-12）─────────────────────────────
+# 事故形态：只设 CTF_AGENT_LLM_BASE_URL=https://api.deepseek.com/v1、不设
+# CTF_AGENT_LLM_PROVIDER 时，provider 回落 baidu、模型是 ernie-4.5-turbo-32k，
+# 却把请求打到 deepseek 端点。**不会报错**，只会让整批结果静默不可信——
+# 这是「可对外交代、可复算」口径里最致命的一类错，必须在启动时 fail-fast。
+#
+# 为什么只反查「已登记厂商端点」而不是任意域名：本地/自建网关（如
+# 127.0.0.1:18899 的 OFM 网关）常被显式指定为 BASE_URL 配合某个 provider，
+# 拿域名硬判会误伤。只拦「你显然想连别家官方端点、provider 却没跟上」。
+_KNOWN_PROVIDER_NAMES = (
+    "deepseek", "qwen", "baidu", "mimo", "glm", "tencent", "ark", "sensenova",
+    "tokenhub", "xfyun", "siliconflow", "moonshot", "stepfun", "openai",
+    "openrouter", "modelscope",
+)
+
+
+def _endpoint_host(url: str) -> str:
+    """取 URL 的 host（小写、去端口路径）；非法/空 → ""。"""
+    try:
+        from urllib.parse import urlparse
+        return (urlparse(str(url or "").strip()).hostname or "").lower()
+    except Exception:  # noqa: BLE001 - 解析失败按「未知端点」处理
+        return ""
+
+
+def _provider_owning_endpoint(url: str) -> str:
+    """反查 base_url 属于哪个已登记 provider（按 host 精确匹配）。
+
+    返回 provider 名；不是任何已登记厂商端点（本地/自建网关/未知域名）→ ""。
+    表由 _resolve_provider_defaults 逐 provider 取值构造，不另维护一份，
+    避免两处漂移。
+    """
+    host = _endpoint_host(url)
+    if not host:
+        return ""
+    for name in _KNOWN_PROVIDER_NAMES:
+        try:
+            default_url = _resolve_provider_defaults(name)[0]
+        except Exception:  # noqa: BLE001 - 单个 provider 取不到不影响其余
+            continue
+        if _endpoint_host(default_url) == host:
+            return name
+    return ""
+
 
 
 def resolve_api_key(provider: str = "") -> str:
