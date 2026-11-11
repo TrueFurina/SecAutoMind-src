@@ -1,6 +1,6 @@
 """G4 — MCP 标准工具协议适配层（¥0 抽象，不依赖 mcp 包）。
 
-把本仓现有的 `ToolAdapter`（`tools/tools/base.py`）适配到
+把本仓现有的 `ToolAdapter`（`tools/base.py`）适配到
 Model Context Protocol (MCP) 的 server 形态，便于：
   1. 本仓工具被外部 MCP client 调用（复用社区生态）；
   2. 后续接入社区 MCP 工具（CAI 用 MCP 接外部工具的同类能力）。
