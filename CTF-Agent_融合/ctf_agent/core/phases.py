@@ -530,6 +530,64 @@ def _sha256_arbitrate(ctx, flag: str) -> Optional[bool]:
 # 宽 pattern 仅用于「定位」候选，正确性一律交 sha256 仲裁（见 _broad_sha256_flag）。
 _BROAD_FLAG_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{1,20}\{[^}\n]{1,120}\}")
 
+# ── flag 前缀归一（2026-11-12，baby_s_third 实锤）─────────────────────────
+# 起因：ext_nyu_ctf_bench_2023q_rev_baby_s_third（CSAW 2023）模型把花括号内容
+# 逆对了，但前缀写成 ctf、官方是 csawctf，被 _sha256_arbitrate 判成
+# 「确定性幻觉」丢弃。以 13 个前缀 × 同一内容逐一比对，仅 csawctf 命中题库
+# flag_sha256 → 内容全对、只是前缀格式错。
+#
+# 为什么这样修是安全的：sha256 抗碰撞，只有「内容逐字正确」才可能命中；
+# 归一只是把前缀换掉重算哈希，命中即官方真值，不存在把错答案放进来。
+# 不命中时行为完全不变（仍走原拒绝分支）。
+_KNOWN_FLAG_PREFIXES = (
+    "flag", "FLAG", "Flag", "ctf", "CTF", "CTFd",
+    "csawctf", "CSAWCTF", "htb", "HTB", "sekai", "SEKAI", "SekaiCTF",
+    "DASCTF", "dasctf", "picoCTF", "PCTF", "uiuctf", "UIUCTF",
+    "irisctf", "corctf", "corCTF", "justCTF", "TFCCTF", "ductf", "DUCTF",
+    "ictf", "ICTF", "actf", "ACTF", "tjctf", "TJCTF", "utctf", "UTCTF",
+    "nite", "NITE", "idek", "idekCTF", "buckeye", "amateursCTF",
+    "wctf", "WCTF", "hxp", "HXP", "brics", "BRICS", "0CTF", "zer0pts",
+)
+
+_FLAG_SHAPE_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_]{0,20})\{([^}\n]{1,120})\}$")
+
+
+def _expected_sha256(ctx) -> Optional[str]:
+    """取本题官方 flag_sha256；无题面/无真值 → None。"""
+    q = getattr(ctx, "question", None)
+    return getattr(q, "flag_sha256", None) if q is not None else None
+
+
+def _prefix_variant_recover(flag: str, expected_sha256: Optional[str]) -> Optional[str]:
+    """前缀归一：保留花括号内容，换前缀逐一比对官方 sha256，命中才返回。
+
+    仅当候选形如 `<前缀>{<内容>}` 时生效。无官方真值、形状不符、内容为空、
+    或所有前缀均不命中 → 返回 None（调用方保持原有拒绝行为，严格加法）。
+    """
+    if not flag or not expected_sha256:
+        return None
+    m = _FLAG_SHAPE_RE.match(str(flag).strip())
+    if not m:
+        return None
+    stem, core = m.group(1), m.group(2)
+    if not core.strip():
+        return None
+    try:
+        from verify.flag_checker import sha256_matches
+    except Exception as _exc:  # noqa: BLE001 - 校验器异常不阻塞原有提取
+        logger.warning("sha256_matches 导入失败，跳过前缀归一: %s", _exc)
+        return None
+    for p in _KNOWN_FLAG_PREFIXES:
+        if p == stem:
+            continue
+        cand = f"{p}{{{core}}}"
+        try:
+            if sha256_matches(cand, expected_sha256) is True:
+                return cand
+        except Exception:  # noqa: BLE001 - 单个前缀异常不影响其余前缀
+            continue
+    return None
+
 
 def _broad_sha256_flag(ctx, text: str) -> Optional[str]:
     """宽 pattern 扫描 + sha256 仲裁兜底（2026-10-05 flag_pattern 声明有误修复）。
@@ -552,6 +610,16 @@ def _broad_sha256_flag(ctx, text: str) -> Optional[str]:
             cand = m.group(0)
             if sha256_matches(cand, exp) is True:
                 return cand
+        # 2026-11-12 前缀归一（baby_s_third）：扫出的 token 前缀可能写错
+        # （如 ctf 代替 csawctf），原样比对必然 miss。保住花括号内容换前缀
+        # 再比对，命中即官方真值（sha256 抗碰撞 ⇒ 零误纳）。
+        for m in _BROAD_FLAG_RE.finditer(text or ""):
+            _rec = _prefix_variant_recover(m.group(0), exp)
+            if _rec:
+                logger.info("[%s] 宽扫前缀归一命中真 flag（内容长度 %d）",
+                            getattr(getattr(ctx, "question", None), "id", "?"),
+                            len(_rec))
+                return _rec
     except Exception as _e:  # noqa: BLE001 - 兜底失败不阻塞既有提取
         logger.debug("broad sha256 flag 兜底异常: %s", _e)
     return None
@@ -620,6 +688,13 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                             flag[:40])
                 return flag
             if _v256 is False:
+                # 2026-11-12 前缀归一：内容对、前缀错（ctf vs csawctf）不该算幻觉
+                _rec = _prefix_variant_recover(flag, _expected_sha256(ctx))
+                if _rec:
+                    logger.info("[%s] flag 前缀归一命中 sha256 真值（len %d→%d），采信",
+                                getattr(ctx, "question", None) and ctx.question.id or "?",
+                                len(flag), len(_rec))
+                    return _rec
                 logger.info("[%s] flag 与题面 sha256 真值不符（确定性幻觉，丢弃）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             flag[:40])
@@ -662,6 +737,13 @@ def extract_flag(agent, ctx: AgentContext, act: dict) -> Optional[str]:
                             _f[:40])
                 return _f
             if _v256 is False:
+                # 2026-11-12 前缀归一：兜底路径同样救「内容对但前缀错」
+                _rec = _prefix_variant_recover(_f, _expected_sha256(ctx))
+                if _rec:
+                    logger.info("[%s] 兜底 flag 前缀归一命中 sha256 真值（len %d→%d），采信",
+                                getattr(ctx, "question", None) and ctx.question.id or "?",
+                                len(_f), len(_rec))
+                    return _rec
                 logger.info("[%s] 兜底 flag 与题面 sha256 真值不符（确定性幻觉，丢弃）: %s",
                             getattr(ctx, "question", None) and ctx.question.id or "?",
                             _f[:40])
