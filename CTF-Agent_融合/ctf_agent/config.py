@@ -706,10 +706,13 @@ def resolve_api_key(provider: str = "") -> str:
 # ── 生效配置快照（2026-08-22 锐评第五节整改：赛前人工 5 秒核对）────────
 # 设计层病根：CTF_AGENT_LLM_BASE_URL 单点变量残留即全瘫、fail-closed 拦截
 # 无醒目逃生提示。快照让启动时一眼看清：provider/端点/模型/key 状态/白名单
-# 状态/残留变量——残留环境变量（父进程带进来的）会在快照里打 ⚠️。
+# 配置来源提示——这三个变量非空就会覆盖 provider 默认，所以快照必须盯：
+# BASE_URL 生效却指向非当前 provider 端点 = 流量被改道（真问题）；
+# MODEL 设了却被白名单回退 = 配置没按预期走。**不自洽才算问题**，
+# 合法显式设置不再报（判定见下方三档注释）。
 _LEGACY_RESIDUE_ENVS = (
-    "CTF_AGENT_LLM_BASE_URL",       # 单点爆破：残留覆盖所有 provider 端点（显式 provider 已豁免）
-    "CTF_AGENT_LIGHT_MODEL",        # 残留模型与 provider 默认不一致会打错端点
+    "CTF_AGENT_LLM_BASE_URL",       # 单点影响所有 provider 端点（专属变量优先）
+    "CTF_AGENT_LIGHT_MODEL",        # 与 provider 端点不匹配会 404
     "CTF_AGENT_HEAVY_MODEL",
 )
 
@@ -762,11 +765,33 @@ def print_effective_config_snapshot(provider: Optional[str] = None) -> dict:
         "allow_off_whitelist": allow_off,
         "residue_warnings": [],
     }
-    # 残留变量告警（仅在值确实存在且可能影响当前 provider 时提示）
+    # 残留变量告警（2026-11-12 修语义）：原实现「只要设了就报⚠️残留」，把
+    # 合法显式设置也一并污名化——provider=deepseek + 指向 deepseek 官方端点、
+    # 白名单内显式指定的 LIGHT_MODEL，都会被报成「残留」。噪音一多，真问题
+    # （父进程塞了个错的 BASE_URL）就没人看了。现按三档判定：
+    #   · 生效且自洽 → 不报（快照已印生效值，人工看得到）
+    #   · 设了但未生效（被 provider 专属变量或白名单回退覆盖）→ ⚠️ 未生效
+    #   · 生效但端点 host 不属于当前 provider → ⚠️ 端点疑被改道（真问题）
+    _prov_host = _endpoint_host(base_url)
     for _env in _LEGACY_RESIDUE_ENVS:
         _val = os.getenv(_env, "").strip()
-        if _val:
-            snap["residue_warnings"].append(f"{_env}={_val[:60]}")
+        if not _val:
+            continue
+        if _env == "CTF_AGENT_LLM_BASE_URL":
+            _effective = _val.rstrip("/") == (cfg.llm_base_url or "").rstrip("/")
+            if not _effective:
+                snap["residue_warnings"].append(f"{_env} 已设置但未生效: {_val[:60]}")
+            elif _endpoint_host(_val) != _prov_host:
+                snap["residue_warnings"].append(
+                    f"{_env} 生效但 host 不属于 {prov} 的默认端点: {_val[:60]}"
+                )
+        else:
+            _eff_model = (cfg.light_model if _env.endswith("LIGHT_MODEL")
+                          else cfg.heavy_model)
+            if _val != _eff_model:
+                snap["residue_warnings"].append(
+                    f"{_env} 已设置但未生效（被回退）: {_val[:60]}"
+                )
     _logger.info(
         "┌─ 生效配置快照（2026-08-22 锐评整改，赛前 5 秒核对）────────────────"
     )
@@ -778,7 +803,7 @@ def print_effective_config_snapshot(provider: Optional[str] = None) -> dict:
     _logger.info("│ 逃生开关      : escape_provider=%s  allow_off_whitelist=%s",
                  snap["escape_provider"] or "-", "ON" if allow_off else "off")
     for _w in snap["residue_warnings"]:
-        _logger.warning("│ ⚠️ 残留环境变量: %s", _w)
+        _logger.warning("│ ⚠️ 配置提示: %s", _w)
     if not key or key == "<未设置>":
         _logger.warning("│ ⚠️ API Key 未设置——真实 LLM 请求将失败/降级 Mock")
     _logger.info("└────────────────────────────────────────────────────────────")
