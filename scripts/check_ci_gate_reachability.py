@@ -92,6 +92,99 @@ EXEMPT: dict[str, str] = {
 }
 
 
+# ============================================================================
+# 嵌套 CTF-Agent 子系统门禁可达性（2026-11-11 扩展，关闭扫描盲区）
+# ----------------------------------------------------------------------------
+# 背景：SCRIPTS_DIR 此前只指向根 scripts/，导致 CTF-Agent_融合/ctf_agent/
+# scripts/ 下几十个门禁类脚本完全不在可达性判据视野内——上一轮「46 门禁全接
+# CI」的结论只在根目录成立，是假结论。但嵌套目录命名混乱：
+#   * 真门禁用 _gate_ / _truth_guard / _*_guard 下划线前缀（前缀规则抓不到）；
+#   * 单题求解验证器用 verify_<challenge> 前缀（若套前缀规则会误标 10+ 个、
+#     且冲破 MAX_EXEMPT）。
+# 因此嵌套采用「显式登记 + 噪声排除」：
+#   - 自动发现：嵌套 check_/verify_/audit_（非下划线前缀）脚本，减去 NESTED_NOISE；
+#   - 显式登记：NESTED_CI_GATES（下划线前缀的真 CI 持续门禁）+ NESTED_EXEMPT
+#     （动作触发 / 数据依赖门禁，故意只在本地 / 赛时由 _run_all_gates.py 统管）。
+# fail-closed 兜底：任何新的嵌套 check_/verify_/audit_ 脚本若不在 NESTED_NOISE、
+# 未接 CI、未登记豁免 ⇒ 进入候选集 ⇒ R3 判红，防新增真门禁被漏掉。
+# ============================================================================
+
+NESTED_SCRIPTS_DIR = REPO_ROOT / "CTF-Agent_融合" / "ctf_agent" / "scripts"
+NESTED_MAX_EXEMPT = 30
+
+# 嵌套「看起来像门禁但其实不是」的噪声（单题求解验证器 / 聚合器 / 测试）。
+# 显式登记，防止前缀规则误标它们为门禁导致假红；同时防清单腐烂（见 check_nested_rot）。
+NESTED_NOISE: set[str] = {
+    "_run_all_gates.py",        # 门禁聚合器本身，不是门禁
+    "test_file_guard.py",       # guard 的回归测试，不是门禁
+    # 单题求解验证器：verify_<challenge>，非 CI 闸门
+    "verify_10732.py", "verify_10733.py", "verify_10735.py",
+    "verify_anwang_misc3.py", "verify_filterrandom.py",
+    "verify_hgame2022_rsa.py", "verify_hgame_rsa.py",
+    "verify_real_questions.py", "verify_specialcurve2.py", "verify_vnctf_flag.py",
+}
+
+# 嵌套 CI 持续门禁（下划线前缀的真门禁，必须可从 CI 可达；有人拆线即判红）。
+NESTED_CI_GATES: set[str] = {
+    "_truth_guard.py",            # 机器真值写入守卫（已接 ctf-agent-static-gate）
+    "_gate_static.py",            # ruff 分级零容忍（已接 ctf-agent-static-gate）
+    "check_ci_optional_deps.py",  # 可选依赖不得静默缩小收集集（已接）
+    "check_ci_pytest_deselect.py",# pytest deselect 账本守卫（已接）
+    "audit_attachment_availability.py",  # 附件可用性审计（已接 corpus-denominator-gate）
+}
+
+# 嵌套动作触发 / 数据依赖门禁：fail-closed 屏障，但故意不在干净检出 CI 跑，
+# 由 _run_all_gates.py 在本地 / 赛时统一跑。理由必须具体，受 NESTED_MAX_EXEMPT 锁住。
+NESTED_EXEMPT: dict[str, str] = {
+    'check_corpus_health.py':
+        "题库健康度基线门禁；依赖 data/ 下未入库题库（.gitignore 排除），CI 干净检出无数据；"
+        "已有 check_corpus_health_test.py 回归测试进 CI，实战由 _run_all_gates.py 本地跑。",
+    '_gate_coverage.py':
+        "覆盖率门禁；纯 AST 不依赖 data/，但接收 pytest --cov 产出的报告，total 阈值需 CI 态实测校准。"
+        "配置段 [tool.ctf_coverage_gate] 刚补齐（commit adbd7ce），接 CI 前需一次干净检出定 total，否则假红。",
+    '_denominator_guard.py':
+        "KPI 分母口径守卫；依赖 data/ 未入库题库计算分母，CI 干净检出无数据；由 _run_all_gates.py 本地跑。",
+    '_merge_gate.py':
+        "合并闸门（阶段3 单一红绿灯）；依赖合并后的数据集与真值，CI 干净检出无源数据；本地 / 赛时跑。",
+    '_structure_guard.py':
+        "结构守卫；校验题库目录结构与索引，依赖 data/ 未入库附件，CI 干净检出无数据；本地跑。",
+    '_reviewer_gate.py':
+        "Reviewer 验收门禁（T-10 时点闸门）；属评审时点一次性验收，非常规 CI 持续判据；本地 / 评审时跑。",
+    '_run_validity_guard.py':
+        "跑批结果有效性门禁（防『基础设施失败当能力』）；需真实跑批日志与产物，CI 干净检出无产物；本地跑。",
+    '_git_guard.py':
+        "git 仓库健康门禁 L0/L1 + refs 快照；检查本地仓库状态，CI 干净检出是全新 clone 无历史快照；本地跑。",
+    'flag_gate_cli.py':
+        "解出闸门 CLI（任何跑批/校验的最后一道硬卡）；面向人工跑批流程，非 CI 自动门禁；本地跑。",
+    '_preflight_env.py':
+        "赛前环境验证；依赖本机赛时环境与凭据，CI 干净检出无赛时凭据；赛前本地跑。",
+    '_preflight_whitelist.py':
+        "赛前白名单合规预检；依赖赛时网络与白名单清单，CI 干净检出无赛时上下文；赛前本地跑。",
+    '_scan_secrets.py':
+        "密钥泄漏扫描器（P0-1 防回归）；扫描本机工作树与历史，CI 干净检出为全新仓库，语义不同；本地跑。",
+    '_honesty_scan.py':
+        "诚实口径扫描器；核对题库 / 报告中的水位宣称与真值，依赖未入库题库；本地跑。",
+    '_overseer_check.py':
+        "监督者持续观察脚本（上帝视角）；面向人工赛时监督，非 CI 自动判据；本地跑。",
+    '_skip_audit.py':
+        "skip 审计工具（fail-closed）；核对 pytest skip 合理性，依赖完整测试运行结果，CI 仅跑子集；本地跑。",
+    '_doc_consistency.py':
+        "文档↔实现一致性校验器；核对文档声明与代码，部分用例依赖未入库样本；本地跑。",
+    '_attribution_fingerprint.py':
+        "归因指纹守卫；识别 benchmark 报告中不可信的『LLM 解出』归因，依赖报告数据；本地跑。",
+    '_rag_corpus_audit.py':
+        "RAG 语料审计（抗幻觉护栏验证）；依赖未入库 RAG 语料，CI 干净检出无语料；本地跑。",
+    '_audit_corpus_integrity.py':
+        "题库完整性审计（防交付物悄悄腐烂）；依赖 data/ 未入库题库，CI 干净检出无数据；本地跑。",
+    '_scan_kpi_candidates.py':
+        "KPI 合法晋升候选扫描；依赖跑批日志与真值，CI 干净检出无日志；本地跑。",
+    'release_export.py':
+        "发布导出（双仓库模型）；发布时点动作，依赖作战仓库与发布物料，非 CI 持续判据；发布时本地跑。",
+    '_preflight.py':
+        "赛前 10 分钟检查清单；依赖赛时全量数据与凭据，CI 干净检出无赛时上下文；赛前本地跑。",
+}
+
+
 def extract_ci_roots(text: str) -> set[str]:
     """从 CI 驱动文本里提取「会被执行」的 .py 文件名。
 
@@ -177,8 +270,9 @@ def build_reachable(driver_texts: list[str], scripts_dir: Path) -> tuple[set[str
     return roots, reachable, deps_map
 
 
-def check(scan_names: set[str], reachable: set[str], exempt: dict[str, str]) -> list[str]:
-    """R3/R4：纯函数，便于变异自测注入。"""
+def check(scan_names: set[str], reachable: set[str], exempt: dict[str, str],
+          max_exempt: int = MAX_EXEMPT) -> list[str]:
+    """R3/R4：纯函数，便于变异自测注入。max_exempt 可注入（嵌套用独立上限）。"""
     errors: list[str] = []
     for name in sorted(exempt):
         if name not in scan_names:
@@ -190,8 +284,8 @@ def check(scan_names: set[str], reachable: set[str], exempt: dict[str, str]) -> 
         if name in reachable or name in exempt:
             continue
         errors.append("R3 门禁类脚本不在 CI 可达图且未登记豁免: %s" % name)
-    if len(exempt) > MAX_EXEMPT:
-        errors.append("R4 豁免 %d 条 > 上限 %d（禁止遇红就加豁免）" % (len(exempt), MAX_EXEMPT))
+    if len(exempt) > max_exempt:
+        errors.append("R4 豁免 %d 条 > 上限 %d（禁止遇红就加豁免）" % (len(exempt), max_exempt))
     return errors
 
 
@@ -212,6 +306,43 @@ def check_numbers(n_roots: int, n_reachable: int, scan_names: set[str],
     return errors
 
 
+def scan_nested_gate_names(scripts_dir: Path) -> set[str]:
+    """嵌套 CTF-Agent 子系统的门禁候选集（见文件头 NESTED_* 说明）。
+
+    自动发现嵌套 check_/verify_/audit_（非下划线前缀）脚本，减去 NESTED_NOISE；
+    再并入显式登记的 NESTED_CI_GATES 与 NESTED_EXEMPT（下划线前缀真门禁）。
+
+    任何新的嵌套 check_/verify_/audit_ 脚本若不在 NESTED_NOISE、未接 CI、
+    未登记豁免 ⇒ 进入候选集 ⇒ R3 判红（fail-closed 兜底，防新增真门禁被漏掉）。
+    """
+    if not scripts_dir.is_dir():
+        return set()
+    auto = {
+        p.name for p in scripts_dir.glob("*.py")
+        if p.name.startswith(GATE_PREFIXES) and not p.name.endswith("_test.py")
+        and p.name not in NESTED_NOISE
+    }
+    return auto | NESTED_CI_GATES | set(NESTED_EXEMPT.keys())
+
+
+def check_nested_ci_gates(ci_gates: set[str], reachable: set[str]) -> list[str]:
+    """嵌套 CI 持续门禁必须可从 CI 可达；否则视为有人拆线（fail-closed）。"""
+    errors: list[str] = []
+    for name in sorted(ci_gates):
+        if name not in reachable:
+            errors.append("R3 嵌套 CI 门禁不可达（疑似被拆线）: %s" % name)
+    return errors
+
+
+def check_nested_rot(noise: set[str], scripts_dir: Path) -> list[str]:
+    """NESTED_NOISE 登记项必须真实存在，防止清单腐烂（同 R4 悬空豁免问题）。"""
+    errors: list[str] = []
+    for name in sorted(noise):
+        if not (scripts_dir / name).is_file():
+            errors.append("R4 NESTED_NOISE 登记项不存在（清单腐烂）: %s" % name)
+    return errors
+
+
 def check_repo() -> tuple[list[str], dict]:
     if not SCRIPTS_DIR.is_dir() or not WORKFLOW_GLOB.is_dir():
         return ["STRUCT scripts/ 或 .github/workflows 不存在"], {}
@@ -226,6 +357,13 @@ def check_repo() -> tuple[list[str], dict]:
     roots, reachable, _ = build_reachable(driver_texts, SCRIPTS_DIR)
     errors = check(scan_names, reachable, EXEMPT)
     errors += check_numbers(len(roots), len(reachable), scan_names, reachable)
+
+    # 嵌套 CTF-Agent 子系统门禁可达性（2026-11-11 扩展，关闭扫描盲区）
+    nested_scan = scan_nested_gate_names(NESTED_SCRIPTS_DIR)
+    errors += check(nested_scan, reachable, NESTED_EXEMPT, max_exempt=NESTED_MAX_EXEMPT)
+    errors += check_nested_ci_gates(NESTED_CI_GATES, reachable)
+    errors += check_nested_rot(NESTED_NOISE, NESTED_SCRIPTS_DIR)
+
     stats = {
         "ci_roots": len(roots),
         "gate_candidates": len(scan_names),
@@ -237,6 +375,11 @@ def check_repo() -> tuple[list[str], dict]:
         "min_roots": MIN_ROOTS,
         "min_reachable": MIN_REACHABLE,
         "max_exempt": MAX_EXEMPT,
+        "nested_gate_candidates": len(nested_scan),
+        "nested_gate_reachable": len(nested_scan & reachable),
+        "nested_exempt": len(NESTED_EXEMPT),
+        "nested_ci_gates": len(NESTED_CI_GATES),
+        "nested_noise": len(NESTED_NOISE),
     }
     return errors, stats
 
@@ -292,6 +435,21 @@ def selftest() -> int:
     case("B1 数量达标时不误报",
          check_numbers(144, 193, scan, reach | {"check_b.py"},
                        min_roots=1, min_reachable=2), False)
+
+    # 嵌套门禁逻辑 fail-closed 自测
+    nested_scan = {"_truth_guard.py", "_gate_static.py", "check_ci_optional_deps.py"}
+    case("N0 嵌套 CI 门禁被拆线必须判红",
+         check_nested_ci_gates(nested_scan - {"_gate_static.py"}, {"_truth_guard.py"}), True)
+    case("N1 嵌套 CI 门禁全可达时不误报",
+         check_nested_ci_gates(nested_scan, {"_truth_guard.py", "_gate_static.py", "check_ci_optional_deps.py"}), False)
+    over_nested = {("fake_n%d.py" % i):
+                   "理由具体：一次性工具，实测超时且需本机材料，不在干净检出跑。" for i in range(NESTED_MAX_EXEMPT + 1)}
+    case("N2 嵌套豁免超限必须判红",
+         check(set(over_nested), {"_truth_guard.py"}, over_nested, max_exempt=NESTED_MAX_EXEMPT), True)
+    case("N3 嵌套 NOISE 登记项腐烂必须判红",
+         check_nested_rot({"ghost_nested.py"}, NESTED_SCRIPTS_DIR), True)
+    case("N4 嵌套扫描集含未登记未接 CI 的 check_ 脚本必须判红",
+         check({"check_new_nested.py"}, set(), {}, max_exempt=NESTED_MAX_EXEMPT), True)
 
     # 真实仓库基线
     repo_errs, _ = check_repo()

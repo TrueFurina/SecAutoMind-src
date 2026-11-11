@@ -1,0 +1,310 @@
+{
+  "generated_at": "2026-11-11T15:37:53+08:00",
+  "log_dir": "/tmp/q47",
+  "generator": "scripts/_kpi_from_logs.py",
+  "groups": {
+    "ext47": {
+      "files": [
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_hard_permuted.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_very_easy_dynastic.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_medium_data_siege.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_urgent.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold.log",
+        "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway.log",
+        "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient.log",
+        "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware.log",
+        "ext_nyu_ctf_bench_2017f_cry_ecxor.log",
+        "ext_nyu_ctf_bench_2017f_for_thoroughlystripped.log",
+        "ext_nyu_ctf_bench_2017f_rev_rabbithole.log",
+        "ext_nyu_ctf_bench_2017q_cry_almost_xor.log",
+        "ext_nyu_ctf_bench_2017q_cry_another_xor.log",
+        "ext_nyu_ctf_bench_2017q_for_missed_registration.log",
+        "ext_nyu_ctf_bench_2017q_rev_bananascript.log",
+        "ext_nyu_ctf_bench_2017q_rev_realism.log",
+        "ext_nyu_ctf_bench_2017q_rev_tablez.log",
+        "ext_nyu_ctf_bench_2018f_rev_1nsayne.log",
+        "ext_nyu_ctf_bench_2018f_rev_bdos.log",
+        "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom.log",
+        "ext_nyu_ctf_bench_2018q_cry_babycrypto.log",
+        "ext_nyu_ctf_bench_2018q_cry_collusion.log",
+        "ext_nyu_ctf_bench_2018q_cry_lowe.log",
+        "ext_nyu_ctf_bench_2018q_for_simple_recovery.log",
+        "ext_nyu_ctf_bench_2018q_for_whyos.log",
+        "ext_nyu_ctf_bench_2018q_msc_short_circuit.log",
+        "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2.log",
+        "ext_nyu_ctf_bench_2018q_rev_kvm.log",
+        "ext_nyu_ctf_bench_2019f_rev_steady_counting.log",
+        "ext_nyu_ctf_bench_2019q_cry_des2bites.log",
+        "ext_nyu_ctf_bench_2019q_rev_beleaf.log",
+        "ext_nyu_ctf_bench_2019q_rev_halfpike.log",
+        "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9.log",
+        "ext_nyu_ctf_bench_2022f_msc_farmlang.log",
+        "ext_nyu_ctf_bench_2023f_for_emoji.log",
+        "ext_nyu_ctf_bench_2023f_for_floating_points.log",
+        "ext_nyu_ctf_bench_2023f_for_hypokrinesthai.log",
+        "ext_nyu_ctf_bench_2023q_for_1black0white.log",
+        "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t.log",
+        "ext_nyu_ctf_bench_2023q_rev_baby_s_third.log",
+        "ext_nyu_ctf_bench_2023q_rev_rox.log",
+        "ext_nyu_ctf_bench_2023q_rev_whataxor.log",
+        "real_crypto_exciting_inverse.log",
+        "real_crypto_simplelegendre.log"
+      ],
+      "runs": 47,
+      "solved": 9,
+      "rate": 0.1915,
+      "elapsed": {
+        "min": 1.9,
+        "max": 74.3,
+        "avg": 21.21,
+        "values": [
+          22.4,
+          74.3,
+          29.3,
+          3.1,
+          1.9,
+          2.1,
+          2.9,
+          51.3,
+          3.6
+        ]
+      },
+      "fails": [
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_hard_permuted.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_hard_permuted",
+          "elapsed_s": 84.9,
+          "error_category": "stuck_loop"
+        },
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity",
+          "elapsed_s": 124.2,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun",
+          "elapsed_s": 29.9,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing",
+          "elapsed_s": 41.7,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold",
+          "elapsed_s": 77.1,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway.log",
+          "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway",
+          "elapsed_s": 52.4,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient.log",
+          "id": "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient",
+          "elapsed_s": 33.9,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware.log",
+          "id": "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware",
+          "elapsed_s": 25.7,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017f_cry_ecxor.log",
+          "id": "ext_nyu_ctf_bench_2017f_cry_ecxor",
+          "elapsed_s": 73.4,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017f_for_thoroughlystripped.log",
+          "id": "ext_nyu_ctf_bench_2017f_for_thoroughlystripped",
+          "elapsed_s": 91.4,
+          "error_category": "race_abandon"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017f_rev_rabbithole.log",
+          "id": "ext_nyu_ctf_bench_2017f_rev_rabbithole",
+          "elapsed_s": 52.7,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017q_cry_almost_xor.log",
+          "id": "ext_nyu_ctf_bench_2017q_cry_almost_xor",
+          "elapsed_s": 127.6,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017q_for_missed_registration.log",
+          "id": "ext_nyu_ctf_bench_2017q_for_missed_registration",
+          "elapsed_s": 86.4,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2017q_rev_tablez.log",
+          "id": "ext_nyu_ctf_bench_2017q_rev_tablez",
+          "elapsed_s": 52.2,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018f_rev_1nsayne.log",
+          "id": "ext_nyu_ctf_bench_2018f_rev_1nsayne",
+          "elapsed_s": 53.6,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018f_rev_bdos.log",
+          "id": "ext_nyu_ctf_bench_2018f_rev_bdos",
+          "elapsed_s": 55.0,
+          "error_category": "stuck_loop"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom.log",
+          "id": "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom",
+          "elapsed_s": 36.3,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_cry_collusion.log",
+          "id": "ext_nyu_ctf_bench_2018q_cry_collusion",
+          "elapsed_s": 73.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_cry_lowe.log",
+          "id": "ext_nyu_ctf_bench_2018q_cry_lowe",
+          "elapsed_s": 138.6,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_for_simple_recovery.log",
+          "id": "ext_nyu_ctf_bench_2018q_for_simple_recovery",
+          "elapsed_s": 167.2,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_for_whyos.log",
+          "id": "ext_nyu_ctf_bench_2018q_for_whyos",
+          "elapsed_s": 62.4,
+          "error_category": "stuck_loop"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_msc_short_circuit.log",
+          "id": "ext_nyu_ctf_bench_2018q_msc_short_circuit",
+          "elapsed_s": 119.3,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2.log",
+          "id": "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2",
+          "elapsed_s": 55.8,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2018q_rev_kvm.log",
+          "id": "ext_nyu_ctf_bench_2018q_rev_kvm",
+          "elapsed_s": 54.0,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2019f_rev_steady_counting.log",
+          "id": "ext_nyu_ctf_bench_2019f_rev_steady_counting",
+          "elapsed_s": 51.9,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2019q_cry_des2bites.log",
+          "id": "ext_nyu_ctf_bench_2019q_cry_des2bites",
+          "elapsed_s": 91.1,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2019q_rev_beleaf.log",
+          "id": "ext_nyu_ctf_bench_2019q_rev_beleaf",
+          "elapsed_s": 54.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2019q_rev_halfpike.log",
+          "id": "ext_nyu_ctf_bench_2019q_rev_halfpike",
+          "elapsed_s": null,
+          "error_category": null
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9.log",
+          "id": "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9",
+          "elapsed_s": 40.0,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2022f_msc_farmlang.log",
+          "id": "ext_nyu_ctf_bench_2022f_msc_farmlang",
+          "elapsed_s": 110.8,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023f_for_emoji.log",
+          "id": "ext_nyu_ctf_bench_2023f_for_emoji",
+          "elapsed_s": 96.4,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023f_for_floating_points.log",
+          "id": "ext_nyu_ctf_bench_2023f_for_floating_points",
+          "elapsed_s": 58.6,
+          "error_category": "stuck_loop"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023f_for_hypokrinesthai.log",
+          "id": "ext_nyu_ctf_bench_2023f_for_hypokrinesthai",
+          "elapsed_s": 46.1,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t.log",
+          "id": "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
+          "elapsed_s": 61.4,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023q_rev_baby_s_third.log",
+          "id": "ext_nyu_ctf_bench_2023q_rev_baby_s_third",
+          "elapsed_s": 68.1,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023q_rev_rox.log",
+          "id": "ext_nyu_ctf_bench_2023q_rev_rox",
+          "elapsed_s": 63.8,
+          "error_category": "stuck_loop"
+        },
+        {
+          "file": "ext_nyu_ctf_bench_2023q_rev_whataxor.log",
+          "id": "ext_nyu_ctf_bench_2023q_rev_whataxor",
+          "elapsed_s": 64.7,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_exciting_inverse.log",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 235.7,
+          "error_category": "tool_failure"
+        }
+      ],
+      "attachment_missing": [],
+      "parse_errors": []
+    }
+  },
+  "unmatched_files": []
+}
