@@ -234,6 +234,94 @@ func TestFailoverStreamSwitchesOnTransient(t *testing.T) {
 	}
 }
 
+func TestFailoverRetryRateLimitSameChannel(t *testing.T) {
+	// 开启 rlRetry：主通道连返 2 次 402，第 3 次成功 → 必须**同一通道**重试成功，
+	// 不得切到备用通道（402 是瞬时在途/额度抖动，不是通道坏了）。
+	ch1 := &scriptedModel{id: "openrouter", respond: func(n int) (*schema.Message, error) {
+		if n <= 2 {
+			return nil, &einoopenai.APIError{HTTPStatusCode: 402, Message: "would exceed credits given in-flight requests"}
+		}
+		return schema.AssistantMessage("ok", nil), nil
+	}}
+	ch2 := &scriptedModel{id: "backup", respond: func(int) (*schema.Message, error) {
+		return schema.AssistantMessage("never", nil), nil
+	}}
+	f, _ := newFailover(t, 300*time.Second, ch1, ch2)
+	f.rlRetry = true
+	f.rlMaxRetries = 10
+	f.rlBackoff = 0 // 测试不真睡
+
+	msg, err := f.Generate(context.Background(), []*schema.Message{schema.UserMessage("hi")})
+	if err != nil {
+		t.Fatalf("应在同一通道重试成功，err=%v", err)
+	}
+	if msg == nil || msg.Content != "ok" {
+		t.Fatalf("返回消息不符：%+v", msg)
+	}
+	if ch1.calls() != 3 {
+		t.Fatalf("主通道应重试至第 3 次成功，实际调用 %d 次", ch1.calls())
+	}
+	if ch2.calls() != 0 {
+		t.Fatalf("402 不应触发切通道，备用通道被调用 %d 次", ch2.calls())
+	}
+}
+
+func TestFailoverRetryExhaustedThenSwitches(t *testing.T) {
+	// 主通道持续 429 且重试耗尽 → 退回既有 failover：冷却并切备用通道。
+	ch1 := &scriptedModel{id: "openrouter", respond: func(int) (*schema.Message, error) {
+		return nil, &einoopenai.APIError{HTTPStatusCode: 429, Message: "rate limit"}
+	}}
+	ch2 := &scriptedModel{id: "backup", respond: func(int) (*schema.Message, error) {
+		return schema.AssistantMessage("via-backup", nil), nil
+	}}
+	f, _ := newFailover(t, 300*time.Second, ch1, ch2)
+	f.rlRetry = true
+	f.rlMaxRetries = 3 // 1 次首调 + 3 次重试 = 主通道 4 次后切备用
+	f.rlBackoff = 0
+
+	msg, err := f.Generate(context.Background(), []*schema.Message{schema.UserMessage("hi")})
+	if err != nil {
+		t.Fatalf("重试耗尽应切备用通道成功，err=%v", err)
+	}
+	if msg.Content != "via-backup" {
+		t.Fatalf("应经备用通道返回，实际 %+v", msg)
+	}
+	if ch1.calls() != 4 {
+		t.Fatalf("主通道应重试 4 次后放弃，实际 %d 次", ch1.calls())
+	}
+	if ch2.calls() != 1 {
+		t.Fatalf("备用通道应被调用 1 次，实际 %d", ch2.calls())
+	}
+}
+
+func TestFailoverRetryNonRateLimitDoesNotRetry(t *testing.T) {
+	// 500（非 402/429）不应走同通道重试，立即交给 failover 切通道。
+	ch1 := &scriptedModel{id: "openrouter", respond: func(int) (*schema.Message, error) {
+		return nil, &einoopenai.APIError{HTTPStatusCode: 500}
+	}}
+	ch2 := &scriptedModel{id: "backup", respond: func(int) (*schema.Message, error) {
+		return schema.AssistantMessage("ok", nil), nil
+	}}
+	f, _ := newFailover(t, 300*time.Second, ch1, ch2)
+	f.rlRetry = true
+	f.rlMaxRetries = 5
+	f.rlBackoff = 0
+
+	msg, err := f.Generate(context.Background(), []*schema.Message{schema.UserMessage("hi")})
+	if err != nil {
+		t.Fatalf("500 应切备用通道成功，err=%v", err)
+	}
+	if msg.Content != "ok" {
+		t.Fatalf("应经备用通道返回，实际 %+v", msg)
+	}
+	if ch1.calls() != 1 {
+		t.Fatalf("非 402/429 不得同通道重试，主通道应只调用 1 次，实际 %d", ch1.calls())
+	}
+	if ch2.calls() != 1 {
+		t.Fatalf("备用通道应被调用 1 次，实际 %d", ch2.calls())
+	}
+}
+
 func TestFailoverSingleChannelParity(t *testing.T) {
 	// 单通道成功 → 与旧行为一致（成功即返回）
 	ok := &scriptedModel{id: "only", respond: func(int) (*schema.Message, error) {

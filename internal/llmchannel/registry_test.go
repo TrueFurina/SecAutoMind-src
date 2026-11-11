@@ -193,6 +193,49 @@ func TestIsTransient(t *testing.T) {
 	}
 }
 
+func TestAPIStatusCode(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"nil", nil, 0},
+		{"429", &einoopenai.APIError{HTTPStatusCode: 429}, 429},
+		{"402", &einoopenai.APIError{HTTPStatusCode: 402}, 402},
+		{"500", &einoopenai.APIError{HTTPStatusCode: 500}, 500},
+		{"包装 429", fmt.Errorf("call: %w", &einoopenai.APIError{HTTPStatusCode: 429}), 429},
+		{"普通 error", errors.New("boom"), 0},
+	}
+	for _, c := range cases {
+		if got := APIStatusCode(c.err); got != c.want {
+			t.Errorf("%s: APIStatusCode = %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+func TestStatusRetryableRateLimit(t *testing.T) {
+	cases := []struct {
+		code int
+		want bool
+	}{
+		{429, true},
+		{402, true},
+		{401, false},
+		{403, false},
+		{404, false},
+		{400, false},
+		{500, false},
+		{503, false},
+		{408, false},
+		{0, false},
+	}
+	for _, c := range cases {
+		if got := StatusRetryableRateLimit(c.code); got != c.want {
+			t.Errorf("code %d: StatusRetryableRateLimit = %v, want %v", c.code, got, c.want)
+		}
+	}
+}
+
 func idsOf(list []Channel) []string {
 	out := make([]string, 0, len(list))
 	for _, c := range list {

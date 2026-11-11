@@ -26,10 +26,14 @@ import (
 // eino ChatModel 无状态（消息历史由调用方持有），故「换通道重发同一份 msgs」语义干净。
 //
 // Env（全部沿用 RUNNER_LLM_* 前缀口径）：
-//   RUNNER_LLM_FAILOVER             默认 true；false = 退回旧的单通道路径
-//   RUNNER_LLM_FAILOVER_CHANNELS    逗号/换行分隔的通道 ID 顺序；空 = 内置优先级
-//   RUNNER_LLM_FAILOVER_COOLDOWN_SEC 单通道失败后冷却秒数；默认 300；0 = 不冷却
-//   RUNNER_LLM_NO_FALLBACK          默认 false；true = **只用主通道，禁止降级到备用/匿名通道**
+//
+//	RUNNER_LLM_FAILOVER             默认 true；false = 退回旧的单通道路径
+//	RUNNER_LLM_FAILOVER_CHANNELS    逗号/换行分隔的通道 ID 顺序；空 = 内置优先级
+//	RUNNER_LLM_FAILOVER_COOLDOWN_SEC 单通道失败后冷却秒数；默认 300；0 = 不冷却
+//	RUNNER_LLM_NO_FALLBACK          默认 false；true = **只用主通道，禁止降级到备用/匿名通道**
+//	RUNNER_LLM_RATELIMIT_RETRY      默认 false；true = 402/429 先在同一通道退避重试（见 retryRateLimit）
+//	RUNNER_LLM_RATELIMIT_MAX_RETRIES 重试上限，默认 6（0 = 不重试，退回旧切通道语义）
+//	RUNNER_LLM_RATELIMIT_BACKOFF_SEC 首次退避秒数，默认 2，指数增长到 60s 封顶
 //
 // 为什么需要 NO_FALLBACK（2026-11-01 实证，非理论）：
 // 内置清单里 `kilo`/`pollinations` 是**匿名通道**（不需要 key），
@@ -47,6 +51,15 @@ type failoverChatModel struct {
 	cooldown time.Duration
 	logger   *zap.Logger
 	now      func() time.Time // 测试注入（冷却窗口必须可脚本化，否则测不了）
+
+	// 402/429 同通道退避重试（opt-in，默认关）。
+	// 开启后，瞬时在途/限流错不再立即切通道，而是在**同一通道**上退避重试，
+	// 耗尽重试上限才退回既有 failover（冷却+切下一通道）。
+	// 这是 OpenRouter「按在途请求计额度」场景下根治 batch1 式「23 题在途打穿额度→级联 SKIP」的关键；
+	// 默认关闭以保留「瞬时错即切通道」的旧语义，不破坏既有 failover 设计与测试。
+	rlRetry      bool
+	rlMaxRetries int
+	rlBackoff    time.Duration
 }
 
 type failoverEntry struct {
@@ -97,7 +110,16 @@ func (f *failoverChatModel) Generate(ctx context.Context, in []*schema.Message, 
 			continue
 		}
 		tried = append(tried, e.id)
-		msg, err := e.mdl.Generate(ctx, in, opts...)
+		var msg *schema.Message
+		var err error
+		if f.rlRetry {
+			// 402/429 同通道退避重试：先等瞬时在途/限流落定，避免立即切通道把整轮打崩。
+			msg, err = f.retryRateLimitMsg(ctx, e, func() (*schema.Message, error) {
+				return e.mdl.Generate(ctx, in, opts...)
+			})
+		} else {
+			msg, err = e.mdl.Generate(ctx, in, opts...)
+		}
 		if err == nil {
 			e.clearCool()
 			// 降级留痕：一旦不是主通道完成的生成，必须显式记录。
@@ -153,7 +175,15 @@ func (f *failoverChatModel) Stream(ctx context.Context, in []*schema.Message, op
 			continue
 		}
 		tried = append(tried, e.id)
-		sr, err := e.mdl.Stream(ctx, in, opts...)
+		var sr *schema.StreamReader[*schema.Message]
+		var err error
+		if f.rlRetry {
+			sr, err = f.retryRateLimitStream(ctx, e, func() (*schema.StreamReader[*schema.Message], error) {
+				return e.mdl.Stream(ctx, in, opts...)
+			})
+		} else {
+			sr, err = e.mdl.Stream(ctx, in, opts...)
+		}
 		if err == nil {
 			e.clearCool()
 			// 与 Generate 同口径留痕（见该处注释）。
@@ -185,6 +215,88 @@ func (f *failoverChatModel) Stream(ctx context.Context, in []*schema.Message, op
 	return nil, fmt.Errorf("LLM 无可用通道（%d 个全部冷却中）", len(f.entries))
 }
 
+// retryRateLimit 对 402/429 在**同一通道**上做有界退避重试（不切通道、不冷却）。
+// fn 是一次通道调用；返回 (结果, err)。
+//   - 成功 → 立即返回；
+//   - 非 402/429 错误 → 立即透传，交给外层 failover（冷却 / 切下一通道 / fail-closed）；
+//   - 402/429 → 退避后重试同一通道，直到成功、ctx 死亡、或达到 rlMaxRetries 上限。
+//
+// 为什么这能根治 batch1 式崩法：OpenRouter 按「在途请求」计额度，23 题并发会瞬时
+// 撞 402（"Retry after in-flight requests settle"）。旧逻辑把 402 当切通道信号 →
+// 单通道下无处可切 → 整轮级联 SKIPPED。本方法让同一通道在 402 时退避等请求落定，
+// 额度释放后即可续跑，且带指数退避（封顶 60s）+ ctx 感知，绝不死循环烧额度。
+func (f *failoverChatModel) retryRateLimitMsg(ctx context.Context, e *failoverEntry, fn func() (*schema.Message, error)) (*schema.Message, error) {
+	var zero *schema.Message
+	var err error
+	backoff := f.rlBackoff
+	for attempt := 0; ; attempt++ {
+		res, callErr := fn()
+		if callErr == nil {
+			return res, nil
+		}
+		err = callErr
+		if attempt >= f.rlMaxRetries {
+			return zero, err
+		}
+		code := llmchannel.APIStatusCode(err)
+		if !llmchannel.StatusRetryableRateLimit(code) {
+			return zero, err
+		}
+		if f.logger != nil {
+			f.logger.Warn("LLM 通道 402/429 → 退避后重试同一通道（不切通道）",
+				zap.String("channel", e.id),
+				zap.Int("attempt", attempt+1),
+				zap.Int("code", code),
+				zap.Duration("backoff", backoff))
+		}
+		select {
+		case <-ctx.Done():
+			return zero, ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > 60*time.Second {
+			backoff = 60 * time.Second
+		}
+	}
+}
+
+func (f *failoverChatModel) retryRateLimitStream(ctx context.Context, e *failoverEntry, fn func() (*schema.StreamReader[*schema.Message], error)) (*schema.StreamReader[*schema.Message], error) {
+	var zero *schema.StreamReader[*schema.Message]
+	var err error
+	backoff := f.rlBackoff
+	for attempt := 0; ; attempt++ {
+		res, callErr := fn()
+		if callErr == nil {
+			return res, nil
+		}
+		err = callErr
+		if attempt >= f.rlMaxRetries {
+			return zero, err
+		}
+		code := llmchannel.APIStatusCode(err)
+		if !llmchannel.StatusRetryableRateLimit(code) {
+			return zero, err
+		}
+		if f.logger != nil {
+			f.logger.Warn("LLM 通道 402/429 → 退避后重试同一通道（不切通道）",
+				zap.String("channel", e.id),
+				zap.Int("attempt", attempt+1),
+				zap.Int("code", code),
+				zap.Duration("backoff", backoff))
+		}
+		select {
+		case <-ctx.Done():
+			return zero, ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > 60*time.Second {
+			backoff = 60 * time.Second
+		}
+	}
+}
+
 // channelLabel 给出通道的「ID/模型」可读标签，用于回答"这一轮到底谁答的题"。
 // 主通道可能没设 ID（env 直连形态），此时统一显示 primary，与 entries 的兜底一致。
 func channelLabel(c llmchannel.Channel) string {
@@ -201,6 +313,17 @@ func buildFailoverModel(ctx context.Context, primary llmchannel.Channel, logger 
 	cooldown := time.Duration(envInt("RUNNER_LLM_FAILOVER_COOLDOWN_SEC", 300)) * time.Second
 	if cooldown < 0 {
 		cooldown = 0
+	}
+
+	// 402/429 同通道退避重试（默认关；跑批受瞬时在途/限流困扰时由 batch 脚本开启）。
+	rlRetry := envBool("RUNNER_LLM_RATELIMIT_RETRY", false)
+	rlMaxRetries := envInt("RUNNER_LLM_RATELIMIT_MAX_RETRIES", 6)
+	if rlMaxRetries < 0 {
+		rlMaxRetries = 0
+	}
+	rlBackoff := time.Duration(envInt("RUNNER_LLM_RATELIMIT_BACKOFF_SEC", 2)) * time.Second
+	if rlBackoff < 0 {
+		rlBackoff = 0
 	}
 
 	channels := llmchannel.Resolve(&primary, llmchannel.Options{
@@ -251,9 +374,12 @@ func buildFailoverModel(ctx context.Context, primary llmchannel.Channel, logger 
 		return nil, nil, fmt.Errorf("无可用 LLM 通道（主通道构造亦失败）")
 	}
 	return &failoverChatModel{
-		entries:  entries,
-		cooldown: cooldown,
-		logger:   logger,
-		now:      time.Now,
+		entries:      entries,
+		cooldown:     cooldown,
+		logger:       logger,
+		now:          time.Now,
+		rlRetry:      rlRetry,
+		rlMaxRetries: rlMaxRetries,
+		rlBackoff:    rlBackoff,
 	}, ids, nil
 }

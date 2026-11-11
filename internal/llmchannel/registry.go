@@ -205,3 +205,31 @@ func StatusTransient(code int) bool {
 	}
 	return code >= 500
 }
+
+// APIStatusCode 从错误里提取 HTTP 状态码（eino 的 APIError 携带）；
+// 提取不到返回 0。供需要按码分流的调用方使用
+// （如 failover 对 402/429 做同通道退避重试，而非立即切通道）。
+func APIStatusCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var apiErr *einoopenai.APIError
+	if errors.As(err, &apiErr) && apiErr != nil {
+		return apiErr.HTTPStatusCode
+	}
+	return 0
+}
+
+// StatusRetryableRateLimit 只认「可退避重试」的限流码：
+//   - 429：标准限流（rate limit / too many requests）；
+//   - 402：OpenRouter 等按「在途请求」计额度时，瞬时在途超上限也会返回 402，
+//     文案明确 "Retry after in-flight requests settle" —— 退避后等请求落定即可恢复，
+//     不是永久余额耗尽（永久耗尽是 402 但文案不同，这里统一按可重试处理以对抗瞬时抖动）。
+//
+// 其余 401/403/404/4xx/5xx 一律 false：key/模型/服务错误专属，重试无意义，应交由 failover 冷却或 fail-closed。
+// 与 StatusTransient 的 402 分支**刻意不同**：StatusTransient 把 402 当「切通道」信号，
+// 而本函数把 402/429 当「同通道退避重试」信号 —— 两者在 failover 流程里分工：
+// 先同通道退避重试（对抗瞬时在途/限流），耗尽后再走 StatusTransient 的切通道逻辑。
+func StatusRetryableRateLimit(code int) bool {
+	return code == 402 || code == 429
+}
