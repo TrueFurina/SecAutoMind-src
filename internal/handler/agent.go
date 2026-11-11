@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -204,6 +205,9 @@ type AgentHandler struct {
 	auditLLM                 *openai.Client
 	audit                    *audit.Service
 	ctfPresolveIntegrator    *ctfplatform.PresolveAgentIntegrator
+	// robotBuiltEnvs 计数机器人路径（CTF_ROBOT_AUTO_PREPARE）建出的靶机环境数——
+	// 该路径无自动释放，账号级只有 5 格，必须可数（2026-11-12 审计）。
+	robotBuiltEnvs           atomic.Int64
 }
 
 // SetCTFPresolveIntegrator 注入 CTF 确定性预解层集成器。
@@ -899,6 +903,18 @@ func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, platform stri
 		if ref := ctfplatform.ExtractChallengeRef(message); ref != "" {
 			if ch, perr := h.ctfPresolveIntegrator.PrepareChallenge(ctx, ref); perr == nil && ch != nil {
 				message = ch.Description
+				if ch.HasInstance {
+					// 额度可观测（2026-11-12 审计）：这条路径起的环境**没有自动释放**
+					// （与 poller 的 AutoReleaseEnv 不同——IM 场景里人可能还要接着做，
+					// 擅自销毁会打断人工接手，属需用户拍板的语义决策）。
+					// 但"不释放"绝不能等于"看不见"：账号级只有 5 格，漏到第 6 格
+					// 后续所有需要靶机的题全部起不来。这里先做到可数、可提示。
+					n := h.robotBuiltEnvs.Add(1)
+					h.logger.Warn("机器人路径已建靶机环境（本路径不自动释放，占账号级额度）",
+						zap.String("challenge_id", ref),
+						zap.Int64("本进程累计未释放环境数", n),
+						zap.String("处置", "如需释放：调平台 DELETE /challenges/{id}/environment，或在赛后再处理；释放策略待拍板"))
+				}
 				h.logger.Info("机器人自动准备靶机/附件成功",
 					zap.String("challenge_id", ref),
 					zap.Bool("has_instance", ch.HasInstance),
