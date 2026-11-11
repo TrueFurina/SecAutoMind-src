@@ -387,6 +387,20 @@ def decode_multi_layer(s, max_layers=20):
         # 在脚本最顶部把 ctf_agent 包根注入 sys.path，使 skills 导入与 cwd 无关。
         # 否则 import 失败被 try/except 静默吞掉 → 费马/phi_known 等攻击整段跳过 → 无输出。
         _pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # 容器后端（CTF_SANDBOX_BACKEND=docker）：`skills` 已由 sandbox/factory.py
+        # 的 APP_SUBDIRS 只读挂到 /app/skills，并设 PYTHONPATH=/app，因此
+        # `from skills.xxx import y` 在容器里**本来就能成功**。
+        # 真正会失败的是「宿主路径注入」：下面这行 path.insert 在容器里指向不存在的
+        # 宿主机目录，import 仍靠 PYTHONPATH 兜住。
+        #
+        # 2026-11-11 实测教训：曾在此处加过 `_safe_import`（内部 import importlib +
+        # getattr），但 sandbox/subprocess_executor.py 的安全白名单
+        # `_ALLOWED_IMPORTS` 不含 importlib、`_FORBIDDEN_CALLS` 显式禁 getattr，
+        # 于是整个兜底脚本被判 `[安全拦截] 未在白名单的导入: importlib`，RC=-2，
+        # 比原来的静默未命中更糟（脚本压根不执行）。
+        # 故一律改用显式 try/except 直接 from-import（skills 在 _ALLOWED_IMPORT_PREFIXES
+        # 内，合法），失败则置 None 交内联备胎。
+        _pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         _prolog = "import sys as _sys\n_sys.path.insert(0, %r)\n" % _pkg_root
         header = "paths = %r\nWORDS = %r\n" % (paths, cls.COMMON_WORDS)
         return _prolog + funcs + "\n" + header + cls._TRIAGE_BODY
@@ -446,9 +460,17 @@ for _li in range(len(_all_lines) - 4):
         continue
     _pe, _pphi, _pc, _ppinv, _pqinv = int(_l0), _big4[0], _big4[1], _big4[2], _big4[3]
     try:
-        from skills.rsa_fermat_factor import run as _rsa_run
+        # 显式 try/except 直接导入（skills 在安全白名单前缀内，合法）。
+        # 不能用 importlib/getattr：二者被 sandbox/subprocess_executor.py 的
+        # 安全校验禁掉，会令整脚本 RC=-2（见上方 _prolog 注释的实测）。
+        # 导入失败只为 None，**不影响**后面的内联 _solve_phi_inv 备胎执行。
+        _rsa_run = None
+        try:
+            from skills.rsa_fermat_factor import run as _rsa_run
+        except Exception:
+            _rsa_run = None
         _m3 = _rsa_run({"n": 0, "e": _pe, "c": _pc, "phi": _pphi, "pinv": _ppinv, "qinv": _pqinv,
-                        "attack": "phi_known_inv"})
+                        "attack": "phi_known_inv"}) if _rsa_run else None
         if not _m3:
             _m3 = _solve_phi_inv(_pe, _pphi, _pc, _ppinv, _pqinv)
         if _m3:

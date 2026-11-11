@@ -353,8 +353,17 @@ class DockerExecutor:
             return ["python3", "-c", src], None, False
         os.makedirs(self.workdir, exist_ok=True)
         tmp_host = os.path.join(self.workdir, f"_src_{uuid.uuid4().hex[:10]}.py")
+        # 长脚本走文件分支时，内容此前**不做**路径映射（run() 里的 _map_text 只扫
+        # 命令行参数），于是脚本里写死的宿主机 workdir 路径原样落进容器，
+        # 容器里根本不存在该路径 → 兜底脚本静默读不到附件。
+        # 实测：real_crypto_exciting_inverse 的兜底脚本 34291 字符（> 24000），
+        # 生产链连续 6 次「crypto 攻击链未命中」、stdout/stderr 全空；而同一份脚本
+        # 在宿主机跑直接出 flag。短脚本（<=24000）走 -c 分支恰好被映射，故一直
+        # 没暴露——这是「长脚本专属」的静默失效。
+        # 这里补上：写文件前先做同样的 workdir → /work 前缀替换。
+        mapped_src = self._map_text(src)
         with open(tmp_host, "w", encoding="utf-8") as fh:
-            fh.write(src)
+            fh.write(mapped_src)
         return ["python3", f"/work/{os.path.basename(tmp_host)}"], tmp_host, True
 
     async def run(self, code: str, timeout: Optional[int] = None,
