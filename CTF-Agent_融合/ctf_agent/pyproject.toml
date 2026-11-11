@@ -113,3 +113,12 @@ select = ["F401", "F811", "F821", "F822", "F841"]
 "tests/*" = ["F401", "F841"]
 "scripts/*" = ["F401", "F841"]
 "__init__.py" = ["F401"]  # 包 __init__ 的 re-export 是公开接口，不是噪音
+
+[tool.ctf_coverage_gate]
+# 覆盖率门禁阈值（单一真源，脚本 _gate_coverage.py 不再硬编码数字）。
+# 口径：阈值 = 实测基线向下取整到 5 的倍数再减 5，只防倒退不追高。
+# 基线整体覆盖率约 37%（含 data/ 完整测试集）；CI 干净检出不含 data/ 会偏低，
+# 接入 CI 前须用 CI 态实测值校准 total，否则会假红（ci.yml 已注明 data/ 被 .gitignore 排除）。
+total = 30
+modules = {}
+metric = "percent_covered"
