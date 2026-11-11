@@ -93,14 +93,9 @@ build-backend = "setuptools.build_meta"
 #   tests/ scripts/ 豁免 F401/F841 —— 测试里的未使用导入多为 re-export 夹具，
 #                scripts/_*.py 是一次性取证脚本；逐条修的风险高于收益。**豁免不等于通过**：
 #                这两个目录仍在 F821/F811 覆盖范围内。
-#   tools/tools/ 整目录排除 —— 历史遗留的重复副本（21 个文件），无人 import
-#                （`import tools.registry` 解析到 tools/registry.py 真身），且副本内部
-#                自己也是 `from tools.base import ...` 引用真身。待人工确认后清理，
-#                本次只排除不删除。
 [tool.ruff]
 line-length = 100
 extend-exclude = [
-    "tools/tools",
     "_archive_defense",
     # 2026-11-04：题库入版本库后，ruff 会扫描**题目附件里的 .py**。
     # 那些是赛题给的素材（protobuf 生成代码、题目脚本、他人 exploit，

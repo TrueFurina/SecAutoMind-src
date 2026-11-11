@@ -107,8 +107,9 @@ def test_no_hardcoded_personal_paths_in_source():
     root = Path(__file__).resolve().parents[1]
     offenders = []
     # 只扫会进交付的核心目录。
-    # 跳过三类：__pycache__、测试文件、`tools/tools/`（历史重复副本，ruff 已整目录排除，
-    # 无人 import，不在本测试的守备范围——清理它属另一件事）。
+    # 跳过两类：__pycache__、测试文件。
+    # （注：历史上的 `tools/tools/` 重复副本已于 2026-11-11 经授权整目录删除，零运行时
+    #  引用，故不再需要在此跳过。）
     for sub in ("tools", "skills", "scripts", "core"):
         for f in (root / sub).rglob("*.py"):
             s = str(f)

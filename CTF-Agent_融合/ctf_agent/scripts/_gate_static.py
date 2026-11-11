@@ -24,7 +24,7 @@
   说明 hallucination/wrong_direction 两类错误没进差异化监督——这是缺口不是噪音）。
   F401/F841 的 per-file 豁免（tests/ scripts/ __init__.py）由 pyproject.toml 统一声明，
   本脚本不重复维护白名单，避免"两处真源漂移"。
-- `tools/tools/`：历史遗留重复副本，整目录排除（理由见 pyproject.toml）。
+- `tools/tools/`：历史遗留重复副本已于 2026-11-11 经授权整目录删除（原含 21 文件、零运行时引用），无需再排除。
 
 **fail-closed**
 ---------------
