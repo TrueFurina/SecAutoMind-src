@@ -1083,6 +1083,10 @@ func (f *LLMFallback) buildSystemPrompt() string {
   （n/e/c/签名序列/输出序列）经 params 传入；模板返回 not_applicable = 前提不满足，
   换攻击路或换模板。**当没有模板适用时，必须用 execute_python 编写并运行自定义解题脚本**
   （可直接调用 sage / sympy / pow / 现成库，**无需从零实现格基约化等底层原语**）：
+  已注入 ctf_crypto 模块，可直接 import ctf_crypto as C 调用即用原语
+  （RSA 攻击套件 rsa_wiener/rsa_common_modulus/rsa_fermat/rsa_broadcast、
+  ECC 点运算 ECPoint、AES/DES 加解密、纯 Python LLL 规约、哈希识别 identify_hash、
+  数论 modinv/crt/factor/iroot 等）。优先复用这些原语，不要重复造轮子。
   边读题面与附件、边写脚本、边运行、边按输出调整，直到拿到 flag。写并运行代码是 crypto
   解题的常态核心动作，不要只用自然语言"推理"或只读文件。
 - web: 纯人工推理（SQLi/XSS/反序列化），不需要工具

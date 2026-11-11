@@ -3,6 +3,7 @@ package runnerl3
 import (
 	"bufio"
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,12 @@ import (
 	"secautomind-ai/internal/airgap"
 	"secautomind-ai/internal/procenv"
 )
+
+// ctfCryptoFS 把 CTF 密码学原语库随二进制打包，会话启动时写入会话目录，
+// 使 L3 模型可直接 `import ctf_crypto`（无需联网、无需从零实现底层原语）。
+//
+//go:embed crypto_lib/ctf_crypto.py
+var ctfCryptoFS embed.FS
 
 // ── P1-2 交互会话状态（2026-10-26）──────────────────────────────────────────
 //
@@ -42,7 +49,13 @@ const pyBootstrap = `
 import sys, os, io, json, contextlib
 if len(sys.argv) > 1:
     os.chdir(sys.argv[1])
+sys.path.insert(0, os.getcwd())
 G = {"__name__": "__main__"}
+try:
+    import ctf_crypto
+    G["ctf_crypto"] = ctf_crypto
+except Exception:
+    pass
 print(json.dumps({"ready": True}), flush=True)
 for line in sys.stdin:
     line = line.strip()
@@ -130,6 +143,14 @@ func (m *pySessionMgr) startSession() (*pySession, error) {
 	dir, err := os.MkdirTemp("", "secautomind_sess_")
 	if err != nil {
 		return nil, fmt.Errorf("创建会话目录失败: %w", err)
+	}
+	// 注入 CTF 密码学原语库：写入会话目录，使 `import ctf_crypto` 默认可用
+	// （见文件头 ctfCryptoFS 注释）。
+	if data, e := ctfCryptoFS.ReadFile("crypto_lib/ctf_crypto.py"); e == nil {
+		if werr := os.WriteFile(filepath.Join(dir, "ctf_crypto.py"), data, 0o644); werr != nil {
+			_ = os.RemoveAll(dir)
+			return nil, fmt.Errorf("写入 ctf_crypto.py 失败: %w", werr)
+		}
 	}
 	cmd := exec.Command(m.pyPath, "-u", "-c", pyBootstrap, dir)
 	cmd.Dir = dir
