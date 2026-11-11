@@ -813,9 +813,22 @@
     "clean_rate": 0.1471,
     "delta_pp": 2.94
    },
-   "status": "NOT_IMPLEMENTED——仅潜力测算，代码未改，不得作为实测口径引用",
+   "status": "IMPLEMENTED_IN_CODE_ef52198——修复已落地并通过测试；但 47 道池未重测，对外口径仍按实测 4/34 引用",
    "do_not_quote_as_measured": true,
-   "reason": "修复尚未落地，本轮实跑结果仍是 4/34；对外只能说『存在 1 道因 flag 前缀格式被丢弃，补齐后可回收』，不能说现在已是 14.7%"
+    "code_fix_landed": true,
+    "code_fix_commit": "ef52198",
+    "code_fix_date": "2026-11-12",
+    "code_fix_files": ["core/phases.py", "tests/test_flag_prefix_normalize.py"],
+    "code_fix_verification": {
+      "new_tests": "tests/test_flag_prefix_normalize.py 14 passed",
+      "regression": "test_sha256_arbitration / test_extract_flag / test_anti_hallucination / test_phases_rejected_candidates / test_guards / test_flag_prefix_normalize 合计 62 passed",
+      "mutation": "把 _prefix_variant_recover 改成恒 None 后 3 failed（3 个应命中用例全红），恢复后 14 passed",
+      "real_candidate_e2e": "日志里 30 字符候选经归一后 sha256 与题库逐字相等（recovered_len=34、recovered_matches_bank=True，未打印明文）",
+      "server": "172.16.222.99"
+    },
+    "measured_after_fix": null,
+    "measured_after_fix_note": "修复已落地但 47 道池未重测；14.71% 是预测值，不得作为实测口径。重测前对外一律引用 4/34 = 11.76%（1 轮）",
+    "reason": "修复已落地（ef52198），但 47 道池未重测，本轮实跑结果仍是 4/34；对外只能说『存在 1 道因 flag 前缀格式被丢弃、已修并可回收』，不能说现在已是 14.7%"
   },
   "closed_loop_note": "加上本段 11 道，38 道失败题全部逐条落到四类归因（环境/配置/代码/模型行为）之一；本段无一条归到环境"
  }
