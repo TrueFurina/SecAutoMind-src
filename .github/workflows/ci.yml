@@ -1395,3 +1395,30 @@ jobs:
                     "附件与另两个池均不入库。这是已知数据缺口，非本次回归。")
               print("   本机自查（含未入库 data/）：python scripts/audit_attachment_availability.py")
           PY
+
+  # 静态门禁（2026-11-11 接入）——堵「写好却没接 CI = 等于没锁」。
+  # 背景：_run_all_gates.py（本地聚合器）收了 4 道门禁，其中 2 道不依赖未入库数据、
+  # 本机已证绿却从未进 CI：
+  #   · _gate_static.py：ruff 分级零容忍（F821/F811 全仓 + F401/F841 核心目录），
+  #     是 2026-10-21 真实事故（6 个静默 bug 躲过 1963 条测试）的根因防线。
+  #   · _truth_guard.py --audit：benchmarks/**/*.json 机器真值 schema 守卫，
+  #     防「写真值却没登记 schema / schema 撞车」。
+  # 另两道（check_corpus_health.py / _build_external_benchmark.py）依赖 data/
+  # （.gitignore 整目录排除、CI 干净检出下不存在），作者有意仅本地跑，非缺口。
+  # 两脚本均基于 __file__ 推导 ROOT，从仓库根启动即可，无需 working-directory；
+  # ruff 走 `python -m ruff`（与脚本同解释器绑定）。
+  # 版本约束：ruff 锁 <0.18（与本地 0.17.4 验证一致），避免主版本跳变改规则致假红。
+  ctf-agent-static-gate:
+    name: CTF-Agent static gates (ruff + truth schema)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ruff
+        run: pip install "ruff>=0.17,<0.18"
+      - name: ruff graded static gate (F821/F811 all, F401/F841 core)
+        run: python "CTF-Agent_融合/ctf_agent/scripts/_gate_static.py"
+      - name: Truth schema audit (benchmarks/**/*.json)
+        run: python "CTF-Agent_融合/ctf_agent/scripts/_truth_guard.py" --audit
