@@ -208,7 +208,48 @@ def run(params: dict) -> Optional[str]:
 
     enc = _extract_enc_list(text)
     mods = _extract_moduli(text)
+
+    # 2026-11-11 兜底（模型选错附件）：实测该题附件目录有两个文件——
+    # output（163871 B，N + phi + 密文列表，真正的数据）与 task.py（937 B，加密脚本）。
+    # 只传 task.py 时 text 非空（937 字节）但里面没有 N/phi，
+    # len(mods) < 2 → 静默 return None、耗时 0.00s，且"输入为空"的诊断也不会触发
+    # （因为 text 确实不为空）。现象与"工具连续返回空结果"完全吻合。
+    # 修法：解析不出 N/phi 时，自动补读所有输入路径的**同级目录**下的其他文件重试。
+    # 只在解析失败时兜底，正常路径零额外开销。
+    if (not enc or len(mods) < 2) and paths:
+        _sibs: List[str] = []
+        for _p in paths:
+            _d = _p if os.path.isdir(_p) else os.path.dirname(_p)
+            if not _d or not os.path.isdir(_d):
+                continue
+            for _fn in sorted(os.listdir(_d)):
+                _fp = os.path.join(_d, _fn)
+                if not os.path.isfile(_fp) or _fp in paths:
+                    continue
+                _sibs.append(_fp)
+        if _sibs:
+            logger.warning(
+                "[crypto_legendre_phi] 输入解析不出 N/phi（enc=%d, mods=%d），"
+                "改读同级目录 %d 个文件重试: %s",
+                len(enc or []), len(mods or []), len(_sibs),
+                [os.path.basename(x) for x in _sibs],
+            )
+            for _fp in _sibs:
+                try:
+                    with open(_fp, "r", encoding="utf-8", errors="ignore") as fh:
+                        text += "\n" + fh.read()
+                except OSError:
+                    continue
+            enc = _extract_enc_list(text)
+            mods = _extract_moduli(text)
+
     if not enc or len(mods) < 2:
+        logger.warning(
+            "[crypto_legendre_phi] 解析失败 → 返回 None。enc=%d mods=%d text_len=%d"
+            " path=%r paths=%r（预期输入：N 与 phi 两行大整数 + 一行密文列表）",
+            len(enc or []), len(mods or []), len(text), params.get("path"),
+            params.get("paths"),
+        )
         return None
     # 尝试相邻候选组合（phi, N）；通用场景允许候选多于 2 个
     for i in range(len(mods) - 1):

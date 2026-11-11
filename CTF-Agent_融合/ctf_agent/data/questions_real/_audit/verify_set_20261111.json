@@ -123,6 +123,23 @@
         ],
         "status": "仅 crypto_legendre_phi 已补 json 且验证 purpose 非空（286 字符）；其余 14 个未补未验",
         "risk": "这 14 个 skill 生产链路里同样对模型不可解释，等于存在于工具清单却不可发现"
+      },
+      "root_cause_located_20261111": {
+        "conclusion": "模型确实看得见 crypto_legendre_phi（监督日志原话\"已进入 exploit 阶段并调用 legendre_phi 工具\"），问题在它传的参数：只传了 task.py（937 B 加密脚本），没传 output（163871 B，含 N/phi/密文）。",
+        "why_invisible_theory_failed": "registry.names() 是 sorted 字母序，crypto 题过滤后 legendre 约排第 19 位，limit=30 截不到它 —— 截断不是根因，元数据缺失也不是根因。",
+        "silent_path": "skills/crypto_legendre_phi.py:211-212  `if not enc or len(mods) < 2: return None` —— text 非空（937 B）但无 N/phi 时静默返回，且\"输入为空\"诊断不会触发，现象与监督说的\"工具连续两次返回空结果\"完全吻合。",
+        "probe_matrix": {
+          "目录": "OK 1.0s",
+          "output 单文件": "OK 1.0s",
+          "task.py 单文件": "修复前 0.00s None → 修复后 0.99s 解出",
+          "paths=[output,task.py]": "OK 1.0s",
+          "path 不存在": "None（正确，诊断触发）",
+          "题目 json": "None（正确）"
+        },
+        "fix": "解析不出 N/phi 时自动补读所有输入路径同级目录下的其它文件重试；并补解析失败诊断日志。",
+        "fix_verified": "本地六种输入全部复测通过，py_compile RC=0",
+        "NOT_VERIFIED": "真实 Agent 端到端未验证 —— 2026-11-11 晚 172.16.222.99 SSH 两次 ConnectTimeout，本地按项目规矩不得跑题，故此项只有单元级证据，没有生产链证据。",
+        "side_effect_risk": "传 crypto/ 目录下的题目 json 时会兜底读同目录 23 个 json。实测仍返回 None（json 里没有 N/phi 格式），但这是\"同目录兜底\"的固有副作用，已记录。"
       }
     },
     "cases": [
