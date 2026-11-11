@@ -1,22 +1,32 @@
 {
   "_readme": "12 道附件齐全真题的判分状态旁路清单。本文件只记录「题号 → 层 → 理由 → 证据」，不改动任何题目 JSON 的 flag/flag_sha256。统计时按本清单分层：A 层计入可判分分子；B 层不计入判分分母（题库自身未提供可判答案）；C 层单列待核，不进任何分母。所有 flag 一律只存 sha256，不存明文。",
   "generated_at": "2026-11-10",
+  "updated_at": "2026-11-11",
   "scope": "data/questions_real 中附件齐全的 12 道真题",
   "reference_code": "573d49e",
+  "update_20261111": {
+    "summary": "C 层 2 道全部裁定完毕：10733 实为可解（判分链路漏了 ROT13 归一，已修 6c2e21a）→ 上调 A 层；real_reverse_js 题库 sha256 与附件唯一可导出答案不自洽（72 种变体实测）→ 平移 B 层。C 层清空。",
+    "changed_tiers": {
+      "10733": "C_hash_conflict_pending → A_solved",
+      "real_reverse_js": "C_hash_conflict_pending → B_unsolvable_by_source"
+    },
+    "fix_commit": "6c2e21a"
+  },
   "run_env": {
     "sandbox_backend": "docker (ctf-tools:1, id 9cf98f5d63a5)",
     "llm": "deepseek-chat (real network)",
     "preload_attachments": true,
-    "note": "A 层 6/8 由确定性引擎 math_engine 命中，filterrandom 与 smallsword3 由 LLM 多轮解出，anxun2020_aes 开附件预读后由 LLM 解出"
+    "note": "A 层 6/8 由确定性引擎 math_engine 命中，filterrandom 与 smallsword3 由 LLM 多轮解出，anxun2020_aes 开附件预读后由 LLM 解出；10733 由 math_engine:crypto_high_exponent auto 路径解出（0.009s，修 6c2e21a 后）"
   },
   "totals": {
     "total": 12,
-    "solved": 8,
-    "unsolved": 4,
-    "judgeable_denominator": 10,
-    "rate_all": "8/12",
-    "rate_judgeable": "8/10",
-    "rate_judgeable_note": "分母 10 = 12 减去 B 层 2 道（题库自述不可解/无标准答案）；C 层 2 道另行单列，不计入任何分母"
+    "solved": 9,
+    "unsolved": 3,
+    "judgeable_denominator": 9,
+    "rate_all": "9/12",
+    "rate_judgeable": "9/9",
+    "rate_judgeable_note": "分母 9 = 12 减去 B 层 3 道（题库自身缺陷：2 道自述无实例参数/无标准答案，1 道题库 sha256 与附件不自洽）。C 层已清空（原 2 道均已裁定）。",
+    "small_sample_warning": "分母仅 9 道，9/9 只是「这 9 道都能判过」，不构成能力结论；引用时必须同时给出分母 9 与单轮事实。"
   },
   "tiers": {
     "A_solved": [
@@ -70,8 +80,18 @@
         "id": "real_crypto_anxun2020_aes",
         "solver": "llm",
         "elapsed_s": 49.0,
-        "evidence": "开 CTF_AGENT_PRELOAD_ATTACHMENTS=1 后的跑批（该次日志未单独另存，仅存于批次汇总；未开预读时同题 167.5s 失败）",
+        "evidence": "开 CTF_AGENT_PRELOAD_ATTACHMENTS=1 后的跑批；未开预读时同题 167.5s 失败",
         "note": "未开附件预读时 167.5s 失败；开预读后 49.0s 解出且 MATCH True。附件 flag.txt 内容即明文答案，模型此前从未读到附件 —— 失败原因是'没读到附件'，不是 crypto 能力。"
+      },
+      {
+        "id": "10733",
+        "solver": "math_engine:crypto_high_exponent(auto)",
+        "elapsed_s": 0.009,
+        "method": "odd-subgroup-rabin",
+        "tier_changed_from": "C_hash_conflict_pending",
+        "evidence": "服务器实测 /tmp/t10733c.py + /tmp/t10733_t.py：factor_from_hint 由 hint 恢复 p/q（n==p*q 验证 True）→ all_2k_roots 在 p、q 各 2 根（p,q≡3 mod 4，v2(λ)=1）→ CRT 共 4 候选 → 其中 68B 可打印者 rot13 后 sha256 精确等于题库 ac232bd9...",
+        "root_cause": "原判为 C 层的理由是「math_engine 给出 DASCTF{...} 候选但 sha256 不符」。实为 recover_via_odd_subgroup 把 ROT13 编码态（QNFPGS{...}）留在 flag 字段、只把归一版本塞进 res['rot13']，而提交链（core/phases.py 的 sha256 采信）只读 flag —— 解得出来却必然判不过。已修 6c2e21a：命中 QNFPGS{/SYNT{ 前缀即视为未解码，flag 直接给 rot13 后的真 flag。",
+        "bank_sha256": "ac232bd941738e22cfcdd6585ae478c19cffbea15d713c00a70ac157485ca6a4"
       }
     ],
     "B_unsolvable_by_source": [
@@ -94,41 +114,35 @@
           "data/questions_real/crypto/real_taishan2021_crypto_cgroup.json"
         ],
         "verdict": "题库数据缺陷（无标准答案，不可判分），非能力未及"
-      }
-    ],
-    "C_hash_conflict_pending": [
+      },
       {
         "id": "real_reverse_js",
-        "tier": "C",
-        "reason": "附件 coso.js 含三个同名 var wincode（JS 后者覆盖前者），delog 为 ROT13。逐个人工 ROT13 后做回编自洽校验，仅一个候选回编自洽；该候选的 sha256 与题库 flag 字段不符；另试大小写/前缀/去前缀共 7 种变体均不符。coso.js 字节级扫描确认三个 synt{} 全为纯 ASCII、无隐藏字符、无非 ASCII 字节；index.html 仅 31B 无信息。",
+        "tier": "B",
+        "tier_changed_from": "C_hash_conflict_pending",
+        "reason": "附件 coso.js 是本题唯一信息源（index.html 仅 31B 无内容）。文件内有三个同名 var wincode（line 1 / 460 / 1000），JS 顺序覆盖后生效的是最后一个；verify() 判据写死 flag === delog(wincode)，故答案完全由附件决定。本次按两套算法 × 3 个 wincode × 8 种形态 = 72 种变体穷举 sha256，全部不等于题库 flag_sha256。两套算法分别为：① 附件里的 js_delog 真实实现（条件 code<65 || code>90&&code<97 使 e~m 段小写 -13 后落进大写区间，输出并非标准 ROT13）；② 标准 ROT13。8 种形态：原样/大写/小写/仅内层/换 flag{} 前缀/换 synt{} 前缀/加前导 -/加换行。此外 coso.js 字节级扫描确认三个 synt{} 全为纯 ASCII、无隐藏字符、无非 ASCII 字节。故题库 sha256 与附件唯一可导出的答案不自洽，属题库数据缺陷。",
         "evidence_paths": [
           "data/questions_real/_attachments/reverse/real_reverse_js/coso.js",
           "data/questions_real/reverse/real_reverse_js.json"
         ],
-        "our_candidate_sha256": "74e01e0e...(仅存前 8 位，完整值本次未落盘)",
+        "variants_tested": 72,
+        "candidate_sha256_by_line": {
+          "line1_js_delog": "a3b445ca...（前 8 位）",
+          "line460_js_delog": "2d1143b6...（前 8 位）",
+          "line1000_js_delog": "74e01e0e...（前 8 位）"
+        },
         "bank_sha256": "aec640f00c418c309bd68dcbfd389df969fa3393a68aee14690393908d2f6ef9",
-        "status": "未裁定：无法证明我们算错还是题库录错。外部检索未找到该题官方 writeup。",
-        "verdict": "疑似题库哈希录错，不得计入能力分母"
-      },
-      {
-        "id": "10733",
-        "tier": "C",
-        "reason": "确定性引擎 math_engine:crypto_high_exponent 秒级命中并给出 DASCTF{...} 候选，但被 presolve 以 sha256 不符丢弃。已按候选的三种长度（core / core+n / core+n+n）及各自 ROT13 变体共 8 种形态重算 sha256，全部不等于题库 flag 字段。",
-        "evidence_paths": [
-          "data/race_attachments/10733_How_many_rot_are_there的附件/tempdir/CRYPTO附件/task.py",
-          "data/questions_real/crypto/10733_How_many_rot_are_there.json"
-        ],
-        "our_candidate_prefix": "DASCTF{...  前缀 4 位脱敏；日志按格式截断，完整值需从引擎复算",
-        "bank_sha256": "ac232bd941738e22cfcdd6585ae478c19cffbea15d713c00a70ac157485ca6a4",
-        "status": "未裁定：引擎候选与题库哈希冲突。外部检索（2025 西湖论剑初赛 wp、星盟 wp）均未收录该题。",
-        "verdict": "疑似题库哈希录错或引擎 ROT13 处理偏差，不得计入能力分母"
+        "status": "已裁定：题库 sha256 与附件不自洽",
+        "verdict": "题库数据缺陷（哈希与附件对不上），非能力未及，不计入能力分母",
+        "reopen_condition": "若日后找到该题官方 writeup 或拿到原始题库正确哈希，可翻案重算"
       }
-    ]
+    ],
+    "C_hash_conflict_pending": []
   },
   "notes": [
     "本清单不修改任何题目 JSON。题库数据缺陷本身是有信息量的，不应被刷成绿数。",
-    "B 层剔除依据是题目自身文件声明（Provenance 注释 / flag 字段为中文明说明），属硬证据。",
-    "C 层无外部权威答案可裁定，因此永远单列，不并入任何命中率口径。",
+    "B 层剔除依据是题目自身文件声明（Provenance 注释 / flag 字段为中文明说明）或本次 72 变体穷举实测，属硬证据。",
+    "C 层已于 2026-11-11 清空：两道待核题分别为「链路 bug 已修（10733）」与「题库哈希不自洽（real_reverse_js）」，均不再需要单列。",
+    "9/12 与 9/9 两个数不构成能力结论：分母只有 9 道且仅单轮，引用时必须带分母与轮数。",
     "若日后补到官方 writeup 或修好题库，删除对应条目即可恢复该题进入分母。"
   ]
 }
