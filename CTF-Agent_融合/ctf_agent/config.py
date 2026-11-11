@@ -677,10 +677,18 @@ def print_effective_config_snapshot(provider: Optional[str] = None) -> dict:
     escape = os.getenv("CTF_AGENT_ESCAPE_PROVIDER", "").strip().lower()
     allow_off = os.getenv("CTF_AGENT_ALLOW_OFF_WHITELIST", "0") == "1"
 
+    # ⚠️ 2026-11-11 修口径 bug（本仓最讨厌的那类：度量工具自己说谎）：
+    # 原来 light_model 取 _resolve_provider_defaults() 的**默认值**，而 heavy_model
+    # 取 cfg.heavy_model 的**生效值** —— 两栏口径不同。后果：设了
+    # CTF_AGENT_LIGHT_MODEL 且确实生效时，快照仍印默认值，看起来像"被覆盖"。
+    # 实际事故：凭这行错读数把「light 被 config 覆盖」当成待办查了半天，结论是假的。
+    # 现改为三项都印生效值，默认值另存 *_default 供对照。
     snap = {
         "provider": prov,
-        "base_url": base_url,
-        "light_model": light_model,
+        "base_url": cfg.llm_base_url,
+        "base_url_default": base_url,
+        "light_model": cfg.light_model,
+        "light_model_default": light_model,
         "heavy_model": cfg.heavy_model,
         "api_key_masked": _mask_key(key),
         "enforce_whitelist": enforce,
