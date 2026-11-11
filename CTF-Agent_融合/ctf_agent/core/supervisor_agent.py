@@ -17,6 +17,28 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# ── 环境归因硬闸（2026-11-11 ext47 实证事故的代码级防线）──────────────
+# 只加提示词不够：观察文本里本来就可能带着主 Agent 自写的「工具不可用」，
+# 监督 LLM 顺着它把失败推给环境。这里做输出侧过滤——命中即视为无效裁决，
+# 该次咨询退回确定性规则/默认继续，绝不让"环境坏了"的结论进入主循环。
+#
+# 判定口径：监督者只有步骤摘要，没有注册表与容器依赖清单，任何关于
+# 工具/依赖可用性的断言都属越权推断，一律作废。
+_ENV_BLAME_PATTERNS = (
+    "工具不可用", "工具不存在", "工具缺失", "找不到工具", "工具未注册",
+    "环境问题", "环境缺", "环境故障", "环境异常", "依赖缺失", "缺依赖",
+    "镜像里没有", "容器里没有", "tool unavailable", "tool not found",
+    "environment issue", "missing dependency",
+)
+
+
+def _has_env_blame(text: str) -> bool:
+    """文本是否包含越权的环境归因断言。"""
+    if not text:
+        return False
+    low = str(text).lower()
+    return any(p.lower() in low for p in _ENV_BLAME_PATTERNS)
+
 from core.main_agent import (
     ERR_TOOL_FAILURE,
     VERDICT_CONTINUE,
@@ -131,6 +153,17 @@ class SupervisorAgent:
             "switch_strategy=当前方法失败需换策略；upgrade_model=需更强模型；give_up=放弃此题。"
             "重点关注：模型是否在重复无效推理（观察为空）、是否偏离题目目标、"
             "是否有更高效的攻击路径（如换工具/换思路/先做信息收集）。"
+            # ── 工具可用性断言禁令（2026-11-11 实证事故）──
+            # ext47 跑批 7 道题里，监督 LLM 反复写「rea_probe 工具不可用属环境问题」，
+            # 把「模型没调用该工具」误诊成「环境缺工具」。实测该工具在注册表里
+            # （inventory('rev') 第 5 位）、容器内 node 与 rea.mjs 均在、日志工具层
+            # 就绪列表也含它，全程无一次真实调用失败。这个误判让失败归因整条链条
+            # 都指向错误方向（归因到环境而非模型行为），必须从提示词上堵死。
+            "**你无权判断工具可用性**：你看不到工具注册表、看不到容器依赖清单，"
+            "因此禁止输出「工具不可用」「工具不存在」「环境问题」「环境缺依赖」"
+            "这类结论。步骤里出现[工具:xxx]说明它被用过；出现[无工具]或观察里"
+            "声称某工具不可用，一律理解为「模型没有真正调用/没有拿到有效输入」，"
+            "归到模型行为（该换工具、该下沉深挖），不得归因到环境。"
             '输出 JSON: {"action": "continue|redirect|switch_strategy|upgrade_model|give_up", '
             '"reason": "一句话原因", "suggestion": "明确修正方向"}。'
             "若不确定，选 continue，不要随意放弃。"
@@ -143,11 +176,23 @@ class SupervisorAgent:
         if action not in (VERDICT_CONTINUE, VERDICT_REDIRECT, VERDICT_SWITCH,
                           VERDICT_UPGRADE, VERDICT_GIVE_UP):
             action = VERDICT_CONTINUE
-        logger.info("监督 LLM 裁决: action=%s reason=%s", action, result.get("reason", ""))
+        reason = str(result.get("reason", ""))
+        suggestion = str(result.get("suggestion", ""))
+        # ── 硬闸：越权环境归因整条作废 ──
+        # 监督者看不到注册表/容器依赖，任何「工具不可用/环境问题」的断言都是
+        # 越权推断。作废后退回确定性规则路径（review() 的兜底为「默认继续」），
+        # 不允许这种结论进入主循环——它会把失败归因整体引向环境而非模型行为。
+        if _has_env_blame(reason) or _has_env_blame(suggestion):
+            logger.warning(
+                "监督 LLM 裁决含越权环境归因，已丢弃: action=%s reason=%s suggestion=%s",
+                action, reason[:80], suggestion[:80],
+            )
+            return None
+        logger.info("监督 LLM 裁决: action=%s reason=%s", action, reason)
         return SupervisionVerdict(
             action=action,
-            reason=str(result.get("reason", "")),
-            suggestion=str(result.get("suggestion", "")),
+            reason=reason,
+            suggestion=suggestion,
         )
 
     async def _llm_json(self, system: str, user: str) -> Optional[dict]:
@@ -184,7 +229,14 @@ class SupervisorAgent:
                 # 2026-08-26 攻 wrong_direction：补工具证据——监督 LLM 需区分
                 # "方向对但无工具证据(空转)" vs "方向错"，缺 tool_used 会误判 wrong_direction
                 tool = f" [工具:{s.tool_used}]" if s.tool_used else " [无工具]"
-                recent.append(f"- {s.stage} | {s.action}{err}{tool} | {s.observation[:80]}")
+                obs = s.observation[:80]
+                # 2026-11-11 ext47 事故：观察文本里可能带主 Agent 自写的
+                # 「工具不可用」字样，监督 LLM 会顺着它把失败推给环境。
+                # 这里把该片段就地标注成因，切断传染路径。
+                if _has_env_blame(obs):
+                    obs = obs + "（注：此为客户端的自我陈述，非已证实的环境事实；" \
+                                "有[工具:xxx]标记即说明该工具被调用过）"
+                recent.append(f"- {s.stage} | {s.action}{err}{tool} | {obs}")
             parts.append("最近步骤:\n" + "\n".join(recent))
         parts.append(f"候选 flag: {ctx.candidate_flag or '无'}")
         parts.append(f"策略切换次数: {ctx.strategy_switches}  模型升级次数: {ctx.model_upgrades}")
