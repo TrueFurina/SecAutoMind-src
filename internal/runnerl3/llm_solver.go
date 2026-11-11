@@ -283,7 +283,7 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 	// "零候选"归因都不排除截断污染（见 docs/evidence/复盘二）。
 	truncated := 0
 	var supSteps []ctfplatform.SupervisionStep // 监督进展信号（逐轮累积）
-	candSeen := 0                             // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
+	candSeen := 0                              // 工具输出中实际提取到的候选 flag 数（不可自欺硬信号）
 	// droppedSet 记录"模型产出过、但最终没进提交链"的候选（去重）。
 	//
 	// 两类来源，都必须计：
@@ -306,10 +306,10 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 			}
 		}
 	}
-	var bestCandidates []string                // 跨轮累积的候选（含工具返回里的 flag，防御"模型算出但没停手"漏抓）
+	var bestCandidates []string // 跨轮累积的候选（含工具返回里的 flag，防御"模型算出但没停手"漏抓）
 	bestCandSeen := make(map[string]bool)
-	var conf float64                          // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
-	haveConf := false                         // 是否解析到过自评信心（没解析到 = 无信号）
+	var conf float64  // 模型自评信心（听风第三刀）；nil 语义 = 中性 0.5
+	haveConf := false // 是否解析到过自评信心（没解析到 = 无信号）
 
 	// maxOutTokens 是每次生成请求的输出上限，**唯一事实源**。
 	//
@@ -492,48 +492,48 @@ func (f *LLMFallback) Solve(ctx context.Context, ch *ctfplatform.Challenge) (fla
 				break
 			}
 
-		// ── 监督反思（逐轮真信号，听风 2026-10-25 第二/三/四刀）──────
-		// 预算=轮数；候选=工具输出实际提取数（硬信号，累积）；信心=模型
-		// 自评（缺失=中性 0.5）；进展口径诚实化：整轮全是错误调用才算
-		// 错误步，不再「非空=有进展」。
-		// 规则②（低信心+连续无进展→SWITCH）由此可达；规则① 经第四刀走 token 口径
-		// 后，在「token 先耗尽、步数未到 85%」的零候选场景抢在 ⑥ 前收口（不再被遮蔽）。
-		obs := roundObs.String()
-		candSeen += len(extractFlagCandidates(obs))
-		// 防御：工具返回里若含 flag（如 python print(flag)），跨轮累积，避免"模型算出但没停手"被漏抓
-		for _, fc := range extractFlagCandidates(obs) {
-			if !bestCandSeen[fc] {
-				bestCandSeen[fc] = true
-				bestCandidates = append(bestCandidates, fc)
+			// ── 监督反思（逐轮真信号，听风 2026-10-25 第二/三/四刀）──────
+			// 预算=轮数；候选=工具输出实际提取数（硬信号，累积）；信心=模型
+			// 自评（缺失=中性 0.5）；进展口径诚实化：整轮全是错误调用才算
+			// 错误步，不再「非空=有进展」。
+			// 规则②（低信心+连续无进展→SWITCH）由此可达；规则① 经第四刀走 token 口径
+			// 后，在「token 先耗尽、步数未到 85%」的零候选场景抢在 ⑥ 前收口（不再被遮蔽）。
+			obs := roundObs.String()
+			candSeen += len(extractFlagCandidates(obs))
+			// 防御：工具返回里若含 flag（如 python print(flag)），跨轮累积，避免"模型算出但没停手"被漏抓
+			for _, fc := range extractFlagCandidates(obs) {
+				if !bestCandSeen[fc] {
+					bestCandSeen[fc] = true
+					bestCandidates = append(bestCandidates, fc)
+				}
 			}
-		}
-		// 防御②：模型算对但没包裹 flag{} —— 常产出"大整数 / 字节序列"形式的答案
-		// （如 DAC 网表把 flag 二进制位重建为巨整数、或 reverse 题打印 flag 字节序列）。
-		// 归一化为 dice{...} 候选，交由真 submit 校验（isCorrect 兜底，错候选只算一次 miss）。
-		for _, rc := range extractRawAnswerCandidates(obs) {
-			if !bestCandSeen[rc] {
-				bestCandSeen[rc] = true
-				bestCandidates = append(bestCandidates, rc)
+			// 防御②：模型算对但没包裹 flag{} —— 常产出"大整数 / 字节序列"形式的答案
+			// （如 DAC 网表把 flag 二进制位重建为巨整数、或 reverse 题打印 flag 字节序列）。
+			// 归一化为 dice{...} 候选，交由真 submit 校验（isCorrect 兜底，错候选只算一次 miss）。
+			for _, rc := range extractRawAnswerCandidates(obs) {
+				if !bestCandSeen[rc] {
+					bestCandSeen[rc] = true
+					bestCandidates = append(bestCandidates, rc)
+				}
 			}
-		}
-		step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
-		if callsThisRound > 0 && allErr {
-			step.ErrCategory = "tool_error"
-		}
-		supSteps = append(supSteps, step)
-		confArg := (*float64)(nil)
-		if haveConf {
-			confArg = &conf // 至少解析到一次自评信心才传入；否则诚实保持中性
-		}
-		st := ctfplatform.SupervisionState{
-			BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
-			Candidates: &candSeen, Challenge: ch.Title,
-		}
-		if tokenBudget > 0 && usedTokens > 0 {
-			tr := float64(usedTokens) / float64(tokenBudget)
-			st.TokenRatio = &tr
-		}
-		if dec := ctfplatform.ReflectSupervision(st, supSteps, confArg); dec.Decision == ctfplatform.DecisionAbandon {
+			step := ctfplatform.SupervisionStep{Observation: truncate(obs, 200)}
+			if callsThisRound > 0 && allErr {
+				step.ErrCategory = "tool_error"
+			}
+			supSteps = append(supSteps, step)
+			confArg := (*float64)(nil)
+			if haveConf {
+				confArg = &conf // 至少解析到一次自评信心才传入；否则诚实保持中性
+			}
+			st := ctfplatform.SupervisionState{
+				BudgetTotal: f.maxRounds, BudgetUsed: round + 1,
+				Candidates: &candSeen, Challenge: ch.Title,
+			}
+			if tokenBudget > 0 && usedTokens > 0 {
+				tr := float64(usedTokens) / float64(tokenBudget)
+				st.TokenRatio = &tr
+			}
+			if dec := ctfplatform.ReflectSupervision(st, supSteps, confArg); dec.Decision == ctfplatform.DecisionAbandon {
 				f.logger.Info("监督 ABANDON：LLM 循环提前收口（省剩余轮次 token）",
 					zap.String("challenge", ch.Title),
 					zap.Int("round_used", round+1), zap.Int("budget", f.maxRounds),
@@ -628,7 +628,7 @@ func (f *LLMFallback) buildToolDefs() []*schema.ToolInfo {
 			Name: "execute_python",
 			Desc: strings.TrimSpace(`
 执行 Python 解题 skill（angr/pwntools 真跑）。当题目属于 reverse/pwn/crypto/misc 且需要动态执行二进制或利用 Python 生态工具时调用。
-`+skillCatalogDesc(f.pyBridge)+`
+` + skillCatalogDesc(f.pyBridge) + `
 - crypto 数学模板（ctf_sage_*，纯 Python 自包含，P0-1 接入；数学参数必须经 params 传入，
   返回值含中间量如小根/私钥/明文，由你决定后续怎么用）：
   ctf_sage_t1_coppersmith  → params: {"modulus":N,"poly":[a0..ad],"X":可选,"beta":"1"|"0.5","candidates":可选}
@@ -1084,9 +1084,8 @@ func (f *LLMFallback) buildSystemPrompt() string {
   换攻击路或换模板。**当没有模板适用时，必须用 execute_python 编写并运行自定义解题脚本**
   （可直接调用 sage / sympy / pow / 现成库，**无需从零实现格基约化等底层原语**）：
   已注入 ctf_crypto 模块，可直接 import ctf_crypto as C 调用即用原语
-  （RSA 攻击套件 rsa_wiener/rsa_common_modulus/rsa_fermat/rsa_broadcast、
-  ECC 点运算 ECPoint、AES/DES 加解密、纯 Python LLL 规约、哈希识别 identify_hash、
-  数论 modinv/crt/factor/iroot 等）。优先复用这些原语，不要重复造轮子。
+  （RSA 攻击套件、ECC 点运算、AES/DES、纯 Python LLL、哈希识别、数论等，见文末
+  「ctf_crypto 即用原语」完整签名参考）。优先复用这些原语，不要重复造轮子。
   边读题面与附件、边写脚本、边运行、边按输出调整，直到拿到 flag。写并运行代码是 crypto
   解题的常态核心动作，不要只用自然语言"推理"或只读文件。
 - web: 纯人工推理（SQLi/XSS/反序列化），不需要工具
@@ -1102,7 +1101,9 @@ func (f *LLMFallback) buildSystemPrompt() string {
 5. 每轮回复末尾输出一行 CONFIDENCE: 0.x（0~1，一位小数），表示你对
    当前路径最终解出此题的信心。工具调用轮也要带（写在文本部分）。
    该数值是预算监督信号：低信心+连续无进展会被提前收口/要求换策略，
-   高信心会保住预算。不许虚报——虚报高信心烧的是你自己的预算。`
+   高信心会保住预算。不许虚报——虚报高信心烧的是你自己的预算。
+
+` + "\n\n" + ctfCryptoAPIRef
 
 	return system
 }
