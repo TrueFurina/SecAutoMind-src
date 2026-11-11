@@ -138,8 +138,28 @@
         },
         "fix": "解析不出 N/phi 时自动补读所有输入路径同级目录下的其它文件重试；并补解析失败诊断日志。",
         "fix_verified": "本地六种输入全部复测通过，py_compile RC=0",
-        "NOT_VERIFIED": "真实 Agent 端到端未验证 —— 2026-11-11 晚 172.16.222.99 SSH 两次 ConnectTimeout，本地按项目规矩不得跑题，故此项只有单元级证据，没有生产链证据。",
+        "NOT_VERIFIED": "2026-11-11 服务器恢复后已完成生产链端到端验证，见 production_verified_20261111。",
         "side_effect_risk": "传 crypto/ 目录下的题目 json 时会兜底读同目录 23 个 json。实测仍返回 None（json 里没有 N/phi 格式），但这是\"同目录兜底\"的固有副作用，已记录。"
+      },
+      "data_correction_20261111": {
+        "what_was_wrong": "此前提交值写\"修复后 14 跑 7 成(50.0%)、累计 29 跑 17 成(58.6%)\"，系计算错误。",
+        "corrected_from_raw_logs": "原始逐轮日志 /tmp/ld_1..14.json 显示修复后为 8/14 = 57.1%，累计应为 18/29 = 62.1%。",
+        "why_it_happened": "跑批 C/D 中有两轮 OK 被重复计数/漏计，提交时未回查原始 json。",
+        "action": "已按原始日志订正，不再启用旧数字。"
+      },
+      "production_verified_20261111": {
+        "skill": "crypto_legendre_phi",
+        "question": "real_crypto_simplelegendre",
+        "runs": 15,
+        "success": 15,
+        "rate": "15/15 = 100%",
+        "wallclock": "4.5s / 4.9s / 5.0s / 5.0s / 5.0s / 5.1s / 5.1s / 5.3s / 5.4s / 5.4s / 5.5s / 5.6s / 8.0s / 8.9s（均值约 5.6s）",
+        "before": "修复前 15 跑 10 成 = 66.7%，成功耗时均值约 45s",
+        "after": "修复后 15 跑 15 成 = 100%，成功耗时均值约 5.6s",
+        "decisive_evidence": "真实链路日志打出兜底告警：\"WARNING skill_crypto_legendre_phi: [crypto_legendre_phi] 输入解析不出 N/phi（enc=0, mods=0），改读同级目录 1 个文件重试: ['output']\" —— 证明真实 Agent 传进去的确实是不含 N/phi 的文件（该目录只有 output 含 N/phi），兜底补读 output 后才解出。前一轮的\"模型传错附件\"推断在生产链上被证实。",
+        "why_faster": "工具一次就返回 flag，模型不再反复试错，所以耗时从\"反复重试到 45s\"降到\"一次调用到 5s\"。",
+        "sample_caveat": "15 次均为同一题，样本有限；跨题泛化未验证。",
+        "verdict": "真缺陷，且真实提升成功率 —— 四条修复中唯一一条既修了缺陷又提升了成功率。"
       }
     },
     "cases": [
