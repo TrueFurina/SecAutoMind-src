@@ -1,0 +1,416 @@
+{
+  "generated_by": "scripts/_kpi_from_logs.py",
+  "note": "本文件是审计口径的唯一机算源。verify_set_20261111.json 里的轮数/成功率/耗时一律以本文件为准，禁止手写。",
+  "sources": [
+    {
+      "log_dir": "/tmp",
+      "groups": [
+        "exciting_inverse_pre_dispatch",
+        "exciting_inverse_dispatch_fixed",
+        "exciting_inverse_path_fixed",
+        "simplelegendre_all",
+        "ezrsa_regression",
+        "filterrandom_regression"
+      ],
+      "generated_at": "2026-11-11T15:12:58+08:00"
+    },
+    {
+      "log_dir": "/tmp/call2",
+      "groups": [
+        "crypto_sweep_19"
+      ],
+      "generated_at": "2026-11-11T15:12:59+08:00"
+    }
+  ],
+  "groups": {
+    "exciting_inverse_pre_dispatch": {
+      "runs": 7,
+      "solved": 0,
+      "rate": 0.0,
+      "elapsed": {
+        "min": null,
+        "max": null,
+        "avg": null,
+        "values": []
+      },
+      "fails": [
+        {
+          "file": "ei_1.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 277.4,
+          "error_category": "race_abandon"
+        },
+        {
+          "file": "ei_2.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 207.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ei2_1.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 258.7,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ei2_2.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 290.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ei2_3.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 281.7,
+          "error_category": "budget_exceeded"
+        },
+        {
+          "file": "ei2_4.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 276.1,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ei2_5.json",
+          "id": "real_crypto_exciting_inverse",
+          "elapsed_s": 177.8,
+          "error_category": "tool_failure"
+        }
+      ]
+    },
+    "exciting_inverse_dispatch_fixed": {
+      "runs": 10,
+      "solved": 10,
+      "rate": 1.0,
+      "elapsed": {
+        "min": 37.9,
+        "max": 235.8,
+        "avg": 111.83,
+        "values": [
+          152.4,
+          235.8,
+          122.6,
+          111.6,
+          53.1,
+          41.0,
+          37.9,
+          91.5,
+          121.9,
+          150.5
+        ]
+      },
+      "fails": []
+    },
+    "exciting_inverse_path_fixed": {
+      "runs": 3,
+      "solved": 3,
+      "rate": 1.0,
+      "elapsed": {
+        "min": 13.6,
+        "max": 24.7,
+        "avg": 20.03,
+        "values": [
+          24.7,
+          21.8,
+          13.6
+        ]
+      },
+      "fails": []
+    },
+    "simplelegendre_all": {
+      "runs": 29,
+      "solved": 23,
+      "rate": 0.7931,
+      "elapsed": {
+        "min": 4.5,
+        "max": 54.2,
+        "avg": 13.4,
+        "values": [
+          16.3,
+          32.7,
+          16.9,
+          42.4,
+          5.5,
+          5.0,
+          5.3,
+          5.4,
+          8.9,
+          5.0,
+          5.0,
+          4.9,
+          8.0,
+          4.5,
+          4.5,
+          5.4,
+          5.1,
+          5.1,
+          5.6,
+          10.0,
+          25.9,
+          26.5,
+          54.2
+        ]
+      },
+      "fails": [
+        {
+          "file": "ld_10.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 48.2,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ld_12.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 35.4,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ld_2.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 101.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "ld_4.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 79.5,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ld_5.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 49.0,
+          "error_category": "wrong_direction"
+        },
+        {
+          "file": "ld_7.json",
+          "id": "real_crypto_simplelegendre",
+          "elapsed_s": 90.7,
+          "error_category": "tool_failure"
+        }
+      ]
+    },
+    "ezrsa_regression": {
+      "runs": 2,
+      "solved": 2,
+      "rate": 1.0,
+      "elapsed": {
+        "min": 4.8,
+        "max": 5.3,
+        "avg": 5.05,
+        "values": [
+          5.3,
+          4.8
+        ]
+      },
+      "fails": []
+    },
+    "filterrandom_regression": {
+      "runs": 0,
+      "solved": 0,
+      "rate": 0.0,
+      "elapsed": {
+        "min": null,
+        "max": null,
+        "avg": null,
+        "values": []
+      },
+      "fails": []
+    },
+    "crypto_sweep_19": {
+      "runs": 19,
+      "solved": 2,
+      "rate": 0.1053,
+      "elapsed": {
+        "min": 1.7,
+        "max": 161.8,
+        "avg": 81.75,
+        "values": [
+          1.7,
+          161.8
+        ]
+      },
+      "fails": [
+        {
+          "file": "10733.log",
+          "id": "10733",
+          "elapsed_s": 332.1,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_anwang_crypto1.log",
+          "id": "real_crypto_anwang_crypto1",
+          "elapsed_s": 121.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_anxun2020_coolboy.log",
+          "id": "real_crypto_anxun2020_coolboy",
+          "elapsed_s": 252.0,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_changan2021_checkin.log",
+          "id": "real_crypto_changan2021_checkin",
+          "elapsed_s": 59.8,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "real_crypto_changan2021_easyrsa.log",
+          "id": "real_crypto_changan2021_easyrsa",
+          "elapsed_s": 113.9,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_dnui_keyboard.log",
+          "id": "real_crypto_dnui_keyboard",
+          "elapsed_s": 124.7,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_ezmult.log",
+          "id": "real_crypto_ezmult",
+          "elapsed_s": 170.8,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_gaoxiao2024_z3.log",
+          "id": "real_crypto_gaoxiao2024_z3",
+          "elapsed_s": 77.8,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "real_crypto_gkctf2020_che11y.log",
+          "id": "real_crypto_gkctf2020_che11y",
+          "elapsed_s": 192.6,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_gkctf2020_rsa.log",
+          "id": "real_crypto_gkctf2020_rsa",
+          "elapsed_s": 118.8,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "real_crypto_isctf2024_decrypt.log",
+          "id": "real_crypto_isctf2024_decrypt",
+          "elapsed_s": 146.3,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_longjian2023_hd1.log",
+          "id": "real_crypto_longjian2023_hd1",
+          "elapsed_s": 180.4,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "real_crypto_qiangwang_classic.log",
+          "id": "real_crypto_qiangwang_classic",
+          "elapsed_s": 155.7,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_specialcurve2.log",
+          "id": "real_crypto_specialcurve2",
+          "elapsed_s": 209.2,
+          "error_category": "extract_fail"
+        },
+        {
+          "file": "real_crypto_udomctf2022_aes.log",
+          "id": "real_crypto_udomctf2022_aes",
+          "elapsed_s": 70.3,
+          "error_category": "tool_failure"
+        },
+        {
+          "file": "real_crypto_umdctf2022_vigenere.log",
+          "id": "real_crypto_umdctf2022_vigenere",
+          "elapsed_s": 116.6,
+          "error_category": "unresolved"
+        },
+        {
+          "file": "real_taishan2021_crypto_cgroup.log",
+          "id": "real_taishan2021_crypto_cgroup",
+          "elapsed_s": 105.2,
+          "error_category": "unresolved"
+        }
+      ],
+      "attachment_missing": [
+        {
+          "file": "real_crypto_anwang_crypto1.log",
+          "id": "real_crypto_anwang_crypto1",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_anxun2020_coolboy.log",
+          "id": "real_crypto_anxun2020_coolboy",
+          "missing": "anxun2020_official.txt"
+        },
+        {
+          "file": "real_crypto_changan2021_checkin.log",
+          "id": "real_crypto_changan2021_checkin",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_changan2021_easyrsa.log",
+          "id": "real_crypto_changan2021_easyrsa",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_changan2021_ezpy.log",
+          "id": "real_crypto_changan2021_ezpy",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_dnui_keyboard.log",
+          "id": "real_crypto_dnui_keyboard",
+          "missing": "[签到]键盘侠.txt"
+        },
+        {
+          "file": "real_crypto_ezmult.log",
+          "id": "real_crypto_ezmult",
+          "missing": "s1.txt"
+        },
+        {
+          "file": "real_crypto_gaoxiao2024_z3.log",
+          "id": "real_crypto_gaoxiao2024_z3",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_gkctf2020_che11y.log",
+          "id": "real_crypto_gkctf2020_che11y",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_gkctf2020_rsa.log",
+          "id": "real_crypto_gkctf2020_rsa",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_isctf2024_decrypt.log",
+          "id": "real_crypto_isctf2024_decrypt",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_longjian2023_hd1.log",
+          "id": "real_crypto_longjian2023_hd1",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_qiangwang_classic.log",
+          "id": "real_crypto_qiangwang_classic",
+          "missing": "classicCrypto.txt"
+        },
+        {
+          "file": "real_crypto_udomctf2022_aes.log",
+          "id": "real_crypto_udomctf2022_aes",
+          "missing": "flag.txt"
+        },
+        {
+          "file": "real_crypto_umdctf2022_vigenere.log",
+          "id": "real_crypto_umdctf2022_vigenere",
+          "missing": "flag.txt"
+        }
+      ]
+    }
+  }
+}

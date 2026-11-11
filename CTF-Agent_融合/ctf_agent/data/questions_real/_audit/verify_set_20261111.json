@@ -573,5 +573,12 @@
     "simplelegendre / filterrandom 为 HARD 档，但附件为 2×小样本，难度标注未必等同真实 HARD。",
     "exciting_inverse 的失败属已知债务（LLM 纯文本推理未落盘），不代表该类题不可解。",
     "所有结果均为单次运行，未做多次重跑统计稳定性。"
-  ]
+  ],
+  "machine_computed_source": {
+    "file": "data/questions_real/_audit/kpi_from_logs_20261111.json",
+    "generator": "scripts/_kpi_from_logs.py",
+    "rule": "本文件里 core_set.stability.tally、result_today、crypto_full_sweep_20261111 的轮数/成功数/成功率/耗时，一律以 kpi_from_logs_20261111.json 的机算值为准。手写数字不算数——2026-11-11 曾连续两次手写错（legendre 漏计 15 连成、exciting_inverse 少计 13 成），故引入机算源。",
+    "reproduce": "服务器上：~/sm_venv/bin/python scripts/_kpi_from_logs.py --log-dir /tmp   # 内置分组（ei 三段/legendre/ezrsa）\n          ~/sm_venv/bin/python scripts/_kpi_from_logs.py --log-dir /tmp/call2 --group crypto_sweep_19=*.log",
+    "consistency_check_20261111": "脚本产出与本文件逐项比对一致：ei_pre 7/0；ei_dispatch 10/10 avg111.83s；ei_path 3/3 avg20.03s；legendre 29/23=79.3%；ezrsa 2/2；call2 19 跑 2 成、附件缺失 15 条（逐题文件名与人工核对一致）。"
+  }
 }
