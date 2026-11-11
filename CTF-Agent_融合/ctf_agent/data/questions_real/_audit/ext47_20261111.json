@@ -45,6 +45,7 @@
   "clean_denominator": 34,
   "clean_solved": 4,
   "clean_rate": 0.1176,
+  "clean_failed": 30,
   "rate_note": "rate=0.1915 为含污染值；answer_in_repo 已剔后 5/36=13.9%；再剔 2 道 questions_real 重复题后 4/34=11.8% 为最终对外口径。",
   "clean_denominator_prev_answer_in_repo_only": 36,
   "clean_solved_prev": 5,
@@ -92,6 +93,43 @@
   "wrong_direction": 4,
   "race_abandon": 1,
   "timeout_330": 1
+ },
+ "failure_attribution_by_pool": {
+  "note": "2026-11-12 按 per_question 机算分池（判据：id 在 pool_contamination.polluted_ids 归 polluted；在 duplicate_real_ids 归 duplicate_real；其余归 clean）。failure_attribution 是 47 道全池口径，对外引用干净分母时必须用本块 clean 子块——否则会把污染池那 2 道 extract_fail 误算成干净池的失败。三桶合计 47 条 / 9 解出 / 38 失败，与 result 完全闭合。",
+  "clean": {
+   "denominator_basis": 34,
+   "solved": 4,
+   "failed": 30,
+   "by_category": {
+    "no_candidate": 6,
+    "prefix_format_mismatch_recoverable": 1,
+    "race_abandon": 1,
+    "stuck_loop": 5,
+    "timeout_330": 1,
+    "tool_failure": 7,
+    "unresolved": 5,
+    "wrong_direction": 4
+   }
+  },
+  "polluted": {
+   "denominator_basis": 11,
+   "solved": 4,
+   "failed": 7,
+   "by_category": {
+    "extract_fail": 2,
+    "tool_failure": 5
+   }
+  },
+  "duplicate_real": {
+   "denominator_basis": 2,
+   "solved": 1,
+   "failed": 1,
+   "by_category": {
+    "tool_failure": 1
+   }
+  },
+  "extract_fail_in_clean_pool": 0,
+  "extract_fail_in_clean_pool_note": "干净池 30 道失败里没有 extract_fail：全池那 2 道 extract_fail（ecxor / almost_xor）都在 answer_in_repo 污染名单内，不计入 34 道干净分母。"
  },
  "findings": {
   "extract_fail_is_guard_not_loss": "（2026-11-12 订正，按 per_question 逐条复核）原表述『9 道 extract_fail 的 detail 全是候选被提取校验拒绝』不成立：其中 6 道（flecksofgold / packedaway / 1nsayne / a_walk_through_x86_part_2 / kvm / steady_counting）行为上根本没有产出任何候选，是跑到步数或预算上限后收摊，已改记 no_candidate；1 道 baby_s_third 是内容正确、前缀格式（ctf vs csawctf）不符，已在 commit ef52198 修复并可回收，改记 prefix_format_mismatch_recoverable；剩余 2 道（ext_nyu_ctf_bench_2017f_cry_ecxor、ext_nyu_ctf_bench_2017q_cry_almost_xor）才是真正的『候选被提取校验拒绝』，且这两道本身在 answer_in_repo 污染名单内、不计入 34 道干净分母。类目已按事实拆分，extract_fail 组合计仍为 9，38 道失败总数不变。",
