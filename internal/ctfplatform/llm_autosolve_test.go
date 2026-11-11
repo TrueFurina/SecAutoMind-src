@@ -586,6 +586,7 @@ func llmTrunc(s string, n int) string {
 // ── 测试入口 ─────────────────────────────────────────────────────────────────
 
 func TestLLMAutoSolve(t *testing.T) {
+	requireLiveOptIn(t, "LLM 自动评测（15 case 真打 LLM 接口，单跑 20+ 分钟）")
 	baseURL := firstEnv("LLM_EVAL_BASE_URL", "LLM_EVAL_API_BASE")
 	apiKey := firstEnv("LLM_EVAL_API_KEY", "DEEPSEEK_API_KEY")
 	model := firstEnv("LLM_EVAL_MODEL")
