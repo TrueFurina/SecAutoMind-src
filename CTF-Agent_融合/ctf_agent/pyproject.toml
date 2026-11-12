@@ -104,6 +104,11 @@ extend-exclude = [
     # ⚠️ 用 glob 形式 `**/_attachments/**`：实测写具体前缀 `data/xxx/_attachments`
     # 时 ruff 不匹配（它按文件中转路径匹配），换成 `**/` 前缀后生效。
     "**/_attachments/**",
+    # 2026-11-12：同一类问题的第二个目录名。`data/race_attachments/` 里存的是
+    # 比赛附件原样副本（如 10732 的 pycryptodome 源码），含大量 py2 兼容分支
+    # （long / xrange / unicode / basestring），被当作本项目源码扫描时 F821/F811
+    # 恒红 15 条。判据与上面一致：赛题素材不是本仓源码。
+    "**/race_attachments/**",
 ]
 
 [tool.ruff.lint]

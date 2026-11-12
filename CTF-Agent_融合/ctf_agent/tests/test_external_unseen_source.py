@@ -227,6 +227,13 @@ def test_elf_hint_fires_on_real_payload():
     被死循环闸止损，缺的就是这条确定性提示）。"""
     if not _payload_on_disk():
         pytest.skip("external_unseen 真题载荷不在盘")
+    # 2026-11-12：本用例验证的是 **REA 产物**（elf lane 的升级提示），不是本仓逻辑。
+    # 宿主没 node / 没 rea.mjs 时 REA 本来就不可用，输出「REA 不可用」是正确行为，
+    # 不该被记成失败（原写法直接把「环境缺 node」算成缺功能）。
+    from tools.adapters.rea_probe import _rea_available
+    _ok, _why = _rea_available()
+    if not _ok:
+        pytest.skip(f"REA 不可用（{_why}）：elf lane 提示依赖 REA 产物，环境不具备时无从判定")
     import asyncio
     from tools.adapters.rea_probe import ReaProbeAdapter
     crush = os.path.join(_PAYLOADS,
