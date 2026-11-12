@@ -300,5 +300,7 @@
       "~/sm_venv/bin/python -X utf8 -m pytest -q -p no:cacheprovider > /tmp/full_x.log 2>&1; echo RC=$?",
       "grep -E '^FAILED' /tmp/full_x.log | sed 's/ - .*//' | sort"
     ]
-  }
+  },
+  "superseded_by": "data/questions_real/_audit/final_baseline_20261112.json",
+  "superseded_note": "2026-11-12 同一日后续收口轮：再清 7 条（ruff 排除 race_attachments、REA skip、real_corpus 分母字段契约、health 台账排除、删死导入、以及 2 项部署副本对齐），全量 14 failed → 7 failed / 2311 passed。本文件 runs 段保留为那一轮的历史事实，不改数值；当前口径请看 superseded_by 指向的文件。"
 }

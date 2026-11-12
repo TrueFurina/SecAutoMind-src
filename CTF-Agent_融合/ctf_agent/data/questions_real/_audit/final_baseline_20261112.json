@@ -9,6 +9,7 @@
   "note": "本文件记录的是**代码质量门禁**的失败收敛，不是解题能力指标；不得与 47 道池的 clean_rate=11.8% 混用。",
 
   "before": {
+    "ledger": "data/questions_real/_audit/test_baseline_20261112.json（其 runs[stage=final] 逐位即本段数值）",
     "log": "/tmp/full_final.log",
     "failed": 14,
     "passed": 2299,

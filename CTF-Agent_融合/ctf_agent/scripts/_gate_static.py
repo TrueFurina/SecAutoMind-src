@@ -24,7 +24,14 @@
   说明 hallucination/wrong_direction 两类错误没进差异化监督——这是缺口不是噪音）。
   F401/F841 的 per-file 豁免（tests/ scripts/ __init__.py）由 pyproject.toml 统一声明，
   本脚本不重复维护白名单，避免"两处真源漂移"。
-- `tools/tools/`：历史遗留重复副本已于 2026-11-11 经授权整目录删除（原含 21 文件、零运行时引用），无需再排除。
+- `tools/tools/`：历史遗留重复副本已于 2026-11-11 经授权从**仓库**删除（原含 21 文件、
+  零运行时引用），故 pyproject.toml 不再为它单设排除项——不是遗漏，是没了。
+  但**部署副本**曾另有一份残留（本地检出没有、服务器检出有），2026-11-12 已清理到
+  `/tmp/backup_tools_tools_20261112/tools_tools`。在未清理的部署目录上跑本门禁，ruff 递归
+  `tools/` 时会扫到该副本的旧文件（表现为 2 条 F841），那不是本仓代码缺陷；先确认
+  `ls tools/tools` 不存在再判断。此条实测：ruff 0.16.9 的 `extend-exclude` 对显式传入目录
+  同样生效（178 个 .py 的目录传进去报 `No Python files found`），所以"显式路径绕过 exclude"
+  在本版本不成立，无需 `--force-exclude`。
 
 **fail-closed**
 ---------------
