@@ -231,6 +231,39 @@
   "therefore": "素材从来没有被搬进来过，不是搬丢的，也不是后来删的。写 writeup 的人只写了题长什么样、怎么解，采集的人照着写成了 json，附件路径是按目录规范编出来的占位。所以 git 全历史 5449 条路径里命中 0——因为它从来没有出现在任何一次提交里。",
   "what_this_does_not_change": "不改变任何一个数字。79 / 14 / 11 / 8 / 6 全部照旧。变的是归因：这不是数据事故，是采集口径的后果。前文 why_the_material_is_gone_for_good 里「source 指向的目录已经不存在」只是这件事的旁证，不是主因——主因是照 WP 抄题这件事本身。"
  },
+ "whether_the_writeups_are_still_reachable": {
+  "why_asked": "既然这 79 道是从 writeup 抄的题面，那 writeup 原文还在不在决定了「这份题面可不可核」。前文说 source 指向的 E:/Program/Cybersecurity 已不存在，但「那个路径不存在」不等于「那些文件不存在」。",
+  "what_i_found": {
+   "the_old_path_is_gone": "E:/Program/Cybersecurity → Test-Path False，E:/Program 顶层无同名目录。",
+   "but_the_archive_is_on_this_machine": "E:/学习资料归档/Cybersecurity —— 同一个资料树的归档副本，顶层结构与 source 字段里描述的目录（01.考研计算机408资料大全 / 10.CTF Misc / 11.pwn学习资料 等）对得上。",
+   "the_writeups_i_located": [
+    {"file": "1.考研计算机408资料大全/02-网络安全工具与漏洞利用/安全赛事Writeup/安洵杯官方wp(1).pdf", "bytes": 12038653},
+    {"file": "1.考研计算机408资料大全/02-网络安全工具与漏洞利用/安全赛事Writeup/ByteCTF WriteUp By Nu1L.pdf", "bytes": 1609107},
+    {"file": "1.考研计算机408资料大全/02-网络安全工具与漏洞利用/安全赛事Writeup/ISCTF2024WP.pdf", "bytes": 4430706},
+    {"file": "1.考研计算机408资料大全/02-网络安全工具与漏洞利用/安全赛事Writeup/VNCTF 2022 Official WriteUp.pdf", "bytes": 8419117},
+    {"file": "11.pwn学习资料/GKCTF2020_官方WriteUp.pdf", "bytes": 9789295},
+    {"file": "2025年高校网络安全管理运维赛暨全国网络安全行业职业技能大赛（教育赛道）/2024 高校网络安全管理运维赛 Writeup.pdf", "bytes": 1366576}
+   ],
+   "also_there_which_are_actually_problem_sets_not_writeups": [
+    "2025年...（教育赛道）/练习题目一：某地电子数据取证套题.pdf（8483114B）",
+    "2025年...（教育赛道）/练习题目二：第三届长安杯套题.pdf（4052381B）",
+    "2025年...（教育赛道）/练习题目三：某地电子数据取证比武套题.pdf（4634988B）",
+    "2025年...（教育赛道）/电子数据取证分析师-操作技能赛题（样题）.pdf（328434B）",
+    "2025年...（教育赛道）/网络安全管理员--操作技能赛题（样题）.pdf（1061036B）"
+   ]
+  },
+  "what_i_did_not_do_and_why": "我没有打开任何一个 PDF。理由是硬约束：解题/训练时 AI 不得读到答案。这些文件按名字就是题解（Writeup / wp），打开必然读到 flag 或解法。所以本节只证明「文件还在、大小可核」，不证明「里面有没有贴附件」。",
+  "what_this_means_for_recovering_material": "6 份真是 Writeup，里面大概率只有解法没有原始附件——这与「照 WP 抄题」的结论一致。另有 5 份名字是「套题/赛题（样题）」，形态上更接近题目本体，但它们属于电子数据取证方向（长安杯、取证比武），与本轮那 79 道的赛事 id 对不上（79 道里没有长安杯取证套题）。所以这条路不构成批量补素材的来源。",
+  "the_one_real_lead": "要补素材，只能按赛事名回原始平台；而这 79 道 0 道有 source_url。写在这些 writeup 里的题，原始附件当年就没随题面一起流出来。"
+ },
+ "the_tmp_attach_areas_and_what_they_actually_are": {
+  "why_checked": "在本机扫 writeup 时看到 E:/tmp_attach 下有两个 data 目录，各带一个附件区，合计 150 文件、约 1.86GB。第一反应是「这会不会就是那批缺的素材」。",
+  "platform_data_attachments": {"files": 116, "bytes": 80567153, "naming": "crypto-002-caesar.txt / misc-001-stego.png / pwn-001-strings.txt 这类方向+序号命名，另有 platform_10663、platform_archive 两个子目录"},
+  "race_data_race_attachments": {"files": 34, "bytes": 1781123669, "naming": "10716_joomla-6.1.2-full-package.tar.gz.zip / 10732_Yusa的密码学课堂——PKCS#1的附件.zip / 10793_成功男人背后的女人的附件.zip 这类「平台题号_题名_的附件.zip」"},
+  "verdict": "这是平台真题（题号 10716~10794）的素材区，不是那 93 道历史真题的素材。命名方式本身就是证据：平台题的附件是平台导出时就带着的（文件名里直接写「的附件.zip」），历史真题没有这种形态。",
+  "the_one_overlap": "唯一交集是 10733：race_attachments 里有 10733_How_many_rot_are_there的附件.zip（873B），而仓库里 10733 的附件被 .gitignore:113 的 /data/* 排除、因此不在 VCS。也就是说 10733 的素材在本机是有副本的（就在这个 tmp 区），只是没入库。这与前文「第四层 3 道不在 VCS 是设计后果」互为印证。",
+  "why_this_matters_for_the_denominator": "它把两类题彻底分开：平台题（题号 10xxx，附件齐全、命名规整）和历史真题（赛事 id，题面抄自 WP、附件基本没有）。分母 93 数的是后一类。要一个「可复算、素材齐全」的能力分母，平台题池才是现成的候选。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
