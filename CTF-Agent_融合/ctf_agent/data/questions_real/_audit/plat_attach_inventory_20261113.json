@@ -28,7 +28,9 @@
   "misc": "2 道：10734 MISC-01（解压后 428.9MB 单文件）/ 10793 成功男人背后的女人",
   "pwn_or_reverse": "4 道：10736 what_heap / 10737 gogogo_3 / 10738 MirrorShield / 10739 NativeAOT_3",
   "unnumbered": "3 个杂项包：idol.zip（flag.txt + idol.pyc）/ inner.zip 与 src-file.zip（同为 9 成员 96661B，疑似同一份）",
-  "scale_extremes": "最大三组：10787 59403 文件/1120.0MB、10791 67059 文件/771.1MB、10789 52097 文件/634.4MB"
+  "scale_extremes": "最大三组：10787 59403 文件/1120.0MB、10791 67059 文件/771.1MB、10789 52097 文件/634.4MB",
+  "two_category_corrections": "按附件目录名复核后修正两处：10735 的目录是 MISC附件（logbool.pcapng，此前当 crypto 记）/ 10741 的目录是 WEB附件（QL_again-attachment.zip，此前也当 crypto 记）。crypto 实际只有 10732 与 10733 两道",
+  "count_correction": "带题号的 107xx 实为 30 道，不是 28 道（10716/10717/10718/10719/10720/10722/10723/10724/10725/10794 + 10732/10733 + 10734/10735/10793 + 10736/10737/10738/10739 + 10741 + 10782~10791）；其中 20 道是开源源码审计（10 CMS + 10 中间件）"
  },
  "the_three_that_were_mislabelled_in_earlier_notes": {
   "10787": "此前记作 REAL-16，实际解压后顶层是 mysql-server-mysql-26.7.0",
@@ -48,7 +50,7 @@
   "what_is_still_runnable": "部署源码 + 静态审计 + 找可疑点，能产出审计报告，但不能产出 通过/不通过"
  },
  "what_is_missing_to_really_run_them": {
-  "question_statements": "题库 data/questions_real 里只有 crypto/10733.json 一道 107xx 题面（889B）；其余 27 道无 description / flag_pattern / flag_sha256",
+  "question_statements": "题库里只有 crypto/10733.json 一道 107xx 题面（889B）；其余 29 道无 description / flag_pattern / flag_sha256。服务器五个题库（questions_real 101 json / ext 37 / ext_cybench 11 / external 42 / ext_L2_pure_reasoning 2）逐一扫过，10700~10800 区间只命中 10733 一个",
   "platform_api": "GET https://ctf2.dasctf.com/api/v1/practice/<pid>/challenges/?page=1 与 /challenges/10733/ 均 HTTP=401，body {\"error\":{\"code\":\"AUTH_REQUIRED\"},\"success\":false}；裸站首页 HTTP=200",
   "token": "CTF2_TOKEN 在进程环境 / User 级 / Machine 级都未设置；platform_ctf2.py 定义 TOKEN=os.environ.get(\"CTF2_TOKEN\",\"\")、API=https://ctf2.dasctf.com/api/v1，函数 fetch_challenges / fetch_challenge / download_attachment / submit_flag 齐全",
   "local_cache": "全机扫 10700~10800 只命中 3 个题号的非题面记录：10732/10735 在 coverage_map.json（校验信息）、10733 在 purellm_clean_benchmark.manifest.json（排除规则）；tmp_attach 的 platform_archive/meta 只有 7 个 106xx 题面缓存，无 107xx"
@@ -63,6 +65,20 @@
   "regression_on_server": "tests/test_10733_high_exponent_route.py 3 passed；tests/test_presolve_skill_wiring.py 4 passed 5 skipped；tests/test_skill_real_race_chain.py 3 passed 3 skipped",
   "commit": "afe361a fix(ctf_agent): 高偶指数 presolve 取 flag 而非 rot18——10733 实跑 FLAG None 根因（1 file changed, +7 -2）"
  },
+ "three_round_check_how_it_was_done_honestly": {
+  "first_attempt_was_misleading": "直接连跑 3 轮，3/3 都打印 FLAG，但每轮 elapsed=0.0s、日志是 '[presolve:blackboard] 10733 黑板缓存命中' —— 那是读缓存，不是解题。若只报「3/3 通过」就是把缓存命中冒充成了三次独立解出",
+  "how_the_cache_was_cleared": "data/results/blackboard.json 顶层是 {presolve_cache(6 项), known_failures}；先备份为 blackboard.json.bak_20261113_before_recompute，再只删 presolve_cache['10733'] 一条（6 -> 5 项），其它题的缓存没动",
+  "result_after_clearing": "轮1 rc=0 / 0.6s / sha256验真=1 / 黑板命中=0 / MATCH=True（真重算）；轮2、轮3 rc=0 / 0.0s / 黑板命中=1 / MATCH=True（缓存复用，且缓存直返同样过 sha256 校验，见 core/presolve.py:754-770）",
+  "what_this_proves": "修复后的重算路径确实能在 0.6s 内解出并通过 sha256 验真；缓存路径是安全的但不是解题",
+  "cache_gate_reference": "core/presolve.py:738-770，缓存直返必须同时过 flag_pattern + expected_sha256 + answers 三关，任一不过就落回引擎重算"
+ },
+ "token_path_is_now_one_command": {
+  "script": "scripts/fetch_plat_statements.py（新增）+ tests/test_fetch_plat_statements.py（6 passed）",
+  "what_it_does": "读 CTF2_TOKEN/CTF2_PRACTICE -> 分页拉列表 -> 逐题拉详情 -> 从 description 提 flag_pattern（题面里普遍写着「flag格式为DASCTF{}」）-> 落 data/questions_plat/<category>/<id>.json",
+  "why_a_separate_library": "平台详情接口不给 flag 也不给 flag_sha256；而 eval/cases.py:174-180 的 flag_matches 在无 expected_sha256 且 flag 为空时恒 False。混进 questions_real 会让「离线可判分」的口径失真，所以单独建 questions_plat，判分走平台 submit_flag",
+  "verified_without_network": "py_compile OK；无 token 时 RC=3 并打印 MISSING_ENV；给假 token 时 RC=1 且真的打到网络层返回 HTTP 401（证明请求路径通，只差真 token）",
+  "not_verified": "没有真 token，所以「拉到的题面字段是否与 10663 缓存同构」仍只有 fixture 层面的把握，没有实拉验证"
+ },
  "what_was_not_done": [
   "没有拿 token，因此没有拉任何一道 107xx 的平台题面",
   "没有部署任何一个 CMS / 中间件的靶机（无题面时部署了也不知道要找什么）",
@@ -70,8 +86,8 @@
   "没有把 1.73GB 素材 / 3.40GB 解压物落进仓库 data 目录，仍在 /tmp（重启即失）"
  ],
  "boundary": {
-  "this_ledger_proves": "素材确实搬上去了、字节一致、能解开、结构清楚；以及 10733 那一道确实能真跑出 FLAG（修 bug 前后对照）",
-  "this_ledger_does_not_prove": "这批 28 道题里有多少能解——27 道没有题面，一道都没跑过；也不能据此把这批题写成新的能力分母"
+  "this_ledger_proves": "素材确实搬上去了、字节一致、能解开、结构清楚；以及 10733 那一道确实能真跑出 FLAG（修 bug 前后对照，且清缓存后 1 次真重算 + 2 次缓存复用都 MATCH=True）",
+  "this_ledger_does_not_prove": "这批 30 道题里有多少能解——29 道没有题面，一道都没跑过；也不能据此把这批题写成新的能力分母"
  },
- "status": "素材搬运与解压已闭合；跑通了 1 道（10733，且修掉一个真 bug）；其余 27 道卡在平台题面，需 CTF2_TOKEN"
+ "status": "素材搬运与解压已闭合；跑通了 1 道（10733，且修掉一个真 bug）；其余 29 道卡在平台题面，需 CTF2_TOKEN（拉取脚本已就绪并离线验证）"
 }
