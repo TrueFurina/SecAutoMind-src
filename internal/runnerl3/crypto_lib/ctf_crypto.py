@@ -594,6 +594,67 @@ def merkle_root(leaves, hashfn="sha256"):
     return level[0]
 
 
+# ---- 线性反馈移位寄存器（LFSR）/ 线性序列恢复 ----
+# 用途：ext_..._filtermaze 等「LFSR / 线性序列 / 流密码」题——由输出比特串恢复
+#       反馈多项式（Berlekamp-Massey），进而预测后续比特或重建初态。
+def berlekamp_massey_gf2(s):
+    """Berlekamp-Massey over GF(2)。s 为 0/1 序列（list / str("01...") / int(按位)）。
+    返回最小连接多项式系数 [1, c1, c2, ..., cL]（c0=1 固定），满足递推
+    s_i = c1*s_{i-1} + ... + cL*s_{i-L} (mod 2)。L = 线性复杂度。
+    若 s 为空返回 [1]。纯本地计算，不依赖 sympy。"""
+    if isinstance(s, str):
+        bits = [int(ch) & 1 for ch in s]
+    elif isinstance(s, int):
+        bits = [int(b) & 1 for b in bin(s)[2:]]
+    else:
+        bits = [int(x) & 1 for x in s]
+    n = len(bits)
+    if n == 0:
+        return [1]
+    # 系数数组须留足 m 移位空间：m + L <= 2n，故长度取 2n+1（否则高位系数被静默截断导致结果偏长）
+    c = [1] + [0] * (2 * n)
+    b = [1] + [0] * (2 * n)
+    L = 0
+    m = 1
+    for i in range(n):
+        # 偏差 d = s_i + sum_{j=1..L} c_j * s_{i-j} (mod 2)
+        d = bits[i]
+        for j in range(1, L + 1):
+            d ^= (c[j] & bits[i - j])
+        if d:
+            t = c[:]
+            # c = c - x^m * b  (GF(2))：取 b 的前 n-m+1 项做移位异或，
+            # 高位系数（b 中 j>=n-m+1 的部分）是 B 旧的、已不属于当前 LFSR 的尾巴，
+            # 若一并注入会污染 c 得到虚假高次最小多项式。
+            for j in range(m, n + 1):
+                c[j] ^= b[j - m]
+            if 2 * L <= i:
+                L = i + 1 - L
+                b = t
+                m = 1
+            else:
+                m += 1
+        else:
+            # d == 0：无偏差，m 仍须推进（与参考实现一致；漏掉这步会得到错误高次多项式）
+            m += 1
+    return c[:L + 1]
+
+
+def lfsr_generate(poly, init, n):
+    """用连接多项式 poly=[1,c1,...,cL] 与初态 init(长度 L 的 0/1 list) 生成 n 位序列。
+    递推：x_k = c1*x_{k-1} + ... + cL*x_{k-L} (mod 2)，k>=L。"""
+    L = len(poly) - 1
+    if len(init) != L:
+        raise ValueError("init 长度须等于多项式阶 L=%d" % L)
+    seq = [int(x) & 1 for x in init]
+    for k in range(L, n):
+        xk = 0
+        for j in range(1, L + 1):
+            xk ^= (poly[j] & seq[k - j])
+        seq.append(xk & 1)
+    return seq[:n]
+
+
 if __name__ == "__main__":
     # 自检（不依赖网络）
     assert rsa_fermat(15 * 17) == (15, 17) or rsa_fermat(15 * 17) is not None
@@ -603,4 +664,11 @@ if __name__ == "__main__":
     _c = idea_encrypt_block(_k, _p)
     assert _c == bytes.fromhex("11fbed2b01986de5"), _c.hex()
     assert idea_decrypt_block(_k, _c) == _p
+    # LFSR 自检：poly x^4+x+1 -> [1,1,0,0,1]，init [1,0,1,1] 生成 12 位，
+    # BM 应还原同一多项式（闭环验证生成器与恢复器一致）。
+    _poly = [1, 1, 0, 0, 1]
+    _init = [1, 0, 1, 1]
+    _seq = lfsr_generate(_poly, _init, 12)
+    assert _seq == [1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1], _seq
+    assert berlekamp_massey_gf2(_seq) == _poly, berlekamp_massey_gf2(_seq)
     print("ctf_crypto self-check OK")

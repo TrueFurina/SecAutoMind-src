@@ -34,7 +34,9 @@ const ctfCryptoAPIRef = `ctf_crypto 即用原语（import ctf_crypto as C 后直
 - idea_encrypt_block(key, block) -> bytes  # IDEA 加密单块(64-bit 块/128-bit 密钥)，key/block 各 16 字节
 - idea_decrypt_block(key, block) -> bytes  # IDEA 解密单块
 - lcg_recover_modulus(outputs) -> int|None      # 由 LCG 输出序列恢复模数 m(相邻差 GCD)
-- lcg_recover_params(outputs) -> (a,c,m,state0)|None  # 恢复 LCG 全参数 a,c,m 与初态
+- lcg_recover_params(outputs) -> (m,a,c)|None    # 恢复 LCG 全参数 模数m/乘子a/增量c（注：返回序为 m,a,c，非 a,c,m）
 - lcg_next(state, a, c, m) -> int                 # 推进一步 LCG: state=(a*state+c)%m
 - mhk_decrypt(ciphertext, w, r, m) -> int         # Merkle-Hellman 背包私有钥解密(w 超递增,r=m^{-1} mod m)
-- merkle_root(leaves, hashfn='sha256') -> str     # 计算 Merkle 根(奇数层复制末节点)，返回 hex`
+- merkle_root(leaves, hashfn='sha256') -> str     # 计算 Merkle 根(奇数层复制末节点)，返回 hex
+- berlekamp_massey_gf2(s) -> list                 # GF(2) 上 Berlekamp-Massey：由 0/1 序列(列表/"01..."串/int)恢复最小连接多项式 [1,c1,...,cL]
+- lfsr_generate(poly, init, n) -> list            # 用连接多项式 poly=[1,c1,...,cL] 与初态 init(长度L) 生成 n 位序列(递推 x_k=Σ cj*x_{k-j} mod 2)`

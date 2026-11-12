@@ -330,5 +330,58 @@ class TestMerkle(unittest.TestCase):
                          C.merkle_root([b"a", b"b", b"c", b"c"]))
 
 
+# ---- 线性反馈移位寄存器：Berlekamp-Massey + 生成器闭环 ----
+# 用「本原多项式」做 oracle：本原多项式对任意非零初态，其生成序列的最小多项式
+# 就等于该多项式本身 —— 规避了用可约多项式做测试时 BM 返回真因子造成的假阴性。
+_PRIM = {
+    3: [1, 1, 0, 1],          # x^3 + x + 1
+    4: [1, 1, 0, 0, 1],       # x^4 + x + 1
+    5: [1, 0, 1, 0, 0, 1],    # x^5 + x^2 + 1
+    8: [1, 0, 0, 1, 1, 1, 0, 0, 1],  # x^8 + x^4 + x^3 + x^2 + 1
+    10: [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],  # x^10 + x^3 + 1
+}
+
+
+class TestLFSR(unittest.TestCase):
+    def test_bm_recovers_primitive_poly(self):
+        for L, poly in _PRIM.items():
+            for init in ([1] + [0] * (L - 1), [0] * (L - 1) + [1],
+                         [(1 if j % 2 == 0 else 0) for j in range(L)]):
+                # 初态非全零
+                if all(x == 0 for x in init):
+                    init = list(init); init[0] = 1
+                seq = C.lfsr_generate(poly, init, 4 * L + 2)
+                self.assertEqual(C.berlekamp_massey_gf2(seq), poly,
+                                 msg="poly=%s init=%s" % (poly, init))
+
+    def test_bm_accepts_str_and_int(self):
+        poly = [1, 1, 0, 0, 1]
+        seq = C.lfsr_generate(poly, [1, 0, 1, 1], 12)
+        # list
+        self.assertEqual(C.berlekamp_massey_gf2(seq), poly)
+        # str of bits
+        self.assertEqual(C.berlekamp_massey_gf2("".join(map(str, seq))), poly)
+        # int（按位，LSB-first 转 list 后与本函数约定一致：bin 高位在前）
+        self.assertEqual(C.berlekamp_massey_gf2(int("".join(map(str, seq)), 2)), poly)
+
+    def test_bm_edge_cases(self):
+        self.assertEqual(C.berlekamp_massey_gf2([]), [1])
+        self.assertEqual(C.berlekamp_massey_gf2([0, 0, 0, 0, 0]), [1])
+        self.assertEqual(C.berlekamp_massey_gf2([1, 1, 1, 1, 1]), [1, 1])  # 常数序列
+        self.assertEqual(C.berlekamp_massey_gf2([1, 0, 1, 0, 1, 0]), [1, 0, 1])  # 交替
+
+    def test_lfsr_generate_roundtrip_shape(self):
+        poly = [1, 1, 0, 1]
+        seq = C.lfsr_generate(poly, [1, 0, 1], 10)
+        self.assertEqual(len(seq), 10)
+        # 递推自洽：用前 L 位重算应得同一序列
+        replay = C.lfsr_generate(poly, seq[:3], 10)
+        self.assertEqual(replay, seq)
+
+    def test_lfsr_generate_bad_init_raises(self):
+        with self.assertRaises(ValueError):
+            C.lfsr_generate([1, 1, 0, 1], [1, 0], 10)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
