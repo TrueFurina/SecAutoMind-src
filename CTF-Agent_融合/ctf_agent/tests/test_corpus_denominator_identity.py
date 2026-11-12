@@ -12,6 +12,7 @@
 这样语料变化（补了素材、加了题）不会让测试误红，但关系一旦被破坏就立刻红。
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -47,7 +48,7 @@ def _ledger_verified_ids() -> set:
 
 def _on_disk_ids() -> set:
     """素材在盘或无需附件的题 id。"""
-    rep = aci.audit(QUESTIONS_REAL)
+    rep = _audit()
     out = set()
     for r in rep["rows"]:
         issues = [i.split(":")[0] for i in r["issues"]]
@@ -103,3 +104,73 @@ def test_on_disk_superset_of_intersection_and_disjointness_holds():
     assert inter | (ledger - on_disk) == ledger
     assert inter | (on_disk - ledger) == on_disk
     assert not (ledger - on_disk) & (on_disk - ledger)
+
+
+# ---------------------------------------------------------------- 空壳附件
+
+_TINY_PAYLOAD_BYTES = 100
+
+_AUDIT_CACHE = None
+_BYTES_CACHE = {}
+
+
+def _audit() -> dict:
+    """扫一次题库，整模块复用。aci.audit 要遍历 93 道题，逐用例重扫会把 5 条用例拖到 8 秒。"""
+    global _AUDIT_CACHE
+    if _AUDIT_CACHE is None:
+        _AUDIT_CACHE = aci.audit(QUESTIONS_REAL)
+    return _AUDIT_CACHE
+
+
+def _payload_bytes(qid: str) -> int:
+    """该题声明附件在盘上的总字节（目录递归求和）。"""
+    if qid in _BYTES_CACHE:
+        return _BYTES_CACHE[qid]
+    rep = _audit()
+    row = next(r for r in rep["rows"] if r["id"] == qid)
+    jf = Path(row["file"]).resolve()
+    q = json.loads(jf.read_text(encoding="utf-8"))
+    total = 0
+    for rel in (q.get("attachments") or []):
+        fp = aci._resolve_attachment(str(rel), jf, QUESTIONS_REAL)
+        if fp is None:
+            continue
+        p = Path(fp)
+        if p.is_file():
+            total += p.stat().st_size
+        elif p.is_dir():
+            total += sum(s.stat().st_size for s in p.rglob("*") if s.is_file())
+    _BYTES_CACHE[qid] = total
+    return total
+
+
+def test_tiny_payload_is_always_explained():
+    """声明了附件、但盘上那份不到 100 字节的题，必须带着「这份不是素材」的标记。
+
+    payload_missing 只看「在不在」，不看「是不是真素材」（_resolve_attachment:195
+    自述这是设计边界）。实测被这条边界漏过的是 real_crypto_anxun2020_aes（32 字节）
+    与 real_misc_longjian2024_smallsword3（45 字节）——那 32/45 字节就是一条 flag，
+    题目本体从来没在库里。它们恰好也是仅有的 2 道 answer_key_only+answer_leak。
+
+    本测试不写死 id：只要将来任何一道题被塞进一个不足 100 字节的「附件」却没标
+    answer_key_only/answer_leak，就立刻红——否则它会静默混进「有素材」的分母。
+    """
+    rep = _audit()
+    offenders = []
+    for r in rep["rows"]:
+        issues = [i.split(":")[0] for i in r["issues"]]
+        if "payload_missing" in issues:
+            continue  # 缺附件的不在此列
+        q = json.loads(Path(r["file"]).read_text(encoding="utf-8"))
+        if not (q.get("attachments") or []):
+            continue  # 纯题面题不声明附件，不在此列
+        if _payload_bytes(r["id"]) >= _TINY_PAYLOAD_BYTES:
+            continue
+        if not {"answer_key_only", "answer_leak"} & set(issues):
+            offenders.append((r["id"], _payload_bytes(r["id"]), issues))
+
+    assert not offenders, (
+        "以下题声明了附件但盘上那份不足 100 字节，却没标 answer_key_only / answer_leak——"
+        f"它们会被静默算进「有素材」：{offenders}"
+    )
+
