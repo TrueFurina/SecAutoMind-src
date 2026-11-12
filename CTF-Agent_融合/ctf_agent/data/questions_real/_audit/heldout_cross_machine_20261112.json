@@ -71,7 +71,12 @@
    "real_anxun2020_depressed": "同上，缺 depressed.md，从未入库，题面 98 字，无跑批记录。",
    "real_anxun2020_easyzip": "同上，缺 easyzip.md，从未入库，题面 100 字，无跑批记录。",
    "real_anxun2020_love_letter": "同上，缺 love_letter.md，从未入库，题面 73 字，无跑批记录。",
-   "real_reverse_js": "附件都在盘，但 index.html 只有 31 字节（内容为 <!DOCTYPE html><title></title>）。git 历史显示该文件只在 c7289ec（2026-11-04 题库纳入版本库）入库过一次，且入库时就是 30 字符空壳。而 benchmark_report_clean2_20260922_deepseek.json 记录它在 2026-09-22 由 presolve 解出（solved=True, 1310ms）——说明当时附件完好，此后退化、退化后的空壳被固化进版本库。当前用 coso.js 里 3 个 wincode 的 raw/delog/enlog/去前缀共 18 个变体逐一比对题面 flag_sha256，无一命中，即当前无法解出。"
+   "real_reverse_js": "附件都在盘，但 index.html 只有 31 字节（内容为 <!DOCTYPE html><title></title>，无任何 script 引用）。git 历史显示该文件只在 c7289ec（2026-11-04 题库纳入版本库）入库过一次，且入库时就是 30 字符空壳。而 benchmark_report_clean2_20260922_deepseek.json 记录它在 2026-09-22 由 presolve 解出（solved=True, 1310ms）——说明当时附件完好，此后退化、退化后的空壳被固化进版本库。当前用 coso.js 里 3 个 wincode 的 raw/delog/enlog/去前缀共 18 个变体逐一比对题面 flag_sha256，无一命中，即当前无法解出。**但性质与那 4 道不同**：coso.js 共 1000 行、其中 963 行为空行、实际只有 37 行代码，含 3 个 function、4 个 wincode 字面量、2 处 charCode、3 处 flag、2 处 alert —— 校验逻辑本体完好，缺的只是一个 31 字节的 HTML 入口（本该引 coso.js）。"
+  },
+  "not_all_five_are_the_same": {
+   "four_anxun": "核心素材永久缺失：附件的 .md 从未入库、本机无、全仓无副本、无任何历史跑批记录。不补素材就无法可解，补素材需要上游原件或人工重写题目，属新增内容。",
+   "real_reverse_js": "核心素材完好、只缺入口文件：coso.js 的 37 行校验逻辑完整在盘，index.html 退化为 31 字节空壳（无 script 引用）。理论上读懂这 37 行即可推出 flag；补一个引用 coso.js 的 HTML 入口是 1~3 行的事，但那属于改写题目内容，需要拍板。",
+   "why_this_distinction_matters": "把它笼统记成「5 道 0 可解」会掩盖两类完全不同的处置成本：一类要重找上游原件（可能不存在），一类只需补一行入口（但要授权改题）。"
   },
   "why_it_matters": "「5」这个数字看起来像「有 5 道未见题可供测量能力」，实际是「0 道能跑」。previous baseline 里 heldout_status() 报的 pool_total=2 / solved_total=2 / solve_rate=1.0 来自 2026-09-22 的 clean2 报告（那 2 道是 real_crypto_dnui_keyboard 与 real_reverse_js，当时都解出了），是历史实测值，不是当前可复现值。两者混用会得到「能力率 1.0」这个现在无法复现的结论。",
   "impact_scope": "README.md、README.zh.md、docs/ 下均无任何对 heldout_candidates 的文字引用（已 grep 确认）；落盘值只出现在 data/results/kpi_canonical.json。所以这处目前只影响口径真值，尚未污染任何对外表述。"
