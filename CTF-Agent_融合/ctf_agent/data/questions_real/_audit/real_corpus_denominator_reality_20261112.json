@@ -125,7 +125,15 @@
   "so_this_is_a_design_consequence_not_a_missing_commit": "三条都查过 git check-ignore -v，命中的全是仓库里写明的规则，没有一条是「本该提交却漏了」。git ls-files 也是 UNTRACKED。所以「干净检出少 3 道」是这些排除规则写的时候就定下的，不是事故。",
   "consequence_for_third_party_recompute": "第三方把仓库 clone 下来、准备一份干净环境后，这 93 道里最多能跑 8 道。而 coverage_of_corpus=14/93=0.15054 里的 14 是本机口径——它包含了这 3 道不在库里的题。所以那个 0.15054 在别人的机器上算不出来，只有 8/93 才是一份干净检出能复现的分母。",
   "what_the_eight_are": ["real_crypto_exciting_inverse", "real_crypto_ezrsa", "real_crypto_filterrandom", "real_crypto_simplelegendre", "real_crypto_specialcurve2", "real_reverse_sheng", "real_reverse_vnctf_cm1", "real_taishan2021_crypto_cgroup"],
-  "caveat_on_the_eight": "其中 real_reverse_vnctf_cm1 带 answer_leak、real_taishan2021_crypto_cgroup 带 no_truth，这两道虽然素材在库里、结构上能跑，但一道答案可见、一道没有可比真值，所以能「跑」不等于能「判分」。真正干净可判的还要再减这 2 道 → 6 道。"
+  "caveat_on_the_eight": "其中 real_reverse_vnctf_cm1 带 answer_leak、real_taishan2021_crypto_cgroup 带 no_truth，这两道虽然素材在库里、结构上能跑，但一道答案可见、一道没有可比真值，所以能「跑」不等于能「判分」。真正干净可判的还要再减这 2 道 → 6 道。",
+  "actually_measured_in_a_clean_checkout": {
+   "how": "git worktree add --detach D:\\tmp_wt_layers HEAD（HEAD=10dd280），把「推理」换成「实测」——不靠我那 11 道手工名单，直接在检出里跑 aci.audit(data/questions_real)。",
+   "result": {"questions": 93, "payload_missing": 84, "audit_says_present": 9},
+   "the_nine": ["real_crypto_exciting_inverse", "real_crypto_ezrsa", "real_crypto_filterrandom", "real_crypto_simplelegendre", "real_crypto_specialcurve2", "real_reverse_js", "real_reverse_sheng", "real_reverse_vnctf_cm1", "real_taishan2021_crypto_cgroup"],
+   "why_nine_not_eight": "audit 的判据是「文件在不在」，real_reverse_js 的 index.html 是 31 字节空壳但仍然是个文件，所以 audit 判它不缺。扣掉这一道空壳，才是真正能跑的 8 道。",
+   "two_paths_converge": "手工路径：11 道严格可跑 − 3 道不在 VCS = 8。实测路径：检出里 audit 判不缺 9 道 − 1 道空壳 = 8。两条独立的算法收敛到同一个数，这比单条推理可信。",
+   "what_the_layering_looks_like": "93 道题面 → 14 道声明齐（本机）→ 12 道素材可用 → 11 道严格可跑 → 9 道在干净检出里 audit 判不缺 → 8 道真能跑 → 6 道还能判分。"
+  }
  },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
