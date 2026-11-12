@@ -43,6 +43,14 @@
   "result": {"ever_appeared": 0, "never_appeared": 79},
   "sample_ids": ["real_crypto_anwang_crypto1", "real_crypto_anxun2020_coolboy", "real_crypto_changan2021_checkin", "real_crypto_changan2021_easyrsa", "real_crypto_changan2021_ezpy", "real_crypto_dnui_keyboard"]
  },
+ "why_the_material_is_gone_for_good": {
+  "question": "这 79 道还有没有可能补回素材？",
+  "what_the_79_record_as_their_source": "逐题读 source 字段（69 道有值、10 道为空）。有值的全部是本机 writeup 路径或赛事 WP 名称，形如 `2024 高校网络安全管理运维赛 Writeup.pdf (本地: E:/Program/Cybersecurity/...)`、`ISCTF2024WP.pdf (本地: E:/Program/Cybersecurity/1. ...)`、`第二届陇剑杯2024 初赛WP(博客)`。",
+  "the_source_dir_does_not_exist": "E:/Program/Cybersecurity 在本机已不存在（Test-Path 返回 False）。E:/Program 顶层也没有同名目录。",
+  "what_that_means": "source 里记的是 writeup（题解），不是赛题素材本身；而写这些 writeup 的那个目录也已经没了。所以这 79 道既没有素材、也没有能反推素材的原始文档——不是「暂时缺」，是「两头都断了」。",
+  "how_many_were_ever_verified": "79 道里带 verified_solver=True 的只有 7 道。说明这 79 道里绝大多数连「当年被解出过」的证据都没有，只有 7 道有。这个 7 与 offline_verified=14 不是一回事：14 是台账里标了 ✅ offline_verified 的题块数（_merge_gate.py:357），7 是题面 json 里带 verified_solver 字段的题数。",
+  "what_would_be_needed_to_restore": "要么拿到原赛事平台/官方仓库的赛题包，要么找到当时存过素材的那台机器。题面里没有任何 source_url 或 external_source 字段，所以也没有可直接抓取的上游地址。"
+ },
  "what_this_changes": {
   "before": "coverage_of_corpus = offline_verified/real_corpus = 14/93 = 0.15054 被当成「能力覆盖率」，读起来像「93 道里只解出了 14 道」。",
   "after": "93 道里 79 道从来没有素材，结构上不可能被验证。有素材的恰好 14 道，而这 14 道就是台账里标了 offline_verified 的 14 道。所以 0.15054 的真实含义是「全部具备验证条件的题都已验证」，不是「能力只覆盖了 15%」。",
