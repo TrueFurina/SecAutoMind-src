@@ -48,6 +48,7 @@
    "字段 statement 同时写「held-out 自主推理分母 = 5 题」与「该池已实测…池内 2/2」，并在同一段里又写「2 道里 1 道（real_crypto_dnui_keyboard，答案裸 token CLCKOUTHK 明文写在题面）…该数值不成立，应作废」"
   ],
   "why_it_matters": "读到这个文件的人会看到「分母 5」和「分母 2、解出 2」两套数，而 statement 自己在同一段里既声称 2/2 成立又声明其中 1 道应作废。任何一处对外引用都可能挑走对自己有利的那一个。叠加 asset_reality_check（那 5 道 0 可解），两个分母都不可作为「当前能力」的依据。",
+  "it_is_disclosure_not_concealment": "2026-11-12 复核 _kpi_canonical.py 的 _heldout_clause（:332-362）后修正判断：这两套数字并列不是掩盖，是披露。那段文本由机器拼装，自己就写着「该数值不成立，应作废」「严格能力分母 heldout_candidates（= 5）已将其剔除，二者口径不同、不得直接等同」「与可选跑池 heldout_runnable_pool 也不得混算为同一比率」。所以问题不是「藏了矛盾」，而是「披露得太长太绕，读者容易只抄走前半句的 2/2」。性质不同，处置也不同：不需要改数字，需要改的是可读性。",
   "not_fixed_because": "改 kpi_canonical.json 的 statement 或移除 heldout_status 属于对外口径变更，按 AGENTS.md 第十条须用户拍板；且该文件是落盘产物，改动需同时确认生成侧（_kpi_canonical.canonical_kpi）与消费侧（_merge_gate.py 的 KPI 断言）不受影响，未做。",
   "suggested_handling_if_asked": "把 heldout_status 明确标注为「历史跑批快照（2026-09-22），非当前能力」，并让 statement 的「分母 5」与 asset_reality_check 的「0 可解」出现在同一句里，避免任一数字被单独引用。属方案 D 的一部分。"
  },
