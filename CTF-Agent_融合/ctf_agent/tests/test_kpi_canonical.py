@@ -434,13 +434,25 @@ def test_real_corpus_excludes_non_question_json():
     import scripts._kpi_canonical as kc
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
-        (root / "real_a.json").write_text('{"id": "a", "description": "x"}', encoding="utf-8")
+        # fixture 用**真实题目形状**（含 category + flag_pattern，见 _QUESTION_MIN_KEYS）：
+        # 判据 2026-11-12 收紧到字段契约后，`{"id": "a"}` 这种残缺对象不再算题，
+        # 用它当 fixture 会把"判据误伤真题"和"清单被计入"混在一起，测不出真问题。
+        (root / "real_a.json").write_text(
+            '{"id": "a", "category": "crypto", "title": "A", '
+            '"flag_pattern": "flag{...}", "description": "x"}', encoding="utf-8")
         (root / "sub").mkdir()
-        (root / "sub" / "real_b.json").write_text('{"id": "b"}', encoding="utf-8")
+        (root / "sub" / "real_b.json").write_text(
+            '{"id": "b", "category": "misc", "title": "B", "flag_pattern": "flag{...}"}',
+            encoding="utf-8")
         (root / "_attachments").mkdir()
         # 清单：JSON 数组（不是题目）
         (root / "_attachments" / "_hygiene_manifest.json").write_text(
             '["a.json", "b.json"]', encoding="utf-8")
+        # 台账形状 dict（也不是题目）：2026-11-12 实证，_audit/ 下 8 份台账曾被数成题
+        (root / "_audit").mkdir()
+        (root / "_audit" / "ledger.json").write_text(
+            '{"batch": "ext47", "run_at": "2026-11-11", "result": {"solved": 9}}',
+            encoding="utf-8")
         # 损坏的题文件：读不出 → **保留计数**（缩小分母会直接抬高覆盖率，是危险方向）
         (root / "broken.json").write_text("{not json", encoding="utf-8")
         old = kc.QUESTIONS_REAL
@@ -449,17 +461,13 @@ def test_real_corpus_excludes_non_question_json():
             n = count_real_corpus()
         finally:
             kc.QUESTIONS_REAL = old
-        assert n == 3, f"应为 2 道题 + 1 个损坏文件（保留计数）= 3，实得 {n}"
-        # 锚点：真实题池的分母必须等于「题目对象数」，即 93 而不是 94。
+        assert n == 3, f"应为 2 道题 + 1 个损坏文件（保留计数）= 3，台账与数组均不计；实得 {n}"
+        # 锚点：真实题池的分母必须等于「符合题目字段契约的对象数」，即 93。
         k = canonical_kpi()
-        objs = 0
-        for p in sorted(kc.QUESTIONS_REAL.rglob("*.json")):
-            try:
-                objs += 1 if isinstance(json.loads(p.read_text(encoding="utf-8")), dict) else 0
-            except Exception:  # noqa: BLE001
-                objs += 1
+        objs = sum(1 for p in sorted(kc.QUESTIONS_REAL.rglob("*.json"))
+                   if kc._counts_toward_corpus(p))
         assert k["real_corpus"] == objs, \
-            f"real_corpus={k['real_corpus']} 与题目对象数 {objs} 不一致（分母被清单污染？）"
+            f"real_corpus={k['real_corpus']} 与题目对象数 {objs} 不一致（分母被台账/清单污染？）"
     print("✓ test_real_corpus_excludes_non_question_json")
 
 

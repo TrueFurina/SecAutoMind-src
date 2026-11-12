@@ -131,6 +131,14 @@ def count_offline_verified() -> int:
     return int(_c())
 
 
+_QUESTION_MIN_KEYS = ("category", "flag_pattern")
+"""题目对象的最小字段契约（2026-11-12 实测：93 道真题 100% 具备，8 份审计台账 0% 具备）。
+
+为什么不按目录名排除 `_audit/`：目录名是约定，不是契约；把判据放在**内容**上，
+既挡住台账，又不会误伤将来真放进 `_` 目录的题（原始注释的担忧仍被满足）。
+"""
+
+
 def _counts_toward_corpus(p: Path) -> bool:
     """该 json 是否算分母里的一道题。
 
@@ -144,8 +152,13 @@ def _counts_toward_corpus(p: Path) -> bool:
     "questions_real: 池消失（曾有 93 题）"（见 `scripts/_audit_corpus_integrity.py`
     的同名修复）。一处清单文件，两个门禁各错一个方向。
 
-    判据只认"能不能当题目对象"（dict），**不做目录名白名单**——否则将来真放进
-    `_` 目录的题会被悄悄漏掉。
+    2026-11-12 再实证（同类、反方向）：`data/questions_real/_audit/` 下的**审计台账
+    也是 dict**，只判 `isinstance(payload, dict)` 会把 8 份台账数成题 ⇒
+    `real_corpus` 从 93 虚高到 101（本地）／98（服务器，台账未全量同步），
+    而 README 的 93 一直是真值。**同一类错，第二次发生在另一个目录**——
+    所以判据从"是 dict"收紧到"符合题目字段契约"。
+
+    判据只认字段契约，**不做目录名白名单**——否则将来真放进 `_` 目录的题会被悄悄漏掉。
     """
     try:
         with p.open(encoding="utf-8") as fh:
@@ -154,7 +167,7 @@ def _counts_toward_corpus(p: Path) -> bool:
         # 读不出/解析失败：**保留计数**。宁可分母偏大，也不静默缩小——分母变小会
         # 直接抬高覆盖率，是危险方向。损坏该由题库健康门禁去报，不在这里吞掉。
         return True
-    return isinstance(payload, dict)
+    return isinstance(payload, dict) and all(k in payload for k in _QUESTION_MIN_KEYS)
 
 
 def count_real_corpus() -> int:
