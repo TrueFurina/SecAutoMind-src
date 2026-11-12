@@ -39,6 +39,19 @@ try:
     r1_again = C.merkle_root(roots).hex()
     diag.append("merkle_deterministic=" + str(r1 == r1_again))
     diag.append("merkle_is_32byte=" + str(len(r1) == 64))
+    # R3 opt2：Berlekamp-Massey + LFSR 闭环（filtermaze 类题关键原语）。
+    # 用已知本原多项式生成序列，再用 BM 还原，断言还原==生成多项式——
+    # 这条断言锁住「go:embed 的 ctf_crypto.py 在运行时确实导出了可用 BM/LFSR」，
+    # 否则 BM 只停留在库里、L3 调用即 AttributeError（比没有参考更糟）。
+    bm_poly = [1, 1, 0, 0, 1]          # x^4 + x + 1（本原）
+    bm_init = [1, 0, 1, 1]
+    bm_seq = C.lfsr_generate(bm_poly, bm_init, 12)
+    bm_rec = C.berlekamp_massey_gf2(bm_seq)
+    diag.append("bm_recovered=" + repr(bm_rec))
+    diag.append("bm_recover_ok=" + str(bm_rec == bm_poly))
+    diag.append("lfsr_shape_ok=" + str(len(bm_seq) == 12 and bm_seq[:4] == bm_init))
+    if bm_rec == bm_poly and len(bm_seq) == 12 and bm_seq[:4] == bm_init:
+        diag.append("BM_OK")
     diag.append("RESULT=CTF_CRYPTO_OK")
 except Exception as ex:
     diag.append("EXC=" + repr(ex))
