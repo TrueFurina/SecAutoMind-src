@@ -1,0 +1,263 @@
+{
+  "audit": "att_readability_ext47_20261112",
+  "run_at": "2026-11-12",
+  "host": "172.16.222.99",
+  "python": "~/sm_venv (3.12.3)",
+  "source_ledger": "data/questions_real/_audit/ext47_20261111.json",
+  "method": "读 ext47 台账的 per_question 47 个 id；逐池 eval.cases.load_questions；取加载层 stage_question_attachments 之后的 attachments（绝对路径）；对每条路径 os.path.isfile。不跑解题、不调任何求解器、不读题面内容。",
+  "why": "附件读不到时 presolve 会静默返回 None，失败会被记成「模型解不出」。2026-11-12 修掉附件反斜杠路径缺陷（a066177）后，必须回头看战绩所用的47 道池有没有被同类问题污染。",
+  "boundary": "本核对只判「附件路径是否指向一个真实存在的普通文件」，不判附件内容类型、不判该题能否解出、不改任何失败归因结论。",
+  "do_not_quote_as": "本文件不是能力增益、不是重测结果；战绩仍按实测 4/34 = 11.76% 引用。",
+  "summary": {
+    "ledger_ids": 47,
+    "in_pool": 47,
+    "missing_ids": [],
+    "no_attachment": 0,
+    "attachment_present": 47,
+    "all_readable": 47,
+    "has_unreadable": 0,
+    "attachment_paths_total": 72,
+    "by_pool": {
+      "data/questions_ext_cybench": 11,
+      "data/questions_ext": 34,
+      "data/questions_ext_L2_pure_reasoning": 2
+    }
+  },
+  "per_question": [
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_hard_permuted",
+      "pool": "data/questions_ext_cybench",
+      "total": 2
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_medium_partial_tenacity",
+      "pool": "data/questions_ext_cybench",
+      "total": 2
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_crypto_very_easy_dynastic",
+      "pool": "data/questions_ext_cybench",
+      "total": 3
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_medium_data_siege",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_it_has_begun",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_forensics_very_easy_urgent",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_easy_crushing",
+      "pool": "data/questions_ext_cybench",
+      "total": 2
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_hard_flecksofgold",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_cybench_hackthebox_cyber_apocalypse_2024_reversing_very_easy_packedaway",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_cybench_project_sekai_ctf_sekaictf_2022_crypto_diffecient",
+      "pool": "data/questions_ext_cybench",
+      "total": 3
+    },
+    {
+      "id": "ext_cybench_project_sekai_ctf_sekaictf_2023_crypto_randsubware",
+      "pool": "data/questions_ext_cybench",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_cry_ecxor",
+      "pool": "data/questions_ext",
+      "total": 3
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_for_thoroughlystripped",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017f_rev_rabbithole",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_cry_almost_xor",
+      "pool": "data/questions_ext",
+      "total": 2
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_cry_another_xor",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_for_missed_registration",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_bananascript",
+      "pool": "data/questions_ext",
+      "total": 2
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_realism",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2017q_rev_tablez",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_1nsayne",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_bdos",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018f_rev_free_as_in_freedom",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_babycrypto",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_collusion",
+      "pool": "data/questions_ext",
+      "total": 4
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_cry_lowe",
+      "pool": "data/questions_ext",
+      "total": 3
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_for_simple_recovery",
+      "pool": "data/questions_ext",
+      "total": 2
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_for_whyos",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_msc_short_circuit",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_rev_a_walk_through_x86_part_2",
+      "pool": "data/questions_ext",
+      "total": 3
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2018q_rev_kvm",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019f_rev_steady_counting",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_cry_des2bites",
+      "pool": "data/questions_ext",
+      "total": 2
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_rev_beleaf",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2019q_rev_halfpike",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2022f_cry_m_ster_0f_prn9",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2022f_msc_farmlang",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_emoji",
+      "pool": "data/questions_ext",
+      "total": 2
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_floating_points",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023f_for_hypokrinesthai",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_for_1black0white",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_for_br3akth3vau1t",
+      "pool": "data/questions_ext",
+      "total": 3
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_baby_s_third",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_rox",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "ext_nyu_ctf_bench_2023q_rev_whataxor",
+      "pool": "data/questions_ext",
+      "total": 1
+    },
+    {
+      "id": "real_crypto_exciting_inverse",
+      "pool": "data/questions_ext_L2_pure_reasoning",
+      "total": 2
+    },
+    {
+      "id": "real_crypto_simplelegendre",
+      "pool": "data/questions_ext_L2_pure_reasoning",
+      "total": 2
+    }
+  ]
+}
