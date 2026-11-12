@@ -1,0 +1,150 @@
+{
+  "kind": "code_quality_baseline_after_cleanup",
+  "batch": "失败清理收口（用户指令『全』）",
+  "run_at": "2026-11-12",
+  "host": "172.16.222.99",
+  "workdir": "~/sm_sbx_run/CTF-Agent_融合/ctf_agent",
+  "python": "~/sm_venv/bin/python (3.12.3)",
+  "do_not_quote_as": "capability_metric",
+  "note": "本文件记录的是**代码质量门禁**的失败收敛，不是解题能力指标；不得与 47 道池的 clean_rate=11.8% 混用。",
+
+  "before": {
+    "log": "/tmp/full_final.log",
+    "failed": 14,
+    "passed": 2299,
+    "skipped": 50,
+    "errors": 11,
+    "seconds": 1012.84
+  },
+  "after": {
+    "log": "/tmp/full_final3.log",
+    "failed": 7,
+    "passed": 2311,
+    "skipped": 51,
+    "errors": 11,
+    "seconds": 1010.75,
+    "subtests_passed": 40
+  },
+  "delta": {
+    "failed": -7,
+    "passed": 12,
+    "skipped": 1,
+    "errors": 0,
+    "newly_failed": []
+  },
+
+  "fixed_this_round": [
+    {
+      "test": "tests/test_static_name_integrity.py::test_ruff_f821_f811_clean",
+      "root_cause": "data/race_attachments/ 存的是赛题附件原样副本（10732 的 pycryptodome 源码，含 py2 的 long/xrange/unicode/basestring），被当本仓源码扫描，F821/F811 恒红 15 条",
+      "fix": "pyproject.toml extend-exclude 补 **/race_attachments/**（与既有 **/_attachments/** 同一判据：赛题素材不是本仓源码）",
+      "evidence": "ruff check . --select F821,F811 → All checks passed (rc=0)",
+      "commit": "f6cc373"
+    },
+    {
+      "test": "tests/test_external_unseen_source.py::test_elf_hint_fires_on_real_payload",
+      "root_cause": "该用例验证 REA 产物（elf lane 输出）；宿主无 node / 无 rea.mjs 时 rea_probe 输出『REA 不可用』是正确行为，原写法直接判失败 = 把『环境缺 node』记成『功能缺失』",
+      "fix": "加前置 _rea_available() 为假即 skip 并写明原因（与同文件 _payload_on_disk() 的 skip 约定一致）",
+      "evidence": "1 skipped",
+      "commit": "f6cc373"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_readme_counts_green_on_live_repo",
+      "root_cause": "real_corpus 分母被污染：_counts_toward_corpus() 只判 isinstance(dict)，data/questions_real/_audit/ 下 8 份审计台账同样是 dict 被数成题 ⇒ 分母 93 虚高到 101（本地）/ 98（服务器）；README 的 93 本来是对的",
+      "fix": "判据收紧到题目字段契约 _QUESTION_MIN_KEYS=(category, flag_pattern)（93/93 真题具备、8/8 台账不具备）；仍不做目录名白名单",
+      "evidence": "canonical_kpi(): real_corpus=93 / coverage=0.1505，与 README『14 / 93（15.1%）』逐位一致",
+      "commit": "9ae8afc"
+    },
+    {
+      "test": "tests/test_kpi_canonical_no_hardcoded.py::TestCanonicalSelfConsistency::test_canonical_json_regenerated_is_consistent",
+      "root_cause": "同上的分母污染（落盘 kpi_canonical.json 的 93 是旧值，机器算 98/101）",
+      "fix": "同上；修后落盘 93 == 机器 93",
+      "evidence": "转绿",
+      "commit": "9ae8afc"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_forked_front_readme_is_declared",
+      "root_cause": "服务器部署副本的 CTF-Agent_融合/README.md 是旧版，缺第 3 行『本项目门面文档是 README.zh.md』；本地仓库那份本来就有",
+      "fix": "scp 同步 README.md（部署对齐，不改仓库内容）",
+      "evidence": "grep -c 'README.zh' README.md = 1；转绿",
+      "commit": "无（部署同步，仓库无改动）"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_heldout_pool_matches_machine_denominator",
+      "root_cause": "测试从 Path(__file__).parents[3] 找 data/ctf_benchmark/heldout_pool_delta.json；服务器部署层级是 ~/sm_sbx_run/CTF-Agent_融合/ctf_agent ⇒ parents[3]=~/sm_sbx_run，该处缺 delta 文件 ⇒ declared=0，2−1+0=1 与分母 5 不符",
+      "fix": "scp heldout_pool_delta.json 到 ~/sm_sbx_run/data/ctf_benchmark/（部署对齐；文件本身含 4 道 anxun2020 的 owner/expires 凭据，早已在仓库）",
+      "evidence": "38 passed（kpi 三组全绿）",
+      "commit": "无（部署同步，仓库无改动）"
+    },
+    {
+      "test": "tests/test_run_all_gates.py::TestExitCodes::test_passes_now",
+      "root_cause": "三个独立原因叠加：①health 分支报『questions_real 坏题 85→87（+2）』——_audit 台账被 audit_question() 当题判 broken；②static 分支报 skills/source_audit_patterns.py:25 F401（import os 死导入）；③服务器 ctf_agent/tools/tools/ 是本地不存在的重复副本，被扫出 2 条 F841",
+      "fix": "①_audit_corpus_integrity.audit() 在『_ 前缀目录 + 缺题目字段契约』时判为支持文件跳过；②删 import os（真实调用为零，pickle 模块名是字符串）；③按 _gate_static.py 注释『2026-11-11 经授权整目录删除』把服务器残留 mv 到 /tmp/backup_tools_tools_20261112/",
+      "evidence": "check_corpus_health ok=True (questions_real 93/7/1/85, regressions=[])；_gate_static.py 两分支 rc=0；test_run_all_gates 11 passed",
+      "commit": "ca4f360（① ②；③ 是部署清理）"
+    }
+  ],
+
+  "remaining": {
+    "count": 18,
+    "single_class": "git_metadata_unavailable",
+    "why_unfixable_here": "服务器部署目录不是 git 仓库，父目录 CTF-Agent_融合/.git 是残缺目录（HEAD 缺失、objects/ 不是目录、refs/ 不是目录），git ls-files 恒 rc=128",
+    "failed": [
+      {
+        "test": "tests/test_external_benchmark_and_health.py::TestHealthBaselineGate::test_disappeared_pool_is_regression",
+        "gates_on": "git ls-files 判池是否入库（已入库池消失=回归；未入库池消失=local_only）",
+        "observed": "非 git 环境下判据失效，d2.regressions 非空"
+      },
+      {
+        "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv0-1]",
+        "gates_on": "merge_gate L0 前置（git 元数据）",
+        "observed": "L0 fail-closed 直接拦下"
+      },
+      {
+        "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv1-1]",
+        "gates_on": "同上",
+        "observed": "同上"
+      },
+      {
+        "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv2-0]",
+        "gates_on": "同上",
+        "observed": "同上"
+      },
+      {
+        "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv3-0]",
+        "gates_on": "同上",
+        "observed": "同上"
+      },
+      {
+        "test": "tests/test_release_export_policy.py::test_current_tracked_tree_passes_gate",
+        "gates_on": "scripts/release_export.py --scan-only 需在 git 仓库内",
+        "observed": "❌ 不在 git 仓库内: fatal: 不是 git 仓库（或者任何父目录）：.git (rc=1)"
+      },
+      {
+        "test": "tests/test_structure_guard.py::TestStructureGuardPaths::test_listing_is_repo_root_relative_from_subdir",
+        "gates_on": "scripts/_structure_guard.py 的 git ls-files --full-name",
+        "observed": "返回空列表，断言『列举漏掉了受跟踪的台账』"
+      }
+    ],
+    "errors": {
+      "count": 11,
+      "module": "tests/test_readme_path_integrity.py",
+      "cause": "模块级 fixture tracked() 跑 git ls-files -z，fail-closed 断言 rc==0，此处 rc=128 ⇒ 11 个用例全部 setup 失败"
+    }
+  },
+
+  "boundary": [
+    "本台账只覆盖代码质量门禁，不代表解题能力；能力口径仍以 data/questions_real/_audit/ext47_20261111.json 的 clean_rate=0.1176（4/34）为准。",
+    "after 的 7 failed + 11 errors 全部归因到同一件事（部署目录无 git 元数据），不是 7 个独立代码缺陷。",
+    "修复里有 3 项（README.md / heldout_pool_delta.json / tools/tools 清理）是**部署副本对齐**，仓库本身无改动，因此没有对应 commit。",
+    "未在本地 Windows 跑全量对照：本地工作树有并行会话的在途改动，全量会混入他人 WIP；以服务器实测为准。"
+  ],
+
+  "reproduce": {
+    "full": "cd ~/sm_sbx_run/CTF-Agent_融合/ctf_agent && PYTHONIOENCODING=utf-8 ~/sm_venv/bin/python -X utf8 -m pytest -q -p no:cacheprovider",
+    "kpi_three_groups": "~/.  # tests/test_kpi_canonical.py tests/test_kpi_canonical_no_hardcoded.py tests/test_real_corpus_denominator.py",
+    "health": "~/sm_venv/bin/python -X utf8 scripts/check_corpus_health.py --json",
+    "static_gate": "~/sm_venv/bin/python -X utf8 scripts/_gate_static.py",
+    "logs": ["/tmp/full_final.log (before)", "/tmp/full_final3.log (after)", "/tmp/f3_failed.txt (7 条)", "/tmp/f14_norm.txt (14 条基线)"]
+  }
+}
