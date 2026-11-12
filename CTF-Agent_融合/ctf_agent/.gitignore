@@ -147,6 +147,17 @@ data/questions_real/**/*.flag
 # benchmarks/external_unseen 的清单引用它）——3 MB / 11 题全部可跑，收益高。
 !data/questions_ext_cybench/
 !data/questions_ext_cybench/**
+# 2026-11-12 追加：L2 pure_reasoning 池漏豁免（4 个池里唯一没放行的）。
+# 实锤：干净检出（git worktree add --detach HEAD）里该目录**不存在**，于是
+#   scripts/recompute_clean_rate.py 的"2 道 questions_real 重复题"取不到 →
+#   CannotRun(缺目录) rc=2，「clean_rate = 4/34 = 0.1176 可被第三方重算」这句话
+#   在别人的机器上根本不成立（本机之所以能算，是因为工作树里躺着一份未跟踪副本）。
+# 安全前提（已逐字节核对，非凭印象）：
+#   这 2 个文件与 data/questions_real/crypto/ 下**已在版本库中**的同名文件完全一致
+#   （769B sha256=d4ffee31… / 763B sha256=a078be78…），flag 字段是 64 位 sha256
+#   （非明文）。故入库它们**不新增任何泄露面** —— 同样的字节早就在库里了。
+!data/questions_ext_L2_pure_reasoning/
+!data/questions_ext_L2_pure_reasoning/**
 # 含真实答案的 5 个文件：覆盖回排除（必须放在上面放行规则之后）
 data/questions_real/_attachments/crypto/real_crypto_anxun2020_aes/flag.txt
 data/questions_real/_attachments/misc/real_misc_longjian2024_smallsword3/flag.txt
