@@ -38,6 +38,7 @@
   "why_it_still_prints_a_warning_in_other_runs": "同目录那句注释说的风险是真实存在的（换语料或换 bare-token 形态就可能漏），只是本轮实测恰好没漏。所以这段注释不应删——它是正确的过期提醒，不是错的描述。",
   "boundary": "只验证了 desc_leak 这一档。att_leak 档（77 道）未逐题复核，因为它不参与 select_candidates 的剔除（排除链故意不收 att_leak，见 benchmark_heldout.py 注释：该档含大量「挑战文件内嵌 flag」的误判）。"
  },
+ "coexisting_denominators_in_kpi_file": {
   "when": "2026-11-12 核对 data/results/kpi_canonical.json 的落盘值是否仍与现算一致时发现。",
   "on_disk_matches_recompute": "六项全部一致（real_corpus 93 / offline_verified 14 / coverage_of_corpus 0.15054 / skills 85 / heldout_candidates 5 / heldout_runnable_pool 44），差异项 0。文件 as_of=2026-11-08T09:11:46Z。",
   "the_problem": "同一个文件里并存两个互不相容的能力分母，且都不是当前可测的能力。",
