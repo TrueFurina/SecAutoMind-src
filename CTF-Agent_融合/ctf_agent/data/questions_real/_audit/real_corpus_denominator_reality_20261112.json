@@ -57,6 +57,27 @@
   "why_the_two_numbers_coincide": "不是巧合，是因果：没有素材就验证不了，验证了的必然有素材。offline_verified 由 count_offline_verified() 扫台账状态行得到（_merge_gate.py:357），它数的是「记了验证通过的题」；而这些题必然落在有素材的那 14 道里。",
   "is_this_the_same_problem_as_the_heldout_five": "同构但不是同一个。heldout 那 5 道是「有素材声明、素材缺失」；这 79 道是「有素材声明、素材从未入库」。两者都是「分母里混进了不可能跑出来的题」，都会把 0/N 误读成能力不足。"
  },
+ "three_layers_of_fourteen": {
+  "why_asked": "「payload_missing 不在 issues 里」只证明「声明了的东西在盘上」，不证明「盘上那份东西能用来做题」。_audit_corpus_integrity._resolve_attachment:195 明写这条判据「仍不看内容质量，那属 attachment_available 的内容有效性范畴」。所以数完条数还得量一遍体积。",
+  "layers": {
+   "layer_1_declared_and_present": 14,
+   "layer_2_actually_usable_payload": 12,
+   "layer_3_strictly_runnable": 11
+  },
+  "what_drops_at_layer_2": {
+   "ids": ["real_crypto_anxun2020_aes", "real_misc_longjian2024_smallsword3"],
+   "attachment_bytes": {"real_crypto_anxun2020_aes": 32, "real_misc_longjian2024_smallsword3": 45},
+   "explain": "这 2 道声明的那份「附件」只有 32 与 45 字节——那是一条 flag 的长度，不是题面素材。它们也正是仅有的 2 道带 answer_key_only+answer_leak 的题：盘上有的只是答案，题目本体从来没在库里。所以它们虽然不触发 payload_missing，却不可能拿来跑。"
+  },
+  "what_drops_at_layer_3": {
+   "ids": ["real_reverse_js"],
+   "attachment_bytes": 3057,
+   "breakdown": "coso.js 与 index.html 合计 3057 字节；其中 coso.js 是校验逻辑本体（完好），index.html 是 31 字节空壳——题目入口没了。",
+   "explain": "有素材、逻辑也在，但入口文件是空壳，结构上跑不起来。这一条与 heldout 那边认定的「real_reverse_js 当前 0 道结构上可解」是同一事实。"
+  },
+  "why_this_matters": "对外写 14 道有素材时，实际能用的是 11 道。差的这 3 道各有各的原因，且其中 2 道恰好是「answer_leak 不计入」的那 2 道，1 道恰好是 held-out 池成员——与台账 14 不计入它们的 3 条理由完全对上，没有第四种原因。",
+  "who_is_left": "11 道 = 台账里的 9 道（已验证且素材还在）+ real_taishan2021_crypto_cgroup（no_truth，素材在但无真值可比）+ real_web_gongye_web2（held-out 池成员，附件含明文 flag）。9 + 1 + 1 = 11，与 currently_reproducible=9 不冲突：那另 2 道分别因为无真值和 held-out 而没进 offline_verified。"
+ },
  "the_two_fourteens_and_why_they_intersect_at_nine": {
   "why_asked": "「14 道有素材」和「14 道标了 offline_verified」数值相同，但数字相同不代表是同一批。逐 id 比一遍才知道 currently_reproducible=9 到底有没有实物依据。",
   "ledger_14_ids": [
