@@ -36,6 +36,7 @@ const ctfCryptoAPIRef = `ctf_crypto 即用原语（import ctf_crypto as C 后直
 - lcg_recover_modulus(outputs) -> int|None      # 由 LCG 输出序列恢复模数 m(相邻差 GCD)
 - lcg_recover_params(outputs) -> (m,a,c)|None    # 恢复 LCG 全参数 模数m/乘子a/增量c（注：返回序为 m,a,c，非 a,c,m）
 - lcg_next(state, a, c, m) -> int                 # 推进一步 LCG: state=(a*state+c)%m
+- lcg_rsa_solve(dump_list, n, e, ciphertext) -> bytes  # LCG→RSA 一键还原(least-common-genominator 类题)：从 dump 恢复 LCG→续推收集 8 个 512-bit 素数→乘积应==n→分解算 d→解密。dump_list=连续LCG输出(list[int])，n/e=public.pem 整数，ciphertext=flag.txt 字节(little-endian 写入)。直接返回 flag 字节(以 b"CTF{" 开头)
 - mhk_decrypt(ciphertext, w, r, m) -> int         # Merkle-Hellman 背包私有钥解密(w 超递增,r=m^{-1} mod m)
 - merkle_root(leaves, hashfn='sha256') -> str     # 计算 Merkle 根(奇数层复制末节点)，返回 hex
 - berlekamp_massey_gf2(s) -> list                 # GF(2) 上 Berlekamp-Massey：由 0/1 序列(列表/"01..."串/int)恢复最小连接多项式 [1,c1,...,cL]

@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 import hashlib
 import itertools
+import random
 
 # ---- 数论基础 ----
 try:
@@ -30,6 +31,39 @@ except Exception:  # pragma: no cover
     _HAVE_SYMPY = False
 
 from math import gcd as _gcd, isqrt
+
+
+def is_prime(n):
+    """素性测试：优先 sympy.isprime（服务器有 sympy 时），否则 Miller-Rabin 兜底。"""
+    if _HAVE_SYMPY:
+        return isprime(n)
+    if n < 2:
+        return False
+    for p in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if n % p == 0:
+            return n == p
+    if n < (1 << 64):
+        bases = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
+    else:
+        bases = [random.randrange(2, n - 1) for _ in range(40)]
+    d = n - 1
+    r = 0
+    while d % 2 == 0:
+        d //= 2
+        r += 1
+    for a in bases:
+        x = pow(a, d, n)
+        if x in (1, n - 1):
+            continue
+        ok = False
+        for _ in range(r - 1):
+            x = (x * x) % n
+            if x == n - 1:
+                ok = True
+                break
+        if not ok:
+            return False
+    return True
 
 
 def egcd(a, b):
@@ -554,6 +588,59 @@ def lcg_recover_params(outputs):
 
 def lcg_next(state, a, c, m):
     return (a * state + c) % m
+
+
+def lcg_rsa_solve(dump_list, n, e, ciphertext, n_primes=8, bits=512, max_iter=200000):
+    """LCG→RSA 还原（least-common-genominator 类题，一键版）。
+
+    参数：
+      dump_list  : 连续 LCG 输出（dump.txt 中的前 6 个值，list[int]）
+      n, e       : public.pem 中的模数与指数（int）
+      ciphertext : flag.txt 密文（bytes；generate.py 以 little-endian 写入）
+    返回：
+      flag 字节（bytes_to_long 为 big-endian，故逆变换用 big-endian）
+
+    内部：恢复 LCG 参数 → 自洽重放 → 从第 6 个输出续推，收集 n_primes 个
+          isprime 且 bit_length()==bits 的值作为 RSA 素数 → 求积应 == n →
+          分解算 d → 解密。
+    """
+    params = lcg_recover_params(dump_list)
+    if params is None:
+        raise ValueError("lcg_recover_params 失败（dump 不足或退化）")
+    m, a, c = params
+    # 自洽校验：用恢复参数重放前 n 个值须完全一致
+    st = dump_list[0]
+    for exp in dump_list[1:]:
+        st = lcg_next(st, a, c, m)
+        if st != exp:
+            raise ValueError("LCG 参数自洽失败（dump 与恢复参数不匹配）")
+    # 从第 6 个输出续推，收集 512-bit 素数
+    primes = []
+    st = dump_list[-1]
+    it = 0
+    while len(primes) < n_primes and it < max_iter:
+        st = lcg_next(st, a, c, m)
+        it += 1
+        if st.bit_length() != bits:
+            continue
+        if is_prime(st):
+            primes.append(st)
+    if len(primes) != n_primes:
+        raise ValueError(f"只收集到 {len(primes)} 个素数（期望 {n_primes}）")
+    n_calc = 1
+    for p in primes:
+        n_calc *= p
+    if n_calc != n:
+        raise ValueError("计算的 n 与 public.pem 的 n 不一致（附件损坏？）")
+    phi = 1
+    for p in primes:
+        phi *= (p - 1)
+    if _gcd(e, phi) != 1:
+        raise ValueError("gcd(e, phi) != 1，无法求逆")
+    d = pow(e, -1, phi)
+    cc = int.from_bytes(ciphertext, "little")
+    mm = pow(cc, d, n)
+    return mm.to_bytes((mm.bit_length() + 7) // 8, "big")
 
 
 # ---- Merkle-Hellman 背包（LLL 低密攻击 + 私有钥解密）----
