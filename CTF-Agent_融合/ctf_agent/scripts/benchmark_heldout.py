@@ -171,6 +171,42 @@ def desc_leak_ids() -> "frozenset[str]":
     return frozenset()
 
 
+# 答案就在附件内容里、而该附件因含明文答案被 .gitignore 排除的题（人工维护真值）。
+# 为什么必须人工维护：判定它唯一靠读附件内容与题面 flag_sha256 比对，而附件被 gitignore
+# 排除后干净检出 read 不到 —— 读不到就判「没泄露」，题反而被放行。2026-11-12 实测：
+# 本机 heldout_candidates=5、干净检出=6，差的正是这种情形。把结论登记成独立真值后，
+# 排除判决与盘上文件无关，两处结论一致。
+ANSWER_KEY_IN_ATTACHMENT_MANIFEST = (
+    ROOT / "heldout_evidence" / "answer_key_in_attachment_20261112.json"
+)
+_ANSWER_KEY_DECLARED_CACHE = None  # None=未加载；set=已加载(可空)；"UNAVAILABLE"=清单不可用
+
+
+def _load_declared_answer_key_cache() -> None:
+    """加载人工登记清单（进程内仅一次）。不可用时显式告警并退回旧行为，不静默通过。"""
+    global _ANSWER_KEY_DECLARED_CACHE
+    if _ANSWER_KEY_DECLARED_CACHE is not None:
+        return
+    try:
+        data = json.loads(ANSWER_KEY_IN_ATTACHMENT_MANIFEST.read_text(encoding="utf-8"))
+        _ANSWER_KEY_DECLARED_CACHE = {str(k) for k in (data.get("entries") or {})}
+    except (OSError, ValueError) as exc:
+        sys.stderr.write(
+            f"[benchmark_heldout] 答案在附件登记清单 {ANSWER_KEY_IN_ATTACHMENT_MANIFEST} 不可用"
+            f"（{exc}）；退回仅靠附件内容扫描的旧行为——本机仍能正确剔除，"
+            f"干净检出会漏判（这是显式降级，不是静默通过）。\n"
+        )
+        _ANSWER_KEY_DECLARED_CACHE = "UNAVAILABLE"
+
+
+def _is_declared_answer_key_in_attachment(qid: str) -> bool:
+    """该题是否已被人工登记为「答案就在附件内容里」（与附件是否在盘无关）。"""
+    _load_declared_answer_key_cache()
+    if isinstance(_ANSWER_KEY_DECLARED_CACHE, set):
+        return qid in _ANSWER_KEY_DECLARED_CACHE
+    return False
+
+
 def _has_plaintext_flag_in_question(q: dict) -> bool:
     """题面 JSON 自身含真实明文 flag（非 sha256 占位）→ 答案已泄露，违反 2026-08-24 红线。
 
@@ -399,6 +435,8 @@ def select_candidates(require_sha256: bool = True,
             validatable = bool(q.get("flag_sha256")) or (include_neutralized and has_plain)
             # desc_leak 一次性算出，排除链与 rec 字段共用（清单命中为 O(1) 集合查询）
             desc_leak = _is_desc_leak(q, qid)
+            # 人工登记的「答案就在附件内容里」（与附件在不在盘无关，见清单 docstring）
+            declared_ak = _is_declared_answer_key_in_attachment(qid)
             # 逐文件载荷缺失（源文件失踪 ⇒ 结构上不可解，详见 docstring 2026-10-14 条目）
             try:
                 missing_payload = _missing_attachments(q, jf, qdir)
@@ -424,6 +462,10 @@ def select_candidates(require_sha256: bool = True,
                 # 源码泄露：两种模式都排除——脱敏只能 blank 题面字段，改不了源码文件内容，
                 # 否则会破坏题目本身；且读源码即拿答案，不算自主推理。
                 reason_excluded = "source-leaked-flag(sha256-in-attachment)"
+            elif declared_ak:
+                # 人工登记的答案在附件（附件被 gitignore 排除，干净检出里内容扫描跑不了）。
+                # 与 source_leaked 结果一致但判据独立：不依赖文件在盘。
+                reason_excluded = "source-leaked-flag(declared-answer-in-attachment)"
             elif require_sha256 and not validatable:
                 reason_excluded = "no-flag_sha256(unvalidatable)"
             elif require_payload and missing_payload:
@@ -441,6 +483,7 @@ def select_candidates(require_sha256: bool = True,
                 "leaked_attachment": _is_leaked_attachment(q),
                 "known_leak": _is_leaked_attachment(q),
                 "desc_leak": desc_leak,
+                "declared_answer_in_attachment": declared_ak,
                 "payload_missing": missing_payload,
                 "excluded": reason_excluded,
             }

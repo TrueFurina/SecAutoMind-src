@@ -1,0 +1,19 @@
+{
+ "schema": "answer_key_in_attachment/v1",
+ "purpose": "登记「答案就在附件内容里、而该附件因含明文答案被 .gitignore 排除」的题。这类题结构上不该进能力分母：读附件=看答案（非自主推理），附件不在盘又跑不了。",
+ "why_this_file_must_be_hand_maintained": "这类事实机器恰好扫不出来。判定它的唯一办法是读附件内容并与题面 flag_sha256 比对，而附件被 gitignore 排除后，在干净检出里 read 不到内容 —— 检查读不到就判「没泄露」，题反而被放行。所以不能让判据继续依赖「文件在不在盘」，必须把结论登记成独立真值。这正是 2026-11-12 实测出来的跨机器漂移（本机 heldout_candidates=5 / 干净检出=6）。",
+ "consistency_rule": "清单命中即排除，与文件在不在盘无关。因此本机与干净检出得到同一结论。",
+ "degradation_rule": "清单文件缺失或损坏时不得静默放过：benchmark_heldout 会向 stderr 打印告警并退回「只靠内容扫描」的旧行为（即本机仍正确、干净检出会漏），属于显式降级而非静默通过。",
+ "entries": {
+  "real_web_gongye_web2": {
+   "attachment": "data/questions_real/_attachments/web/real_web_gongye_web2/index.php",
+   "evidence": "该文件 871 字节，内容含一个 flag 串，其 sha256 与题面 flag_sha256（6061e023561587c0...）逐字相等。因此读这个附件即可直接得到答案，属 source-leak，非自主推理。",
+   "how_verified": "2026-11-12 在本机盘上用 scripts/benchmark_heldout._resolve_attachment 解析路径、读原始字节、对文件内全部 flag 形状串逐个算 sha256 并与题面 flag_sha256 比对，命中唯一一个。原件未经任何修改。",
+   "why_not_in_repo": "data/questions_real/_attachments 下含明文答案的文件被 .gitignore 有意排除（公开仓不得含答案），git check-ignore -v 指向 .gitignore:165。",
+   "prior_decision": "剔除它并非本轮新造的口径。heldout_evidence/benchmark_report_clean3_20260921_deepseek.SUPERSEDED_included_source_leaked_gongye_web2_20260922.json 的文件名即记录了 2026-09-22 曾因「包含了 source_leaked 的 gongye_web2」而把该批报告作废；heldout_evidence/leak_provenance_real92_v3_20261001.json 中该题 provenance=att_leak。本清单只是把这条既有结论固化成不依赖盘上文件的形式。",
+   "excluded_reason_code": "source-leaked-flag(declared-answer-in-attachment)"
+  }
+ },
+ "boundary": "本清单只登记「附件内含与题面 flag_sha256 逐字匹配的明文答案」这一种情形，不覆盖 desc_leak（题面自带答案）与 att_leak 宽泛档（后者含大量误报，不可批量入清单）。新增条目必须附可复核的证据（文件字节数 + 命中方式），禁止凭印象登记。",
+ "verified_at": "2026-11-12"
+}
