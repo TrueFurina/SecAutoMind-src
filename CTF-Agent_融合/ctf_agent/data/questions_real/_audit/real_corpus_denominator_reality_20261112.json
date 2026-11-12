@@ -133,6 +133,13 @@
    "why_nine_not_eight": "audit 的判据是「文件在不在」，real_reverse_js 的 index.html 是 31 字节空壳但仍然是个文件，所以 audit 判它不缺。扣掉这一道空壳，才是真正能跑的 8 道。",
    "two_paths_converge": "手工路径：11 道严格可跑 − 3 道不在 VCS = 8。实测路径：检出里 audit 判不缺 9 道 − 1 道空壳 = 8。两条独立的算法收敛到同一个数，这比单条推理可信。",
    "what_the_layering_looks_like": "93 道题面 → 14 道声明齐（本机）→ 12 道素材可用 → 11 道严格可跑 → 9 道在干净检出里 audit 判不缺 → 8 道真能跑 → 6 道还能判分。"
+  },
+  "the_two_kpis_behave_differently_in_a_clean_checkout": {
+   "why": "同一个检出里跑了两件事，结论不是一个方向的，必须分开记，否则会把「12 项全绿」误读成「全部口径都可复算」。",
+   "clean_rate_is_reproducible": "在 D:\\tmp_wt_layers（HEAD=10dd280）里跑 scripts/recompute_clean_rate.py，rc=0，12 项逐项通过（clean_denominator / clean_solved / clean_rate / clean_failed / polluted_ids 机算 / duplicate_real_ids 字节级 sha256 机算 / polluted_among_solved / kpi runs / kpi solved / runs-solved==失败条数 / 三桶分池逐类一致）。0.1176 在检出里算得出来：47 池 − 11 answer_in_repo − 2 字节级重复 = 34；9 解出 − 4 − 1 = 4；4/34=0.1176。",
+   "coverage_of_corpus_is_not_reproducible": "同一个检出里 93 道只能跑 8 道（见上），而 coverage_of_corpus=14/93 的 14 是本机口径，含 5 道附件不在库里的题。所以 0.15054 在别人机器上算不出来。",
+   "why_that_is_not_a_contradiction": "clean_rate 的分母 34 全部来自 47 池（47 池的题面 json 与它们的运行记录都在库里），所以它天然可复算；coverage 的分母 93 是「全部真题题面」，其中 79 道从来没素材、5 道素材不在库里。两个指标建立在不同的分母基础上，可复算性自然不同。",
+   "what_this_means_for_external_claims": "能对着第三方说「这个数你也能算出来」的只有 clean_rate=0.1176；coverage_of_corpus=0.15054 只能配一句「在本机加上 5 道不入库的附件后算出」。"
   }
  },
  "can_the_question_statement_alone_carry_it": {
