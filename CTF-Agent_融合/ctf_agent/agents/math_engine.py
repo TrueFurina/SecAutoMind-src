@@ -716,7 +716,10 @@ def _engine_high_exponent(question):
     嗅探特征：附件 .py 含 `e = 65536` 或 `e = 2**16`，且
     `hint = pow(...` 与 `c = pow(m, e, n)` 共现。抽取 hint/c/n 调
     crypto_high_exponent.skill auto 链（auto 内部先 factor_from_hint
-    再 odd-subgroup/Rabin），返回的 flag 含 rot13/rot18 候选时优先 rot18。
+    再 odd-subgroup/Rabin）。
+
+    返回值取字段顺序见下方 2026-11-13 注释：flag -> rot13 -> rot18
+    （10733 规范 flag 是 ROT13，优先 rot18 会让数字被 +5 从而 sha256 不符）。
     """
     import re
 
