@@ -83,6 +83,36 @@ def pool_ids_from_kpi(kpi: dict) -> set[str]:
     return {Path(str(f)).stem for f in files}
 
 
+def metrics_from_kpi(kpi: dict) -> dict:
+    """从 kpi 台账取 runs / solved / 失败 id 集合。
+
+    这一层让 "9" 和 "哪 9 道" 都能在库内验证，不必依赖服务器上的跑批日志：
+    kpi 台账是 `_kpi_from_logs.py` 从 47 份日志机算落盘的，`fails` 即未解出的题。
+    于是 `runs - solved == len(fails)` 与 `fails ∪ solved == 池` 都是纯库内恒等式。
+    """
+    groups = kpi.get("groups")
+    if not isinstance(groups, dict) or "ext47" not in groups:
+        raise CannotRun("kpi 台账里没有 groups.ext47（分组名变了，判据需重写）")
+    ext = groups["ext47"]
+    runs, solved = ext.get("runs"), ext.get("solved")
+    if not isinstance(runs, int) or not isinstance(solved, int):
+        raise CannotRun(f"groups.ext47.runs/solved 不是整数: {runs!r} / {solved!r}")
+    fails = ext.get("fails")
+    if not isinstance(fails, list):
+        raise CannotRun("groups.ext47.fails 不是列表")
+
+    fail_ids: set[str] = set()
+    for f in fails:
+        if not isinstance(f, dict):
+            continue
+        qid = f.get("id") or Path(str(f.get("file", ""))).stem
+        if qid:
+            fail_ids.add(str(qid))
+    return {"runs": runs, "solved": solved,
+            "fail_ids": fail_ids, "fail_count": len(fails)}
+
+
+
 def compute_polluted(manifest: dict) -> set[str]:
     """从 MANIFEST.dropped 机算"答案在本仓"的题 id。
 
@@ -156,6 +186,7 @@ def recompute(ledger: dict, kpi: dict, manifest: dict,
         raise CannotRun("result.solved_ids 为空或不是列表")
 
     pool = pool_ids_from_kpi(kpi)
+    metrics = metrics_from_kpi(kpi)
     polluted = compute_polluted(manifest)
     duplicates = compute_duplicates(dup_source, real_dir)
 
@@ -174,6 +205,22 @@ def recompute(ledger: dict, kpi: dict, manifest: dict,
             "solved_ids 里有不在池内的题: " + ", ".join(sorted(solved_outside)[:6])
         )
 
+    # 内部一致性：kpi 台账的 fails 与 result.solved_ids 必须恰好把池切成两半。
+    # 这一条不依赖原始日志，所以是第三方开箱即可验的强约束：
+    # 漏题（fails∪solved 小于池）、重叠（同一题既算解出又算失败）都会在这里暴露。
+    uncovered = pool - solved - metrics["fail_ids"]
+    if uncovered:
+        raise CannotRun(
+            "kpi 的 fails 与台账 solved_ids 未覆盖池内这些题（台账漏了或 kpi 少记）: "
+            + ", ".join(sorted(uncovered)[:6])
+        )
+    overlap = solved & metrics["fail_ids"]
+    if overlap:
+        raise CannotRun(
+            "同一题既在 solved_ids 又在 kpi fails 里（口径冲突）: "
+            + ", ".join(sorted(overlap)[:6])
+        )
+
     denom = len(pool) - len(polluted) - len(duplicates)
     clean_solved = len(solved) - len(solved & polluted) - len(solved & duplicates)
     rate = round(clean_solved / denom, 4) if denom else None
@@ -182,6 +229,9 @@ def recompute(ledger: dict, kpi: dict, manifest: dict,
         "pool_size": len(pool),
         "runs": runs,
         "solved": len(solved),
+        "kpi_runs": metrics["runs"],
+        "kpi_solved": metrics["solved"],
+        "kpi_fail_count": metrics["fail_count"],
         "polluted": sorted(polluted),
         "duplicates": sorted(duplicates),
         "solved_in_polluted": sorted(solved & polluted),
@@ -222,7 +272,7 @@ def verify(ledger: dict, computed: dict) -> list[dict]:
         }
 
     return [
-        _set_cmp("polluted_ids 由 MANIFEST answer_in_repo 机算", 
+        _set_cmp("polluted_ids 由 MANIFEST answer_in_repo 机算",
                  computed["polluted"], pc.get("polluted_ids")),
         _set_cmp("duplicate_real_ids 由字节级 sha256 机算",
                  computed["duplicates"], pc.get("duplicate_real_ids")),
@@ -231,8 +281,17 @@ def verify(ledger: dict, computed: dict) -> list[dict]:
         _num_cmp("clean_solved", computed["clean_solved"], result.get("clean_solved")),
         _num_cmp("clean_rate", computed["clean_rate"], result.get("clean_rate")),
         _num_cmp("clean_failed", computed["clean_failed"], result.get("clean_failed")),
-        _num_cmp("polluted_among_solved（台账声明的解出污染数）",
+        _set_cmp("polluted_solved_ids 由 solved ∩ polluted 机算",
+                 computed["solved_in_polluted"], pc.get("polluted_solved_ids")),
+        _num_cmp("polluted_among_solved（数量与上一条一致）",
                  len(computed["solved_in_polluted"]), pc.get("polluted_among_solved")),
+        _num_cmp("kpi 台账 runs 与 result 一致",
+                 computed["kpi_runs"], computed["runs"]),
+        _num_cmp("kpi 台账 solved 与 result 一致",
+                 computed["kpi_solved"], computed["solved"]),
+        _num_cmp("kpi 台账 runs - solved == 失败条数（库内恒等式）",
+                 computed["kpi_runs"] - computed["kpi_solved"],
+                 computed["kpi_fail_count"]),
     ]
 
 

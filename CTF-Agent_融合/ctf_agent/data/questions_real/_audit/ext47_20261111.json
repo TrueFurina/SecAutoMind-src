@@ -877,13 +877,13 @@
   "tests": "tests/test_clean_rate_recompute.py",
   "verified_at": "2026-11-12",
   "how": "python -X utf8 scripts/recompute_clean_rate.py [--log-dir /tmp/q47]",
-  "checks": 8,
+  "checks": 11,
   "sources": [
    "data/questions_real/_audit/kpi_ext47_20261111.json -> groups.ext47.files -> 池内 47 个 id",
    "benchmarks/external_unseen/MANIFEST.json -> dropped[reason starts with failed_selection:answer_in_repo] -> 11 道",
    "data/questions_ext_L2_pure_reasoning 与 data/questions_real 的 sha256 字节比对 -> 2 道"
   ],
-  "proves": "34 = 47 - 11 - 2 与 4 = 9 - 4 - 1 均由上述三个源机算得出，且与 result 段逐项一致；给 --log-dir 时还会用原始跑批日志复算 47 runs / 9 solved。11.8% 可由第三方重算，不需相信本台账。",
+  "proves": "34 = 47 - 11 - 2 与 4 = 9 - 4 - 1 均由上述三个源机算得出，且与 result 段逐项一致。其中 47 与 9 不需原始日志即可独立验证：kpi 台账 groups.ext47 自带 runs/solved/fails，满足 runs - solved == len(fails) == 38，且 fails 与本台账 solved_ids 恰好切成 47（不相交、无遗漏）。给 --log-dir 时再加 1 项，用原始跑批日志复算同一对数。11.8% 可由第三方重算，不需相信本台账。",
   "does_not_prove": "不证明这 47 道题选得好（选题口径）；也不覆盖 clean 桶内部 30 道失败的分类——那部分见 failure_attribution_by_pool。",
   "boundary": "脚本只读 id / 文件名 / 哈希，不读任何明文 flag。"
  }

@@ -194,3 +194,46 @@ def test_solved_id_outside_pool_fails_closed():
     ledger["result"]["solved_ids"].append("ghost_outside_pool")
     with pytest.raises(rcr.CannotRun, match="不在池内"):
         _compute(ledger=ledger)
+
+
+# ── 库内恒等式：kpi 台账足以独立验证 "47 跑 / 9 解出" ──────────────
+
+def test_kpi_metrics_match_ledger_without_logs():
+    """不依赖 /tmp/q47 也能验：kpi 台账的 runs/solved 与台账 result 一致。"""
+    computed = _compute()
+    metrics = rcr.metrics_from_kpi(_kpi())
+    assert metrics["runs"] == computed["runs"] == 47
+    assert metrics["solved"] == computed["solved"] == 9
+    assert metrics["runs"] - metrics["solved"] == metrics["fail_count"] == 38
+
+
+def test_fails_and_solved_partition_the_pool():
+    """kpi 的 fails ∪ 台账 solved_ids 必须恰好等于池，且不相交。"""
+    kpi = _kpi()
+    ledger = _ledger()
+    pool = rcr.pool_ids_from_kpi(kpi)
+    fail_ids = rcr.metrics_from_kpi(kpi)["fail_ids"]
+    solved = {str(x) for x in ledger["result"]["solved_ids"]}
+    assert fail_ids.isdisjoint(solved)
+    assert fail_ids | solved == pool
+
+
+def test_solved_also_in_fails_is_refused():
+    """同一题既算解出又算失败 → 口径冲突，必须拒绝。"""
+    kpi = _kpi()
+    kpi = json.loads(json.dumps(kpi))
+    ledger = _ledger()
+    fail_id = kpi["groups"]["ext47"]["fails"][0]["id"]
+    ledger = json.loads(json.dumps(ledger))
+    ledger["result"]["solved_ids"].append(fail_id)   # 制造重叠
+    with pytest.raises(rcr.CannotRun, match="既在 solved_ids 又在 kpi fails"):
+        _compute(ledger=ledger, kpi=kpi)
+
+
+def test_uncovered_question_is_refused():
+    """从 solved_ids 删掉一条 → 该题既不 solved 也不 fails，台账漏题，必须拒绝。"""
+    ledger = _ledger()
+    ledger = json.loads(json.dumps(ledger))
+    ledger["result"]["solved_ids"].pop()
+    with pytest.raises(rcr.CannotRun, match="未覆盖池内"):
+        _compute(ledger=ledger)
