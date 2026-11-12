@@ -1,0 +1,38 @@
+{
+ "kind": "clean_checkout_recompute_after_c",
+ "run_at": "2026-11-12",
+ "why": "选项 C 给 benchmark_heldout 引入了新的依赖面：heldout_evidence/answer_key_in_attachment_20261112.json 这份人工清单。此前那次干净检出验证（f32fc2c）跑在 C 实施之前，证明不了「带清单的代码在干净检出里还能算出 0.1176」。本次补这一环。",
+ "method": {
+  "worktree": "git worktree add --detach D:\\tmp_wt_recompute HEAD（HEAD = 6562a57）",
+  "cwd": "D:\\tmp_wt_recompute\\CTF-Agent_融合\\ctf_agent",
+  "env": "PYTHONPATH=. ，python -X utf8",
+  "command": "python scripts/recompute_clean_rate.py",
+  "exit_code": 0
+ },
+ "observed": {
+  "manifest_present_in_checkout": true,
+  "manifest_path": "heldout_evidence/answer_key_in_attachment_20261112.json",
+  "pool": "池 47 道 / 跑 47 / 解出 9",
+  "exclusions": "answer_in_repo 11 道，字节级重复 2 道",
+  "recomputed": "47 - 11 - 2 = 34；9 - 4 - 1 = 4；4/34 = 0.1176",
+  "twelve_checks": [
+   "polluted_ids 由 MANIFEST answer_in_repo 机算",
+   "duplicate_real_ids 由字节级 sha256 机算",
+   "clean_denominator",
+   "clean_solved",
+   "clean_rate",
+   "clean_failed",
+   "polluted_solved_ids 由 solved ∩ polluted 机算",
+   "polluted_among_solved（数量与上一条一致）",
+   "kpi 台账 runs 与 result 一致",
+   "kpi 台账 solved 与 result 一致",
+   "kpi 台账 runs - solved == 失败条数（库内恒等式）",
+   "三桶分池失败分布 与 failure_attribution_by_pool 逐类一致"
+  ],
+  "verdict_line": "复算校验：通过",
+  "all_twelve_green": true
+ },
+ "what_this_adds_over_f32fc2c": "f32fc2c 验的是「CRLF 与强制 LF 两态下 12 项 rc=0」，验的是行尾归一化；本次验的是「C 引入清单依赖之后、在新 HEAD 上重新检出仍成立」。两次验的东西不同，缺任一次都留一个洞。",
+ "boundary": "本次只跑 recompute_clean_rate.py 的 12 项，未在该 worktree 里跑全量 pytest（全量跑在部署目录做过，见 full_regression_after_c_20261112.json）。worktree 用完即删，未在 D 盘留存。",
+ "status": "C 的可复算性在干净检出上成立，不只在本机工作树上成立。"
+}
