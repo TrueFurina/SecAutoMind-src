@@ -98,3 +98,67 @@ def test_entry_is_excluded_on_disk_too(monkeypatch):
     assert "real_web_gongye_web2" not in ids
     rec = next(r for r in recs if r["id"] == "real_web_gongye_web2")
     assert rec["excluded"].startswith("source-leaked-flag")
+
+
+def _corroborate(entries: dict) -> tuple[list, list, list]:
+    """对清单条目逐条做动态复核，返回 (被证实, 被跳过, 未获证实)。
+
+    「被跳过」= 附件不在盘，无法用内容扫描证实（正是需要清单的情形）。
+    「未获证实」= 附件在盘但扫描没命中，说明清单条目可能记错。
+    """
+    checked, skipped, failed = [], [], []
+    for qid, entry in entries.items():
+        hits = list(bh.QUESTIONS_REAL.rglob(f"{qid}.json"))
+        if not hits:
+            failed.append(f"{qid}: 找不到题面，清单条目无法复核")
+            continue
+        qpath = hits[0]
+        q = json.loads(qpath.read_text(encoding="utf-8"))
+        if entry.get("attachment") not in (q.get("attachments") or []):
+            failed.append(
+                f"{qid}: 清单声明的 attachment 不在题面 attachments 里"
+                f"（{entry.get('attachment')}）"
+            )
+            continue
+        if bh._resolve_attachment(q, qpath, entry["attachment"]) is None:
+            skipped.append(qid)
+            continue
+        if bh._has_plaintext_flag_in_source(q, qpath) is not True:
+            failed.append(f"{qid}: 附件在盘但动态扫描未证实「答案在附件」——清单可能记错")
+            continue
+        checked.append(qid)
+    return checked, skipped, failed
+
+
+def test_every_declared_entry_is_independently_corroborated_when_on_disk():
+    """清单不得撒谎：登记过的题，只要附件在盘，就必须同时被动态扫描独立证实。
+
+    为什么要这条：清单是人工维护的，人工就可能记错——把一道正常题误登成「答案在附件」，
+    排除掉它等于凭空缩小能力分母，而任何自动化检查都不会报警（因为清单就是它读的真值）。
+    所以必须有一条用例，用**另一个判据**（读附件内容比 sha256）去复核清单里的每一个条目。
+
+    附件不在盘的条目跳过——那种情形本来就无法用动态判据证实，也正是需要清单的原因。
+    """
+    data = json.loads(bh.ANSWER_KEY_IN_ATTACHMENT_MANIFEST.read_text(encoding="utf-8"))
+    entries = data.get("entries") or {}
+    assert entries, "清单为空时本用例失去意义"
+    checked, skipped, failed = _corroborate(entries)
+    assert not failed, "清单里有条目通不过独立复核：" + "; ".join(failed)
+    assert checked, f"没有任何条目被动态证实（全部跳过：{skipped}），用例形同虚设"
+
+
+def test_corroboration_catches_a_wrongly_declared_entry():
+    """变异：往清单塞一道附件在盘、但内容并不含答案的题，复核必须把它抓出来。
+
+    选 real_reverse_js 作变异体：它的 coso.js 就在盘上（_resolve_attachment 会成功），
+    但 reverse 类被 _has_plaintext_flag_in_source 的类别闸放行（返回 False）。
+    所以这正是「误登一道正常题」的真实形态——若复核逻辑失灵，它会静默通过。
+    """
+    _, _, failed = _corroborate({
+        "real_reverse_js": {"attachment": "data/questions_real/_attachments/reverse/"
+                                          "real_reverse_js/coso.js"}
+    })
+    assert failed, "变异未生效：误登的正常题竟然通过了复核，说明用例是摆设"
+    assert "未证实" in failed[0]
+
+
