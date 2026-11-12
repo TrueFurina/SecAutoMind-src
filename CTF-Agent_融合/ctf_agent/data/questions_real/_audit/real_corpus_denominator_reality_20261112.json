@@ -166,6 +166,17 @@
   "why_i_did_not_just_add_the_qualifier": "改 README 与 POSTMORTEM 的对外表述属于口径变更，按 AGENTS.md 第十条须先拿到明确答复。本轮只把这个事实钉住，不动那三处。",
   "if_asked_what_i_would_propose": "在那三处后面各加一句不改变数字的定语：「14 道为具备验证条件者，其余 79 道因素材从未入库而不具备验证条件」。数字一个不动，只是把分母的性质说清。"
  },
+ "the_machine_generated_statement_has_the_same_gap": {
+  "why_asked": "README 与 POSTMORTEM 是人写的，可以慢慢改。但对外口径真正的源头是机器拼出来的那份 KPI 声明——它每次运行都重新生成，人改文档追不上它。所以必须单独看它说了什么。",
+  "where": {
+   "_kpi_canonical.py:394-395 (statement)": "f\"offline_verified={ov}（绝对计数，非率） / real_corpus={corpus} → 全集覆盖率 {coverage_all:.1%}；\"",
+   "_kpi_canonical.py:421 (render_md)": "f\"- 全集覆盖率：{k['offline_verified']}/{k['real_corpus']} = {k['coverage_of_corpus']:.1%}\""
+  },
+  "what_it_says_and_what_it_does_not": "两处都只输出「14/93 = 15.1%」这个算式，没有一处提到分母里有 79 道从来没有素材。这一行是最容易被整行复制走的形态——它短、带等号、带百分号，看起来是个可以直接引用的结论。",
+  "why_this_gap_is_worse_than_the_readme_one": "README 至少还写了「93 道已收集真题中 14 道带完整证据解出」这半句定语，机器声明里连这半句都没有，只剩一个算式。",
+  "why_i_did_not_fix_it_this_round": "改这两行是代码改动，并且直接改变对外输出口径，按 AGENTS.md 第十条属须先拿到明确答复的事。本轮只把位置与缺口记清楚。",
+  "note_on_the_other_clauses": "_heldout_clause 那段反而做得对：它自己写着「该数值不成立，应作废」「二者口径不同、不得直接等同」（见 _kpi_canonical.py:332-362）。也就是说这个文件在 heldout 一侧已经学会把不可比的数字标死，只是 corpus 一侧还没有同样处理。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
