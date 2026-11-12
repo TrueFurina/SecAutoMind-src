@@ -177,6 +177,18 @@
   "why_i_did_not_fix_it_this_round": "改这两行是代码改动，并且直接改变对外输出口径，按 AGENTS.md 第十条属须先拿到明确答复的事。本轮只把位置与缺口记清楚。",
   "note_on_the_other_clauses": "_heldout_clause 那段反而做得对：它自己写着「该数值不成立，应作废」「二者口径不同、不得直接等同」（见 _kpi_canonical.py:332-362）。也就是说这个文件在 heldout 一侧已经学会把不可比的数字标死，只是 corpus 一侧还没有同样处理。"
  },
+ "verified_on_the_server_as_well_so_it_is_not_a_local_accident": {
+  "why_asked": "79 道是本机测出来的。本机可能是个残缺副本——如果服务器那份其实有素材，那「素材从来就没有过」这个结论就该推翻，真正的问题变成「没同步回来」。",
+  "how": "把 scripts/_audit_corpus_integrity.audit 用一个独立探针脚本（/tmp/probe_srv_corpus.py）传到服务器 172.16.222.99，在 ~/sm_sbx_run/CTF-Agent_融合/ctf_agent 下用 ~/sm_venv/bin/python 跑，PYTHONPATH=. 。",
+  "result": {"questions": 93, "payload_missing": 79, "audit_says_present": 14, "attachments_files": 25, "attachments_bytes": 1002911},
+  "identical_to_local": "本机同样是 93 / 79 / 14。两台机器、两套文件系统，同一个结论。",
+  "the_levels_do_differ_and_here_is_why": {
+   "local": {"ok": 7, "leaky": 1, "broken": 85},
+   "server": {"ok": 9, "leaky": 2, "broken": 82},
+   "explain": "差的正好是 3 道只带 payload_not_in_vcs 的题。服务器的部署目录不是 git 仓库（父目录 .git 残缺），所以 vcs 检查在那边拿不到结果、不会给它们挂 payload_not_in_vcs 这个 issue，于是从 broken 掉进 ok/leaky。payload_missing 这一项与 git 无关，所以两边一模一样。这条差异正好说明 79 与 14 这两个数是「文件在不在」层面的，不受部署形态影响。"
+  },
+  "conclusion": "79 道缺素材是跨机器的客观事实，不是我这台的意外。它们不是「没同步回来」，是真的从来没有。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
