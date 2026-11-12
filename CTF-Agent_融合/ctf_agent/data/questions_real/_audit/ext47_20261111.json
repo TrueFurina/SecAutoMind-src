@@ -885,6 +885,14 @@
   ],
   "proves": "34 = 47 - 11 - 2 与 4 = 9 - 4 - 1 均由上述三个源机算得出，且与 result 段逐项一致。其中 47 与 9 不需原始日志即可独立验证：kpi 台账 groups.ext47 自带 runs/solved/fails，满足 runs - solved == len(fails) == 38，且 fails 与本台账 solved_ids 恰好切成 47（不相交、无遗漏）。给 --log-dir 时再加 1 项，用原始跑批日志复算同一对数。11.8% 可由第三方重算，不需相信本台账。",
   "does_not_prove": "不证明这 47 道题选得好（选题口径）。clean 桶 30 道失败的分类已由本脚本从 per_question.err 机算、并与 failure_attribution_by_pool 逐桶逐类比对（checks 末项），但这只证明「分类与台账一致」，不证明每道题的失败原因判得对——归因判据本身仍可争议。也不证明 solved_ids 里那 9 道是「真解出来的」，干净桶 4 道的解出真实性不在本脚本范围。",
-  "boundary": "脚本只读 id / 文件名 / 哈希，不读任何明文 flag。"
+  "boundary": "脚本只读 id / 文件名 / 哈希，不读任何明文 flag。",
+  "clean_checkout_check": {
+   "how": "git worktree add --detach <tmp> HEAD 建干净检出（4281 文件），在检出内跑 scripts/recompute_clean_rate.py",
+   "crlf_result": "12 项全部 rc=0；两侧重复题 769B / 763B 字节相同",
+   "lf_result": "把检出内 data 下 193 个 json 强制转 LF 后仍 12 项 rc=0；两侧变为 754B / 748B，同样字节相同",
+   "why_it_matters": "compute_duplicates 用原始字节 sha256。若两个池的行尾规则不同（一个 CRLF 一个 LF），同一道题会算出不同哈希、被判成不重复，分母就从 34 变成 36。实测两侧同向变化、相同关系保持不变，故本机结果在 Linux/CI 检出一致。",
+   "bug_found_and_fixed": "首轮干净检出里 data/questions_ext_L2_pure_reasoning 不存在（.gitignore 的 /data/* 只豁免了另四个池），脚本 CannotRun rc=2 —— 即「4/34 可被第三方重算」在别人机器上原本不成立。修在 d0a06aa：补 gitignore 豁免并入库那 2 个文件（与 questions_real/crypto 下已入库的同名文件逐字节相同，不新增泄露面）。",
+   "residual_risk": "本次只验证了「同向换行符变化」，未验证「一侧被单独转成另一种行尾」的人为场景；那种情况下重复会漏判，但两个目录同属 data/、无各自 .gitattributes，实际不会发生。"
+  }
  }
 }
