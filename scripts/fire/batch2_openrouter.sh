@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Batch 2: 受控 P0 跑批 on OpenRouter deepseek-r1（deepseek/deepseek-r1，推理模型；对决赛级 crypto 远强于 V3-chat）
+# Batch 2: 受控 P0 跑批 on OpenRouter（deepseek/deepseek-chat = V3，本账户唯一可用模型；r1 已 no provider）
 # 注：withp0 / nop0 实为同一份当前源码编译的二进制复制（P0 死锁修复 diff 已从源码丢失，见 memory 续5），
 #     故 A/B 退化为同二进制自比；保留交错结构仅为兼容历史命名。
 #
@@ -18,7 +18,7 @@ export CTF_AIRGAP=1
 export RUNNER_LLM_AIRGAP=1
 export RUNNER_LLM_FALLBACK=true          # 网关守卫需 true 才放行模型调用（与下方 NO_FALLBACK 不冲突：两道独立闸门）
 export RUNNER_LLM_NO_FALLBACK=1          # 评测红线：只走主通道，禁止降级到匿名/备用小模型（否则匿名小模型冒用强模型名 → 假绿）
-export RUNNER_LLM_MODEL="deepseek/deepseek-r1"   # 推理模型；OpenRouter 正确 slug 是 deepseek/deepseek-r1（非 deepseek-reasoner，那是无效 slug）
+export RUNNER_LLM_MODEL="deepseek/deepseek-chat"   # 本账户 OpenRouter 实测仅 V3-chat 可用（r1 报 no provider；DeepSeek 旧端点 2026-07-24 退役）。preflight 已用 1-token 实测探测 slug 是否真可调；若账户后续开通 r1 再换回（推理更强，crypto 更优）
 export RUNNER_LLM_BASE_URL="https://openrouter.ai/api/v1"
 export RUNNER_LLM_API_KEY=$(cat /home/user/.openrouter_key)
 export PYTHONIOENCODING=utf-8
@@ -27,6 +27,13 @@ export PYTHONIOENCODING=utf-8
 export RUNNER_LLM_RATELIMIT_RETRY=1
 export RUNNER_LLM_RATELIMIT_MAX_RETRIES=8
 export RUNNER_LLM_RATELIMIT_BACKOFF_SEC=3
+
+# ---------- 成本护栏（直接回应“烧钱”担忧）----------
+# 单题最大轮次 / 工具调用上限：二进制默认是 12 轮，空转题会一直烧到上限。
+# 显式卡小可把单题最坏 token 消耗钉死；整批 23 题 × 在途 CHUNK 的总开销因此有硬上限，
+# 不会因个别题死循环而失控。预算更紧可调到 6 / 30。
+export RUNNER_LLM_MAX_ROUNDS=8
+export RUNNER_LLM_MAX_TOOL_CALLS=40
 
 # ---------- 可调参数 ----------
 CHUNK=4            # 每批题数（= 最大在途并发上限）。额度小就调小（如 2/3）。

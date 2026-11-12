@@ -18,6 +18,7 @@
 #   bash preflight.sh --no-smoke # 跳过冒烟，纯静态预检（零额度消耗）
 set -u
 cd /home/user/SecAutoMind 2>/dev/null || { echo "!!! 当前目录不是 /home/user/SecAutoMind，请先 cd 过去"; exit 3; }
+KEY_PATH=/home/user/.openrouter_key
 
 PASS=0
 FAIL=0
@@ -41,9 +42,28 @@ fi
 # ---------- 3) 环境变量与 slug ----------
 if [ -n "${RUNNER_LLM_MODEL:-}" ]; then
   if [ "$RUNNER_LLM_MODEL" = "deepseek-reasoner" ]; then
-    warn "RUNNER_LLM_MODEL=deepseek-reasoner 在 OpenRouter 上是无效 slug，会 model-not-found 崩；应改为 deepseek/deepseek-r1"
+    warn "RUNNER_LLM_MODEL=deepseek-reasoner 在 OpenRouter 上是无效 slug，会 model-not-found 崩；应改为 deepseek/deepseek-chat"
   else
     ok "RUNNER_LLM_MODEL=$RUNNER_LLM_MODEL（含 '/'，格式正确）"
+  fi
+  # 真实可用性质检：用 1-token 探测确认「本账户」真能调该 slug。
+  # 仅查 /api/v1/models 列表不够——那是全站模型，不反映本账户是否 no-provider/区域封锁。
+  # 1-token 实测是唯一的权威判据：否则充值后 model-not-found / 402 直接白烧。
+  if [ -s "$KEY_PATH" ]; then
+    mresp=$(curl -s -m 25 -X POST https://openrouter.ai/api/v1/chat/completions \
+      -H "Authorization: Bearer $(cat "$KEY_PATH")" \
+      -H "Content-Type: application/json" \
+      -d "{\"model\":\"$RUNNER_LLM_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}" 2>/dev/null)
+    if printf '%s' "$mresp" | python3 -c "import sys,json
+try:
+    d=json.load(sys.stdin)
+    sys.exit(1 if (d.get('error')) else 0)
+except Exception:
+    sys.exit(2)" 2>/dev/null; then
+      ok "slug $RUNNER_LLM_MODEL 账户 1-token 实测可调（充值后不会白烧）"
+    else
+      warn "slug $RUNNER_LLM_MODEL 1-token 探测失败（error/超时）—— 充值后必白烧！换成本账户真实可用 slug（本账户实测仅 deepseek/deepseek-chat 可用）"
+    fi
   fi
 else
   warn "RUNNER_LLM_MODEL 未设置"
@@ -54,7 +74,6 @@ fi
 [ "${CTF_AIRGAP:-}" = "1" ] && ok "CTF_AIRGAP=1（判分只认零外网执行）" || warn "CTF_AIRGAP 未设成 1"
 
 # ---------- 4) key + 余额 ----------
-KEY_PATH=/home/user/.openrouter_key
 if [ -s "$KEY_PATH" ]; then ok "$KEY_PATH 存在且非空"; else warn "$KEY_PATH 不存在或为空"; fi
 
 total=""
