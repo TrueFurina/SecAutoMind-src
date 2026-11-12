@@ -9,7 +9,8 @@ import (
 // TestPySessionCtfCryptoInjected 验证 opt1 注入链路在**真实 Go 代码路径**下可用：
 // startSession 通过 embed 把 ctf_crypto.py 写入会话目录，bootstrap 完成
 // `import ctf_crypto` 进会话 globals G；本测试用真实会话进程 exec 一段探针，确认
-// 库函数可被模型代码直接调用（覆盖 opt1 的 modinv 与 opt2 的 idea/merkle）。
+// 库函数可被模型代码直接调用（覆盖 opt1 的 modinv、opt2 的 idea/merkle、
+// opt2b 的 BM/LFSR 与 lcg_rsa_solve 一键 LCG→RSA 保底链路）。
 //
 // 关键：这不是 Python 复刻验证，而是直接走 go:embed → 写会话目录 → python 进程
 // import 的真实链路。无 Python 时整体 Skip（与 py_session_test.go 同口径，不伪造绿）。
@@ -50,9 +51,53 @@ try:
     diag.append("bm_recovered=" + repr(bm_rec))
     diag.append("bm_recover_ok=" + str(bm_rec == bm_poly))
     diag.append("lfsr_shape_ok=" + str(len(bm_seq) == 12 and bm_seq[:4] == bm_init))
-    if bm_rec == bm_poly and len(bm_seq) == 12 and bm_seq[:4] == bm_init:
+    bm_ok = (bm_rec == bm_poly and len(bm_seq) == 12 and bm_seq[:4] == bm_init)
+    if bm_ok:
         diag.append("BM_OK")
-    diag.append("RESULT=CTF_CRYPTO_OK")
+    # R3 opt2b：lcg_rsa_solve 一键封装运行时闭环。
+    # least-common-genominator 类 free-win 的保底分全靠这一步调用；若 embed 的
+    # ctf_crypto.py 缺函数或签名漂移，batch2 会在最该拿分处 AttributeError。
+    # 合成小实例：M127 梅森素数作 LCG 模数（保证 lcg_recover_modulus 精确恢复），
+    # 从 6 个 dump 输出续推出 2 个 127-bit 素数作 RSA 因子，加密已知 flag
+    # 后交 lcg_rsa_solve 解密比对——锁住「函数存在 + 内部链路可用」。
+    lcg_m = (1 << 127) - 1
+    lcg_a = 6364136223846793005
+    lcg_c = 1442695040888963407
+    lcg_s = 123456789
+    lcg_dump = []
+    for _i in range(6):
+        lcg_s = (lcg_a * lcg_s + lcg_c) % lcg_m
+        lcg_dump.append(lcg_s)
+    lcg_pr = []
+    lcg_t = lcg_dump[-1]
+    lcg_it = 0
+    while len(lcg_pr) < 2 and lcg_it < 500000:
+        lcg_t = (lcg_a * lcg_t + lcg_c) % lcg_m
+        lcg_it += 1
+        if lcg_t.bit_length() == 127 and C.is_prime(lcg_t):
+            lcg_pr.append(lcg_t)
+    diag.append("lcg_primes=" + str(len(lcg_pr)))
+    lcg_ok = False
+    if len(lcg_pr) == 2:
+        lcg_n = lcg_pr[0] * lcg_pr[1]
+        lcg_phi = (lcg_pr[0] - 1) * (lcg_pr[1] - 1)
+        lcg_flag = b"CTF{lcg_mini_probe}"
+        lcg_mi = int.from_bytes(lcg_flag, "big")
+        lcg_e = None
+        for _cand in (65537, 3, 5, 17, 257):
+            if C._gcd(_cand, lcg_phi) == 1:
+                lcg_e = _cand
+                break
+        lcg_cti = pow(lcg_mi, lcg_e, lcg_n)
+        lcg_ctb = lcg_cti.to_bytes((lcg_cti.bit_length() + 7) // 8, "little")
+        lcg_got = C.lcg_rsa_solve(lcg_dump, lcg_n, lcg_e, lcg_ctb, n_primes=2, bits=127)
+        lcg_ok = (lcg_got == lcg_flag)
+    diag.append("lcg_solve_ok=" + str(lcg_ok))
+    if lcg_ok:
+        diag.append("LCG_RSA_OK")
+    # 两条不变量同时成立才放行：任一回退/漂移都必须让 CI 红，而不是静默降级。
+    if bm_ok and lcg_ok:
+        diag.append("RESULT=CTF_CRYPTO_OK")
 except Exception as ex:
     diag.append("EXC=" + repr(ex))
 print("DIAG " + " | ".join(diag))
