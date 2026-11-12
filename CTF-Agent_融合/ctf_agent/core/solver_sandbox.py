@@ -107,6 +107,16 @@ def cleanup() -> None:
 
 def _resolve_existing(p: str) -> Optional[str]:
     """把题库里的相对附件路径解析成真实存在的绝对路径（口径对齐 eval.corpus）。"""
+    p = str(p)
+    # 2026-11-12：`data/questions_external` 池的 42 个题目 JSON 里有 39 个把附件
+    # 路径写成 Windows 反斜杠（`data\questions_external\crypto\...\chal.sage`）。
+    # POSIX 上 `os.path.join(_CTF_ROOT, p)` 会把这整串当成**一个文件名** → 附件一律
+    # 「找不到」→ presolve 读不到附件，所有依赖附件的确定性链路静默返回 None。
+    # 实测后果：test_presolve_b1_wiring 的 9 条端到端用例全红，且表现与「求解器
+    # 不灵」完全一致，极易误归因为代码缺陷。这里统一按本平台分隔符归一；
+    # Windows 上 os.sep 就是 `\`，本行是空操作，行为不变。
+    if os.sep != "\\" and "\\" in p:
+        p = p.replace("\\", os.sep)
     if os.path.isabs(p):
         return p if os.path.exists(p) else None
     for cand in (os.path.join(_CTF_ROOT, p), p, os.path.join(os.path.dirname(_CTF_ROOT), p)):
