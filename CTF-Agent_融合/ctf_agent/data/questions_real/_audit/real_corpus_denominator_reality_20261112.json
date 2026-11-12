@@ -109,6 +109,24 @@
   "conclusion": "currently_reproducible = count_offline_verified() - LOST_PAYLOAD 中仍缺失的题数 = 14 - 5 = 9（_merge_gate.py:266）。这个 9 现在有了实物依据：它正好是「台账记了已验证」与「素材现在还在盘」这两个集合的交集。不是算术巧合。",
   "cross_check": "两个集合各自 14 条、交集 9 条、两侧独有各 5 条，14-5=9 与 14-5=9 双向自洽。"
  },
+ "fourth_layer_what_a_clean_checkout_can_run": {
+  "why_asked": "本机能跑不等于别人机器能跑。附件在盘但没进 git 的题，第三方 git clone 下来就缺文件。所以「第三方能不能复算」还要再量一层：这批能跑的题里，有几道是跟着仓库走的。",
+  "measured": {
+   "strictly_runnable_locally": 11,
+   "payload_not_in_vcs": 3,
+   "runnable_in_clean_checkout": 8,
+   "not_in_vcs_ids": ["10733", "real_reverse_upx", "real_web_gongye_web2"]
+  },
+  "why_each_is_out_of_vcs_and_by_whose_decision": {
+   "10733": "附件在 data/race_attachments/ 下，被 CTF-Agent_融合/ctf_agent/.gitignore:113 的 /data/* 排除——整个 data 目录按设计不入库。",
+   "real_reverse_upx": "被 .gitignore:164 单独指名排除（helloupx11 有 354048 字节）。",
+   "real_web_gongye_web2": "index.php 被 .gitignore:165 单独指名排除，原因是那份 871 字节的 index.php 里带明文 flag。"
+  },
+  "so_this_is_a_design_consequence_not_a_missing_commit": "三条都查过 git check-ignore -v，命中的全是仓库里写明的规则，没有一条是「本该提交却漏了」。git ls-files 也是 UNTRACKED。所以「干净检出少 3 道」是这些排除规则写的时候就定下的，不是事故。",
+  "consequence_for_third_party_recompute": "第三方把仓库 clone 下来、准备一份干净环境后，这 93 道里最多能跑 8 道。而 coverage_of_corpus=14/93=0.15054 里的 14 是本机口径——它包含了这 3 道不在库里的题。所以那个 0.15054 在别人的机器上算不出来，只有 8/93 才是一份干净检出能复现的分母。",
+  "what_the_eight_are": ["real_crypto_exciting_inverse", "real_crypto_ezrsa", "real_crypto_filterrandom", "real_crypto_simplelegendre", "real_crypto_specialcurve2", "real_reverse_sheng", "real_reverse_vnctf_cm1", "real_taishan2021_crypto_cgroup"],
+  "caveat_on_the_eight": "其中 real_reverse_vnctf_cm1 带 answer_leak、real_taishan2021_crypto_cgroup 带 no_truth，这两道虽然素材在库里、结构上能跑，但一道答案可见、一道没有可比真值，所以能「跑」不等于能「判分」。真正干净可判的还要再减这 2 道 → 6 道。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
