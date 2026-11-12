@@ -1081,7 +1081,13 @@ func (f *LLMFallback) buildSystemPrompt() string {
 - crypto: 优先 execute_python 调 ctf_sage_* 数学模板（t1 Coppersmith 小根 / t2 ECDSA-HNP /
   t3 截断 LFSR / t4 Boneh-Durfee / t5 DLP / t6 Håstad 广播）——先从题干提取数学参数
   （n/e/c/签名序列/输出序列）经 params 传入；模板返回 not_applicable = 前提不满足，
-  换攻击路或换模板。**当没有模板适用时，必须用 execute_python 编写并运行自定义解题脚本**
+  换攻击路或换模板。另外，以下常见题型在 ctf_crypto 中已有即用原语，遇到请直接调用、勿重写（完整签名见文末参考）：
+  LCG / 线性同余发生器（给定连续输出序列）→ lcg_recover_params / lcg_recover_modulus；
+  Merkle-Hellman 背包（超递增序列加密）→ mhk_decrypt；
+  IDEA 分组密码（密文+已知密钥）→ idea_decrypt_block；
+  RSA 小私钥/接近素数/同模数/共享因子/低指数广播 → rsa_wiener / rsa_fermat / rsa_common_modulus / rsa_common_factor / rsa_broadcast；
+  ECDSA 签名 nonce 重用 → 用 ECPoint + bsgs 解离散对数恢复私钥。
+  **当没有模板适用时，必须用 execute_python 编写并运行自定义解题脚本**
   （可直接调用 sage / sympy / pow / 现成库，**无需从零实现格基约化等底层原语**）：
   已注入 ctf_crypto 模块，可直接 import ctf_crypto as C 调用即用原语
   （RSA 攻击套件、ECC 点运算、AES/DES、纯 Python LLL、哈希识别、数论等，见文末
