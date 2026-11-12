@@ -1,0 +1,38 @@
+{
+ "kind": "full_pytest_failure_inventory",
+ "log": "/tmp/full_final4.log",
+ "run_at": "2026-11-12",
+ "host": "172.16.222.99",
+ "counts": {
+  "failed": 7,
+  "passed": 2332,
+  "skipped": 51,
+  "errors": 11,
+  "seconds": 1005.67
+ },
+ "failed": [
+  "tests/test_external_benchmark_and_health.py::TestHealthBaselineGate::test_disappeared_pool_is_regression",
+  "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv0-1]",
+  "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv1-1]",
+  "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv2-0]",
+  "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv3-0]",
+  "tests/test_release_export_policy.py::test_current_tracked_tree_passes_gate",
+  "tests/test_structure_guard.py::TestStructureGuardPaths::test_listing_is_repo_root_relative_from_subdir"
+ ],
+ "errors": [
+  "tests/test_readme_path_integrity.py::test_allowlist_entries_still_absent",
+  "tests/test_readme_path_integrity.py::test_code_span_base_is_ctf_agent_and_link_base_is_root",
+  "tests/test_readme_path_integrity.py::test_existing_glob_patterns_in_readme_are_accepted",
+  "tests/test_readme_path_integrity.py::test_glob_zero_match_is_violation",
+  "tests/test_readme_path_integrity.py::test_known_defects_are_still_broken",
+  "tests/test_readme_path_integrity.py::test_link_is_not_resolved_under_ctf_agent",
+  "tests/test_readme_path_integrity.py::test_mutation_adding_exclude_dir_flips_readme_to_red",
+  "tests/test_readme_path_integrity.py::test_mutation_excluded_real_path_must_be_flagged",
+  "tests/test_readme_path_integrity.py::test_mutation_nonexistent_path_must_be_flagged",
+  "tests/test_readme_path_integrity.py::test_no_dead_path_references[README.md]",
+  "tests/test_readme_path_integrity.py::test_no_dead_path_references[README.zh.md]"
+ ],
+ "single_root_cause": "部署目录 ~/sm_sbx_run/CTF-Agent_融合/ctf_agent 不是 git 仓库，且父目录 CTF-Agent_融合/.git 残缺（HEAD 缺失 / objects 不是目录 / refs 不是目录）⇒ git ls-files rc=128。7 failed 与 11 errors 全部由此派生，不是 18 个独立代码缺陷。",
+ "identical_to_prior_baseline": "与 /tmp/f3_failed.txt 做 comm -23 / -13 双向均为空：失败集合逐条相同。",
+ "why_kept_in_repo": "原证据只在服务器 /tmp，不随仓库分发；落进库内后，第三方才能核对「新增失败 = 0」这句话。"
+}

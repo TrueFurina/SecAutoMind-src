@@ -26,6 +26,21 @@
     "seconds": 1010.75,
     "subtests_passed": 40
   },
+  "after_recompute": {
+    "log": "/tmp/full_final4.log",
+    "run_at": "2026-11-12",
+    "failed": 7,
+    "passed": 2332,
+    "skipped": 51,
+    "errors": 11,
+    "seconds": 1005.67,
+    "failed_set_identical_to_after": true,
+    "failed_set_evidence": "/tmp/f4_failed.txt 与 /tmp/f3_failed.txt 做 comm -23 / -13，双向均为空",
+    "passed_delta_vs_after": 21,
+    "delta_explanation": "其中 20 例来自 tests/test_clean_rate_recompute.py（新增复算用例）；另 1 例未逐条定位——skip 数 51→51 未变，故不是 skip 转 passed，而 full_final3 未留节点级明细，无法进一步归因。此差异不改变结论：新增失败 = 0。",
+    "test_tree_snapshot": "全量启动时工作树为 afef4a2 时点（复算用例 20 例）；其后追加 3 例至 23 例已单独跑 pytest 验证 23 passed，未再跑第三次全量。",
+    "note": "与 after 的区别只在 passed：失败集合逐条相同。本条记录的是代码质量门禁状态，不是能力口径。"
+  },
   "delta": {
     "failed": -7,
     "passed": 12,
