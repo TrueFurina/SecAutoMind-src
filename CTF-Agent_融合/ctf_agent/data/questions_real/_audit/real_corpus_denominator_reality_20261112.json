@@ -57,6 +57,19 @@
   "why_the_two_numbers_coincide": "不是巧合，是因果：没有素材就验证不了，验证了的必然有素材。offline_verified 由 count_offline_verified() 扫台账状态行得到（_merge_gate.py:357），它数的是「记了验证通过的题」；而这些题必然落在有素材的那 14 道里。",
   "is_this_the_same_problem_as_the_heldout_five": "同构但不是同一个。heldout 那 5 道是「有素材声明、素材缺失」；这 79 道是「有素材声明、素材从未入库」。两者都是「分母里混进了不可能跑出来的题」，都会把 0/N 误读成能力不足。"
  },
+ "can_the_question_statement_alone_carry_it": {
+  "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
+  "measured": {
+   "description_length": {"min": 6, "median": 65, "max": 419},
+   "shorter_than_120_chars": 62,
+   "at_least_500_chars": 0,
+   "statement_contains_parameter_like_regex_hit": 2,
+   "by_category_median_length": {"crypto": 68, "misc": 54, "pwn": 60, "reverse": 308, "web": 121}
+  },
+  "conclusion": "79 道里没有任何一道题面长到 500 字符，最长只有 419；中位数 65。62 道短于 120 字符。题面里出现 n=/e=/c= 或大段十六进制这类参数样式的只有 2 道。所以可以说「至少 77 道题面不足以脱离附件独立成题」，但不能说「79 道全部不可解」——那 2 道没有排除。",
+  "what_is_not_proven": "没有逐题读 description 判断「这题读完题面能不能做」。长度是代理指标，不是判决。真要判，得人工读 79 段题面，或逐题实跑。",
+  "by_category_note": "misc 45 道中位 54 字符、crypto 15 道中位 68 字符——这两类占 60 道，几乎全是「给你一个文件」型题目，题面本身不可能包含解题信息。"
+ },
  "what_i_did_not_do": [
   "未改 real_corpus 的定义（它现在数的是题面 json 数，判据是 payload 含 category 与 flag_pattern，见 _kpi_canonical._counts_toward_corpus:134）。改分母定义属对外口径变更，按 AGENTS.md 第十条须用户拍板。",
   "未改 check_corpus_health 的 level 规则（payload_missing 判 broken 是有道理的：声明了素材却不在盘，确实不可复现）。",
