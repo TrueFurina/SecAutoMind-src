@@ -12,6 +12,8 @@
 #   5) 网络可达 openrouter.ai
 #   6) 源 ids 文件存在且非空
 #   7) （可选，默认开）对 1 个 id 做真·冒烟：确认真打通、用对模型、非全 SKIP
+#   8) （零额度，离线）LCG 附件物料坑预检：least-common-genominator 的 public.pem 须与
+#      dump/flag 同源一致且可端到端解密，否则 batch2 必白烧这道保底 free-win 分
 #
 # 用法：
 #   bash preflight.sh            # 含 1-id 冒烟（极少量额度，仅验证链路）
@@ -133,6 +135,25 @@ if [ "$SMOKE" = "1" ] && [ -x "./llmbench_withp0" ] && [ -s "$IDS_SRC" ]; then
   fi
 else
   echo "（跳过冒烟：--no-smoke 或 二进制/ids 不可用）"
+fi
+
+# ---------- 8) LCG 附件物料坑预检（离线，零额度） ----------
+# 目的：batch2 必拿的保底 free-win（least-common-genominator）依赖附件同源一致。
+# 一旦 dump/flag/pem 被改坏（不同实例），离线就解不出、且跑批也白烧。
+# 用 verify_lcg_attachment.py 做两段式校验：n 一致性 + 端到端解密 sha256 锚匹配。
+LCG_VERIFY=scripts/fire/verify_lcg_attachment.py
+if [ -f "$LCG_VERIFY" ] && command -v python3 >/dev/null 2>&1; then
+  python3 "$LCG_VERIFY" --sha-anchor 69981daf9abd >/tmp/lcg_verify.log 2>&1
+  rc=$?
+  if [ "$rc" = "0" ]; then
+    ok "LCG 附件物料自洽（free-win 可离线吃下，sha256 锚匹配）"
+  elif [ "$rc" = "1" ]; then
+    warn "LCG 附件物料损坏（n 与 dump 不一致 / 解密失败）—— 先修复 least-common-genominator 附件再跑 batch2！详情 /tmp/lcg_verify.log"
+  else
+    warn "LCG 物料预检异常（exit=$rc，可能 sympy 缺失/解析错误）—— 见 /tmp/lcg_verify.log"
+  fi
+else
+  warn "跳过 LCG 物料预检：$LCG_VERIFY 缺失或 python3 不可用"
 fi
 
 echo "=== preflight 汇总：通过 $PASS / 失败 $FAIL ==="
