@@ -1,0 +1,77 @@
+{
+ "kind": "platform_attachment_inventory/v1",
+ "run_at": "2026-11-13",
+ "where": "内网服务器 172.16.222.99（本机只做编排）",
+ "what_the_user_asked": "都放在服务器上，然后跑呗——把 E:/tmp_attach 那 1.73GB 素材整体搬上去，然后在服务器上真跑",
+ "what_was_moved": {
+  "race_area": "E:/tmp_attach/race/data/race_attachments -> /tmp/sm_plat_attach/，34 个文件",
+  "platform_area": "E:/tmp_attach/platform/data/attachments -> /tmp/sm_plat_attach_platform/attachments/，116 个文件",
+  "total": "150 个文件 / 1861690822 字节（约 1.73 GB）"
+ },
+ "how_it_was_verified_not_just_claimed": {
+  "race_bytes": "服务器 du -sb /tmp/sm_plat_attach = 1781123669，与本机 Measure-Object Length 求和逐字节相等",
+  "platform_bytes": "服务器 du -sb = 80567153，与本机相等",
+  "file_counts": "ls | wc -l = 34；find -type f | wc -l = 116",
+  "transfer": "按每批 6 个文件 scp，86.8s 完成，失败批 0；实测速率 24.1 MB/s",
+  "chinese_filenames": "10733_How_many_rot_are_there的附件.zip 与 10738_MirrorShield的附件.zip 先单独试传，RC=0，服务器端文件名完整无乱码",
+  "one_failure_that_was_real": "platform 首次 scp -r 报 realpath /tmp/sm_plat_attach_platform/: No such file + path canonicalization failed，RC=1；先 mkdir -p 再传，22.7s，RC=0"
+ },
+ "what_it_extracts_to": {
+  "target": "/tmp/sm_plat_extract/<题号>/",
+  "result": "33 组解出，合计 197540 个文件 / 3.40 GB，全部 ok，0 失败",
+  "why_33_not_28": "34 个顶层条目里有 4 个无题号的杂项（idol/inner/src-file 三个 zip + task_CRYPTO题源码.py 裸文件），按题号归组是 28 个 107xx，按条目是 33 组"
+ },
+ "what_these_questions_actually_are": {
+  "cms_source_audit": "10 道：10716 joomla-6.1.2 / 10717 wordpress-7.0.4 / 10718 drupal-11.4.5 / 10719 cmsms-2.2.23 / 10720 ghost-v6.57.1 / 10722 wordpress-7.0.1 / 10723 drupal-8.5.8 / 10724 ghost-v6.19.0 / 10725 cmsms-2.2.8 / 10794 joomla-4.0.0",
+  "middleware_source_audit": "10 道：10782 nginx-1.31.4 / 10783 httpd-2.4.68 / 10784 openlitespeed-1.9.2 / 10785 caddy-2.11.4 / 10786 openresty-1.31.1.1 / 10787 mysql-server-26.7.0 / 10788 postgresql-18.4 / 10789 mongo-r8.2.12 / 10790 redis-8.10.0 / 10791 ClickHouse-26.7.4.58",
+  "crypto": "4 道：10732 Yusa PKCS#1 / 10733 How_many_rot_are_there / 10735 logbool / 10741 QL_again",
+  "misc": "2 道：10734 MISC-01（解压后 428.9MB 单文件）/ 10793 成功男人背后的女人",
+  "pwn_or_reverse": "4 道：10736 what_heap / 10737 gogogo_3 / 10738 MirrorShield / 10739 NativeAOT_3",
+  "unnumbered": "3 个杂项包：idol.zip（flag.txt + idol.pyc）/ inner.zip 与 src-file.zip（同为 9 成员 96661B，疑似同一份）",
+  "scale_extremes": "最大三组：10787 59403 文件/1120.0MB、10791 67059 文件/771.1MB、10789 52097 文件/634.4MB"
+ },
+ "the_three_that_were_mislabelled_in_earlier_notes": {
+  "10787": "此前记作 REAL-16，实际解压后顶层是 mysql-server-mysql-26.7.0",
+  "10789": "此前记作 REAL-18，实际是 mongo-r8.2.12",
+  "10791": "此前记作 REAL-20，实际是 ClickHouse-26.7.4.58-stable",
+  "why_it_matters": "REAL-NN 只是 zip 文件名里的占位标签，不是题名；按真实顶层目录判题型才靠谱"
+ },
+ "is_the_flag_hidden_in_the_source": {
+  "method": "grep -rIl -E 'DASCTF{|flag{|FLAG{|ctf{' 扫 /tmp/sm_plat_extract 全树，只记文件名不读内容",
+  "hits": "23 个文件，分布 10787(17) / 10791(2) / 10789(2) / 10719(1) / 10725(1)",
+  "verdict": "全部是第三方库误报——jquery-ui.min.css、boost/container/adaptive_node_pool_impl.hpp、protobuf descriptor.cc、ClickHouse 的 FLAG_ 宏、mysql 的 key.h。没有一处是出题人植入的真 flag",
+  "consequence": "这批素材是题的输入（真实开源源码），不是题的答案；flag 在平台靶机上，不在这 1.73GB 里"
+ },
+ "so_can_they_be_run_without_the_platform": {
+  "answer": "不能跑出可判分结果",
+  "reason": "无题面（不知道要找哪个 CVE / 什么形态 flag）+ 无 flag_sha256（判不了分）+ flag 不在素材内（必须打下靶机才拿到）。三者缺一就只剩盲审源码，出不了可复算战绩",
+  "what_is_still_runnable": "部署源码 + 静态审计 + 找可疑点，能产出审计报告，但不能产出 通过/不通过"
+ },
+ "what_is_missing_to_really_run_them": {
+  "question_statements": "题库 data/questions_real 里只有 crypto/10733.json 一道 107xx 题面（889B）；其余 27 道无 description / flag_pattern / flag_sha256",
+  "platform_api": "GET https://ctf2.dasctf.com/api/v1/practice/<pid>/challenges/?page=1 与 /challenges/10733/ 均 HTTP=401，body {\"error\":{\"code\":\"AUTH_REQUIRED\"},\"success\":false}；裸站首页 HTTP=200",
+  "token": "CTF2_TOKEN 在进程环境 / User 级 / Machine 级都未设置；platform_ctf2.py 定义 TOKEN=os.environ.get(\"CTF2_TOKEN\",\"\")、API=https://ctf2.dasctf.com/api/v1，函数 fetch_challenges / fetch_challenge / download_attachment / submit_flag 齐全",
+  "local_cache": "全机扫 10700~10800 只命中 3 个题号的非题面记录：10732/10735 在 coverage_map.json（校验信息）、10733 在 purellm_clean_benchmark.manifest.json（排除规则）；tmp_attach 的 platform_archive/meta 只有 7 个 106xx 题面缓存，无 107xx"
+ },
+ "the_one_that_did_run_and_what_it_exposed": {
+  "command": "cd ~/sm_sbx_run/CTF-Agent_融合/ctf_agent && python3 run_single.py 10733",
+  "first_run": "EXIT=0，1.3s，FLAG None，ERROR wrong_direction；日志有 'presolve 命中（crypto_high_exponent）' 但紧跟 'sha256 与本题答案不符，丢弃'",
+  "root_cause": "agents/math_engine.py 的 _engine_high_exponent 按 ('rot18','rot13','flag') 取值，优先取 rot18。本题规范 flag 是 ROT13（只转字母、数字不动，见 scripts/verify_10733.py 的 canonical 判定），rot18 会把明文数字也 +5",
+  "measured_numbers": "4 个 Rabin 根里只有 1 个是 68 字节、100% 可打印、带 QNFPGS{ 前缀；明文数字是 9/6/6，rot13 给 9/6/6（真值），rot18 给 4/1/1（错值）",
+  "fix": "改按 ('flag','rot13','rot18') 取，skill 的 flag 字段本身已是权威解码值",
+  "after_fix": "同一命令 0.6s，日志 '[presolve] 10733 候选经 sha256 验真，仲裁直出'，FLAG 出",
+  "regression_on_server": "tests/test_10733_high_exponent_route.py 3 passed；tests/test_presolve_skill_wiring.py 4 passed 5 skipped；tests/test_skill_real_race_chain.py 3 passed 3 skipped",
+  "commit": "afe361a fix(ctf_agent): 高偶指数 presolve 取 flag 而非 rot18——10733 实跑 FLAG None 根因（1 file changed, +7 -2）"
+ },
+ "what_was_not_done": [
+  "没有拿 token，因此没有拉任何一道 107xx 的平台题面",
+  "没有部署任何一个 CMS / 中间件的靶机（无题面时部署了也不知道要找什么）",
+  "没有打开任何 writeup PDF、没有读 answers.json、没有打印任何 flag 或 flag_sha256 值",
+  "没有把 1.73GB 素材 / 3.40GB 解压物落进仓库 data 目录，仍在 /tmp（重启即失）"
+ ],
+ "boundary": {
+  "this_ledger_proves": "素材确实搬上去了、字节一致、能解开、结构清楚；以及 10733 那一道确实能真跑出 FLAG（修 bug 前后对照）",
+  "this_ledger_does_not_prove": "这批 28 道题里有多少能解——27 道没有题面，一道都没跑过；也不能据此把这批题写成新的能力分母"
+ },
+ "status": "素材搬运与解压已闭合；跑通了 1 道（10733，且修掉一个真 bug）；其余 27 道卡在平台题面，需 CTF2_TOKEN"
+}

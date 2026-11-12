@@ -1,0 +1,819 @@
+{
+ "generated_on": "server-172.16.222.99",
+ "source": "/tmp/sm_plat_extract",
+ "groups": [
+  {
+   "id": "10716",
+   "files": 1,
+   "bytes": 28957078,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "joomla-6.1.2-full-package.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10717",
+   "files": 1,
+   "bytes": 29551415,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "wordpress-7.0.4.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10718",
+   "files": 1,
+   "bytes": 23141994,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "drupal-11.4.5.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10719",
+   "files": 675,
+   "bytes": 9071998,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "installer"
+   ],
+   "entry_files": [
+    "installer/index.php"
+   ],
+   "top_ext": [
+    {
+     "ext": ".php",
+     "n": 402
+    },
+    {
+     "ext": ".tpl",
+     "n": 86
+    },
+    {
+     "ext": ".txt",
+     "n": 46
+    },
+    {
+     "ext": ".gz",
+     "n": 32
+    },
+    {
+     "ext": ".png",
+     "n": 29
+    }
+   ]
+  },
+  {
+   "id": "10720",
+   "files": 1,
+   "bytes": 31373350,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "ghost-v6.57.1.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10722",
+   "files": 1,
+   "bytes": 29666577,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "wordpress-7.0.1.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10723",
+   "files": 1,
+   "bytes": 15794648,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "drupal-8.5.8.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10724",
+   "files": 1,
+   "bytes": 30806525,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "ghost-v6.19.0.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10725",
+   "files": 310,
+   "bytes": 6952768,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "README.TXT",
+    "app",
+    "data",
+    "index.php",
+    "lib"
+   ],
+   "entry_files": [
+    "index.php"
+   ],
+   "top_ext": [
+    {
+     "ext": ".php",
+     "n": 205
+    },
+    {
+     "ext": ".txt",
+     "n": 26
+    },
+    {
+     "ext": ".gz",
+     "n": 21
+    },
+    {
+     "ext": ".png",
+     "n": 15
+    },
+    {
+     "ext": ".tpl",
+     "n": 13
+    }
+   ]
+  },
+  {
+   "id": "10732",
+   "files": 1,
+   "bytes": 9702130,
+   "kind": "crypto",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10733",
+   "files": 1,
+   "bytes": 1285,
+   "kind": "crypto",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".py",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10734",
+   "files": 1,
+   "bytes": 449750135,
+   "kind": "misc",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10735",
+   "files": 1,
+   "bytes": 16049220,
+   "kind": "crypto",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".pcapng",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10736",
+   "files": 1,
+   "bytes": 891609,
+   "kind": "pwn/reverse",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10737",
+   "files": 1,
+   "bytes": 920724,
+   "kind": "pwn/reverse",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10738",
+   "files": 1,
+   "bytes": 145016,
+   "kind": "pwn/reverse",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".apk",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10739",
+   "files": 1,
+   "bytes": 1819009,
+   "kind": "pwn/reverse",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".7z",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10741",
+   "files": 1,
+   "bytes": 19141185,
+   "kind": "crypto",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10782",
+   "files": 32,
+   "bytes": 7739750,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "nginx-1.31.4"
+   ],
+   "entry_files": [
+    "nginx-1.31.4/docs/README.md",
+    "nginx-1.31.4/contrib/README"
+   ],
+   "top_ext": [
+    {
+     "ext": "<noext>",
+     "n": 11
+    },
+    {
+     "ext": ".md",
+     "n": 5
+    },
+    {
+     "ext": ".vim",
+     "n": 4
+    },
+    {
+     "ext": ".license",
+     "n": 2
+    },
+    {
+     "ext": ".html",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "id": "10783",
+   "files": 3119,
+   "bytes": 43134994,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "httpd-2.4.68"
+   ],
+   "entry_files": [
+    "httpd-2.4.68/configure",
+    "httpd-2.4.68/CMakeLists.txt",
+    "httpd-2.4.68/README",
+    "httpd-2.4.68/modules/README",
+    "httpd-2.4.68/support/README"
+   ],
+   "top_ext": [
+    {
+     "ext": ".utf8",
+     "n": 433
+    },
+    {
+     "ext": ".c",
+     "n": 318
+    },
+    {
+     "ext": ".html",
+     "n": 260
+    },
+    {
+     "ext": ".en",
+     "n": 244
+    },
+    {
+     "ext": "<noext>",
+     "n": 177
+    }
+   ]
+  },
+  {
+   "id": "10784",
+   "files": 2055,
+   "bytes": 26886401,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "openlitespeed-1.9.2"
+   ],
+   "entry_files": [
+    "openlitespeed-1.9.2/configure",
+    "openlitespeed-1.9.2/README.md",
+    "openlitespeed-1.9.2/CMakeLists.txt",
+    "openlitespeed-1.9.2/support/CMakeLists.txt",
+    "openlitespeed-1.9.2/src/CMakeLists.txt"
+   ],
+   "top_ext": [
+    {
+     "ext": ".h",
+     "n": 516
+    },
+    {
+     "ext": ".cpp",
+     "n": 480
+    },
+    {
+     "ext": ".html",
+     "n": 350
+    },
+    {
+     "ext": ".php",
+     "n": 233
+    },
+    {
+     "ext": ".c",
+     "n": 115
+    }
+   ]
+  },
+  {
+   "id": "10785",
+   "files": 614,
+   "bytes": 3473051,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "caddy-2.11.4"
+   ],
+   "entry_files": [
+    "caddy-2.11.4/go.mod",
+    "caddy-2.11.4/README.md"
+   ],
+   "top_ext": [
+    {
+     "ext": ".go",
+     "n": 314
+    },
+    {
+     "ext": ".caddyfiletest",
+     "n": 221
+    },
+    {
+     "ext": ".txt",
+     "n": 36
+    },
+    {
+     "ext": ".yml",
+     "n": 15
+    },
+    {
+     "ext": "<noext>",
+     "n": 5
+    }
+   ]
+  },
+  {
+   "id": "10786",
+   "files": 3015,
+   "bytes": 33957721,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "openresty-1.31.1.1"
+   ],
+   "entry_files": [
+    "openresty-1.31.1.1/configure"
+   ],
+   "top_ext": [
+    {
+     "ext": ".t",
+     "n": 787
+    },
+    {
+     "ext": ".c",
+     "n": 577
+    },
+    {
+     "ext": ".h",
+     "n": 472
+    },
+    {
+     "ext": ".lua",
+     "n": 240
+    },
+    {
+     "ext": ".pod",
+     "n": 221
+    }
+   ]
+  },
+  {
+   "id": "10787",
+   "files": 59403,
+   "bytes": 1174378036,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "mysql-server-mysql-26.7.0"
+   ],
+   "entry_files": [
+    "mysql-server-mysql-26.7.0/CMakeLists.txt",
+    "mysql-server-mysql-26.7.0/README",
+    "mysql-server-mysql-26.7.0/libchangestreams/CMakeLists.txt",
+    "mysql-server-mysql-26.7.0/utilities/CMakeLists.txt",
+    "mysql-server-mysql-26.7.0/libservices/CMakeLists.txt"
+   ],
+   "top_ext": [
+    {
+     "ext": ".hpp",
+     "n": 15845
+    },
+    {
+     "ext": ".test",
+     "n": 9532
+    },
+    {
+     "ext": ".result",
+     "n": 9368
+    },
+    {
+     "ext": ".h",
+     "n": 6807
+    },
+    {
+     "ext": ".cc",
+     "n": 4776
+    }
+   ]
+  },
+  {
+   "id": "10788",
+   "files": 7265,
+   "bytes": 141082594,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "postgresql-18.4"
+   ],
+   "entry_files": [
+    "postgresql-18.4/configure",
+    "postgresql-18.4/README.md",
+    "postgresql-18.4/Makefile",
+    "postgresql-18.4/src/Makefile",
+    "postgresql-18.4/config/Makefile"
+   ],
+   "top_ext": [
+    {
+     "ext": ".c",
+     "n": 1488
+    },
+    {
+     "ext": ".h",
+     "n": 973
+    },
+    {
+     "ext": ".out",
+     "n": 815
+    },
+    {
+     "ext": ".sql",
+     "n": 806
+    },
+    {
+     "ext": "<noext>",
+     "n": 663
+    }
+   ]
+  },
+  {
+   "id": "10789",
+   "files": 52097,
+   "bytes": 665227091,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "mongo-r8.2.12"
+   ],
+   "entry_files": [
+    "mongo-r8.2.12/package.json",
+    "mongo-r8.2.12/README.md",
+    "mongo-r8.2.12/modules_poc/README.md",
+    "mongo-r8.2.12/buildfarm/README.md",
+    "mongo-r8.2.12/docs/README.md"
+   ],
+   "top_ext": [
+    {
+     "ext": ".h",
+     "n": 12159
+    },
+    {
+     "ext": ".hpp",
+     "n": 10162
+    },
+    {
+     "ext": ".cpp",
+     "n": 8535
+    },
+    {
+     "ext": ".js",
+     "n": 6887
+    },
+    {
+     "ext": ".c",
+     "n": 2825
+    }
+   ]
+  },
+  {
+   "id": "10790",
+   "files": 1858,
+   "bytes": 21519947,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "redis-8.10.0"
+   ],
+   "entry_files": [
+    "redis-8.10.0/README.md",
+    "redis-8.10.0/Makefile",
+    "redis-8.10.0/deps/README.md",
+    "redis-8.10.0/deps/Makefile",
+    "redis-8.10.0/modules/README.md"
+   ],
+   "top_ext": [
+    {
+     "ext": ".c",
+     "n": 474
+    },
+    {
+     "ext": ".json",
+     "n": 460
+    },
+    {
+     "ext": ".h",
+     "n": 312
+    },
+    {
+     "ext": ".tcl",
+     "n": 234
+    },
+    {
+     "ext": ".sh",
+     "n": 82
+    }
+   ]
+  },
+  {
+   "id": "10791",
+   "files": 67059,
+   "bytes": 808569345,
+   "kind": "中间件/服务源码审计",
+   "top_entries": [
+    "ClickHouse-26.7.4.58-stable"
+   ],
+   "entry_files": [
+    "ClickHouse-26.7.4.58-stable/README.md",
+    "ClickHouse-26.7.4.58-stable/CMakeLists.txt",
+    "ClickHouse-26.7.4.58-stable/base/README.md",
+    "ClickHouse-26.7.4.58-stable/base/CMakeLists.txt",
+    "ClickHouse-26.7.4.58-stable/programs/CMakeLists.txt"
+   ],
+   "top_ext": [
+    {
+     "ext": ".mdx",
+     "n": 19348
+    },
+    {
+     "ext": ".reference",
+     "n": 12764
+    },
+    {
+     "ext": ".sql",
+     "n": 9879
+    },
+    {
+     "ext": ".cpp",
+     "n": 5084
+    },
+    {
+     "ext": ".h",
+     "n": 4613
+    }
+   ]
+  },
+  {
+   "id": "10793",
+   "files": 1,
+   "bytes": 1898779,
+   "kind": "misc",
+   "top_entries": [
+    "tempdir"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".zip",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "10794",
+   "files": 1,
+   "bytes": 21490980,
+   "kind": "CMS 源码审计",
+   "top_entries": [
+    "joomla-4.0.0-full-package.tar.gz"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".gz",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "idol",
+   "files": 2,
+   "bytes": 3828,
+   "kind": "杂项",
+   "top_entries": [
+    "flag.txt",
+    "idol.pyc"
+   ],
+   "entry_files": [],
+   "top_ext": [
+    {
+     "ext": ".pyc",
+     "n": 1
+    },
+    {
+     "ext": ".txt",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "inner",
+   "files": 9,
+   "bytes": 96661,
+   "kind": "杂项",
+   "top_entries": [
+    "requirements.txt",
+    "src"
+   ],
+   "entry_files": [
+    "requirements.txt"
+   ],
+   "top_ext": [
+    {
+     "ext": ".html",
+     "n": 5
+    },
+    {
+     "ext": ".py",
+     "n": 2
+    },
+    {
+     "ext": ".txt",
+     "n": 1
+    },
+    {
+     "ext": ".js",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "src-file",
+   "files": 9,
+   "bytes": 96661,
+   "kind": "杂项",
+   "top_entries": [
+    "requirements.txt",
+    "src"
+   ],
+   "entry_files": [
+    "requirements.txt"
+   ],
+   "top_ext": [
+    {
+     "ext": ".html",
+     "n": 5
+    },
+    {
+     "ext": ".py",
+     "n": 2
+    },
+    {
+     "ext": ".txt",
+     "n": 1
+    },
+    {
+     "ext": ".js",
+     "n": 1
+    }
+   ]
+  }
+ ]
+}
