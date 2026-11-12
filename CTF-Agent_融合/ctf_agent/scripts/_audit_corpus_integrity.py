@@ -44,6 +44,13 @@ UUID_LIKE = re.compile(r"^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-
 HEX32 = re.compile(r"^[0-9a-fA-F]{32}$")
 KEY_NAMES = ("flag", "answer", "key", "pass", "secret")
 
+_QUESTION_MIN_KEYS = ("category", "flag_pattern")
+"""题目对象的最小字段契约（与 `_kpi_canonical._QUESTION_MIN_KEYS` 同源同值）。
+
+2026-11-12 实测：93 道真题 100% 具备，8 份审计台账 0% 具备。用于在 `_` 前缀目录里
+区分「审计台账/索引」和「真题目」——两者都是 dict，只能靠字段契约分开。
+"""
+
 
 def sha_hex(s: bytes) -> str:
     return hashlib.sha256(s).hexdigest()
@@ -318,6 +325,16 @@ def audit(root: Path, att_root: Path | None = None) -> dict:
             queue.append((fp, None, {"id": fp.stem, "file": str(fp), "level": "broken",
                                      "issues": [f"not_question_object:{type(q).__name__}"],
                                      "attachments": 0, "payload_on_disk": 0}))
+            continue
+        if _in_support_dir(fp, root) and not all(k in q for k in _QUESTION_MIN_KEYS):
+            # 2026-11-12 实证：`_audit/` 下的审计台账**是 dict**，只判 isinstance 会把
+            # 8 份台账当题 ⇒ questions_real total 93→101、broken 85→87，健康门禁误报
+            # 「坏题回归 +2」。与 `_kpi_canonical._counts_toward_corpus` 是同一根因
+            # （非题对象被当题），判据也统一到同一份题目字段契约。
+            #
+            # 为什么必须**同时**要求「在 `_` 前缀目录」：非 `_` 目录里缺字段的 json 可能是
+            # 真坏题，静默跳过会让 total 变小，反而伪造成「数据丢失」；只在 `_` 目录里
+            # 同时缺契约才判为支持文件。
             continue
         queue.append((fp, q, None))
 
