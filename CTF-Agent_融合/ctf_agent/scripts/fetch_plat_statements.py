@@ -7,12 +7,16 @@
   submit_flag 在线做。混进 data/questions_real 会让「离线可判分」的口径失真。
 
 用法：
-    export CTF2_TOKEN="<登录后从请求头取的 JWT>"
-    export CTF2_PRACTICE="<练习场 UUID>"
-    python scripts/fetch_plat_statements.py --ids 10716,10717,...  \
+    export CTF2_AGENT_TOKEN="<平台签发的 agent 令牌，69 字符 ctf2_ 前缀>"
+    export CTF2_PRACTICE="<练习场 UUID>"     # 可用 /api/open/v1/user/practice/ 列出
+    python scripts/fetch_plat_statements.py --ids <challenge-uuid,...>  \
         --out data/questions_plat --report /tmp/fetch_plat.json
 
 不传 --ids 则整场拉取（分页）。
+
+注意（2026-11-13 实测）：平台详情里的 description 对「从 BUUCTF 导入」的题是占位文本
+（形如 "Imported from BUUCTF/CTFd challenge #5491"），并非真题面。脚本照实落盘，
+不给占位文本编造 flag_pattern。
 
 只读题面，不提交、不写 flag。
 """
@@ -57,11 +61,15 @@ def normalize(detail: dict, cid: str) -> dict:
     desc = str(detail.get("description") or "")
     cat_raw = str(detail.get("category") or "").strip().lower()
     cat = _CAT_MAP.get(cat_raw, cat_raw or "misc")
+    # 实测 files[] 形如 {"file": {"original_name": ...}, "download_url": ...}，
+    # 不是 {"name": ...}；两种都兼容，免得平台改字段后又静默拿空列表。
     files = detail.get("files") or detail.get("attachment") or []
     names = []
     for f in files:
         if isinstance(f, dict):
-            n = f.get("name") or f.get("filename") or ""
+            inner = f.get("file") if isinstance(f.get("file"), dict) else {}
+            n = (f.get("name") or f.get("filename")
+                 or inner.get("original_name") or inner.get("name") or "")
             if n:
                 names.append(n)
         elif isinstance(f, str):
@@ -91,10 +99,12 @@ def main() -> int:
     ap.add_argument("--max-pages", type=int, default=40)
     a = ap.parse_args()
 
-    token = os.environ.get("CTF2_TOKEN", "")
+    # 令牌名以平台实际下发的 CTF2_AGENT_TOKEN 为准（CTF2_TOKEN 在本机三级都没设过）；
+    # api._token() 已做了「先 AGENT 再旧名」的回退。
+    token = api._token()
     pid = os.environ.get("CTF2_PRACTICE", "")
     if not token or not pid:
-        print("MISSING_ENV: 需要 CTF2_TOKEN 与 CTF2_PRACTICE", file=sys.stderr)
+        print("MISSING_ENV: 需要 CTF2_AGENT_TOKEN 与 CTF2_PRACTICE", file=sys.stderr)
         return 3
 
     # 1) 候选题号
