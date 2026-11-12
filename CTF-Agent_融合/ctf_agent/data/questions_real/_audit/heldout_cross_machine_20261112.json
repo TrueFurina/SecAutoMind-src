@@ -51,6 +51,22 @@
   "not_fixed_because": "改 kpi_canonical.json 的 statement 或移除 heldout_status 属于对外口径变更，按 AGENTS.md 第十条须用户拍板；且该文件是落盘产物，改动需同时确认生成侧（_kpi_canonical.canonical_kpi）与消费侧（_merge_gate.py 的 KPI 断言）不受影响，未做。",
   "suggested_handling_if_asked": "把 heldout_status 明确标注为「历史跑批快照（2026-09-22），非当前能力」，并让 statement 的「分母 5」与 asset_reality_check 的「0 可解」出现在同一句里，避免任一数字被单独引用。属方案 D 的一部分。"
  },
+ "answer_key_manifest_completeness": {
+  "when": "2026-11-12。0cf604b 那条测试证明的是「清单登了的必须是真的」（不撒谎），本次补另一半：「真的必须都登了」（不漏登）。两面合起来清单才算可信。",
+  "method": "对 data/questions_real 下全部 dict 型题面（93 道）逐题调 benchmark_heldout._has_plaintext_flag_in_source(q, qpath)，把命中集合与清单 entries 的键集合双向做差。",
+  "result": {
+   "scan_hits": 1,
+   "hit_ids": ["real_web_gongye_web2"],
+   "hit_by_category": {"web": 1},
+   "declared_ids": ["real_web_gongye_web2"],
+   "declared_but_not_hit": [],
+   "hit_but_not_declared": [],
+   "scan_returned_none": 0
+  },
+  "conclusion": "在本机能扫到的范围内，清单与实际一致，没有漏登记。",
+  "boundary_that_must_be_stated": "_has_plaintext_flag_in_source 带类别闸（只在 web/misc 类生效，reverse/crypto/pwn 一律放行返回 False）。所以本次只证明了「web/misc 类没漏登」。reverse/crypto/pwn 类如果真有附件内含明文答案的题，既不会被扫描命中、也不会被清单登记——但那类题里附件含 flag 字符串本身就是题目设计（要从二进制/密文里找出 flag），一律排除会把正常题误杀，所以类别闸是有意为之，不是缺口。",
+  "another_boundary": "扫描需要能读到附件。附件不在盘时（干净检出、尤其是被 .gitignore:165 排除的那类）扫描读不到，这正是必须靠清单的原因——所以「不漏登」这一面在干净检出里同样无法自证，只能靠本机这次的结果背书。"
+ },
  "kpi_file_not_in_git": {
   "when": "2026-11-12，跑 README 数字一致性检查时，脚本顺带重写了 data/results/kpi_canonical.json，于是去查它到底在不在版本控制里。",
   "finding": {
