@@ -51,6 +51,17 @@
   "not_fixed_because": "改 kpi_canonical.json 的 statement 或移除 heldout_status 属于对外口径变更，按 AGENTS.md 第十条须用户拍板；且该文件是落盘产物，改动需同时确认生成侧（_kpi_canonical.canonical_kpi）与消费侧（_merge_gate.py 的 KPI 断言）不受影响，未做。",
   "suggested_handling_if_asked": "把 heldout_status 明确标注为「历史跑批快照（2026-09-22），非当前能力」，并让 statement 的「分母 5」与 asset_reality_check 的「0 可解」出现在同一句里，避免任一数字被单独引用。属方案 D 的一部分。"
  },
+ "kpi_file_not_in_git": {
+  "when": "2026-11-12，跑 README 数字一致性检查时，脚本顺带重写了 data/results/kpi_canonical.json，于是去查它到底在不在版本控制里。",
+  "finding": {
+   "git_ls_files": "空（未被跟踪）",
+   "check_ignore": "CTF-Agent_融合/ctf_agent/.gitignore:113 的 /data/* 命中",
+   "consequence": "干净检出里没有这个文件。第三方拿到的仓库里，kpi_canonical.json 只存在于本机（以及任何跑过该脚本的机器）上。"
+  },
+  "what_it_means_for_reproducibility": "「落盘值 vs 现算值一致」这个校验只有本机能做；第三方只能现算 canonical_kpi()，没有落盘文件可对照。这不是缺陷——它由 /data/* 的整体排除策略决定（该目录下含 _attachments，公开仓不得含答案），但它必须被说出来，否则「六项与落盘一致」会被误读成「任何人都能复核那六项」。",
+  "as_of_drift_mechanism": "as_of 由 canonical_kpi() 在每次运行时写成当前 UTC 时间。所以任何一次调用（包括只是跑 README 检查）都会把 as_of 推到当下，而六项数字不变。这只解释时间戳的来源，不代表数字在动。2026-11-12 实测：跑检查前 as_of=2026-11-08T09:11:46Z，跑完变 2026-11-12T13:08:39Z，九项数值逐项比对差异 0。",
+  "boundary": "本次只核了 kpi_canonical.json 的跟踪状态与 as_of 刷新机制，未改动该文件内容，也未把它加进版本控制（那属于数据目录策略变更，需用户拍板）。"
+ },
  "pool_payload_reality": {
   "when": "2026-11-12，量化「heldout_runnable_pool 44 里到底几道真能跑」。",
   "measured": {
