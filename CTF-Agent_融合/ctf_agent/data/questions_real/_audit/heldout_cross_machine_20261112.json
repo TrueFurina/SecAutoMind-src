@@ -51,6 +51,35 @@
   "not_fixed_because": "改 kpi_canonical.json 的 statement 或移除 heldout_status 属于对外口径变更，按 AGENTS.md 第十条须用户拍板；且该文件是落盘产物，改动需同时确认生成侧（_kpi_canonical.canonical_kpi）与消费侧（_merge_gate.py 的 KPI 断言）不受影响，未做。",
   "suggested_handling_if_asked": "把 heldout_status 明确标注为「历史跑批快照（2026-09-22），非当前能力」，并让 statement 的「分母 5」与 asset_reality_check 的「0 可解」出现在同一句里，避免任一数字被单独引用。属方案 D 的一部分。"
  },
+ "pool_payload_reality": {
+  "when": "2026-11-12，量化「heldout_runnable_pool 44 里到底几道真能跑」。",
+  "measured": {
+   "pool_total": 44,
+   "payload_complete": 38,
+   "payload_missing": 6,
+   "cross_check_with_require_payload": "require_payload=True 得 38，与附件完整性统计一致（44-38=6）。"
+  },
+  "the_six_missing": [
+   {"id": "real_anxun2020_BeCare4", "missing": 1, "kind": "核心素材永久缺失（.md 从未入库）"},
+   {"id": "real_anxun2020_depressed", "missing": 1, "kind": "同上"},
+   {"id": "real_anxun2020_easyzip", "missing": 1, "kind": "同上"},
+   {"id": "real_anxun2020_love_letter", "missing": 1, "kind": "同上"},
+   {"id": "ext_gctf2024_otp", "missing": 286, "kind": "287 个附件里缺 286 个，实质全缺"},
+   {"id": "ext_gctf2025_numerology", "missing": 1, "kind": "缺的只是 __pycache__ 下的 .pyc（可再生），不是核心素材"}
+  ],
+  "true_unrunnable": {
+   "count": 5,
+   "ids": ["real_anxun2020_BeCare4", "real_anxun2020_depressed", "real_anxun2020_easyzip", "real_anxun2020_love_letter", "ext_gctf2024_otp"],
+   "note": "numerology 的 .pyc 缺失不影响可跑性，剔除它后为 5 道。"
+  },
+  "my_own_counting_error": {
+   "what_i_first_reported": 37,
+   "correct": 38,
+   "why": "第一次统计用了 benchmark_heldout._resolve_attachment，它要求 is_file()；而 ext_gctf2022_enigma 的两个附件（enigma、messages）是**目录**形态，_audit_corpus_integrity 的解析器明确把目录计入「载荷存在」（该文件第 248 行有 2026-10-26 的注释说明这个设计）。所以 2 个目录被我的脚本误判成缺失。",
+   "lesson": "同一个仓库里并存两套附件解析器：benchmark_heldout 自己的要 is_file()，_audit_corpus_integrity 的接受目录。两者对同一道题结论不同，统计时必须知道自己在用哪一套。"
+  },
+  "why_it_matters": "对外说「可跑池 44」时，实际能跑的是 38，其中 5 道是真缺核心素材。不把 44 与 38 的差别讲清楚，等于把 6 道注定跑不起来的题算成了备选能力。"
+ },
  "the_one_differing_question": {
   "id": "real_web_gongye_web2",
   "local_excluded_reason": "source-leaked-flag(sha256-in-attachment)",
