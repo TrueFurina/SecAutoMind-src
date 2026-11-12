@@ -1,0 +1,304 @@
+{
+  "batch": "full_pytest_baseline_after_tech_debt_sweep_20261112",
+  "kind": "code_quality_baseline_not_capability",
+  "generated_at": "2026-11-12T17:00+08:00",
+  "purpose": "技术债收口后（presolve RSA 裸数字行 / 附件反斜杠路径 / local_real_bench 前置自检）的全量 pytest 基线",
+  "host": {
+    "hostname": "ubantu",
+    "ip": "172.16.222.99",
+    "python": "~/sm_venv/bin/python (3.12.3)",
+    "workdir": "~/sm_sbx_run/CTF-Agent_融合/ctf_agent",
+    "note": "部署目录不是 git 仓库；父目录 CTF-Agent_融合/.git 是残缺目录（HEAD 缺失 / objects 非目录 / refs 非目录）"
+  },
+  "repo_commit_local": "ce9052e (local SecAutoMind @ feat/private-pool-v1-20261107，未推)",
+  "command": "~/sm_venv/bin/python -X utf8 -m pytest -q -p no:cacheprovider",
+  "runs": [
+    {
+      "stage": "before",
+      "log": "/tmp/full_tests.log",
+      "totals": {
+        "passed": 2270,
+        "failed": 27,
+        "skipped": null,
+        "errors": 11,
+        "duration_s": 590.78
+      }
+    },
+    {
+      "stage": "after_code_fixes",
+      "log": "/tmp/full_after.log",
+      "totals": {
+        "passed": 2299,
+        "failed": 16,
+        "skipped": 48,
+        "errors": 11,
+        "duration_s": 1008.05
+      }
+    },
+    {
+      "stage": "final",
+      "log": "/tmp/full_final.log",
+      "totals": {
+        "passed": 2299,
+        "failed": 14,
+        "skipped": 50,
+        "errors": 11,
+        "subtests_passed": 40,
+        "duration_s": 1012.84
+      }
+    }
+  ],
+  "delta": {
+    "failed": "-13（27 → 14）",
+    "passed": "+29（2270 → 2299）",
+    "errors": "0（11 → 11，全部集中 tests/test_readme_path_integrity.py）",
+    "passed_breakdown": "未拆解：+29 里 11 条是三类修复转绿（presolve 接线 + 附件路径），余下增量未逐条核实"
+  },
+  "fixed_this_round": {
+    "failed_to_pass": [
+      "tests/test_crypto_primes.py::test_presolve_path_solves_real_problem",
+      "tests/test_presolve_b1_wiring.py::test_presolve_cycling_solves_real_problem",
+      "tests/test_presolve_b1_wiring.py::test_presolve_david_tree_solves_real_problem_via_main_entry",
+      "tests/test_presolve_b1_wiring.py::test_presolve_emcls_solves_real_problem",
+      "tests/test_presolve_b1_wiring.py::test_presolve_enigma_solves_real_problem_via_main_entry",
+      "tests/test_presolve_b1_wiring.py::test_presolve_h1_solves_real_problem_via_main_entry",
+      "tests/test_presolve_b1_wiring.py::test_presolve_lcg_solves_real_problem",
+      "tests/test_presolve_b1_wiring.py::test_presolve_main_entry_bypasses_wrong_flag_pattern",
+      "tests/test_presolve_b1_wiring.py::test_presolve_mhk2_solves_real_problem",
+      "tests/test_presolve_b1_wiring.py::test_presolve_papapapa_solves_real_problem_via_main_entry",
+      "tests/test_presolve_b1_wiring.py::test_presolve_primes_solves_real_problem"
+    ],
+    "failed_to_skip": [
+      "tests/test_local_real_bench.py::test_artifacts_build_and_recall",
+      "tests/test_local_real_bench.py::test_packed_artifact_is_actually_hidden"
+    ],
+    "count": 13,
+    "evidence": "comm -23 /tmp/f_before.txt /tmp/f_final.txt 得 13 条；comm -13 得空（无新增失败）"
+  },
+  "new_failures": [],
+  "failure_classes": {
+    "git_metadata_unusable": {
+      "count": 18,
+      "failed_count": 7,
+      "error_count": 11,
+      "detail": "7 failed + 11 errors",
+      "mechanism": "服务器部署目录及其父目录的 .git 不可用（parent .git 残缺、ctf_agent 内 ls-files rc=128），所有以 git 为基线来源的门禁一律 fail-closed",
+      "is_code_defect": false,
+      "is_environment": true,
+      "fixable_in_repo": false,
+      "note": "要消掉只能在有 git 的历史检出里跑（本机工作树），或给部署目录配一个有效 .git"
+    },
+    "readme_kpi_drift": {
+      "count": 4,
+      "failed_count": 4,
+      "detail": "readme/kpi 口径漂移",
+      "mechanism": "README.zh.md 与 kpi_canonical.json 写死数字落后于机器真值（skills 78 vs 85、real_corpus 93 vs 98），另 heldout_pool_delta 未逐题登记（5 vs 1）、融合留存说明未指明正本",
+      "is_code_defect": false,
+      "is_environment": false,
+      "fixable_in_repo": true,
+      "note": "按 AGENTS 第二条纪律：只在发布节点刷数字，代码还在改时刷了很快又漂；本次刻意不刷"
+    },
+    "ruff_scans_vendored_attachment": {
+      "count": 1,
+      "failed_count": 1,
+      "detail": "ruff F821/F811 扫到第三方库附件",
+      "mechanism": "data/race_attachments/10732_.../Crypto/ 是 pycryptodome 副本（含 py2 兼容分支 long/xrange/unicode/basestring），被当成本仓代码扫描",
+      "is_code_defect": false,
+      "is_environment": false,
+      "fixable_in_repo": true,
+      "note": "修法应是 ruff 排除该目录或加 noqa，不是改第三方库代码；本次未动"
+    },
+    "rea_node_absent": {
+      "count": 1,
+      "failed_count": 1,
+      "detail": "宿主 REA node 缺失",
+      "mechanism": "~/sm_venv 环境 node 不在 PATH、REA_NODE 未设；容器 ctf-tools:2 内 node v20.19.2 可用",
+      "is_code_defect": false,
+      "is_environment": true,
+      "fixable_in_repo": true,
+      "note": "设 REA_NODE 指向容器内外可用 node 即可转绿；不影响解题（解题在容器内跑）"
+    },
+    "aggregate_gate_mixed": {
+      "count": 1,
+      "failed_count": 1,
+      "detail": "聚合门禁同时挂 static 与 health 两分支",
+      "mechanism": "见 per_failure，static 分支同 CLASS_C，health 分支报坏题 +2",
+      "is_code_defect": false,
+      "is_environment": false,
+      "fixable_in_repo": true,
+      "note": "该条是汇总断言，单独修它的两个分支即可"
+    }
+  },
+  "per_failure": [
+    {
+      "test": "tests/test_external_benchmark_and_health.py::TestHealthBaselineGate::test_disappeared_pool_is_regression",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "check_corpus_health.compare 用 scripts/check_corpus_health.py:99 的 git ls-files 判「池是否入过库」；当前目录 ls-files rc=128，判不出「从没入库」，于是把虚构池 questions_zzz_never_in_vcs 也读成「入库后消失」→ 回归",
+      "evidence": "AssertionError: ['questions_zzz_never_in_vcs: 池消失（曾有 11 题）'] != []，且 local_only_pools=[]"
+    },
+    {
+      "test": "tests/test_external_unseen_source.py::test_elf_hint_fires_on_real_payload",
+      "cause_class": "rea_node_absent",
+      "mechanism": "宿主 ~/sm_venv 环境里 node 不在 PATH、REA_NODE 未设，rea_probe 直接输出「REA 不可用」而不是「升级提示」；容器内 node v20.19.2 是有的，这是宿主环境缺 node，不是代码缺陷",
+      "evidence": "assert '升级提示' in \"[rea_probe] REA 不可用：node 不存在: （设 REA_NODE）（not_applicable，勿当作'分析干净'）\""
+    },
+    {
+      "test": "tests/test_kpi_canonical_no_hardcoded.py::TestCanonicalSelfConsistency::test_canonical_json_regenerated_is_consistent",
+      "cause_class": "readme_kpi_drift",
+      "mechanism": "落盘产物 kpi_canonical.json 记 real_corpus=93，当前机器真值 98（题库增题后未刷数字）",
+      "evidence": "AssertionError: 98 != 93 : real_corpus：落盘产物(93) ≠ 当前机器值(98)"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_forked_front_readme_is_declared",
+      "cause_class": "readme_kpi_drift",
+      "mechanism": "融合留存说明（CTF-Agent_融合根目录）没有指明文档正本为 README.zh.md",
+      "evidence": "AssertionError: 留存说明必须指明文档正本（README.zh.md）"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_heldout_pool_matches_machine_denominator",
+      "cause_class": "readme_kpi_drift",
+      "mechanism": "报告池数 2 − desc_leak 1 + 已登记可验证题 0 = 1，但能力分母是 5；heldout_pool_delta.json 未逐题登记",
+      "evidence": "AssertionError: 报告池数 2 − desc_leak 1 + 已登记可验证题 0 = 1，但能力分母是 5（分歧 -3）；assert 5 == 1"
+    },
+    {
+      "test": "tests/test_kpi_canonical.py::test_readme_counts_green_on_live_repo",
+      "cause_class": "readme_kpi_drift",
+      "mechanism": "README.zh.md 有三处写死 skills=78 而机器真值 85；一处写死 real_corpus=93 而真值 98",
+      "evidence": "AssertionError: README 计数漂移：skills（架构树）/（解题链路）/（确定性优先）声明 78，真值 85；real_corpus（全集分母）声明 93，真值 98"
+    },
+    {
+      "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv0-1]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "mg.main() 第一步跑「⓪ 仓库健康门禁 L0」；父目录 CTF-Agent_融合/.git 是残缺目录 → L0 fail-closed → 返回 1",
+      "evidence": "❌ L0[HEAD] HEAD 缺失或为空 / ❌ L0[objects] objects/ 不是目录 / ❌ L0[refs] refs/ 不是目录 / ❌ 仓库健康门禁 L0 未过"
+    },
+    {
+      "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv1-1]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "同上（--merge-context 分支同样被 L0 前置拦下）",
+      "evidence": "同上"
+    },
+    {
+      "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv2-0]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "同上（--kpi-only 分支同样被 L0 前置拦下）",
+      "evidence": "同上"
+    },
+    {
+      "test": "tests/test_merge_gate_merge_context.py::test_merge_context_does_not_relax_other_gates[argv3-0]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "同上（--kpi-only --merge-context 分支同样被 L0 前置拦下）",
+      "evidence": "同上"
+    },
+    {
+      "test": "tests/test_release_export_policy.py::test_current_tracked_tree_passes_gate",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "release_export.py:350 以 git ls-files 取「当前跟踪树」；ls-files rc=128 → 脚本判「不在 git 仓库内」exit 1",
+      "evidence": "❌ 不在 git 仓库内: fatal: 不是 git 仓库（或者任何父目录）：.git"
+    },
+    {
+      "test": "tests/test_run_all_gates.py::TestExitCodes::test_passes_now",
+      "cause_class": "aggregate_gate_mixed",
+      "mechanism": "聚合门禁同时挂两个分支：static 分支命中 ruff F821/F811（同 CLASS_C）+ health 分支报 questions_real 坏题 85→87",
+      "evidence": "static: data/race_attachments/10732_.../Crypto/Util/py3compat.pyi:21:18 F821 Undefined name `xrange`；skills/source_audit_patterns.py:25:8 F401 `os` imported but unused；health: ❌ 回归: questions_real 坏题 85 → 87（+2）",
+      "partial_unverified": "health 分支的「坏题 +2」来源未核实（可能是并行会话对 manifest/answer_key_filter 的改动，本会话未触碰）"
+    },
+    {
+      "test": "tests/test_static_name_integrity.py::test_ruff_f821_f811_clean",
+      "cause_class": "ruff_scans_vendored_attachment",
+      "mechanism": "全仓 ruff F821/F811 扫到 data/race_attachments/10732_Yusa的密码学课堂——PKCS#1的附件/ 里的第三方 Crypto 库副本（15 处）",
+      "evidence": "F821 Undefined name `xrange` / `long` / `unicode` / `basestring` / `self` / `plaintext` / `_OID_HMAC_SHA512`；F811 Redefinition of unused ..."
+    },
+    {
+      "test": "tests/test_structure_guard.py::TestStructureGuardPaths::test_listing_is_repo_root_relative_from_subdir",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "scripts/_structure_guard.py:92 的 all_tracked_and_untracked() 依赖 git ls-files --full-name；rc=128 时列举为空",
+      "evidence": "AssertionError: [] is not true : 列举漏掉了受跟踪的台账——--full-name 行为不对"
+    }
+  ],
+  "per_error": [
+    {
+      "test": "tests/test_readme_path_integrity.py::test_allowlist_entries_still_absent",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_code_span_base_is_ctf_agent_and_link_base_is_root",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_existing_glob_patterns_in_readme_are_accepted",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_glob_zero_match_is_violation",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_known_defects_are_still_broken",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_link_is_not_resolved_under_ctf_agent",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_mutation_adding_exclude_dir_flips_readme_to_red",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_mutation_excluded_real_path_must_be_flagged",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_mutation_nonexistent_path_must_be_flagged",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_no_dead_path_references[README.md]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    },
+    {
+      "test": "tests/test_readme_path_integrity.py::test_no_dead_path_references[README.zh.md]",
+      "cause_class": "git_metadata_unusable",
+      "mechanism": "用例 fixture 先跑 git ls-files 取跟踪树；rc=128 直接抛 AssertionError（fail-closed，不静默通过）",
+      "evidence": "AssertionError: git ls-files 失败（fail-closed，不得静默通过）: fatal: 不是 git 仓库 … assert 128 == 0"
+    }
+  ],
+  "unverified": [
+    "tests/test_run_all_gates.py 的 health 分支「questions_real 坏题 85 → 87（+2）」来源未核实：本会话未触碰 benchmarks/local_real/manifest.json 与 core/answer_key_filter.py（工作树里有并行会话的改动），不作因果断言",
+    "passed 从 2270 到 2299 的 +29 构成未逐条拆解（已拆出的只有 11 条失败转绿）"
+  ],
+  "boundary": {
+    "do_not_quote_as": [
+      "这不是战绩：全量测试数字只说明代码质量与工程一致性，与 47 道池 4/34 = 11.76% 的解出率无因果关系",
+      "不能用来推断解题能力提升：13 条转绿全部来自「接线/路径/自检」类修复，未新增任何求解能力",
+      "14 failed + 11 errors 中 0 条归因到本会话代码改动；全部落在 git 元数据、口径漂移、第三方库扫描、宿主 node 缺失四类"
+    ],
+    "caliber_unchanged": "clean_rate = 4/34 = 11.76%（1 轮实测）；前缀补齐后的 5/34 = 14.71% 仍是预测值，台账 measured_after_fix=null",
+    "reproduce": [
+      "cd ~/sm_sbx_run/CTF-Agent_融合/ctf_agent",
+      "~/sm_venv/bin/python -X utf8 -m pytest -q -p no:cacheprovider > /tmp/full_x.log 2>&1; echo RC=$?",
+      "grep -E '^FAILED' /tmp/full_x.log | sed 's/ - .*//' | sort"
+    ]
+  }
+}
