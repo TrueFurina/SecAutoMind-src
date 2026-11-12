@@ -1,0 +1,33 @@
+{
+ "kind": "cybench_question_count_reconciled",
+ "run_at": "2026-11-12",
+ "why": "长期挂着一条未核实的说法：「questions_ext_cybench 今日 11 道 vs 2026-10-01 的 13 道，差 2 道未核实」。本轮把它查到底——结论是这道差值根本不是题数差。",
+ "method": {
+  "step1": "递归数 data/questions_ext_cybench/**/*.json → 11",
+  "step2": "git ls-files -- data/questions_ext_cybench 过滤 .json → 11，双向差集为空",
+  "step3": "数 data/questions_ext_cybench/_attachments/<category>/<题名>/ 的题目录 → 13",
+  "step4": "逐目录比对「目录名 vs 题面 json stem」",
+  "pitfall_recorded": "第一次统计用了非递归 glob('*.json')，在顶层得到 0 —— 因为题面 json 按 category 放在 crypto/ forensics/ rev/ 子目录里。0 是统计口径错（漏了子目录），不是文件丢失。这是本项目「度量工具自己骗人」的又一例，记在此处。"
+ },
+ "result": {
+  "question_json_count": 11,
+  "attachment_dir_count": 13,
+  "by_category": {"crypto": 5, "forensics": 3, "rev": 3},
+  "git_tracked_json_count": 11,
+  "tracked_missing_on_disk": [],
+  "on_disk_untracked": [],
+  "attachment_dir_without_question_json": [
+   "hackthebox_cyber_apocalypse_2024_crypto_very_easy_primary_knowledge",
+   "hackthebox_cyber_apocalypse_2024_reversing_very_easy_lootstash"
+  ],
+  "question_json_without_attachment_dir": []
+ },
+ "conclusion": "13 与 11 不是两批题，是同一批题的两个计数口径：13 = 附件题目录数，11 = 题面 json 数。差的 2 道是「只有附件素材、从未建题面 json」的半成品，无法作为题加载，因此既不构成能力分母，也不影响 heldout_runnable_pool 或 real_corpus 的任何数字。11 道正式题题面与附件一一对应，无缺失。",
+ "git_history": {
+  "only_commit": "c7289ec（2026-11-04 题库纳入版本库）",
+  "added_json": 11,
+  "ever_had_13": false,
+  "note": "git log --all --diff-filter=D 对该目录返回空，即从未有 json 被删除。所以「曾经 13 道后来丢了 2 道」这个假设不成立，无需追查丢失。"
+ },
+ "boundary": "只核对了文件层面的存在与对应关系，未判断那 2 道半成品是否值得补建题面（补建需要题面 description、flag_pattern、flag_sha256，而这些需要上游来源或人工撰写，属新增内容不在本次核实范围）。未核对 2026-10-01 当时的原始统计脚本用的是哪种口径——那个口径的来源已无从考证，故本文件只陈述当前可复算的事实。"
+}
