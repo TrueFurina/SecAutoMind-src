@@ -20,7 +20,24 @@
   "tests": "tests/test_heldout_declared_answer_key.py 7 例（含 3 个变异，其中核心用例把 _has_plaintext_flag_in_source 桩成 False 模拟干净检出）；连跑 test_kpi_canonical / test_external_benchmark_and_health / test_clean_rate_recompute 共 69 passed / 29.52s，RC=0。",
   "what_this_does_not_fix": "只消除「同一 commit 在两台机器上算出的数字不同」。分母本身不可用（5 道 0 可解）未解决，属方案 D，待拍板。稳定地错仍是错。"
  },
- "coexisting_denominators_in_kpi_file": {
+ "desc_leak_snapshot_staleness_check": {
+  "when": "2026-11-12，在核对「是否还有别的『人工/历史真值源与动态判据可能不一致』的同类问题时做的。",
+  "the_concern": "heldout_evidence/leak_provenance_real92_v3_20261001.json 是 2026-10-01 对 real92 全池的快照，而当前语料是 93 道。benchmark_heldout.py 里那段注释明确写着「real 语料变更后须重跑 _leak_provenance.py 刷新，否则 bare-token 类 desc_leak 可能漏检」。所以这是一处有自我声明的过期风险。",
+  "method": {
+   "snapshot_side": "读 LEAK_PROVENANCE_MANIFEST 的 rows（92 条）与 summary（computed 12 / att_leak 77 / desc_leak 1 / unsolved 2），取 desc_leak_ids() = ['real_crypto_dnui_keyboard']",
+   "dynamic_side": "对 data/questions_real 下全部 json 逐题调 benchmark_heldout._is_desc_leak(q, qid)，只统计 dict 型题面（跳过 _hygiene_manifest.json，它是 list）",
+   "compare": "两侧集合双向做差"
+  },
+  "result": {
+   "snapshot_desc_leak_count": 1,
+   "dynamic_desc_leak_count": 1,
+   "dynamic_not_in_snapshot": [],
+   "snapshot_not_in_dynamic": [],
+   "verdict": "当前语料没有出现快照未覆盖的 desc_leak，快照可用。"
+  },
+  "why_it_still_prints_a_warning_in_other_runs": "同目录那句注释说的风险是真实存在的（换语料或换 bare-token 形态就可能漏），只是本轮实测恰好没漏。所以这段注释不应删——它是正确的过期提醒，不是错的描述。",
+  "boundary": "只验证了 desc_leak 这一档。att_leak 档（77 道）未逐题复核，因为它不参与 select_candidates 的剔除（排除链故意不收 att_leak，见 benchmark_heldout.py 注释：该档含大量「挑战文件内嵌 flag」的误判）。"
+ },
   "when": "2026-11-12 核对 data/results/kpi_canonical.json 的落盘值是否仍与现算一致时发现。",
   "on_disk_matches_recompute": "六项全部一致（real_corpus 93 / offline_verified 14 / coverage_of_corpus 0.15054 / skills 85 / heldout_candidates 5 / heldout_runnable_pool 44），差异项 0。文件 as_of=2026-11-08T09:11:46Z。",
   "the_problem": "同一个文件里并存两个互不相容的能力分母，且都不是当前可测的能力。",
