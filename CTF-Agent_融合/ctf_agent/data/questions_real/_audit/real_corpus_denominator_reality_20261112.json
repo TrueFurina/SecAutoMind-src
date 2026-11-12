@@ -57,6 +57,37 @@
   "why_the_two_numbers_coincide": "不是巧合，是因果：没有素材就验证不了，验证了的必然有素材。offline_verified 由 count_offline_verified() 扫台账状态行得到（_merge_gate.py:357），它数的是「记了验证通过的题」；而这些题必然落在有素材的那 14 道里。",
   "is_this_the_same_problem_as_the_heldout_five": "同构但不是同一个。heldout 那 5 道是「有素材声明、素材缺失」；这 79 道是「有素材声明、素材从未入库」。两者都是「分母里混进了不可能跑出来的题」，都会把 0/N 误读成能力不足。"
  },
+ "the_two_fourteens_and_why_they_intersect_at_nine": {
+  "why_asked": "「14 道有素材」和「14 道标了 offline_verified」数值相同，但数字相同不代表是同一批。逐 id 比一遍才知道 currently_reproducible=9 到底有没有实物依据。",
+  "ledger_14_ids": [
+   "real_crypto_specialcurve2", "10733", "real_misc_vnctf_flag", "real_crypto_anwang_crypto1",
+   "real_crypto_ezrsa", "real_crypto_simplelegendre", "real_crypto_ezmult", "real_misc_xuanhun_signin",
+   "real_crypto_exciting_inverse", "real_crypto_filterrandom", "real_crypto_qiangwang_classic",
+   "real_reverse_sheng", "real_reverse_upx", "real_reverse_vnctf_cm1"
+  ],
+  "on_disk_14_ids": [
+   "10733", "real_crypto_anxun2020_aes", "real_crypto_exciting_inverse", "real_crypto_ezrsa",
+   "real_crypto_filterrandom", "real_crypto_simplelegendre", "real_crypto_specialcurve2",
+   "real_taishan2021_crypto_cgroup", "real_misc_longjian2024_smallsword3", "real_reverse_js",
+   "real_reverse_sheng", "real_reverse_upx", "real_reverse_vnctf_cm1", "real_web_gongye_web2"
+  ],
+  "intersection": [
+   "10733", "real_crypto_exciting_inverse", "real_crypto_ezrsa", "real_crypto_filterrandom",
+   "real_crypto_simplelegendre", "real_crypto_specialcurve2", "real_reverse_sheng",
+   "real_reverse_upx", "real_reverse_vnctf_cm1"
+  ],
+  "intersection_count": 9,
+  "ledger_only_5": {
+   "ids": ["real_crypto_anwang_crypto1", "real_crypto_ezmult", "real_crypto_qiangwang_classic", "real_misc_xuanhun_signin", "real_misc_vnctf_flag"],
+   "explain": "这 5 道与 _merge_gate.py:234 的 LOST_PAYLOAD 逐条相同——2026-10-12 数据丢失事件里素材丢掉的正好是这 5 道。所以台账还记着它们已验证过，但素材已经不在盘上。"
+  },
+  "on_disk_only_5": {
+   "ids": ["real_crypto_anxun2020_aes", "real_taishan2021_crypto_cgroup", "real_misc_longjian2024_smallsword3", "real_reverse_js", "real_web_gongye_web2"],
+   "explain": "这 5 道素材在盘，但台账没把它们记成 offline_verified，各有原因：anxun2020_aes 与 longjian_smallsword3 带 answer_key_only+answer_leak（按收录边界是 C/D 类，不计入）；gongye_web2 带 answer_leak；taishan2021_crypto_cgroup 是 no_truth（题面没有可比的真值，验证不了）；real_reverse_js 是 held-out 池成员，进了 offline_verified 就等于把未见题拿去当已验证，会污染口径。"
+  },
+  "conclusion": "currently_reproducible = count_offline_verified() - LOST_PAYLOAD 中仍缺失的题数 = 14 - 5 = 9（_merge_gate.py:266）。这个 9 现在有了实物依据：它正好是「台账记了已验证」与「素材现在还在盘」这两个集合的交集。不是算术巧合。",
+  "cross_check": "两个集合各自 14 条、交集 9 条、两侧独有各 5 条，14-5=9 与 14-5=9 双向自洽。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
