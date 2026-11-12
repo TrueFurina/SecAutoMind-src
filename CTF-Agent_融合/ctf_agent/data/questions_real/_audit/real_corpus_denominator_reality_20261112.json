@@ -142,6 +142,18 @@
    "what_this_means_for_external_claims": "能对着第三方说「这个数你也能算出来」的只有 clean_rate=0.1176；coverage_of_corpus=0.15054 只能配一句「在本机加上 5 道不入库的附件后算出」。"
   }
  },
+ "the_other_pools_are_healthy_so_this_is_not_systemic": {
+  "why_asked": "只有 93 道真题池有 79 道缺素材，会不会是「整个题库都靠不住」？必须把另外几个池一起审一遍才知道这是局部问题还是系统问题。",
+  "measured": {
+   "questions_external": {"n": 39, "ok": 39, "leaky": 0, "broken": 0, "payload_missing": 0, "by_issue": {}},
+   "questions_ext": {"n": 34, "ok": 33, "leaky": 0, "broken": 1, "payload_missing": 0, "by_issue": {"payload_not_in_vcs": 1, "answer_leak": 1}},
+   "questions_ext_cybench": {"n": 11, "ok": 11, "leaky": 0, "broken": 0, "payload_missing": 0, "by_issue": {}},
+   "questions_ext_L2_pure_reasoning": {"n": 2, "ok": 2, "leaky": 0, "broken": 0, "payload_missing": 0, "by_issue": {}}
+  },
+  "conclusion": "另外 86 道题（39+34+11+2）里 payload_missing 是 0。唯一一道 broken 是 questions_ext 的 payload_not_in_vcs + answer_leak，那是「附件不入库」和「答案可见」，与「素材从来没有过」不是同一类问题。",
+  "what_this_proves": "79 道缺素材不是这个平台的能力缺陷，是真题池那条采集路径的后果：真题题面是从 writeup 里抄回来的，抄的时候没把素材一起搬进来。自己造的题库素材齐全，说明工具链本身没问题。",
+  "what_this_does_not_prove": "没有逐题验证这 86 道是不是真能跑起来。payload_missing 为 0 只说明「声明了的附件都在」，不代表跑起来一定出答案。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
@@ -160,6 +172,6 @@
   "未改 check_corpus_health 的 level 规则（payload_missing 判 broken 是有道理的：声明了素材却不在盘，确实不可复现）。",
   "未去外部源补这 79 道的素材（那属于另一类工作，且需要先确认哪些还能找到）。"
  ],
- "boundary": "本次只审了 data/questions_real。questions_external（加载后 39 道）、questions_ext（加载后 34 道）、questions_ext_cybench（11 道）的附件完整性未逐题核，所以「全库只有 14 道有素材」这句话不成立——它只适用于 93 道真题池。",
+ "boundary": "本题池专项。questions_external(39)、questions_ext(34)、questions_ext_cybench(11)、questions_ext_L2_pure_reasoning(2) 共 86 道已一并审过，payload_missing 全为 0（详见 the_other_pools_are_healthy_so_this_is_not_systemic），所以「只有 14 道有素材」这句话只适用于 93 道真题池，不适用于全库。但这 86 道只验了「附件在不在」，没验「跑起来出不出答案」。",
  "status": "数字已核实并落盘；口径怎么解释、分母要不要改，待拍板。"
 }
