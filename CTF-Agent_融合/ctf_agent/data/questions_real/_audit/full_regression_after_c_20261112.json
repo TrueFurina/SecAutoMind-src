@@ -1,0 +1,34 @@
+{
+ "kind": "full_regression_after_heldout_manifest_change",
+ "run_at": "2026-11-12",
+ "commit_under_test": "1d05c8f",
+ "why": "5da23ef 改了 scripts/benchmark_heldout.py 的排除链（新增一条分支 + 两个函数 + rec 字段）。这是被 scripts/_kpi_canonical.py 直接调用的模块，改动面虽小但位于能力分母计算链上，必须证明它没有碰坏其他任何测试。",
+ "method": {
+  "before": "/tmp/full_final4.log（上一轮，代码代际 606d4dc）",
+  "after": "/tmp/full_final5.log（本轮，代码代际 1d05c8f）",
+  "compare": "两侧都用 grep '^FAILED ' 提取、去掉 'FAILED ' 前缀与 ' - ' 之后的说明、sort -u，再 comm -23 / comm -13 双向求差。errors 同样处理。",
+  "why_strip_prefix": "第一次比对时 f5 保留 'FAILED ' 前缀而 f4 的既存文件没有，comm 把 7 条全部判成「两侧都不同」——实际是格式差异不是结论差异。这是度量工具自己骗人的典型形态，记在此处以避免下次重犯。"
+ },
+ "before_counts": {"failed": 7, "passed": 2332, "skipped": 51, "warnings": 3, "errors": 11, "subtests": 40, "seconds": 1005.67},
+ "after_counts": {"failed": 7, "passed": 2343, "skipped": 51, "warnings": 3, "errors": 11, "subtests": 40, "seconds": 1005.76},
+ "diff": {
+  "failed_only_in_after": [],
+  "failed_only_in_before": [],
+  "errors_only_in_after": [],
+  "same_failed_set": true,
+  "same_error_set": true
+ },
+ "passed_delta": {
+  "value": 11,
+  "accounted": 7,
+  "accounted_how": "tests/test_heldout_declared_answer_key.py 的 7 个用例（--collect-only 实测 7 tests collected）。",
+  "unaccounted": 4,
+  "unaccounted_note": "与本次改动无关：2332 这个 baseline 是 606d4dc 代际跑出来的，此后到 1d05c8f 之间除本轮 7 个新测试外还落过若干提交；未逐条定位这 4 例的来源。不影响结论——双向差集为空即「无新增失败」。"
+ },
+ "same_root_cause_unchanged": {
+  "failed_7": "全部为 git 类测试（test_disappeared_pool_is_regression、test_merge_gate_merge_context 四条参数化、test_current_tracked_tree_passes_gate、test_listing_is_repo_root_relative_from_subdir），唯一根因是服务器部署目录不是 git 仓库、父目录 .git 残缺，git ls-files rc=128。在部署目录里改不了。",
+  "errors_11": "全部在 tests/test_readme_path_integrity.py，同一根因（fixture 跑 git ls-files -z 得 rc=128）。",
+  "note": "本轮改动未触及这两类中的任何一条，也不应该触及。"
+ },
+ "boundary": "只在服务器部署目录（~/sm_sbx_run/CTF-Agent_融合/ctf_agent）跑过一次。未在本机跑全量（本机既有 7 failed + 11 errors 的成因相同，且本机二进制/依赖与服务器有差异）。未做变异验证——本次目的只是「证明没碰坏」，不是「证明门禁有效」。"
+}
