@@ -20,6 +20,19 @@
   "tests": "tests/test_heldout_declared_answer_key.py 7 例（含 3 个变异，其中核心用例把 _has_plaintext_flag_in_source 桩成 False 模拟干净检出）；连跑 test_kpi_canonical / test_external_benchmark_and_health / test_clean_rate_recompute 共 69 passed / 29.52s，RC=0。",
   "what_this_does_not_fix": "只消除「同一 commit 在两台机器上算出的数字不同」。分母本身不可用（5 道 0 可解）未解决，属方案 D，待拍板。稳定地错仍是错。"
  },
+ "coexisting_denominators_in_kpi_file": {
+  "when": "2026-11-12 核对 data/results/kpi_canonical.json 的落盘值是否仍与现算一致时发现。",
+  "on_disk_matches_recompute": "六项全部一致（real_corpus 93 / offline_verified 14 / coverage_of_corpus 0.15054 / skills 85 / heldout_candidates 5 / heldout_runnable_pool 44），差异项 0。文件 as_of=2026-11-08T09:11:46Z。",
+  "the_problem": "同一个文件里并存两个互不相容的能力分母，且都不是当前可测的能力。",
+  "evidence": [
+   "字段 heldout_candidates = 5（现算的候选池）",
+   "字段 heldout_status = { report: ctf_agent/heldout_evidence/benchmark_report_clean2_20260922_deepseek.json, pool_total: 2, solved_total: 2, solved_by_presolve: 1, solved_by_llm: 1 }（2026-09-22 的历史跑批）",
+   "字段 statement 同时写「held-out 自主推理分母 = 5 题」与「该池已实测…池内 2/2」，并在同一段里又写「2 道里 1 道（real_crypto_dnui_keyboard，答案裸 token CLCKOUTHK 明文写在题面）…该数值不成立，应作废」"
+  ],
+  "why_it_matters": "读到这个文件的人会看到「分母 5」和「分母 2、解出 2」两套数，而 statement 自己在同一段里既声称 2/2 成立又声明其中 1 道应作废。任何一处对外引用都可能挑走对自己有利的那一个。叠加 asset_reality_check（那 5 道 0 可解），两个分母都不可作为「当前能力」的依据。",
+  "not_fixed_because": "改 kpi_canonical.json 的 statement 或移除 heldout_status 属于对外口径变更，按 AGENTS.md 第十条须用户拍板；且该文件是落盘产物，改动需同时确认生成侧（_kpi_canonical.canonical_kpi）与消费侧（_merge_gate.py 的 KPI 断言）不受影响，未做。",
+  "suggested_handling_if_asked": "把 heldout_status 明确标注为「历史跑批快照（2026-09-22），非当前能力」，并让 statement 的「分母 5」与 asset_reality_check 的「0 可解」出现在同一句里，避免任一数字被单独引用。属方案 D 的一部分。"
+ },
  "the_one_differing_question": {
   "id": "real_web_gongye_web2",
   "local_excluded_reason": "source-leaked-flag(sha256-in-attachment)",
