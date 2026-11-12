@@ -763,8 +763,13 @@ def _engine_high_exponent(question):
         return None
     if not res.get("ok"):
         return None
-    # ROT 编码时优先 rot18（题名 "How many rot" → 13+5 = 18），其次 rot13
-    for key in ("rot18", "rot13", "flag"):
+    # ⚠️ 2026-11-13 服务器实跑实证：不能优先 rot18。
+    # 本题规范 flag 是 ROT13（只转字母、数字不动，见 scripts/verify_10733.py 的
+    # canonical 判定：rot13.startswith("DASCTF{")）；rot18 会把数字也 +5，
+    # 解得出来但 sha256 必然不符 —— 旧代码优先 rot18，10733 实跑就是
+    # 「presolve 命中却被丢弃、FLAG None」。
+    # skill 的 `flag` 字段本身已是权威解码值，故按 flag → rot13 → rot18 取。
+    for key in ("flag", "rot13", "rot18"):
         f = res.get(key)
         if isinstance(f, str) and re.search(r"(?i)(?:flag|dasctf|ctf)\{[^}\s]+\}", f):
             return f
