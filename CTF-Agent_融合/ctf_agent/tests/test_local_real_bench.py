@@ -30,14 +30,23 @@ pytestmark = pytest.mark.local
 
 
 def _needs_tools() -> None:
+    """工具不在盘时 skip，不许崩。
+
+    2026-11-12 修：`_upx_exe()` / `_exe("wat2wasm")` 找不到工具时返回 None，
+    原写法把它直接喂给 `os.path.isfile()` → TypeError: stat: path should be
+    string... not NoneType。本该 skip 的用例变成「失败」，把「本机缺工具」
+    记成了代码缺陷。三处前置一致收口：先判空再判文件。
+    """
     from tools.adapters.rea_probe import _upx_exe
-    if not os.path.isfile(_upx_exe()):
-        pytest.skip(f"upx 不在盘：{_upx_exe()}")
+    upx = _upx_exe()
+    if not upx or not os.path.isfile(upx):
+        pytest.skip(f"upx 不在盘：{upx}")
     from tools.adapters.wasm_probe import _exe
-    if not os.path.isfile(_exe("wat2wasm")):
+    wat = _exe("wat2wasm")
+    if not wat or not os.path.isfile(wat):
         pytest.skip("wat2wasm 不在盘（设 WABT_BIN）")
     from benchmarks.local_real.build_artifacts import _HOST_PE
-    if not os.path.isfile(_HOST_PE):
+    if not _HOST_PE or not os.path.isfile(_HOST_PE):
         pytest.skip(f"宿主 PE 不存在：{_HOST_PE}")
 
 
