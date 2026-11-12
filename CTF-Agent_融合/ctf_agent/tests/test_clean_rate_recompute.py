@@ -237,3 +237,55 @@ def test_uncovered_question_is_refused():
     ledger["result"]["solved_ids"].pop()
     with pytest.raises(rcr.CannotRun, match="未覆盖池内"):
         _compute(ledger=ledger)
+
+
+# ── 分池归因：30 道干净桶失败分别是什么，也要机算 ──────────────
+
+def test_pool_attribution_matches_declared_buckets(tmp_path=None):
+    """三桶分布必须与 failure_attribution_by_pool 逐类一致，而不是手写的数字。"""
+    ledger = _ledger()
+    computed = _compute(ledger=ledger)
+    checks = rcr.verify(ledger, computed)
+    names = [c["name"] for c in checks if not c["ok"]]
+    assert not names, f"有检查未通过: {names}"
+
+    buckets = computed["pool_attribution"]["buckets"]
+    assert buckets["clean"]["solved"] == 4
+    assert buckets["clean"]["failed"] == 30
+    assert buckets["polluted"]["failed"] == 7
+    assert buckets["duplicate_real"]["failed"] == 1
+    assert sum(b["failed"] for b in buckets.values()) == 38
+    # extract_fail 全部落在 polluted 桶 —— 这是"干净桶 0 个 extract_fail"的机算依据
+    assert buckets["clean"]["by_category"].get("extract_fail", 0) == 0
+    assert buckets["polluted"]["by_category"]["extract_fail"] == 2
+
+
+def test_failed_question_without_err_is_refused():
+    """未解出但 err 为空 → 归因不完整，必须拒绝而不是静默算进 failed。"""
+    ledger = _ledger()
+    ledger = json.loads(json.dumps(ledger))
+    for row in ledger["per_question"]:
+        if row["solved"] is False:
+            row["err"] = None
+            break
+    with pytest.raises(rcr.CannotRun, match="err 为空"):
+        rcr.compute_pool_attribution(
+            ledger,
+            set(ledger["pool_contamination"]["polluted_ids"]),
+            set(ledger["pool_contamination"]["duplicate_real_ids"]),
+        )
+
+
+def test_bucket_misattribution_is_detected():
+    """把一道 clean 题错划进 polluted → 分池分布对不上，_dict_cmp 必须红。
+
+    这一条守的是"分池判据"本身：如果归属搞错，34/30 这些数字会整体错位。
+    """
+    ledger = _ledger()
+    computed = _compute(ledger=ledger)
+    declared = json.loads(json.dumps(ledger["failure_attribution_by_pool"]))
+    # 人为制造错位：把 clean 桶的一个类别数量改错
+    declared["clean"]["by_category"]["tool_failure"] += 1
+    cmp = rcr._dict_cmp("分池", computed["pool_attribution"]["buckets"], declared)
+    assert not cmp["ok"]
+    assert not cmp["detail"]["clean"]["by_category_ok"]

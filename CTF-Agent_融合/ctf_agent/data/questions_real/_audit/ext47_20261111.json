@@ -877,14 +877,14 @@
   "tests": "tests/test_clean_rate_recompute.py",
   "verified_at": "2026-11-12",
   "how": "python -X utf8 scripts/recompute_clean_rate.py [--log-dir /tmp/q47]",
-  "checks": 11,
+  "checks": 12,
   "sources": [
    "data/questions_real/_audit/kpi_ext47_20261111.json -> groups.ext47.files -> 池内 47 个 id",
    "benchmarks/external_unseen/MANIFEST.json -> dropped[reason starts with failed_selection:answer_in_repo] -> 11 道",
    "data/questions_ext_L2_pure_reasoning 与 data/questions_real 的 sha256 字节比对 -> 2 道"
   ],
   "proves": "34 = 47 - 11 - 2 与 4 = 9 - 4 - 1 均由上述三个源机算得出，且与 result 段逐项一致。其中 47 与 9 不需原始日志即可独立验证：kpi 台账 groups.ext47 自带 runs/solved/fails，满足 runs - solved == len(fails) == 38，且 fails 与本台账 solved_ids 恰好切成 47（不相交、无遗漏）。给 --log-dir 时再加 1 项，用原始跑批日志复算同一对数。11.8% 可由第三方重算，不需相信本台账。",
-  "does_not_prove": "不证明这 47 道题选得好（选题口径）；也不覆盖 clean 桶内部 30 道失败的分类——那部分见 failure_attribution_by_pool。",
+  "does_not_prove": "不证明这 47 道题选得好（选题口径）。clean 桶 30 道失败的分类已由本脚本从 per_question.err 机算、并与 failure_attribution_by_pool 逐桶逐类比对（checks 末项），但这只证明「分类与台账一致」，不证明每道题的失败原因判得对——归因判据本身仍可争议。也不证明 solved_ids 里那 9 道是「真解出来的」，干净桶 4 道的解出真实性不在本脚本范围。",
   "boundary": "脚本只读 id / 文件名 / 哈希，不读任何明文 flag。"
  }
 }

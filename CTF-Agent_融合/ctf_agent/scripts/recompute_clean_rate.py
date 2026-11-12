@@ -172,6 +172,94 @@ def compute_duplicates(dup_source: Path, real_dir: Path) -> set[str]:
     return hits
 
 
+def compute_pool_attribution(ledger: dict, polluted: set[str],
+                             duplicates: set[str]) -> dict:
+    """按 id 归属把池切成 clean / polluted / duplicate_real 三桶，机算每桶失败类别。
+
+    为什么要在 clean_rate 脚本里做这件事：`clean_rate = 4/34` 只给出成功率，
+    而 34 道里有 30 道失败 —— 对外交代时第一个被追问的就是"这 30 道分别败在哪"。
+    台账 `failure_attribution_by_pool` 声称 clean=30（tool_failure 7 / no_candidate 6 /
+    stuck_loop 5 / unresolved 5 / wrong_direction 4 / race_abandon 1 / timeout_330 1 /
+    prefix_format_mismatch_recoverable 1），这里从 `per_question` 的 `err` 字段机算，
+    逐桶逐类比对，防止分池数字是手写的。
+
+    归属判据（与台账 note 一致）：id ∈ polluted_ids → polluted；
+    id ∈ duplicate_real_ids → duplicate_real；其余 → clean。
+    """
+    if not isinstance(ledger.get("per_question"), list) or not ledger["per_question"]:
+        raise CannotRun("台账缺 per_question（逐题记录）——分池归因需要它")
+
+    buckets: dict[str, dict] = {
+        "clean": {"solved": 0, "failed": 0, "by_category": {}},
+        "polluted": {"solved": 0, "failed": 0, "by_category": {}},
+        "duplicate_real": {"solved": 0, "failed": 0, "by_category": {}},
+    }
+
+    for row in ledger["per_question"]:
+        if not isinstance(row, dict):
+            raise CannotRun("per_question 里有非对象条目")
+        qid = str(row.get("id") or "")
+        if not qid:
+            raise CannotRun("per_question 有条目缺 id")
+        solved = row.get("solved")
+        if not isinstance(solved, bool):
+            raise CannotRun(f"per_question[{qid}].solved 不是布尔值: {solved!r}")
+
+        name = ("polluted" if qid in polluted
+                else "duplicate_real" if qid in duplicates
+                else "clean")
+        b = buckets[name]
+        if solved:
+            b["solved"] += 1
+            continue
+
+        b["failed"] += 1
+        cat = row.get("err")
+        if not isinstance(cat, str) or not cat:
+            raise CannotRun(
+                f"per_question[{qid}] 未解出但 err 为空 —— 归因不完整，不能当作已归因"
+            )
+        b["by_category"][cat] = b["by_category"].get(cat, 0) + 1
+
+    totals = {"solved": 0, "failed": 0}
+    for _name, b in buckets.items():
+        b["by_category"] = dict(sorted(b["by_category"].items()))
+        b["denominator_basis"] = b["solved"] + b["failed"]
+        totals["solved"] += b["solved"]
+        totals["failed"] += b["failed"]
+    return {"buckets": buckets, "totals": totals}
+
+
+def _dict_cmp(name: str, computed_val: dict, ledger_val) -> dict:
+    """三桶分布比对：逐桶逐类，且要求类别键集合相同（多一类、少一类都算不一致）。"""
+    if not isinstance(ledger_val, dict):
+        return {"name": name, "computed": computed_val, "ledger": ledger_val,
+                "ok": False, "reason": "台账缺该段或不是对象"}
+    detail = {}
+    ok = True
+    for bucket, b in computed_val.items():
+        declared = ledger_val.get(bucket)
+        if not isinstance(declared, dict):
+            detail[bucket] = {"ok": False, "reason": "台账缺该桶"}
+            ok = False
+            continue
+        c_cat = b["by_category"]
+        d_cat = declared.get("by_category")
+        if not isinstance(d_cat, dict):
+            detail[bucket] = {"ok": False, "reason": "台账缺 by_category"}
+            ok = False
+            continue
+        # 台账里值为 0 的类别与本机算"不出现"等价，剔掉 0 再比，避免 0 与缺失的假差异
+        same_cat = c_cat == {k: v for k, v in d_cat.items() if v}
+        same_n = (b["solved"] == declared.get("solved")
+                  and b["failed"] == declared.get("failed"))
+        detail[bucket] = {"by_category_ok": same_cat, "counts_ok": same_n,
+                          "computed_cat": c_cat, "ledger_cat": d_cat}
+        ok = ok and same_cat and same_n
+    return {"name": name, "computed": computed_val, "ledger": ledger_val,
+            "ok": ok, "detail": detail}
+
+
 def recompute(ledger: dict, kpi: dict, manifest: dict,
               dup_source: Path, real_dir: Path) -> dict:
     """机算分母/分子/成功率，并把每个中间量单独返回（便于逐项比对）。"""
@@ -221,6 +309,14 @@ def recompute(ledger: dict, kpi: dict, manifest: dict,
             + ", ".join(sorted(overlap)[:6])
         )
 
+    pool_attribution = compute_pool_attribution(ledger, polluted, duplicates)
+    # 分池闭合：三桶 solved/failed 必须等于 9/38，且三桶之和 = 池
+    if pool_attribution["totals"]["solved"] != len(solved):
+        raise CannotRun(
+            "分池 solved 合计 %d 与 solved_ids 条数 %d 不符"
+            % (pool_attribution["totals"]["solved"], len(solved))
+        )
+
     denom = len(pool) - len(polluted) - len(duplicates)
     clean_solved = len(solved) - len(solved & polluted) - len(solved & duplicates)
     rate = round(clean_solved / denom, 4) if denom else None
@@ -240,6 +336,7 @@ def recompute(ledger: dict, kpi: dict, manifest: dict,
         "clean_solved": clean_solved,
         "clean_failed": denom - clean_solved,
         "clean_rate": rate,
+        "pool_attribution": pool_attribution,
         "formula": {
             "denominator": f"{len(pool)} - {len(polluted)} - {len(duplicates)} = {denom}",
             "numerator": (f"{len(solved)} - {len(solved & polluted)} - "
@@ -292,6 +389,9 @@ def verify(ledger: dict, computed: dict) -> list[dict]:
         _num_cmp("kpi 台账 runs - solved == 失败条数（库内恒等式）",
                  computed["kpi_runs"] - computed["kpi_solved"],
                  computed["kpi_fail_count"]),
+        _dict_cmp("三桶分池失败分布 与 failure_attribution_by_pool 逐类一致",
+                  computed["pool_attribution"]["buckets"],
+                  ledger.get("failure_attribution_by_pool")),
     ]
 
 
