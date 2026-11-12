@@ -5,7 +5,8 @@
  "method": "git worktree add --detach <tmp> HEAD 建干净检出，在检出内以 PYTHONPATH=. 调同一组函数；与本机工作树结果并排。两侧代码同代（同一 commit）。",
  "measured": {
   "heldout_candidates_default": {"local": 5, "clean_checkout": 6, "require_payload_true": {"local": 1, "clean_checkout": 1}},
-  "heldout_runnable_pool_default": {"local": 44, "clean_checkout": 45, "require_payload_true": {"local": 38, "clean_checkout": 38}}
+  "heldout_runnable_pool_default": {"local": 44, "clean_checkout": 45, "require_payload_true": {"local": 38, "clean_checkout": 38}},
+  "currently_solvable_in_heldout_candidates": 0
  },
  "the_one_differing_question": {
   "id": "real_web_gongye_web2",
@@ -14,7 +15,7 @@
   "explain": "该题的附件 index.php 里写着与题面 flag_sha256 逐字匹配的明文答案，因此被 data/questions_real/_attachments/ 的 gitignore 规则排除（公开仓不得含答案）。本机盘上有这个文件，_has_plaintext_flag_in_source 能读到并命中 → 判 source-leaked → 排除。干净检出里文件不存在 → 检查读不到 → source_leaked=False → 该题被放行进入候选池。"
  },
  "root_cause": "scripts/benchmark_heldout.py:429 的 payload-missing 排除规则默认关闭（require_payload=False），源码注释写明默认只标记、不剔除，理由是口径变更需授权。于是「附件缺失」只被记为 missing_payload，不进入 reason_excluded；真正把它挡在外面的只有 source-leaked 检查，而那条检查本身需要读到文件。文件不在盘时，两道防线同时失效。",
- "why_not_fixed_unilaterally": "打开 require_payload 会让 heldout_candidates 从 5 掉到 1（本机与检出都掉），等于把能力分母砍掉 4 道——这是对外口径变更，按 AGENTS.md 第十条必须由用户拍板，不能顺手做。",
+ "why_not_fixed_unilaterally": "打开 require_payload 会让 heldout_candidates 从 5 掉到 1（本机与检出都掉）。初版以为那剩下的 1 道是可用的，asset_reality_check 证明它当前也解不出来——所以这条改动实际是把分母从「5 道不可解」改成「1 道不可解」，两个数都不可用。改分子分母的语义属于对外口径变更，按 AGENTS.md 第十条必须由用户拍板。",
  "options_on_the_table": [
   {
    "id": "A_accept_and_disclose",
@@ -24,16 +25,34 @@
   {
    "id": "B_flip_require_payload",
    "what": "select_candidates 默认 require_payload=True。",
-   "cost": "两侧一致（candidates 1/1、runnable 38/38），但能力分母从 5 塌到 1——因为 93 题里大量附件本就不在盘（干净检出里 93/93 题附件不全）。数字一致但数字变难看，且 1 这个分母几乎没有统计意义。"
+   "cost": "两侧一致（candidates 1/1、runnable 38/38）。但见 asset_reality_check：那剩下的 1 道（real_reverse_js）当前同样解不出来，所以这条不是「把分母砍到 1」，是「把分母砍到 0」。"
   },
   {
    "id": "C_replace_env_dependency_with_manifest",
-   "what": "把 real_web_gongye_web2 显式登记进 benchmarks/external_unseen/MANIFEST.json 的 dropped（理由如 answer_in_attachment_gitignored），让排除判据读清单而不是读文件。",
-   "cost": "两侧都会稳定排除它 → candidates 5/5、runnable 44/44，且不再依赖盘上文件。代价是 MANIFEST 新增一条理由，需要定义该理由的语义并给它配一条变异测试，且 MANIFEST 是污染名单的唯一真值源，改动敏感。"
+   "what": "给 select_candidates 增加一条「已声明答案在附件」的清单排除（数据源用人工维护的真值文件，理由是这类题机器恰好扫不出来——机器看不见它正是问题本身），让排除判据读清单而不是读文件。",
+   "cost": "只修 real_web_gongye_web2 这 1 道：两侧稳到 5/5、44/44。但见 asset_reality_check：那 5 道本身 0 道可解，稳定成一个「0 可解的分母」比数字漂移更危险——稳定地错看起来最像对的。"
+  },
+  {
+   "id": "D_fix_denominator_reality",
+   "what": "承认能力分母当前为 0 可解并改口径：能力率只引用 2026-09-22 的实测 2/2 并注明时点（不声称当前可复现），同时把 heldout_candidates 的语义从「能力分母」改为「历史上曾用于测量未见题能力的题集」。或者换一批附件齐全的新题重建分母。",
+   "cost": "要动「能力分母」这个对外语义，是口径变更，必须拍板。换题重建分母的工作量在新题采集与验证，不在代码。"
   }
  ],
- "recommended_if_asked": "C。理由是它把「环境依赖」换成「清单依赖」，数字从此与盘上文件无关；A 让数字继续随环境漂，B 用一致性换掉分母的可用性。C 的工作量在于理由语义定义 + 变异测试，不在代码量。",
- "does_not_prove": "本文件不证明 held-out 池选得好；也不证明本机 5/44 是「正确」值——它只是「附件齐全环境下」的值。也不覆盖 clean_rate 口径（那在 ext47_20261111.json 的 recompute 段，12 项机算）。",
- "boundary": "测量只做了本机与干净检出两处，未在 Linux 容器内复测；两侧代码同代（同一 commit），差异仅来自附件在盘与否。",
+ "asset_reality_check": {
+  "when": "本文件初版写成后追加。初版把差异归因为「附件在盘与否」，默认那 5 道只要附件齐全就是可测的题。追查后发现这个默认是错的，故补记。",
+  "finding": "heldout_candidates 的 5 道当前 0 道结构上可解。",
+  "by_id": {
+   "real_anxun2020_BeCare4": "缺 data/questions_real/_attachments/anxun2020/misc/BeCare4.md。该文件从未入库（git log --all 空）、本机盘上也没有、全仓无副本；题面 description 仅 80 字、附件是唯一数据源；heldout_evidence 下全部历史报告里查不到它的任何跑批记录。",
+   "real_anxun2020_depressed": "同上，缺 depressed.md，从未入库，题面 98 字，无跑批记录。",
+   "real_anxun2020_easyzip": "同上，缺 easyzip.md，从未入库，题面 100 字，无跑批记录。",
+   "real_anxun2020_love_letter": "同上，缺 love_letter.md，从未入库，题面 73 字，无跑批记录。",
+   "real_reverse_js": "附件都在盘，但 index.html 只有 31 字节（内容为 <!DOCTYPE html><title></title>）。git 历史显示该文件只在 c7289ec（2026-11-04 题库纳入版本库）入库过一次，且入库时就是 30 字符空壳。而 benchmark_report_clean2_20260922_deepseek.json 记录它在 2026-09-22 由 presolve 解出（solved=True, 1310ms）——说明当时附件完好，此后退化、退化后的空壳被固化进版本库。当前用 coso.js 里 3 个 wincode 的 raw/delog/enlog/去前缀共 18 个变体逐一比对题面 flag_sha256，无一命中，即当前无法解出。"
+  },
+  "why_it_matters": "「5」这个数字看起来像「有 5 道未见题可供测量能力」，实际是「0 道能跑」。previous baseline 里 heldout_status() 报的 pool_total=2 / solved_total=2 / solve_rate=1.0 来自 2026-09-22 的 clean2 报告（那 2 道是 real_crypto_dnui_keyboard 与 real_reverse_js，当时都解出了），是历史实测值，不是当前可复现值。两者混用会得到「能力率 1.0」这个现在无法复现的结论。",
+  "impact_scope": "README.md、README.zh.md、docs/ 下均无任何对 heldout_candidates 的文字引用（已 grep 确认）；落盘值只出现在 data/results/kpi_canonical.json。所以这处目前只影响口径真值，尚未污染任何对外表述。"
+ },
+ "recommended_if_asked": "先 D 后 C，顺序不能反。理由：C 会把数字稳定成 5/5，而 asset_reality_check 证明那 5 道是 0 可解——稳定地错比漂移更危险，因为它看起来像对的。所以先按 D 把语义改成「历史题集」并给能力率标注时点（2026-09-22 实测 2/2），再做 C 去掉 gongye_web2 的环境依赖。若只做 C 不做 D，等于把一个 0 可解的分母固化下来。",
+ "does_not_prove": "本文件不证明 held-out 池选得好。初版曾写「本机 5/44 是附件齐全环境下的值」，该说法已被 asset_reality_check 推翻并作废：5 道里 4 道附件永久缺失、1 道附件已退化为空壳，不存在「附件齐全环境」。也不证明历史 2/2 当前仍可复现。不覆盖 clean_rate 口径（那在 ext47_20261111.json 的 recompute 段，12 项机算）。",
+ "boundary": "跨机器测量只做了本机与干净检出两处，未在 Linux 容器内复测；两侧代码同代（同一 commit），差异仅来自附件在盘与否。可解性判定基于静态分析与 18 个变体的哈希比对，未用 node 实跑 coso.js 的 JS 语义（若 JS 的 charCode 边界与 Python 实现存在差异，判定需复核）；4 道 anxun 题的可解性基于「附件永久缺失 + 题面 73~100 字 + 无任何历史跑批记录」三重证据，未做实际解题尝试。",
  "status": "待拍板"
 }
