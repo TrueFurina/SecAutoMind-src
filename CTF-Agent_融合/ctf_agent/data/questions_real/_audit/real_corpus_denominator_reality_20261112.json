@@ -1,0 +1,59 @@
+{
+ "kind": "real_corpus_denominator_reality",
+ "run_at": "2026-11-12",
+ "why": "核对语料健康基线（total 93 / ok 7 / leaky 1 / broken 85）时发现 broken 的定义里含 payload_missing，于是去数 93 道里到底几道有素材。结果是 14 道有、79 道没有——这个数字直接决定 coverage_of_corpus=15.05% 到底在说什么。",
+ "method": {
+  "audit": "scripts/_audit_corpus_integrity.audit(Path('data/questions_real'))，逐题按 attachments 声明解析磁盘路径，payload_missing 进 issues 即为「声明了但盘上找不到」",
+  "git_history": "git log --all --name-only --format= 取全部历史路径（去重后 5449 条），与 79 道各自声明的附件路径（补上 CTF-Agent_融合/ctf_agent/ 前缀后）逐条比对",
+  "level_rule_quoted": "level = broken if {payload_missing, answer_key_only, no_truth, payload_not_in_vcs} & issues"
+ },
+ "measured": {
+  "real_corpus": 93,
+  "by_level": {"ok": 7, "leaky": 1, "broken": 85},
+  "broken_composition": {
+   "payload_missing_only": 79,
+   "payload_not_in_vcs_only": 2,
+   "answer_key_only+answer_leak+payload_not_in_vcs": 2,
+   "no_truth_only": 1,
+   "answer_leak+payload_not_in_vcs": 1
+  },
+  "payload_on_disk_or_not_needed": 14,
+  "payload_missing": 79,
+  "attachments_dir_reality": "data/questions_real/_attachments 只有 25 个文件、共约 1.0 MB",
+  "the_fourteen": [
+   "10733 (payload_not_in_vcs)",
+   "real_crypto_anxun2020_aes (payload_not_in_vcs + answer_key_only + answer_leak)",
+   "real_crypto_exciting_inverse (ok)",
+   "real_crypto_ezrsa (ok)",
+   "real_crypto_filterrandom (ok)",
+   "real_crypto_simplelegendre (ok)",
+   "real_crypto_specialcurve2 (ok)",
+   "real_taishan2021_crypto_cgroup (no_truth)",
+   "real_misc_longjian2024_smallsword3 (payload_not_in_vcs + answer_key_only + answer_leak)",
+   "real_reverse_js (ok)",
+   "real_reverse_sheng (ok)",
+   "real_reverse_upx (payload_not_in_vcs)",
+   "real_reverse_vnctf_cm1 (leaky)",
+   "real_web_gongye_web2 (payload_not_in_vcs + answer_leak)"
+  ]
+ },
+ "the_decisive_evidence": {
+  "claim": "这 79 道不是「附件被我删了」也不是「数据丢失」，而是「从来没有过素材」。",
+  "how": "79 道各自声明的附件路径，在全部 git 历史路径（5449 条）里命中数为 0。命中数 0 意味着这些文件从未被任何一次提交记录过——不是被删（删过的话历史里会有条目）。",
+  "result": {"ever_appeared": 0, "never_appeared": 79},
+  "sample_ids": ["real_crypto_anwang_crypto1", "real_crypto_anxun2020_coolboy", "real_crypto_changan2021_checkin", "real_crypto_changan2021_easyrsa", "real_crypto_changan2021_ezpy", "real_crypto_dnui_keyboard"]
+ },
+ "what_this_changes": {
+  "before": "coverage_of_corpus = offline_verified/real_corpus = 14/93 = 0.15054 被当成「能力覆盖率」，读起来像「93 道里只解出了 14 道」。",
+  "after": "93 道里 79 道从来没有素材，结构上不可能被验证。有素材的恰好 14 道，而这 14 道就是台账里标了 offline_verified 的 14 道。所以 0.15054 的真实含义是「全部具备验证条件的题都已验证」，不是「能力只覆盖了 15%」。",
+  "why_the_two_numbers_coincide": "不是巧合，是因果：没有素材就验证不了，验证了的必然有素材。offline_verified 由 count_offline_verified() 扫台账状态行得到（_merge_gate.py:357），它数的是「记了验证通过的题」；而这些题必然落在有素材的那 14 道里。",
+  "is_this_the_same_problem_as_the_heldout_five": "同构但不是同一个。heldout 那 5 道是「有素材声明、素材缺失」；这 79 道是「有素材声明、素材从未入库」。两者都是「分母里混进了不可能跑出来的题」，都会把 0/N 误读成能力不足。"
+ },
+ "what_i_did_not_do": [
+  "未改 real_corpus 的定义（它现在数的是题面 json 数，判据是 payload 含 category 与 flag_pattern，见 _kpi_canonical._counts_toward_corpus:134）。改分母定义属对外口径变更，按 AGENTS.md 第十条须用户拍板。",
+  "未改 check_corpus_health 的 level 规则（payload_missing 判 broken 是有道理的：声明了素材却不在盘，确实不可复现）。",
+  "未去外部源补这 79 道的素材（那属于另一类工作，且需要先确认哪些还能找到）。"
+ ],
+ "boundary": "本次只审了 data/questions_real。questions_external（加载后 39 道）、questions_ext（加载后 34 道）、questions_ext_cybench（11 道）的附件完整性未逐题核，所以「全库只有 14 道有素材」这句话不成立——它只适用于 93 道真题池。",
+ "status": "数字已核实并落盘；口径怎么解释、分母要不要改，待拍板。"
+}
