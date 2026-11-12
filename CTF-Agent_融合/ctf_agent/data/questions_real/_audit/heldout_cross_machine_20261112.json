@@ -1,0 +1,39 @@
+{
+ "kind": "heldout_pool_cross_machine_caliber",
+ "run_at": "2026-11-12",
+ "why": "对外数字除了 clean_rate（4/34）还有一组 held-out 口径。它们由 scripts/_kpi_canonical.py 的 count_heldout_candidates() / count_heldout_runnable_pool() 机算，而这两个函数都走 scripts/benchmark_heldout.select_candidates()，其中一条排除规则依赖**附件文件在不在盘上**。data/questions_real/_attachments 因含明文 flag 被 .gitignore 有意排除，所以「本机能算出的数字」与「别人 clone 后算出的数字」可能不同。本文件把这个差异测出来并落盘，不改任何判据。",
+ "method": "git worktree add --detach <tmp> HEAD 建干净检出，在检出内以 PYTHONPATH=. 调同一组函数；与本机工作树结果并排。两侧代码同代（同一 commit）。",
+ "measured": {
+  "heldout_candidates_default": {"local": 5, "clean_checkout": 6, "require_payload_true": {"local": 1, "clean_checkout": 1}},
+  "heldout_runnable_pool_default": {"local": 44, "clean_checkout": 45, "require_payload_true": {"local": 38, "clean_checkout": 38}}
+ },
+ "the_one_differing_question": {
+  "id": "real_web_gongye_web2",
+  "local_excluded_reason": "source-leaked-flag(sha256-in-attachment)",
+  "clean_checkout_excluded_reason": null,
+  "explain": "该题的附件 index.php 里写着与题面 flag_sha256 逐字匹配的明文答案，因此被 data/questions_real/_attachments/ 的 gitignore 规则排除（公开仓不得含答案）。本机盘上有这个文件，_has_plaintext_flag_in_source 能读到并命中 → 判 source-leaked → 排除。干净检出里文件不存在 → 检查读不到 → source_leaked=False → 该题被放行进入候选池。"
+ },
+ "root_cause": "scripts/benchmark_heldout.py:429 的 payload-missing 排除规则默认关闭（require_payload=False），源码注释写明默认只标记、不剔除，理由是口径变更需授权。于是「附件缺失」只被记为 missing_payload，不进入 reason_excluded；真正把它挡在外面的只有 source-leaked 检查，而那条检查本身需要读到文件。文件不在盘时，两道防线同时失效。",
+ "why_not_fixed_unilaterally": "打开 require_payload 会让 heldout_candidates 从 5 掉到 1（本机与检出都掉），等于把能力分母砍掉 4 道——这是对外口径变更，按 AGENTS.md 第十条必须由用户拍板，不能顺手做。",
+ "options_on_the_table": [
+  {
+   "id": "A_accept_and_disclose",
+   "what": "不改代码，接受 heldout_candidates 在本机 5 / 干净检出 6，引用时必须声明所在环境。",
+   "cost": "对外数字不稳定：同一个 commit 在别人机器上是另一个数。heldout_runnable_pool 同理（44 vs 45）。"
+  },
+  {
+   "id": "B_flip_require_payload",
+   "what": "select_candidates 默认 require_payload=True。",
+   "cost": "两侧一致（candidates 1/1、runnable 38/38），但能力分母从 5 塌到 1——因为 93 题里大量附件本就不在盘（干净检出里 93/93 题附件不全）。数字一致但数字变难看，且 1 这个分母几乎没有统计意义。"
+  },
+  {
+   "id": "C_replace_env_dependency_with_manifest",
+   "what": "把 real_web_gongye_web2 显式登记进 benchmarks/external_unseen/MANIFEST.json 的 dropped（理由如 answer_in_attachment_gitignored），让排除判据读清单而不是读文件。",
+   "cost": "两侧都会稳定排除它 → candidates 5/5、runnable 44/44，且不再依赖盘上文件。代价是 MANIFEST 新增一条理由，需要定义该理由的语义并给它配一条变异测试，且 MANIFEST 是污染名单的唯一真值源，改动敏感。"
+  }
+ ],
+ "recommended_if_asked": "C。理由是它把「环境依赖」换成「清单依赖」，数字从此与盘上文件无关；A 让数字继续随环境漂，B 用一致性换掉分母的可用性。C 的工作量在于理由语义定义 + 变异测试，不在代码量。",
+ "does_not_prove": "本文件不证明 held-out 池选得好；也不证明本机 5/44 是「正确」值——它只是「附件齐全环境下」的值。也不覆盖 clean_rate 口径（那在 ext47_20261111.json 的 recompute 段，12 项机算）。",
+ "boundary": "测量只做了本机与干净检出两处，未在 Linux 容器内复测；两侧代码同代（同一 commit），差异仅来自附件在盘与否。",
+ "status": "待拍板"
+}
