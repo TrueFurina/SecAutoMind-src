@@ -189,6 +189,48 @@
   },
   "conclusion": "79 道缺素材是跨机器的客观事实，不是我这台的意外。它们不是「没同步回来」，是真的从来没有。"
  },
+ "how_the_material_was_never_there_in_the_first_place": {
+  "why_asked": "前几节只回答了「79 道缺素材」这个事实，没回答「怎么搞成这样」。缺素材可能是迁移丢了、可能是被删了、也可能是采集时就没搬——三种原因的处置完全不同，必须查到底是哪一种。",
+  "the_migration_trail": [
+   {"commit": "960c175", "date": "2026-10-23", "subject": "feat: 会话累积工作量落地（含西湖论剑 Python 兜底接入生产链路 + 吞并资产 201 文件入库）(#58)", "action": "题目 json 从 data/ctf_benchmark/xhlj_legacy/questions_real/ 整批搬进来；该次提交涉及 questions_real 共 111 行，其中 _attachments 只有 20 行"},
+   {"commit": "efa612a", "date": "2026-10-24", "subject": "feat(fusion): 融合收尾——9子目录收编+113增量收编+护栏同步+知识蒸馏移交", "action": "纯重命名（C100），搬到 CTF-Agent_融合/ctf_agent/data/questions_real/，内容不动"}
+  ],
+  "what_the_source_repo_actually_had": {
+   "path": "E:/Program/SecAutoMind/data/ctf_benchmark/xhlj_legacy/questions_real/_attachments（西湖论剑遗留副本，仍在盘上）",
+   "questions": 93,
+   "attachment_files_excluding_gitattributes": 16,
+   "attachment_bytes": 552164,
+   "the_16_files": [
+    "crypto/real_crypto_anxun2020_aes/flag.txt（32B —— 是答案，不是素材）",
+    "crypto/real_crypto_exciting_inverse/output（1859B）",
+    "crypto/real_crypto_exciting_inverse/problem.py（339B）",
+    "crypto/real_crypto_ezrsa/output（3705B）",
+    "crypto/real_crypto_ezrsa/task.py（777B）",
+    "crypto/real_crypto_filterrandom/FilterRandom.py（3012B）",
+    "crypto/real_crypto_simplelegendre/output（163871B）",
+    "crypto/real_crypto_simplelegendre/task.py（937B）",
+    "crypto/real_crypto_specialcurve2/SpecialCurve2.py（1366B）",
+    "misc/real_misc_longjian2024_smallsword3/flag.txt（45B —— 是答案，不是素材）",
+    "reverse/real_reverse_js/coso.js（3026B —— 缺 index.html）",
+    "reverse/real_reverse_sheng/reverse_2（8953B）",
+    "reverse/real_reverse_upx/helloupx11（354048B）",
+    "taishan2021/crypto_c_group.py（6218B —— 目录名是赛事名不是题 id）",
+    "web/real_web_gongye_web2/index.php（871B —— 含明文 flag）",
+    "xihu2021/FilterRandom.py（3097B —— 与 filterrandom 那份重复）"
+   ],
+   "coverage": "16 个文件覆盖约 12 道题，其余 81 道在源仓里就没有任何附件。也就是说素材的缺失不是这次迁移造成的——迁移之前就已经是这个样子。"
+  },
+  "the_real_cause_is_the_collection_method": {
+   "claim": "这 93 道不是从 CTF 平台导出的赛题包，是从 writeup（解题报告）里把题面抄回来的。",
+   "evidence_1_source_field": "69 道有 source，值全部是 writeup 形态：「安洵杯官方wp (E:/...pdf)」「2023陇剑杯WP」「DiceCTF 2022 Writeup (lactea.kr)」——是解题报告，不是题目分发渠道。",
+   "evidence_2_source_carries_the_solution": "多道 source 直接把解法写在括号里，例如「zip 内伪 pdf 实为 WAV, 转音频得摩斯电码」「json.Unmarshal 大小写不敏感匹配 -> 用 What_point 绕过 what_point 过滤」「Mako 模板 ${...} SSTI 读 /flag.txt」。把解法写进来源字段，说明采集时手里的是题解而不是题。",
+   "evidence_3_title_carries_the_method": "题目 title 里也带解法，例如 real_crypto_anwang_crypto1 的 title 是「2022安网杯 crypto1（八进制+Vigenère）」。",
+   "evidence_4_attachments_is_often_just_a_flag": "real_crypto_anwang_crypto1 声明的 attachments 是 ['data/questions_real/_attachments/crypto/real_crypto_anwang_crypto1/flag.txt'] —— 声明的是答案文件，不是题目给玩家的输入。这说明 attachments 字段在相当多情况下只是「答案在哪」的占位，压根不是「素材在哪」的记录。",
+   "evidence_5_overlap_with_the_layer_math": "源仓那 16 个文件里，real_crypto_anxun2020_aes/flag.txt(32B) 与 real_misc_longjian2024_smallsword3/flag.txt(45B) 正是前文三层结构里「素材可用 12 道」剔掉的那 2 道——「附件只有一条 flag 长度」这件事在源仓层面就已经成立，不是迁移后变小的。"
+  },
+  "therefore": "素材从来没有被搬进来过，不是搬丢的，也不是后来删的。写 writeup 的人只写了题长什么样、怎么解，采集的人照着写成了 json，附件路径是按目录规范编出来的占位。所以 git 全历史 5449 条路径里命中 0——因为它从来没有出现在任何一次提交里。",
+  "what_this_does_not_change": "不改变任何一个数字。79 / 14 / 11 / 8 / 6 全部照旧。变的是归因：这不是数据事故，是采集口径的后果。前文 why_the_material_is_gone_for_good 里「source 指向的目录已经不存在」只是这件事的旁证，不是主因——主因是照 WP 抄题这件事本身。"
+ },
  "can_the_question_statement_alone_carry_it": {
   "why_asked": "「附件缺失」不等于「不可解」——纯密码学题如果把参数全写在题面里，缺附件照样能跑。不下这一步，79 道就只能是「缺素材」，不能被说成「不可验证」。",
   "measured": {
