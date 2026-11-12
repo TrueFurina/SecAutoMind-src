@@ -8,6 +8,18 @@
   "heldout_runnable_pool_default": {"local": 44, "clean_checkout": 45, "require_payload_true": {"local": 38, "clean_checkout": 38}},
   "currently_solvable_in_heldout_candidates": 0
  },
+ "fix_released": {
+  "commit": "5da23ef",
+  "what": "新增人工真值清单 heldout_evidence/answer_key_in_attachment_20261112.json 登记 real_web_gongye_web2，排除链改为读清单而非读盘上文件。",
+  "verified_after_fix": {
+   "local": {"heldout_candidates": 5, "heldout_runnable_pool": 44, "real_corpus": 93, "offline_verified": 14, "coverage_of_corpus": 0.15054, "skills": 85},
+   "clean_checkout": {"heldout_candidates": 5, "heldout_runnable_pool": 44, "real_corpus": 93, "offline_verified": 14, "coverage_of_corpus": 0.15054, "skills": 85},
+   "diff": 0
+  },
+  "how_verified": "2026-11-12 在 D:\\tmp_wt_c3（git worktree add --detach HEAD，HEAD 即 5da23ef）与本地分别调用 scripts._kpi_canonical 的 count_heldout_candidates / count_heldout_runnable_pool / canonical_kpi，六项数字逐项相同；并单独打印 real_web_gongye_web2 的排除理由——本机为 sha256-in-attachment、检出为 declared-answer-in-attachment，两处结论一致而判据不同，正是清单解耦盘上文件的证据。",
+  "tests": "tests/test_heldout_declared_answer_key.py 7 例（含 3 个变异，其中核心用例把 _has_plaintext_flag_in_source 桩成 False 模拟干净检出）；连跑 test_kpi_canonical / test_external_benchmark_and_health / test_clean_rate_recompute 共 69 passed / 29.52s，RC=0。",
+  "what_this_does_not_fix": "只消除「同一 commit 在两台机器上算出的数字不同」。分母本身不可用（5 道 0 可解）未解决，属方案 D，待拍板。稳定地错仍是错。"
+ },
  "the_one_differing_question": {
   "id": "real_web_gongye_web2",
   "local_excluded_reason": "source-leaked-flag(sha256-in-attachment)",
@@ -54,5 +66,5 @@
  "recommended_if_asked": "先 D 后 C，顺序不能反。理由：C 会把数字稳定成 5/5，而 asset_reality_check 证明那 5 道是 0 可解——稳定地错比漂移更危险，因为它看起来像对的。所以先按 D 把语义改成「历史题集」并给能力率标注时点（2026-09-22 实测 2/2），再做 C 去掉 gongye_web2 的环境依赖。若只做 C 不做 D，等于把一个 0 可解的分母固化下来。",
  "does_not_prove": "本文件不证明 held-out 池选得好。初版曾写「本机 5/44 是附件齐全环境下的值」，该说法已被 asset_reality_check 推翻并作废：5 道里 4 道附件永久缺失、1 道附件已退化为空壳，不存在「附件齐全环境」。也不证明历史 2/2 当前仍可复现。不覆盖 clean_rate 口径（那在 ext47_20261111.json 的 recompute 段，12 项机算）。",
  "boundary": "跨机器测量只做了本机与干净检出两处，未在 Linux 容器内复测；两侧代码同代（同一 commit），差异仅来自附件在盘与否。可解性判定基于静态分析与 18 个变体的哈希比对，未用 node 实跑 coso.js 的 JS 语义（若 JS 的 charCode 边界与 Python 实现存在差异，判定需复核）；4 道 anxun 题的可解性基于「附件永久缺失 + 题面 73~100 字 + 无任何历史跑批记录」三重证据，未做实际解题尝试。",
- "status": "待拍板"
+ "status": "C 已实施并复验（5da23ef，两处六项数字一致）；D 仍待拍板——能力分母当前 0 可解未解决"
 }
