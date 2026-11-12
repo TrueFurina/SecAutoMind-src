@@ -32,6 +32,24 @@
 
 ---
 
+## 1.5 跑前预检（preflight.sh，强烈建议先跑）
+
+充值后、跑批前，先在服务器 `/home/user/SecAutoMind` 下跑一次预检，把所有「会白烧额度」的
+配置错误拦在门外（二进制是否复制到 `llmbench_withp0/nop0`、env 是否设、slug 是否踩
+`deepseek-reasoner` 无效坑、余额是否真 >0、网络是否通、ids 是否非空、以及 1-id 真·冒烟）。
+任一项不过直接 `exit 非 0` 并给修复提示。
+
+```bash
+cd /home/user/SecAutoMind
+# 默认含 1-id 冒烟（极少量额度，仅验证链路）；不想花额度用 --no-smoke
+bash scripts/fire/preflight.sh
+# 通过后再正式跑批
+nohup bash scripts/fire/batch2_openrouter.sh > master.log 2>&1 &
+```
+
+> 预检与 `batch2_openrouter.sh` 的启动护栏同源但更前置：batch2 只在启动时查一次余额，
+> preflight 额外校验二进制/env/slug/网络/ids，并在真正放量前用 1 题确认链路打通。
+
 ## 2. 执行步骤（在本地 + 服务器各做一部分）
 
 ### 2.1 本地：构建 linux 二进制（如预编译产物已丢则重编）
@@ -95,4 +113,4 @@ nohup bash batch2_openrouter.sh > master.log 2>&1 &
 - **禁 `git add -A`**：只 stage 显式文件。
 - 密钥不进模型上下文；env 明文凭证不 dump。
 - 改分母/计数后必须重跑 `scripts/_kpi_canonical.py`（若引入新的解题统计）。
-- 服务器 `/home/user/SecAutoMind` 非 git 仓；本地分支 `feat/private-pool-v1-20261107` 已推送远端（HEAD = `7e7dbc2`）。
+- 服务器 `/home/user/SecAutoMind` 非 git 仓；本地分支 `feat/private-pool-v1-20261107` 已推送远端（HEAD = `7d1492a`）。
